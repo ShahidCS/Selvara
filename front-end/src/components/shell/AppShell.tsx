@@ -58,6 +58,13 @@ function Frame({ children }: { children: ReactNode }) {
     </div>
   );
 }
+/** Routes rendered WITHOUT the app chrome (external users have no workspace role, sidebar or role switcher). */
+const STANDALONE = ["/vendor-portal"];
 export function AppShell({ children }: { children: ReactNode }) {
+  const { pathname } = useRouter();
+  if (STANDALONE.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+    // body is overflow:hidden in the portal CSS, so the standalone container scrolls itself
+    return <LayerProvider><div id="standalone" style={{ height: "100dvh", overflow: "auto", background: "var(--bg)" }}>{children}</div></LayerProvider>;
+  }
   return <LayerProvider><Frame>{children}</Frame></LayerProvider>;
 }

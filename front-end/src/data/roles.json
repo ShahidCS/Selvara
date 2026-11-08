@@ -103,7 +103,8 @@
     "billing",
     "rates",
     "mfa",
-    "adminlog"
+    "adminlog",
+    "security"
    ]
   },
   "admin": {
@@ -112,6 +113,7 @@
   "owner": {
    "ws": [
     "overview",
+    "me",
     "work",
     "reports",
     "frameworks",
@@ -127,12 +129,14 @@
     "vendors",
     "trust",
     "questionnaires",
-    "commitments"
+    "commitments",
+    "appsec"
    ]
   },
   "employee": {
    "ws": [
     "overview",
+    "me",
     "work",
     "policies",
     "access",
@@ -146,7 +150,8 @@
     "controls",
     "evidence",
     "policies",
-    "frameworks"
+    "frameworks",
+    "appsec"
    ]
   },
   "vendor": {
@@ -163,6 +168,7 @@
   "analyst": {
    "ws": [
     "overview",
+    "me",
     "work",
     "risk",
     "issues",

@@ -10,6 +10,11 @@
       "overview"
      ],
      [
+      "me",
+      "My Workspace",
+      "user"
+     ],
+     [
       "work",
       "My Work",
       "work"
@@ -143,6 +148,11 @@
       "auditlog",
       "Audit Logs",
       "log"
+     ],
+     [
+      "appsec",
+      "Security Controls",
+      "shieldcheck"
      ]
     ]
    }
@@ -180,6 +190,16 @@
       "adminlog",
       "Admin Audit Log",
       "log"
+     ],
+     [
+      "elevation",
+      "Elevated Access",
+      "access"
+     ],
+     [
+      "security",
+      "Platform Security",
+      "shieldcheck"
      ]
     ]
    }
@@ -301,6 +321,22 @@
   "adminlog": [
    "Admin Audit Log",
    "Immutable record of platform administrator actions"
+  ],
+  "me": [
+   "My Workspace",
+   "Your tasks, published policies and account security"
+  ],
+  "elevation": [
+   "Elevated Access",
+   "Just-in-time elevation and customer-approved support grants"
+  ],
+  "security": [
+   "Platform Security",
+   "Read-only platform security rules"
+  ],
+  "appsec": [
+   "Application Security Controls",
+   "Build specification and release gate"
   ]
  }
 }

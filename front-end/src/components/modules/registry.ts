@@ -29,6 +29,10 @@ import RatesModule from "./RatesModule";
 import MfaModule from "./MfaModule";
 import AdminLogModule from "./AdminLogModule";
 import AuthModule from "./AuthModule";
+import MeModule from "./MeModule";
+import ElevationModule from "./ElevationModule";
+import PlatformSecurityModule from "./PlatformSecurityModule";
+import AppSecModule from "./AppSecModule";
 
 export const MODULES: Record<string, ComponentType<{ param?: string | null }>> = {
   overview: OverviewModule,
@@ -60,4 +64,8 @@ export const MODULES: Record<string, ComponentType<{ param?: string | null }>> =
   mfa: MfaModule,
   adminlog: AdminLogModule,
   auth: AuthModule,
+  me: MeModule,
+  elevation: ElevationModule,
+  security: PlatformSecurityModule,
+  appsec: AppSecModule,
 };
