@@ -1,27 +1,28 @@
-# Decisions needed from the owner
+# Decisions
 
-Nothing below was changed in code. Details and board-vs-portal tables: `SPEC_BOARDS.md` and each `checklist/*.md` ("Conflicts to decide", "Open questions").
+## Resolved by the owner (implemented; contract in `SOD_MATRIX.md`)
+| # | Decision | Implementation |
+|---|---|---|
+| 1 | Risk acceptance: up to 15 without Board approval; above 15 needs Board approval evidence | `SOD.RISK_BOARD_THRESHOLD = 15`; evidence form (decision ref `BRD-YYYY-NN`, date, body, minutes ref, expiry <= 12 months), verified by a second person; acceptor != owner/editor/submitter; no close with open actions; updating imports need approval. See `checklist/risk.md` |
+| 2 | Standard gates for privileged access | Platform super admins have no standing workspace access; every `/admin` mutation needs an elevated session (reason + ticket, 60 min max, audited). See `checklist/elevation.md` |
+| 3 | MFA reset and policy edit/approve to standard practice | MFA reset: 3 identity checks, ticket, named second approver, requester can only withdraw, 24 h expiry. Policy: owner-only edit, new version per change, named approver != author, immutable approved versions, emergency changes need retrospective approval. See `checklist/mfa.md`, `checklist/policies.md` |
+| 4 | Segregation of duties for banks / critical industries | Four-eyes engine (`lib/approvals.ts`) and per-module rules for risk, policy, evidence, controls, issues, audits, access, people, team, vendors, AI, Trust, questionnaires, assistant, API, reports, billing, rates. See `SOD_MATRIX.md` section 3 |
+| 5 | Passwords per OWASP ASVS 2.1 and NIST 800-63B | 12-128 characters, no composition rules, Unicode and spaces allowed, breached/common/contextual password rejection, no rotation or history rules, no SMS/voice MFA. See `checklist/auth.md` |
+| 6 | Rewrite git history to remove real names | Done (see SECURITY.md) |
 
-## Security-relevant (recommend deciding first)
-| # | Topic | Portal today | Spec board / standard | Where |
-|---|---|---|---|---|
-| 1 | Risk acceptance authority | CISO can accept residual risk up to 19; appetite 11 | Committee/board from 15 | checklist/risk.md, SPEC_BOARDS 7 |
-| 2 | Super admin standing access | `ws:"*"` for super; elevation screen exists but nothing is gated | No standing access to customer content; elevation required | checklist/elevation.md |
-| 3 | MFA reset | One confirm checkbox; requester can reject own request | 3 identity checks, named second approver, ticket | checklist/mfa.md |
-| 4 | Policy edit/approve | Any role with module access | Creator-only edit, named approver | checklist/policies.md |
-| 5 | Separation of duties | None in source for risk acceptance, vendor approval, AI classification, agent runs, Trust "Verify" | Dual control | each module checklist |
-| 6 | Password rules | Composition rules, ASCII-only, history 5, breach-check copy without a check | ASVS 2.1 / NIST 800-63B: length, Unicode, no composition, real breach check | checklist/auth.md |
-| 7 | Risk re-import | Overwrites an existing risk id (source) | Could need approval | checklist/risk-import.md |
-| 8 | Invite/link expiry | Mixed values across boards (24h / 72h / 7d / 14d) | Pick one | SPEC_BOARDS 11 |
-
-## Product
-* Risk appetite 15 (board) vs 11 (portal) and rating bands; vendor tiers/cadence (4 tiers vs 3); compliance status bands (85/75/65/50 vs 80/65/50); policy statuses; role names (Member vs Employee).
-* Employee landing page (`/ws/me`?) and whether `employee` keeps its current five modules.
-* `.xls` selectable in the import picker then rejected.
-* Vendor question set size (12 / 41 / 6) and the real CAIQ/SIG mapping for prefill.
-
-## Repository
-* Git history of the first commits contains two real staff names (`docs/INVENTORY.md`). Rewriting history is not done.
+## Still open (need an owner answer)
+* **Risk appetite** stays 11 (display/watch threshold) while the acceptance threshold is 15. Should appetite move to 15?
+* **Critical vendor onboarding** takes three people (initiator + two approvers) because the engine forbids the requester approving. Should the initiator count as the first approver?
+* **Ladder semantics:** the lowest "Risk owner" authority for Low risks is read as an authority level, not the actor (the owner cannot accept their own risk).
+* **Board evidence verifier:** admin or owner (not the risk owner). Admin only?
+* **Staged risk imports:** approver sees file name and ids, not a field-level diff. Add a diff?
+* **Finance:** is Void dual-control like a write-off? Tenant user role changes by one elevated super admin: second approver needed?
+* **Policy approvals** are stored on the version record, not in the approvals queue (emergency exceptions use the queue). Route normal approvals through the queue too?
+* **External auditors:** only the engagement lead can act (seed). Allow any auditor of the firm?
+* **Trust request-access:** the board's exact rate-limit wording was not found; own wording used. Provide the text.
+* **Questionnaires** can be sent at any progress (source). Require 100% first?
+* **zxcvbn:** strength estimator is a simple heuristic; adding zxcvbn needs a new dependency.
+* Product items from the spec boards: vendor tiers/cadence (4 vs 3), compliance status bands (85/75/65/50 vs 80/65/50), policy status names, role names (Member vs Employee), employee landing page, vendor question-set size and CAIQ/SIG mapping, `.xls` in the import picker.
 
 ## Backend (cannot be solved in the front-end)
-Authentication/session/CSRF, server-side RBAC and tenant isolation, rate limiting, upload scanning, real MFA/recovery codes, signed expiring links, server-side audit (HMAC/append-only), money arithmetic. See `SECURITY.md`.
+Authentication/session/CSRF, server-side RBAC and tenant isolation, user-id based SoD (the demo compares names), server-persisted approvals and elevation records, rate limiting, upload scanning, real MFA and recovery codes, signed expiring links, server-side audit (HMAC/append-only), money arithmetic, trusted clock. See `SECURITY.md`.

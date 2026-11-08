@@ -1,5 +1,7 @@
 # Source feature -> React component checklist
 
+Security contract applied to all modules: [SOD_MATRIX.md](SOD_MATRIX.md). Owner decisions: [DECISIONS.md](DECISIONS.md).
+
 Per-module tables live in `docs/checklist/<module>.md` (feature, source lines in `Assurance-GRC-Portal.html`, React file, status, open questions).
 Status below is the migration state of each route. "Pending" screens render an explicit "Not migrated yet" notice (`components/ui/NotMigrated.tsx`).
 

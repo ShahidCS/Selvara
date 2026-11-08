@@ -29,7 +29,7 @@ Copy `.env.example` to `.env.local`. There are no secrets in this repository.
 | `NEXT_PUBLIC_API_MODE` | `mock` | `mock` serves seeded synthetic data from `src/data`; `http` calls the API below |
 | `NEXT_PUBLIC_API_BASE_URL` | empty | Base URL of the GRC API (used only in `http` mode) |
 
-**Auth:** there is no real authentication. The top-right role switcher is a demo-only stand-in (nine personas, per-role module access). A real
+**Auth:** there is no real authentication. The top-right role switcher is a demo-only stand-in (twelve personas incl. second approvers, per-role module access). A real
 integration should replace `src/lib/rbac.ts` + the role in `src/lib/store.ts` with the session, and send credentials via cookies (`apiFetch` uses `credentials: "include"`).
 
 **Browsers:** last 2 versions of Chrome, Edge, Firefox, Safari and iOS Safari. **Accessibility target:** WCAG 2.2 AA (focus-trapped dialogs, keyboard operable rows, ARIA on the palette/menus, skip link, reduced-motion and reduced-transparency respected).
@@ -58,7 +58,7 @@ scripts/             dev tools to extract/anonymise seed data from the prototype
 
 ## Status
 
-All 29 portal routes plus the five screens the spec boards added are migrated (`docs/CHECKLIST.md`). Open owner decisions: `docs/DECISIONS.md`. Security notes and test log: `docs/SECURITY.md`.
+All 29 portal routes plus the five screens the spec boards added are migrated (`docs/CHECKLIST.md`). Security contract (segregation of duties, privileged access, credential policy): `docs/SOD_MATRIX.md`. Open owner decisions: `docs/DECISIONS.md`. Security notes and test log: `docs/SECURITY.md`.
 
 ## Review note
 

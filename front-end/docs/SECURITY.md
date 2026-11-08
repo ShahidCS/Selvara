@@ -65,3 +65,14 @@ Follows OWASP ASVS v4 section 2.1 and NIST SP 800-63B (contract: `docs/SOD_MATRI
 - Passwords are held only in component state, cleared on completion and unmount, never logged (nor their length), stored or put in URLs.
 
 Server requirements (the UI is not the control): re-enforce every rule server-side; hash with Argon2id/bcrypt/scrypt (salt, pepper); server-side breach API; rate limits with identical responses for known and unknown accounts; hashed single-use reset tokens; server-side MFA enrolment and recovery-code generation; session revocation on reset. Details: `docs/checklist/auth.md`.
+
+### Hardening review (segregation of duties, privileged access, credentials)
+* **Contract:** `docs/SOD_MATRIX.md`. Shared helpers `lib/sod.ts`, `lib/approvals.ts`, services throw `SodError` (deny by default) and the UI shows the reason on disabled controls.
+* **Access matrix test:** 12 personas x 32 routes (384 checks): 0 mismatches against `roles.json`.
+* **Privileged access test:** super admin lands on `/admin/customers`, is redirected from every `/ws/*` route; admin mutation controls are locked until an elevated session (short reason / missing or malformed ticket rejected; valid reason + ticket starts the session); controls unlock after elevation; the second super admin is not elevated by the first; support cannot approve MFA resets; the seeded request can be approved by an elevated super admin who is not the requester.
+* **Workspace checks:** employee has no enabled approve/publish/decide controls on Policies and Access; auditor is read-only on Audits and Policies; employee cannot open Risk.
+* **Credential policy test (live UI):** 11 characters, "Password123!" and repeated characters rejected; 12-character passphrase with spaces and a Cyrillic passphrase accepted.
+* **Service-level checks (by the implementing agents, scripted):** risk boundary 15 accepts / 16 needs evidence (19 checks), about 45 allow/deny cases for governance modules, self-approval and blocklist/rate-limit cases for third-party modules.
+* **Regression:** 35 routes render with no console errors; injection payloads as Company Admin: no execution; `npm audit --omit=dev`: 0 vulnerabilities.
+* **Limits:** SoD compares display names in the demo; the API must compare stable user ids, persist approvals/elevation/audit server-side, and use a trusted clock.
+* **History:** git history rewritten to replace real names with synthetic ones (old commit ids may remain cached on the hosting service until it garbage-collects; request a purge from the host if required).

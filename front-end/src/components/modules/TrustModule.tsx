@@ -10,7 +10,7 @@ export default function TrustModule() {
   const L = useLayer();
   const role = useApp((s) => s.role);
   const [view, setView] = useModState("trust.view", "admin");
-  const manage = modAllowed(role, "ws", "trust") && ["super", "admin", "owner"].includes(role);
+  const manage = modAllowed(role, "ws", "trust") && ["super", "admin", "owner"].includes(role.replace(/2$/, ""));
   // External visitors always see the public page; internal roles can toggle a preview
   const showPublic = role === "viewer" || role === "vendor" || view === "public";
   if (showPublic) return <TrustPublic L={L} manage={manage} back={() => setView("admin")} />;
