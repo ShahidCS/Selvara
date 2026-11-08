@@ -1,7 +1,12 @@
-import { ReactNode, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui";
 import { EmailField, ErrP, PwField, emailValid } from "./AuthFields";
-import { REQS, pwChecks, pwSubmitError, type AuthView } from "./authLogic";
+import { POLICY, RESET_ACK, SCORE_LABELS, SESSION_COPY, THROTTLED_MSG, type PwContext } from "@/lib/credentials";
+import { generateRecoveryCodes } from "@/lib/me";
+import * as svc from "@/services/auth";
+import { pwState, pwSubmitError, type AuthView } from "./authLogic";
+
+const INVITED_EMAIL = "invited@company.example";
 
 /** Prototype: `brand` + `card`. */
 export function AuthCard({ children }: { children: ReactNode }) {
@@ -12,6 +17,7 @@ export function AuthCard({ children }: { children: ReactNode }) {
         {children}
       </div></div>
       <p className="field help" style={{ textAlign: "center", marginTop: 12 }}>Preview of the hosted sign-in experience. Every customer gets the same enforced security.</p>
+      <p className="field help" style={{ textAlign: "center", marginTop: 4 }}>{SESSION_COPY}</p>
     </div>
   );
 }
@@ -39,6 +45,7 @@ export function SignIn({ api }: { api: PanelApi }) {
         <ErrP id="au-err" msg={err} />
         <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }}>Sign in</button>
         <button type="button" className="btn btn-secondary" style={{ ...full, marginTop: 8 }} onClick={() => api.toast("Passkey challenge started")}><Icon name="shieldcheck" />Sign in with a passkey</button>
+        <p className="field help" style={{ marginTop: 10 }}>After {POLICY.lockoutAttempts} failed attempts sign-in slows down. The message is the same whether or not the account exists.</p>
         <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}><button type="button" className="linkbtn" onClick={() => api.go("reset")}>Forgot password?</button></div>
       </form>
     </>
@@ -46,20 +53,25 @@ export function SignIn({ api }: { api: PanelApi }) {
 }
 
 export function Challenge({ api }: { api: PanelApi }) {
-  const [v, setV] = useState(""); const [err, setErr] = useState(""); const ref = useRef<HTMLInputElement>(null);
+  const [v, setV] = useState(""); const [err, setErr] = useState(""); const [fails, setFails] = useState(0); const ref = useRef<HTMLInputElement>(null);
+  const locked = fails >= POLICY.lockoutAttempts;
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!/^\d{6}$/.test(v.trim())) { setErr("Enter the 6-digit code from your authenticator."); ref.current?.focus(); return; }
-    api.toast("Signed in successfully");
+    if (locked) { setErr(THROTTLED_MSG); return; }
+    if (!/^\d{6}$/.test(v.trim())) {
+      const n = fails + 1; setFails(n); setV("");
+      setErr(n >= POLICY.lockoutAttempts ? THROTTLED_MSG : "Enter the 6-digit code from your authenticator."); ref.current?.focus(); return;
+    }
+    setV(""); api.toast("Signed in successfully");
   };
   return (
     <>
       <Head h="Two-factor authentication" sub="Enter the 6-digit code from your authenticator app." />
       <form onSubmit={submit} noValidate>
-        <div className="field"><label htmlFor="au-otp">Authentication code</label><input ref={ref} className="input" id="au-otp" inputMode="numeric" autoComplete="one-time-code" spellCheck={false} maxLength={6} placeholder="123456" style={{ textAlign: "center", letterSpacing: 6, fontSize: 18 }} value={v} onChange={(e) => setV(e.target.value)} aria-invalid={err ? true : undefined} aria-describedby={err ? "au-otperr" : undefined} /></div>
+        <div className="field"><label htmlFor="au-otp">Authentication code</label><input ref={ref} className="input" id="au-otp" inputMode="numeric" autoComplete="one-time-code" spellCheck={false} maxLength={6} placeholder="123456" style={{ textAlign: "center", letterSpacing: 6, fontSize: 18 }} value={v} disabled={locked} onChange={(e) => setV(e.target.value)} aria-invalid={err ? true : undefined} aria-describedby={err ? "au-otperr" : undefined} /></div>
         <ErrP id="au-otperr" msg={err} />
-        <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }}>Verify &amp; sign in</button>
-        <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}><button type="button" className="linkbtn" onClick={() => api.toast("Backup code entry (demo)")}>Use a backup code</button> · <button type="button" className="linkbtn" onClick={() => api.go("signin")}>Back to sign in</button></div>
+        <button type="submit" className="btn btn-primary" disabled={locked} style={{ ...full, marginTop: 10 }}>Verify &amp; sign in</button>
+        <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}><button type="button" className="linkbtn" onClick={() => api.toast("Recovery code entry (demo). Each code works once.")}>Use a recovery code</button> · <button type="button" className="linkbtn" onClick={() => api.go("signin")}>Back to sign in</button></div>
       </form>
     </>
   );
@@ -79,33 +91,73 @@ export function Create({ api }: { api: PanelApi }) {
   );
 }
 
-/** Prototype: authPwBlock + authSetPw. `pfx` "ap" = set password (-> MFA), "rp" = reset (-> sign in). */
+/** `pfx` "ap" = set password (-> MFA), "rp" = reset (-> MFA confirmation -> sign in). Password text lives only in this component's state:
+ *  it is cleared on completion and the panel is unmounted on every view change. It is never logged, stored or sent (only a 5-char hash prefix in real-API mode). */
 export function SetPassword({ api, pfx }: { api: PanelApi; pfx: "ap" | "rp" }) {
-  const [pw, setPw] = useState(""); const [pw2, setPw2] = useState(""); const [err, setErr] = useState("");
-  const r1 = useRef<HTMLInputElement>(null); const r2 = useRef<HTMLInputElement>(null);
-  const c = pwChecks(pw, pw2);
-  const submit = (e: React.FormEvent) => {
+  const [pw, setPw] = useState(""); const [pw2, setPw2] = useState(""); const [err, setErr] = useState(""); const [breached, setBreached] = useState(false);
+  const [stage, setStage] = useState<"pw" | "mfa">("pw"); const [code, setCode] = useState(""); const [codeErr, setCodeErr] = useState("");
+  const r1 = useRef<HTMLInputElement>(null); const r2 = useRef<HTMLInputElement>(null); const rc = useRef<HTMLInputElement>(null);
+  const req = useRef(0);
+  const ctx: PwContext = pfx === "ap" ? { email: INVITED_EMAIL } : {};
+  useEffect(() => {
+    const id = ++req.current;
+    if (!pw) { setBreached(false); return; }
+    const t = setTimeout(() => { svc.checkBreached(pw).then((r) => { if (id === req.current) setBreached(r.breached); }, () => undefined); }, 400);
+    return () => clearTimeout(t);
+  }, [pw]);
+  useEffect(() => () => { req.current++; }, []);
+  const st = pwState(pw, pw2, ctx, breached);
+  const unmet = st.rules.filter((r) => !r.met);
+  const announce = st.empty ? "" : unmet.length ? "Still needed: " + unmet.map((r) => r.label).join("; ") + "." : "All password rules are met.";
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const bad = pwSubmitError(pw, pw2);
+    const bad = pwSubmitError(st);
     if (bad) { setErr(bad[0]); (bad[1] === "pw" ? r1 : r2).current?.focus(); return; }
-    if (pfx === "ap") { api.toast("Password set"); api.go("mfa", () => document.getElementById("authtab-mfa")?.focus()); }
-    else { api.toast("Password updated"); api.go("signin", () => document.getElementById("authtab-signin")?.focus()); }
+    const b = await svc.checkBreached(pw);
+    if (b.breached) { setBreached(true); setErr("This password is on a list of common or breached passwords. Choose a different one."); r1.current?.focus(); return; }
+    setErr("");
+    if (pfx === "ap") { setPw(""); setPw2(""); api.toast("Password set"); api.go("mfa", () => document.getElementById("authtab-mfa")?.focus()); }
+    else { setStage("mfa"); setTimeout(() => rc.current?.focus(), 0); } // MFA is required before the new password is accepted
   };
+  const confirmMfa = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(code.trim())) { setCodeErr("Enter the 6-digit code from your authenticator."); rc.current?.focus(); return; }
+    setPw(""); setPw2(""); setCode("");
+    api.toast("Password updated. All sessions were signed out and you were notified by email.");
+    api.go("signin", () => document.getElementById("authtab-signin")?.focus());
+  };
+  if (stage === "mfa") {
+    return (
+      <>
+        <Head h="Confirm it's you" sub="Enter the 6-digit code from your authenticator app. We only accept the new password after this step." />
+        <form onSubmit={confirmMfa} noValidate>
+          <div className="field"><label htmlFor="rp-otp">Authentication code</label><input ref={rc} className="input" id="rp-otp" inputMode="numeric" autoComplete="one-time-code" spellCheck={false} maxLength={6} placeholder="123456" style={{ textAlign: "center", letterSpacing: 6, fontSize: 18 }} value={code} onChange={(e) => setCode(e.target.value)} aria-invalid={codeErr ? true : undefined} aria-describedby={codeErr ? "rp-otperr" : undefined} /></div>
+          <ErrP id="rp-otperr" msg={codeErr} />
+          <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }}>Verify &amp; update password</button>
+        </form>
+      </>
+    );
+  }
+  const sc = st.empty ? 0 : st.score;
   return (
     <>
-      {pfx === "ap" ? <Head h="Set your password" sub="Create a strong password. We also check it against breach lists." /> : <Head h="Set a new password" sub="Choose a new password for your account." />}
+      {pfx === "ap" ? <Head h="Set your password" sub="Use at least 12 and up to 128 characters. A passphrase works well; spaces and any language are fine, and pasting from a password manager is welcome." /> : <Head h="Set a new password" sub="Use at least 12 and up to 128 characters. You will confirm with your authenticator before it is accepted." />}
       <form onSubmit={submit} noValidate>
-        <PwField ref={r1} id={`${pfx}-pw`} label="New password" ac="new-password" value={pw} onChange={setPw} />
+        <PwField ref={r1} id={`${pfx}-pw`} label="New password" ac="new-password" value={pw} onChange={setPw} describedBy={`${pfx}-reqs`} />
         <PwField ref={r2} id={`${pfx}-pw2`} label="Confirm password" ac="new-password" value={pw2} onChange={setPw2} />
-        <div className="pw-meter" aria-hidden="true" style={{ display: pw ? "block" : "none" }}><span id={`${pfx}-bar`} style={{ width: `${c.met / 5 * 100}%` }} /></div>
-        <ul id={`${pfx}-reqs`} className="auth-reqs" aria-label="Password requirements">
-          {REQS.map(([k, t]) => (
-            <li key={k} data-req={k} className={c[k] ? "ok" : ""}><span className="rq-i"><Icon name="check" /></span><span><span className="vh">{c[k] ? "Met: " : "Not met: "}</span>{t}</span></li>
+        <div style={{ display: st.empty ? "none" : "block" }}>
+          <div className="pw-meter" aria-hidden="true"><span id={`${pfx}-bar`} style={{ width: `${(sc + 1) / 5 * 100}%` }} /></div>
+          <p className="field help" style={{ margin: "-6px 0 8px" }}>Strength (advice only): <strong>{SCORE_LABELS[sc]}</strong>{st.feedback[0] ? ". " + st.feedback[0] : ""}</p>
+        </div>
+        <ul id={`${pfx}-reqs`} className="auth-reqs" aria-label="Password rules">
+          {st.rules.map((r) => (
+            <li key={r.key} data-req={r.key} className={r.met ? "ok" : ""}><span className="rq-i"><Icon name="check" /></span><span><span className="vh">{st.empty ? "" : r.met ? "Met: " : "Not met: "}</span>{r.label}</span></li>
           ))}
         </ul>
-        <p className="field help" id={`${pfx}-warn`} role="alert" style={{ color: "var(--bad-ink)", display: pw && !c.allowed ? "block" : "none", margin: "-2px 0 10px" }}>That character isn&apos;t allowed. Use letters, numbers and standard symbols ( ! @ # $ % &amp; * ( ) etc.).</p>
+        <div className="vh" role="status" aria-live="polite" aria-atomic="true">{announce}</div>
+        <p className="field help" role="status" style={{ color: "var(--bad-ink)", display: pw2 && !st.match ? "block" : "none", margin: "-2px 0 10px" }}>{pw2 && !st.match ? "The two passwords do not match yet." : ""}</p>
         <ErrP id={`${pfx}-err`} msg={err} />
-        <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 4 }}>{pfx === "ap" ? "Continue" : "Update password"}</button>
+        <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 4 }}>Continue</button>
         {pfx === "rp" ? <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}><button type="button" className="linkbtn" onClick={() => api.go("signin")}>Back to sign in</button></div> : null}
       </form>
     </>
@@ -113,49 +165,66 @@ export function SetPassword({ api, pfx }: { api: PanelApi; pfx: "ap" | "rp" }) {
 }
 
 export function Reset({ api }: { api: PanelApi }) {
-  const [em, setEm] = useState(""); const [forced, setForced] = useState(false); const ref = useRef<HTMLInputElement>(null);
+  const [em, setEm] = useState(""); const [forced, setForced] = useState(false); const [sent, setSent] = useState(false); const ref = useRef<HTMLInputElement>(null);
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!emailValid(em)) { setForced(true); ref.current?.focus(); return; }
-    api.toast("Reset link sent (demo)");
-    api.go("resetpw", () => document.getElementById("rp-pw")?.focus());
+    setSent(true); // same response whether or not the account exists
   };
   return (
     <>
-      <Head h="Reset your password" sub="We'll email a secure, single-use reset link." />
+      <Head h="Reset your password" sub={`Enter your work email. A single-use reset link expires after ${POLICY.resetTokenMinutes} minutes.`} />
       <form onSubmit={submit} noValidate>
         <EmailField ref={ref} id="ar-email" label="Work email" value={em} onChange={setEm} forced={forced} onTouch={() => setForced(false)} />
         <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }}>Send reset link</button>
+        <div role="status" aria-live="polite">{sent ? <p className="field help" style={{ marginTop: 10 }}>{RESET_ACK} The link works once and expires in {POLICY.resetTokenMinutes} minutes. Resetting signs you out everywhere and needs your authenticator.</p> : null}</div>
+        {sent ? <button type="button" className="btn btn-secondary" style={{ ...full, marginTop: 8 }} onClick={() => api.go("resetpw", () => document.getElementById("rp-pw")?.focus())}>Open the reset link (demo)</button> : null}
         <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}><button type="button" className="linkbtn" onClick={() => api.go("signin")}>Back to sign in</button></div>
       </form>
     </>
   );
 }
 
-const METHODS: [string, string, string][] = [["totp", "access", "Authenticator app (TOTP)"], ["passkey", "shieldcheck", "Passkey / security key"], ["sms", "message", "SMS backup code"]];
-/** Prototype: MFA enrollment. The QR block is a static placeholder pattern: no secret, no real enrolment. */
+const METHODS: [string, string, string][] = [["passkey", "shieldcheck", "Passkey / security key (recommended)"], ["totp", "access", "Authenticator app (TOTP)"]];
+/** MFA enrollment. The QR block is a static placeholder pattern: no secret, no real enrolment. SMS and voice are not offered (SIM-swap / interception risk). */
 export function Mfa({ api, method, pick }: { api: PanelApi; method: string | null; pick: (m: string) => void }) {
+  const [codes, setCodes] = useState<string[] | null>(null);
+  useEffect(() => () => setCodes(null), []);
+  const finish = (msg: string) => { api.toast(msg); setCodes(generateRecoveryCodes(POLICY.recoveryCodes)); };
+  if (codes) return <RecoveryCodes api={api} codes={codes} done={() => { setCodes(null); api.toast("Recovery codes saved. They will not be shown again."); }} />;
   return (
     <>
-      <Head h="Set up multi-factor authentication" sub="MFA is required for every account. Choose a method." />
+      <Head h="Set up multi-factor authentication" sub="MFA is required for every account. A passkey or security key is recommended; an authenticator app also works." />
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
         {METHODS.map((m) => <button key={m[0]} type="button" className={`btn btn-secondary auth-method${method === m[0] ? " sel" : ""}`} style={{ justifyContent: "flex-start" }} aria-pressed={method === m[0]} onClick={() => pick(m[0])}><Icon name={m[1]} />{m[2]}</button>)}
       </div>
-      {method === "totp" ? <Totp api={api} /> : method === "passkey" ? (
+      {method === "totp" ? <Totp onDone={() => finish("MFA enrolled")} /> : method === "passkey" ? (
         <>
           <p className="field help" style={{ margin: "0 0 12px" }}>Your browser or device will prompt you to create a passkey. Nothing to type.</p>
-          <button type="button" className="btn btn-primary" style={full} onClick={() => api.toast("Passkey registered — account ready")}>Register passkey</button>
+          <button type="button" className="btn btn-primary" style={full} onClick={() => finish("Passkey registered")}>Register passkey</button>
         </>
-      ) : method === "sms" ? <Sms api={api} /> : <p className="field help" style={{ margin: 0 }}>Choose a method above to continue. MFA is required for every account.</p>}
+      ) : <p className="field help" style={{ margin: 0 }}>Choose a method above to continue. MFA is required for every account.</p>}
     </>
   );
 }
-function Totp({ api }: { api: PanelApi }) {
+/** Demo placeholders only (a real API generates, hashes and stores them server-side). Shown once; cleared from state when dismissed or unmounted. */
+function RecoveryCodes({ codes, done }: { api: PanelApi; codes: string[]; done: () => void }) {
+  return (
+    <>
+      <Head h="Save your recovery codes" sub={`${codes.length} single-use codes. Each works once if you lose your device. Store them in a password manager. We will not show them again.`} />
+      <ul aria-label="Recovery codes" style={{ listStyle: "none", margin: "0 0 12px", padding: 12, background: "var(--surface-2)", borderRadius: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontFamily: "monospace", fontSize: 14 }}>
+        {codes.map((c) => <li key={c}>{c}</li>)}
+      </ul>
+      <button type="button" className="btn btn-primary" style={full} onClick={done}>I have saved these codes</button>
+    </>
+  );
+}
+function Totp({ onDone }: { onDone: () => void }) {
   const [v, setV] = useState(""); const [err, setErr] = useState(""); const ref = useRef<HTMLInputElement>(null);
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!/^\d{6}$/.test(v.trim())) { setErr("Enter the 6-digit code."); ref.current?.focus(); return; }
-    api.toast("MFA enrolled — account ready");
+    setV(""); onDone();
   };
   return (
     <>
@@ -169,20 +238,5 @@ function Totp({ api }: { api: PanelApi }) {
         <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 4 }}>Verify &amp; finish</button>
       </form>
     </>
-  );
-}
-function Sms({ api }: { api: PanelApi }) {
-  const [v, setV] = useState(""); const [err, setErr] = useState(""); const ref = useRef<HTMLInputElement>(null);
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (v.replace(/\D/g, "").length < 7) { setErr("Enter a valid mobile number."); ref.current?.focus(); return; }
-    api.toast("SMS code sent (demo)");
-  };
-  return (
-    <form onSubmit={submit} noValidate>
-      <div className="field"><label htmlFor="au-phone">Mobile number</label><input ref={ref} className="input" id="au-phone" type="tel" autoComplete="tel" spellCheck={false} maxLength={25} placeholder="+971 5X XXX XXXX" value={v} onChange={(e) => setV(e.target.value)} aria-invalid={err ? true : undefined} aria-describedby={err ? "au-smserr" : undefined} /></div>
-      <ErrP id="au-smserr" msg={err} />
-      <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 4 }}>Send code</button>
-    </form>
   );
 }

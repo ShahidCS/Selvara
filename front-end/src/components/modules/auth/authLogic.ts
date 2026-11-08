@@ -2,11 +2,7 @@
  * Passwords, OTPs and phone numbers live only in component state and are dropped on unmount; never stored, logged or put in a URL. */
 export const AUTH_TABS: [string, string][] = [["signin", "Sign in"], ["create", "Create account"], ["password", "Set password"], ["mfa", "MFA enrollment"], ["reset", "Reset password"]];
 export type AuthView = "signin" | "challenge" | "create" | "password" | "resetpw" | "mfa" | "reset";
-export const AUTH_SPECIAL = /[ !"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]/;
-export const AUTH_ALLOWED = /^[A-Za-z0-9 !"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]*$/;
 export const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-/** Upper bound on password length (the source had none). ASVS 2.1.2 requires accepting at least 64; this only caps input size. */
-export const PW_MAX = 128;
 
 export type EmailState = "none" | "ok" | "bad";
 /** Prototype: authEmailCheck (state part). `force` is true after a failed submit. */
@@ -17,21 +13,29 @@ export function emailState(raw: string, force: boolean): EmailState {
 }
 export const emailMessage = (raw: string) => (raw.trim().indexOf("@") < 0 ? "Enter your work email address." : "Enter a valid email address (e.g. name@company.example).");
 
-export interface PwChecks { len: boolean; upper: boolean; lower: boolean; number: boolean; special: boolean; match: boolean; met: number; allowed: boolean }
-/** Prototype: authPwCheck. */
-export function pwChecks(v: string, c: string): PwChecks {
-  const ok = { len: v.length >= 12, upper: /[A-Z]/.test(v), lower: /[a-z]/.test(v), number: /[0-9]/.test(v), special: AUTH_SPECIAL.test(v), match: !!v && v === c };
-  const met = (["len", "upper", "lower", "number", "special"] as const).filter((k) => ok[k]).length;
-  return { ...ok, met, allowed: AUTH_ALLOWED.test(v) };
+import { POLICY, checkPassword, normalisePassword, type PwContext } from "@/lib/credentials";
+
+/** Credential rules shown to the user (ASVS 2.1 / NIST 800-63B): length, not breached/common, not containing your details. No composition rules. */
+export type RuleKey = "len" | "common" | "ctx";
+export interface PwRule { key: RuleKey; label: string; met: boolean }
+export interface PwState { rules: PwRule[]; match: boolean; score: 0 | 1 | 2 | 3 | 4; feedback: string[]; errors: string[]; ok: boolean; empty: boolean }
+/** `breached` is the async service result (advisory in mock mode: the local blocklist is already part of checkPassword). */
+export function pwState(v: string, c: string, ctx: PwContext, breached: boolean): PwState {
+  const r = checkPassword(v, ctx); const n = Array.from(normalisePassword(v)).length; const empty = !v;
+  const lenOk = n >= POLICY.minLength && n <= POLICY.maxLength;
+  const hasCommon = r.errors.some((e) => e.startsWith("This password is on") || e.startsWith("Avoid repeated"));
+  const hasCtx = r.errors.some((e) => e.startsWith("Do not include"));
+  const rules: PwRule[] = [
+    { key: "len", label: `${POLICY.minLength}–${POLICY.maxLength} characters (spaces and any language are fine)`, met: lenOk },
+    { key: "common", label: "Not on a common or breached password list", met: !empty && !hasCommon && !breached },
+    { key: "ctx", label: "Does not contain your name, email or company", met: !empty && !hasCtx },
+  ];
+  const errors = breached && !hasCommon ? [...r.errors, "This password is on a list of common or breached passwords. Choose a different one."] : r.errors;
+  return { rules, match: !!v && v === c, score: breached ? 0 : r.score, feedback: r.feedback, errors, ok: errors.length === 0, empty };
 }
-export const REQS: [keyof PwChecks, string][] = [
-  ["len", "At least 12 characters"], ["upper", "An uppercase letter (A–Z)"], ["lower", "A lowercase letter (a–z)"],
-  ["number", "A number (0–9)"], ["special", "A special character ( ! @ # $ % & * )"], ["match", "Both passwords match"],
-];
-/** Prototype: authSetPw validation order and messages. Returns [message, fieldToFocus] or null when valid. */
-export function pwSubmitError(v: string, c: string): [string, "pw" | "pw2"] | null {
-  if (v.length < 12 || !/[A-Z]/.test(v) || !/[a-z]/.test(v) || !/[0-9]/.test(v) || !AUTH_SPECIAL.test(v)) return ["Your password does not meet all the requirements yet.", "pw"];
-  if (!AUTH_ALLOWED.test(v)) return ["Remove characters that are not allowed.", "pw"];
-  if (v !== c) return ["Both passwords must match.", "pw2"];
+/** Returns [message, fieldToFocus] or null when valid. Messages never include the password. */
+export function pwSubmitError(st: PwState): [string, "pw" | "pw2"] | null {
+  if (!st.ok) return [st.errors[0] || "Choose a different password.", "pw"];
+  if (!st.match) return ["Both passwords must match.", "pw2"];
   return null;
 }

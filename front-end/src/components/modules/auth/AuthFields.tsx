@@ -1,8 +1,8 @@
 import { forwardRef, useState } from "react";
 import { Icon } from "@/components/ui";
-import { EMAIL_RE, EmailState, PW_MAX, emailMessage, emailState } from "./authLogic";
+import { EMAIL_RE, EmailState, emailMessage, emailState } from "./authLogic";
 
-/** Prototype: authPwField. Real `type=password` with a show/hide toggle; paste is not blocked; no spell-check / autocorrect. */
+/** Prototype: authPwField. Real `type=password` with a show/hide toggle; paste is not blocked; no spell-check / autocorrect; no maxLength (a silent cap would truncate: over-long values get an error instead). */
 export const PwField = forwardRef<HTMLInputElement, { id: string; label: string; ac: "current-password" | "new-password"; value: string; onChange: (v: string) => void; invalid?: boolean; describedBy?: string }>(
   function PwField({ id, label, ac, value, onChange, invalid, describedBy }, ref) {
     const [show, setShow] = useState(false);
@@ -10,7 +10,7 @@ export const PwField = forwardRef<HTMLInputElement, { id: string; label: string;
       <div className="field">
         <label htmlFor={id}>{label}</label>
         <div className="pw-wrap">
-          <input ref={ref} className="input" id={id} type={show ? "text" : "password"} autoComplete={ac} spellCheck={false} autoCapitalize="off" autoCorrect="off" maxLength={PW_MAX} style={{ paddingRight: 40 }}
+          <input ref={ref} className="input" id={id} type={show ? "text" : "password"} autoComplete={ac} spellCheck={false} autoCapitalize="off" autoCorrect="off" style={{ paddingRight: 40 }}
             value={value} onChange={(e) => onChange(e.target.value)} aria-invalid={invalid ? true : undefined} aria-describedby={describedBy} />
           <button type="button" className={`pw-toggle${show ? " on" : ""}`} aria-label={show ? "Hide password" : "Show password"} aria-pressed={show} onClick={() => setShow((s) => !s)}><Icon name="eye" /></button>
         </div>

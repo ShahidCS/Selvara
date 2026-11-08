@@ -54,3 +54,14 @@ Per-module "Security notes" live in `docs/checklist/<module>.md`.
 * **Elevation:** in-memory simulation, super-only, audited (`admin.elevated/ended/expired`); not a control.
 * **RBAC checks:** employee redirected away from `/ws/appsec`, allowed `/ws/me`; support cannot request elevation, can read Platform Security.
 * **Final regression:** 35 routes render with no console errors or dialogs; `npm audit --omit=dev`: 0 vulnerabilities; name scan: 0 matches.
+
+## Credential policy
+Follows OWASP ASVS v4 section 2.1 and NIST SP 800-63B (contract: `docs/SOD_MATRIX.md` section 6; code: `src/lib/credentials.ts`, `src/services/auth.ts`, `src/data/commonPasswords.json`; sign-in gallery `/auth`; read-only policy in Team settings).
+- Length 12 to 128 characters (no truncation). No composition rules; all Unicode, spaces and passphrases allowed; NFKC normalisation. Paste and password managers allowed, show/hide toggle, no hints or security questions.
+- Rejected: common/breached passwords (`checkBreached`: mock = local blocklist, real = k-anonymity range lookup through our backend; the browser never sends the password or its full hash to a third party), values containing the email local part, name or company (>= 4 chars), repeated characters and simple sequences.
+- No periodic expiry and no history rule; change only on evidence of compromise. Strength feedback is advisory.
+- MFA mandatory (passkey/security key recommended, TOTP allowed; no SMS or voice); 10 single-use recovery codes shown once.
+- 5 failed sign-ins trigger throttling with a generic message. Reset: generic response, single-use token <= 15 minutes, MFA before the new password, all sessions revoked, user notified. Sessions: idle 15 min (privileged) / 30 min, absolute 12 h, step-up for sensitive actions.
+- Passwords are held only in component state, cleared on completion and unmount, never logged (nor their length), stored or put in URLs.
+
+Server requirements (the UI is not the control): re-enforce every rule server-side; hash with Argon2id/bcrypt/scrypt (salt, pepper); server-side breach API; rate limits with identical responses for known and unknown accounts; hashed single-use reset tokens; server-side MFA enrolment and recovery-code generation; session revocation on reset. Details: `docs/checklist/auth.md`.

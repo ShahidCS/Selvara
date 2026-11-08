@@ -4,7 +4,7 @@ Source: board `super-admin-console`, Platform security tab; `docs/SPEC_BOARDS.md
 
 | Source feature | Board ref | React file | Status | Notes |
 |---|---|---|---|---|
-| "Password baseline (all tenants)" list (8 rules) | `pwdRules` | `admin/PlatformSecurity.tsx` `PWD_RULES` | Done | Copy verbatim |
+| "Password baseline (all tenants)" list (7 rules, ASVS 2.1 / NIST 800-63B: no composition, history or expiry; SMS/voice not offered; 15-minute reset token; idle 15/30 min) | `pwdRules` | `admin/PlatformSecurity.tsx` `PWD_RULES` | Done | Copy verbatim |
 | "Authentication & sessions" list (7 rules) | `authRules` | `PlatformSecurity.tsx` `AUTH_RULES` | Done | Copy verbatim |
 | "Privileged access (this console)" list (6 rules) | `privRules` | `PlatformSecurity.tsx` `PRIV_RULES` | Done | Copy verbatim |
 | Link "Try the live password check" | board `Auth.dc.html` | `PlatformSecurity.tsx` | Done | -> `/auth` |

@@ -21,11 +21,11 @@ The board is stricter than the portal in the places below. Portal behaviour was 
 
 | # | Topic | Board value | Portal value | Source |
 |---|---|---|---|---|
-| 1 | Password policy / breach check | Breached-password check at sign-up and change (group 3) | Copy claims a breach check but none runs; min 12 chars, composition rules (upper/lower/number/special), ASCII-only allow-list, `maxLength` 128 | `checklist/auth.md` |
+| 1 | Password policy / breach check | Breached-password check at sign-up and change (group 3) | Resolved: min 12, up to 128, no composition rules, Unicode allowed, blocklist plus `checkBreached` service (mock local; real k-anonymity via backend) | `checklist/auth.md` |
 | 2 | Sign-in lockout | 5 failures per 15 min then 15-min pause; bot check from the 3rd; IP 20/min, >50 distinct emails/hour blocks IP | No lockout, no counter, no bot check (demo gallery) | `checklist/auth.md` |
 | 3 | MFA verification | Single use, 30-second window, 5 attempts per pending sign-in, 30/min per IP; pending sign-in cancelled | Not enforced; OTP field is a demo | `checklist/auth.md` |
 | 4 | MFA reset approval | Identity check plus second approver, audited | Four-eyes in the admin console, name-based comparison; requester may Reject own request; Team console has no second approver for company admins (board-internal inconsistency too) | `checklist/mfa.md`, `checklist/team.md` |
-| 5 | Password reset | Token 256-bit, hashed, single use, 30-minute expiry, older tokens invalidated, sessions revoked | "Reset password" jumps straight to "Set a new password" with no token | `checklist/auth.md` (OQ 2) |
+| 5 | Password reset | Token 256-bit, hashed, single use, 15-minute expiry, older tokens invalidated, sessions revoked | Generic acknowledgement, demo link stands in for the token; MFA before new password; real token handling is server-side | `checklist/auth.md` (OQ 2) |
 | 6 | Session timeouts | "Idle and absolute timeouts" (no numbers); `__Host-` cookie, Secure, HttpOnly, SameSite=Strict; CSRF token plus Origin/Referer checks | No session, no timeout, no CSRF protection (`apiFetch` uses `credentials: "include"` for later). Team baseline lists "Screen lock within 5 minutes" (a device rule, not a session timeout). Other boards state 15/30/60 min idle | `SECURITY.md`, `teamSeed.json` |
 | 7 | Invite link lifetime | Single use, 72 h fixed, 10/hour per IP | Team console copy offers 24 h / 72 h / 7 d (per SPEC_BOARDS 11.2); no token is generated | `checklist/team.md` |
 | 8 | Authenticated API / exports limits | 600/min per session, 1,200/min per IP, exports 10/hour | No rate limiting; API keys have no per-key limit | `checklist/api.md` |

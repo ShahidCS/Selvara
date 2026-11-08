@@ -5,6 +5,7 @@ import { wsLog } from "@/lib/audit";
 import { bumpData } from "@/lib/store";
 import { clampText } from "@/lib/security";
 import * as svc from "@/services/team";
+import { CredentialPolicy } from "./CredentialPolicy";
 
 /** Prototype: "settings" view. Selects apply immediately (with a toast); text fields apply on change (blur/Enter); "Save settings" only logs. */
 export function SettingsTab({ manage }: { manage: boolean }) {
@@ -32,6 +33,7 @@ export function SettingsTab({ manage }: { manage: boolean }) {
         <div className="field"><label htmlFor="ts-sla">Standard remediation SLA</label><input className="input" id="ts-sla" maxLength={40} readOnly={!manage} value={sla} onChange={(e) => setSla(e.target.value)} onBlur={() => commit("controlSla", sla)} onKeyDown={enter("controlSla", sla)} /></div>
         <div className="field"><label htmlFor="ts-crit">Critical remediation SLA</label><input className="input" id="ts-crit" maxLength={40} readOnly={!manage} value={crit} onChange={(e) => setCrit(e.target.value)} onBlur={() => commit("critSla", crit)} onKeyDown={enter("critSla", crit)} /></div>
       </div>
+      <CredentialPolicy manage={manage} />
       {manage ? <button className="btn btn-primary sm" style={{ marginTop: 10 }} onClick={save}><Icon name="check" />Save settings</button> : <p className="field help" style={{ marginTop: 10 }}>Read-only for your role.</p>}
     </div>
   );

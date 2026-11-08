@@ -55,7 +55,7 @@
     "Per-email, per-IP and per-device limits with growing delays (see table below)",
     "Bot check from the 3rd failure; WAF bot management at the edge",
     "Detect many emails from one IP or many IPs on one email; block and alert",
-    "Breached-password check at sign-up and password change",
+    "Breached/common-password check at sign-up and password change (min 12, up to 128 characters, no composition rules)",
     "MFA required for every account, so a correct password alone is not enough",
     "MFA codes: single use, 30-second window, 5 attempts per sign-in",
     "Owner alerted by email after repeated failures or a new-device sign-in"
@@ -68,7 +68,7 @@
    "title": "Password reset and account recovery",
    "threat": "Resetting someone else’s password by guessing or reusing a token, changing the email in the request, or poisoning the reset link.",
    "controls": [
-    "Token: 256-bit random, stored only as a hash, single use, 30-minute expiry, bound to one account",
+    "Token: 256-bit random, stored only as a hash, single use, 15-minute expiry, bound to one account",
     "The server finds the account from the token; any email or user_id in the reset request is ignored",
     "New request or successful reset invalidates all older tokens",
     "Reset link built from a fixed base URL, never from the Host header",
