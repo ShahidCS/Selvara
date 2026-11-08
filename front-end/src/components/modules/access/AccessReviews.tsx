@@ -1,0 +1,58 @@
+import { Icon, StatusChip, Table } from "@/components/ui";
+import { useLayer } from "@/hooks/useLayer";
+import { wsLog } from "@/lib/audit";
+import { bumpData } from "@/lib/store";
+import { ACCESS_REVIEWS } from "@/lib/requests";
+import * as svc from "@/services/access";
+
+export function AccessReviews({ canAct }: { canAct: boolean }) {
+  const L = useLayer();
+  const decide = async (rid: string, ai: number, d: svc.ReviewDecision) => {
+    try {
+      const r = await svc.decideReviewAccount(rid, ai, d);
+      if (!r) { L.toast("This review item can no longer be changed", false); bumpData(); return; }
+      wsLog("access.review.decision", r.user + ": " + d, "Access"); bumpData();
+    } catch { L.toast("Could not record the decision", false); }
+  };
+  const complete = async (rid: string) => {
+    try {
+      const r = await svc.completeReview(rid);
+      if (!r) { L.toast("This review cannot be completed yet", false); bumpData(); return; }
+      wsLog("access.review.completed", r.name + ", " + r.revocations + " revocations", "Access");
+      L.toast("Review completed"); bumpData();
+    } catch { L.toast("Could not complete the review", false); }
+  };
+  return (
+    <div style={{ padding: 12 }}>
+      {ACCESS_REVIEWS.map((rv, i) => {
+        const decided = rv.accounts.filter((a: { decision: string }) => a.decision).length;
+        return (
+          <div className="card" style={{ boxShadow: "none", marginBottom: 12 }} key={rv.id + i}>
+            <div className="c-head">
+              <div><h3 style={{ margin: 0 }}>{rv.name}</h3><div className="sub">{rv.scope}</div></div>
+              <div className="r"><StatusChip s={rv.status === "Open" ? "In progress" : "Completed"} /> <span className="tag" style={{ marginLeft: 6 }}>{decided}/{rv.accounts.length} reviewed</span></div>
+            </div>
+            <div className="c-body" style={{ padding: 0 }}>
+              <Table cols={[{ t: "User" }, { t: "System" }, { t: "Level" }, { t: "Decision" }]}>
+                {rv.accounts.map((a: { user: string; system: string; level: string; decision: string }, ai: number) => (
+                  <tr key={a.user + a.system + ai}>
+                    <td className="strong">{a.user}</td><td>{a.system}</td><td>{a.level}</td>
+                    <td>{a.decision ? <StatusChip s={a.decision === "Keep" ? "Active" : "Rejected"} /> : canAct ? (
+                      <div className="btngrp">
+                        <button className="btn btn-ghost sm" aria-label={`Keep ${a.user} on ${a.system}`} onClick={() => decide(rv.id, ai, "Keep")}>Keep</button>
+                        <button className="btn btn-ghost sm" aria-label={`Revoke ${a.user} on ${a.system}`} onClick={() => decide(rv.id, ai, "Revoke")}>Revoke</button>
+                      </div>
+                    ) : <span style={{ color: "var(--muted)", fontSize: 12 }}>Read-only</span>}</td>
+                  </tr>
+                ))}
+              </Table>
+            </div>
+            {canAct && decided === rv.accounts.length && rv.status === "Open" ? (
+              <div className="c-body" style={{ padding: 10 }}><button className="btn btn-primary sm" onClick={() => complete(rv.id)}><Icon name="check" />Complete review</button></div>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
