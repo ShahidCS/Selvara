@@ -78,7 +78,7 @@ function ensureSeed() {
       id: "AP-S" + r.id.replace(/\D/g, ""), kind: KIND_ADMIN, title: `Reset MFA for ${r.subject} (${custName(r.custId)})`, subject: r.subject,
       requestedBy: r.by, requestedByRole: "Platform Support", needs: 1, approverRoles: ["super"], forbid: [r.subject], approvals: [], status: "Pending",
       createdAt: now, expiresAt: now + SOD.MFA_RESET_REQUEST_TTL_H * 3600_000, ticket: "SUP-1042", domain: "admin",
-      payload: { mrId: r.id, adminId: adm ? adm.id : "", custId: r.custId, reason: r.reason, reasonText: "Migrated from the pre-contract seed data", approver: "Jordan Avery", prevMfa: "Enrolled" },
+      payload: { mrId: r.id, adminId: adm ? adm.id : "", custId: r.custId, reason: r.reason, reasonText: "Migrated from the pre-contract seed data", approver: "Dana Whitfield", prevMfa: "Enrolled" },
     };
     approvals.set((s) => ({ list: [a, ...s.list] }));
     r.approvalId = a.id; r.ticket = a.ticket; r.approver = "Dana Whitfield"; r.method = "Pre-contract seed (checks not recorded)"; r.expiresAt = a.expiresAt;
