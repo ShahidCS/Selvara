@@ -1,0 +1,18 @@
+{
+ "TEAM_SETTINGS": {
+  "reviewCycle": "Quarterly",
+  "appetite": "Moderate",
+  "controlSla": "30 days",
+  "critSla": "7 days",
+  "approvers": [
+   "J. Avery (Security)",
+   "A. Rivera (Legal)"
+  ],
+  "baseline": [
+   "MFA enforced for all accounts",
+   "12+ character passwords, breach-checked",
+   "Full-disk encryption on managed devices",
+   "Screen lock within 5 minutes"
+  ]
+ }
+}

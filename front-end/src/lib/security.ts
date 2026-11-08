@@ -38,3 +38,45 @@ export const clampText = (v: unknown, max = 500): string => String(v ?? "").trim
 /** Positive-validation helpers (ASVS 5.1.3). */
 export const isEmail = (v: string) => /^[^\s@<>]{1,64}@[^\s@<>]{1,190}\.[^\s@<>]{2,}$/.test(v) && v.length <= 254;
 export const isIsoDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v));
+
+/* ---- additions (Phase 3: api / auth / team) ---- */
+
+/** Cryptographically secure random integer in [0, n). Demo values only, but never Math.random for anything token-like. */
+export function randInt(n: number): number {
+  const a = new Uint32Array(1);
+  const lim = Math.floor(0x100000000 / n) * n; // rejection sampling: no modulo bias
+  do { crypto.getRandomValues(a); } while (a[0] >= lim);
+  return a[0] % n;
+}
+/** `bytes` random bytes as lowercase hex (2*bytes chars), from crypto.getRandomValues. Used only for clearly synthetic demo keys. */
+export function secureHex(bytes: number): string {
+  const a = new Uint8Array(bytes); crypto.getRandomValues(a);
+  return Array.from(a, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+const PRIVATE_V4: [number, number, number][] = [ // [first octet, second-octet min, second-octet max]
+  [0, 0, 255], [10, 0, 255], [127, 0, 255], [100, 64, 127], [169, 254, 254], [172, 16, 31], [192, 168, 168], [198, 18, 19], [224, 0, 255], [240, 0, 255],
+];
+/** Strict webhook endpoint check (SSRF hygiene, ASVS 5.1.5 / 12.6.1). Returns true only for https URLs with a public-looking DNS host:
+ *  no credentials, no IP literals in private/loopback/link-local/CGNAT/multicast ranges, no IPv6 literals, no localhost/.local/.internal names,
+ *  host must contain a dot. UI-side only: the server must resolve and re-check the destination address at delivery time (DNS rebinding, redirects). */
+export function isSafeWebhookUrl(raw: unknown): boolean {
+  const s = String(raw ?? "").trim();
+  if (!s || s.length > 2048 || /[\u0000- \u007f]/.test(s)) return false;
+  let u: URL;
+  try { u = new URL(s); } catch { return false; }
+  if (u.protocol !== "https:" || u.username || u.password) return false;
+  const h = u.hostname.toLowerCase().replace(/\.$/, "");
+  if (!h || h.startsWith("[") || h.includes(":")) return false; // IPv6 literal
+  if (h === "localhost" || /\.(localhost|local|internal|intranet|lan|home|corp)$/.test(h)) return false;
+  const v4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    return !PRIVATE_V4.some(([x, lo, hi]) => a === x && b >= lo && b <= hi);
+  }
+  if (/^[\d.]+$/.test(h) || /^0x/i.test(h)) return false; // numeric host that is not a plain dotted quad
+  return h.includes(".");
+}
+/** Origin + path only (query/fragment can carry tokens). For audit-log targets and toasts. */
+export function logSafeUrl(raw: unknown): string {
+  try { const u = new URL(String(raw ?? "")); return u.origin + u.pathname; } catch { return clampText(raw, 200); }
+}

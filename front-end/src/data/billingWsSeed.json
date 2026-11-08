@@ -1,0 +1,65 @@
+{
+ "SUBSCRIPTION": {
+  "plan": "Enterprise",
+  "cycle": "Annual",
+  "seatsUsed": 24,
+  "seatLimit": 30,
+  "amount": 48000,
+  "nextInvoice": "01 Jan 2027",
+  "payment": {
+   "brand": "Visa",
+   "last4": "4242",
+   "exp": "08 / 28",
+   "name": "Example Co Ltd"
+  },
+  "usage": [
+   {
+    "k": "Seats",
+    "used": 24,
+    "limit": 30,
+    "unit": ""
+   },
+   {
+    "k": "Screening checks",
+    "used": 612000,
+    "limit": 1000000,
+    "unit": ""
+   },
+   {
+    "k": "Identity verifications",
+    "used": 284000,
+    "limit": 500000,
+    "unit": ""
+   },
+   {
+    "k": "Evidence storage",
+    "used": 1340,
+    "limit": 2000,
+    "unit": " GB"
+   }
+  ],
+  "invoices": [
+   {
+    "id": "INV-2026-001",
+    "date": "01 Jan 2026",
+    "period": "Jan–Dec 2026",
+    "amount": 48000,
+    "status": "Paid"
+   },
+   {
+    "id": "INV-2025-001",
+    "date": "01 Jan 2025",
+    "period": "Jan–Dec 2025",
+    "amount": 44000,
+    "status": "Paid"
+   },
+   {
+    "id": "INV-2024-001",
+    "date": "01 Jan 2024",
+    "period": "Jan–Dec 2024",
+    "amount": 40000,
+    "status": "Paid"
+   }
+  ]
+ }
+}

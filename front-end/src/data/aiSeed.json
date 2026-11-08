@@ -1,0 +1,132 @@
+{
+ "AI_GUARDRAILS": [
+  [
+   "Controlled",
+   "New or unclassified AI starts here: no access to customer or personal data, outputs are suggestions only, and all use is logged."
+  ],
+  [
+   "Standard",
+   "Classified Limited or Minimal risk: may reach internal data, human-in-the-loop on flagged exceptions, reviewed quarterly."
+  ],
+  [
+   "Restricted",
+   "High-risk or customer-data systems: human approval before any action, full logging, impact assessment and bias testing required."
+  ],
+  [
+   "Blocked",
+   "Prohibited practice or failed review: must not be operated."
+  ]
+ ],
+ "AI_GUARDRAIL_TONE": {
+  "Controlled": "info",
+  "Standard": "ok",
+  "Restricted": "warn",
+  "Blocked": "bad"
+ },
+ "AI_DISCOVERY": [
+  [
+   "Device monitor",
+   "Reads MCP configuration files and local AI-tool installs on managed laptops — file metadata only, never prompts or outputs."
+  ],
+  [
+   "Repository scan",
+   "Finds AI SDK imports and model IDs committed to source repositories."
+  ],
+  [
+   "SSO sign-in",
+   "Shows SaaS AI apps people sign in to through single sign-on."
+  ],
+  [
+   "Vendor inventory",
+   "Surfaces AI embedded inside approved third-party services."
+  ]
+ ],
+ "AI_SHADOW": [
+  {
+   "id": "SH-01",
+   "name": "Meeting-notes AI (browser extension)",
+   "found": "Device monitor",
+   "where": "3 laptops · Product",
+   "data": "Meeting audio and transcripts",
+   "risk": "Not yet assessed"
+  },
+  {
+   "id": "SH-02",
+   "name": "Marketing copy generator",
+   "found": "SSO sign-in",
+   "where": "5 users · Marketing",
+   "data": "Campaign content",
+   "risk": "Limited risk (likely)"
+  },
+  {
+   "id": "SH-03",
+   "name": "Code assistant (IDE plugin)",
+   "found": "Repository scan",
+   "where": "Engineering",
+   "data": "Source code",
+   "risk": "Needs review"
+  }
+ ],
+ "AI_DETAIL": {
+  "AI-01": {
+   "disc": "Repository scan",
+   "surface": "Internal screening service",
+   "model": "Gradient-boost ensemble",
+   "provider": "In-house",
+   "data": "Customer PII, sanctions lists, transactions",
+   "auto": "Human-approved actions",
+   "users": "8 analysts",
+   "tools": ""
+  },
+  "AI-02": {
+   "disc": "Repository scan",
+   "surface": "Onboarding mobile and web",
+   "model": "Vision OCR + biometric match",
+   "provider": "In-house + Harbor Vision",
+   "data": "ID documents, biometric templates",
+   "auto": "Suggests only",
+   "users": "All onboarding",
+   "tools": ""
+  },
+  "AI-03": {
+   "disc": "Repository scan",
+   "surface": "Onboarding decision service",
+   "model": "Logistic risk model",
+   "provider": "In-house",
+   "data": "Applicant profile, bureau data",
+   "auto": "Human-approved actions",
+   "users": "Risk team",
+   "tools": ""
+  },
+  "AI-04": {
+   "disc": "Repository scan",
+   "surface": "Transaction monitoring",
+   "model": "Anomaly detection",
+   "provider": "In-house",
+   "data": "Transaction metadata",
+   "auto": "Human-in-the-loop",
+   "users": "Financial crime team",
+   "tools": ""
+  },
+  "AI-05": {
+   "disc": "SSO sign-in",
+   "surface": "SaaS assistant",
+   "model": "Solstice LLM",
+   "provider": "Solstice AI",
+   "data": "No customer data (staff prompts)",
+   "auto": "Suggests only",
+   "users": "Company-wide",
+   "tools": ""
+  },
+  "AI-06": {
+   "disc": "Device monitor",
+   "surface": "MCP agent",
+   "model": "Agentic automation",
+   "provider": "In-house (MCP)",
+   "data": "GRC workspace (read-only)",
+   "auto": "Suggests only, approval to apply",
+   "users": "Compliance team",
+   "tools": "workspace-read, evidence-fetch, draft-writer (3 MCP tools)"
+  }
+ }
+}

@@ -1,0 +1,74 @@
+{
+ "ASST_AGENTS": [
+  {
+   "id": "AG1",
+   "name": "Evidence chaser",
+   "trigger": "Evidence overdue",
+   "runsAs": "Service account",
+   "autonomy": "Acts (logged)",
+   "last": "12m ago",
+   "status": "Active"
+  },
+  {
+   "id": "AG2",
+   "name": "Risk summariser",
+   "trigger": "On schedule (weekly)",
+   "runsAs": "Read-only",
+   "autonomy": "Acts (logged)",
+   "last": "2h ago",
+   "status": "Active"
+  },
+  {
+   "id": "AG3",
+   "name": "Questionnaire drafter",
+   "trigger": "On new questionnaire",
+   "runsAs": "Read-only",
+   "autonomy": "Suggests only",
+   "last": "Yesterday",
+   "status": "Paused"
+  }
+ ],
+ "ASST_RUNS": [
+  {
+   "id": "R1",
+   "when": "12m ago",
+   "agent": "Evidence chaser",
+   "change": "Email 3 owners about overdue evidence",
+   "decision": "Waiting"
+  },
+  {
+   "id": "R2",
+   "when": "2h ago",
+   "agent": "Risk summariser",
+   "change": "Posted weekly risk summary",
+   "decision": "Auto-applied"
+  },
+  {
+   "id": "R3",
+   "when": "Yesterday",
+   "agent": "Questionnaire drafter",
+   "change": "Drafted 14 answers for Globex",
+   "decision": "Applied after review"
+  }
+ ],
+ "ASST_MCP": [
+  {
+   "server": "Tasklane",
+   "tools": "create_issue",
+   "access": "Write, scoped project",
+   "status": "Granted"
+  },
+  {
+   "server": "Ironwood",
+   "tools": "read_repo",
+   "access": "Read-only",
+   "status": "Granted"
+  },
+  {
+   "server": "Northlight",
+   "tools": "read_monitors",
+   "access": "Read-only",
+   "status": "Granted"
+  }
+ ]
+}
