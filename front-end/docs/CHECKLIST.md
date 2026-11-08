@@ -16,19 +16,19 @@ Status below is the migration state of each route. "Pending" screens render an e
 | `/ws/issues` | Issues | `IssuesModule` | 2 | Done | [issues](checklist/issues.md) |
 | `/ws/people` | People & Devices | `PeopleModule` | 2 | Done | [people](checklist/people.md) |
 | `/ws/access` | Access | `AccessModule` | 2 | Done | [access](checklist/access.md) |
-| `/ws/risk` | Risk Register (+ import wizard) | `RiskModule` | 3 | Pending | |
-| `/ws/ai` | AI Governance | `AiModule` | 3 | Pending | |
-| `/ws/vendors` | Third Parties | `VendorsModule` | 3 | Pending | |
-| `/ws/trust` | Trust Center | `TrustModule` | 3 | Pending | |
-| `/ws/questionnaires` | Questionnaires | `QuestionnairesModule` | 3 | Pending | |
-| `/ws/commitments` | Commitments | `CommitmentsModule` | 3 | Pending | |
-| `/ws/reports` | Reports | `ReportsModule` | 3 | Pending | |
-| `/ws/integrations` | Integrations | `IntegrationsModule` | 3 | Pending | |
-| `/ws/api` | API, Webhooks & Custom Tests | `ApiModule` | 3 | Pending | |
-| `/ws/assistant` | AI Assistant | `AssistantModule` | 3 | Pending | |
-| `/ws/team` | Team & Settings | `TeamModule` | 3 | Pending | |
-| `/ws/billingws` | Billing & Invoices | `BillingWsModule` | 3 | Pending | |
-| `/auth` | Sign-in & security | `AuthModule` | 3 | Pending | |
+| `/ws/risk` | Risk Register (+ import wizard, see [risk-import](checklist/risk-import.md)) | `RiskModule` | 3 | Done | [risk](checklist/risk.md) |
+| `/ws/ai` | AI Governance | `AiModule` | 3 | Done | [ai](checklist/ai.md) |
+| `/ws/vendors` | Third Parties | `VendorsModule` | 3 | Done | [vendors](checklist/vendors.md) |
+| `/ws/trust` | Trust Center | `TrustModule` | 3 | Done | [trust](checklist/trust.md) |
+| `/ws/questionnaires` | Questionnaires | `QuestionnairesModule` | 3 | Done | [questionnaires](checklist/questionnaires.md) |
+| `/ws/commitments` | Commitments | `CommitmentsModule` | 3 | Done | [commitments](checklist/commitments.md) |
+| `/ws/reports` | Reports | `ReportsModule` | 3 | Done | [reports](checklist/reports.md) |
+| `/ws/integrations` | Integrations | `IntegrationsModule` | 3 | Done | [integrations](checklist/integrations.md) |
+| `/ws/api` | API, Webhooks & Custom Tests | `ApiModule` | 3 | Done | [api](checklist/api.md) |
+| `/ws/assistant` | AI Assistant | `AssistantModule` | 3 | Done | [assistant](checklist/assistant.md) |
+| `/ws/team` | Team & Settings | `TeamModule` | 3 | Done | [team](checklist/team.md) |
+| `/ws/billingws` | Billing & Invoices | `BillingWsModule` | 3 | Done | [billingws](checklist/billingws.md) |
+| `/auth` | Sign-in & security | `AuthModule` | 3 | Done | [auth](checklist/auth.md) |
 | `/ws/auditlog` | Audit logs | `AuditLogModule` | 4 | Pending | |
 | `/admin/customers` | Customers & Usage | `CustomersModule` | 4 | Pending | |
 | `/admin/billing[/id]` | Billing | `BillingModule` | 4 | Pending | |

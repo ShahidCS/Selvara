@@ -32,3 +32,12 @@ Per-module "Security notes" live in `docs/checklist/<module>.md`.
 * **Fixed during review:** board-pack export opened a tab *and* downloaded (a `noopener` feature makes `window.open` return null); MFA reset had no audit entry (source gap), now logs `person.mfa.reset`; real staff names removed from docs and from `scripts/anonymize.js` (map now supplied locally via `ANON_MAP`).
 * **Not covered (needs a real backend):** authentication, session, CSRF, server-side authorization/IDOR, rate limiting, upload scanning. See "Known limitations".
 * **History note:** commits before this one contain real staff names in `docs/INVENTORY.md`. Rewriting git history is a user decision (not done).
+
+### Phase 3 review (local build, owner-authorized)
+* **Static:** no HTML/script sinks, no unsafe links, no client storage beyond UI preferences, no `console.*`; secure random (`crypto.getRandomValues`) for demo keys/secrets; remaining `Math.random` uses are demo ids/sizes only.
+* **Import wizard (untrusted files):** hostile CSV (formula cells, `<img onerror>`, out-of-range scores) parsed as text, no execution; 6,000-row file, forged `.xlsx`, and `.html` upload rejected with generic messages. Limits: 5 MB, 5,000 rows, 100 columns, zip entry/size caps enforced on inflated bytes.
+* **Webhooks (SSRF hygiene):** http, 127.0.0.1, localhost, 169.254.169.254, 10/8, `javascript:`, credentials-in-URL, IPv6 literal and decimal-IP URLs rejected; a public https URL accepted. UI-side only: the server must resolve, pin and re-check the destination at delivery time and refuse redirects.
+* **Assistant / Trust chatbot:** injected prompts render as text; replies are draft-only and never act. If replaced by an LLM it must answer only from the published verified corpus and treat input as untrusted.
+* **Auth gallery:** demo only; no password/OTP stored, logged or sent; correct `autocomplete`; documented deviations from ASVS 2.1 (composition rules, ASCII-only, breach-check copy without a check) in `checklist/auth.md`.
+* **Open decisions:** re-import overwriting an existing risk id (source behaviour); `.xls` selectable then rejected; no separation of duties on risk acceptance / vendor approval / AI confirmation in the source (UI-only gates, API must enforce).
+* **Data policy:** repo-wide scan for the replaced real names and the company name returns 0 matches in the working tree (git history of the first commits still has two names).
