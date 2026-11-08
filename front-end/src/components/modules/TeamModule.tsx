@@ -1,12 +1,17 @@
 import { Chip, Icon, Page, StatusChip, Table } from "@/components/ui";
 import { DATA } from "@/lib/data";
+import { SOD } from "@/lib/sod";
 import { ROLES, ROLE_MODS } from "@/lib/rbac";
-import { wsLog } from "@/lib/audit";
+import { useEffect } from "react";
+import { sodMessage, settle } from "@/lib/approvalFlow";
+import { memberRole } from "@/lib/teamRoles";
+import { sodReason } from "@/lib/sod";
+import { PendingApprovals } from "./mfa/PendingApprovals";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
 import * as svc from "@/services/team";
 import { openPersonDrawer } from "./people/PersonDrawer";
-import { ApproverForm, InviteForm } from "./team/TeamForms";
+import { ApproverForm, ChangeRoleForm, InviteForm } from "./team/TeamForms";
 import { SettingsTab } from "./team/SettingsTab";
 
 const VIEWS: [string, string][] = [["members", "Members"], ["settings", "Review cycles & SLAs"], ["gates", "Approvers & baseline"], ["perms", "Permissions"]];
@@ -18,10 +23,11 @@ export default function TeamModule() {
   const [v, setV] = useModState<string>("team.view", "members");
   const view = VIEWS.some((x) => x[0] === v) ? v : "members";
   const T = svc.TEAM_SETTINGS;
+  useEffect(() => { const t = () => { svc.sweepInvites(); settle(); }; t(); const iv = setInterval(t, 30_000); return () => clearInterval(iv); }, []);
   const flush = view === "members" || view === "perms";
   const removeApprover = async (i: number) => {
-    try { const a = await svc.removeApprover(i); if (a === null) { L.toast("Approver not found", false); return; } wsLog("procurement.approver.removed", a, "System"); bumpData(); }
-    catch { L.toast("Could not remove the approver", false); }
+    try { const a = await svc.removeApprover(i); if (a === null) { L.toast("Approver not found", false); return; } bumpData(); }
+    catch (e) { L.toast(sodMessage(e, "Could not remove the approver"), false); }
   };
   const spaces: [string, string][] = [["ws", "Workspace"], ["admin", "Admin"]];
   return (
@@ -30,16 +36,38 @@ export default function TeamModule() {
         <div className="c-head"><div className="seg" role="tablist">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className={`c-body ${flush ? "flush" : ""} scroll`} style={flush ? { padding: 0 } : undefined} id="teamBody">
           {view === "members" ? (
-            <Table cols={[{ t: "Member" }, { t: "Role" }, { t: "MFA" }, { t: "Status" }, { t: "" }]}>
+            <>
+            <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+              <PendingApprovals kinds={svc.KINDS} title="Pending approvals (privileged roles and invitations)" subjectLabel="Subject" />
+              {svc.INVITATIONS.length ? (
+                <div className="card" style={{ boxShadow: "none" }}>
+                  <div className="c-head"><h3>Invitations</h3><div className="r"><span className="tag">links expire after {SOD.INVITE_TTL_H} h</span></div></div>
+                  <div className="c-body flush" style={{ padding: 0 }}>
+                    <Table cols={[{ t: "Email" }, { t: "Role" }, { t: "Invited by" }, { t: "Expires" }, { t: "Status" }, { t: "" }]}>
+                      {svc.INVITATIONS.map((v) => (
+                        <tr key={v.id}>
+                          <td className="strong">{v.email}</td><td>{v.role}</td><td style={{ fontSize: 12 }}>{v.invitedBy}</td>
+                          <td className="num" style={{ fontSize: 12 }}>{new Date(v.expiresAt).toISOString().slice(0, 16).replace("T", " ")} UTC</td>
+                          <td>{v.status === "Pending" ? <Chip cls="warn" icon="clock">Pending</Chip> : <Chip cls="neutral" icon="x">{v.status}</Chip>}</td>
+                          <td className="r">{manage && v.status === "Pending" ? <button className="btn btn-ghost sm" aria-label={`Revoke invitation for ${v.email}`} onClick={async () => { try { await svc.revokeInvitation(v.id); L.toast("Invitation revoked"); } catch (e) { L.toast(sodMessage(e, "Could not revoke the invitation"), false); } }}><Icon name="x" />Revoke</button> : null}</td>
+                        </tr>
+                      ))}
+                    </Table>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <Table cols={[{ t: "Member" }, { t: "Job title" }, { t: "Workspace role" }, { t: "MFA" }, { t: "Status" }, { t: "" }]}>
               {DATA.people.slice(0, 8).map((p) => (
                 <tr key={p.id}>
-                  <td className="strong">{p.name}</td><td>{p.role}</td>
+                  <td className="strong">{p.name}</td><td>{p.role}</td><td>{memberRole(p)}</td>
                   <td>{p.mfa ? <Chip cls="ok" icon="check">Enrolled</Chip> : <Chip cls="neutral" icon="dot">No MFA</Chip>}</td>
                   <td><StatusChip s="Active" /></td>
-                  <td className="r"><button className="btn btn-ghost sm" aria-label={`Open ${p.name}`} onClick={() => openPersonDrawer(L, p.id)}><Icon name="team" />Open</button></td>
+                  <td className="r">{manage ? <button className="btn btn-ghost sm" disabled={!!sodReason("nobody changes their own role", p.name)} title={sodReason("nobody changes their own role", p.name) || undefined} aria-label={`Change role of ${p.name}`} onClick={() => L.openModal("Change role, " + p.name, (close) => <ChangeRoleForm personId={p.id} close={close} />)}><Icon name="access" />Role</button> : null}<button className="btn btn-ghost sm" aria-label={`Open ${p.name}`} onClick={() => openPersonDrawer(L, p.id)}><Icon name="team" />Open</button></td>
                 </tr>
               ))}
             </Table>
+            </>
           ) : view === "settings" ? <SettingsTab manage={manage} /> : view === "gates" ? (
             <div style={{ maxWidth: 640 }}>
               <div className="sectitle" style={{ marginTop: 0 }}>Procurement gate approvers</div>

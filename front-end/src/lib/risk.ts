@@ -88,8 +88,8 @@ export const riskNormAll = () => { DATA.risks.forEach(riskNorm); };
 export const riskFindR = (id: string) => DATA.risks.find((x) => x.id === id);
 export const riskCtrl = (id: string) => DATA.controls.find((c) => c.id === id);
 /** Role gates (prototype riskCanEdit / riskCanApprove). UI-only: the API must enforce them. */
-export const riskCanEdit = (role: string = appStore.get().role) => ["super", "admin", "owner", "analyst"].includes(role);
-export const riskCanApprove = (role: string = appStore.get().role) => ["super", "admin"].includes(role);
+export const riskCanEdit = (role: string = appStore.get().role) => ["super", "admin", "owner", "analyst"].includes(role.replace(/2$/, ""));
+export const riskCanApprove = (role: string = appStore.get().role) => ["super", "admin"].includes(role.replace(/2$/, ""));
 /** Append to the risk's own history (prototype riskLog). */
 export function riskLog(r: any, a: string) {
   r.history = r.history || [];

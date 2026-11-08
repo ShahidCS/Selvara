@@ -11,7 +11,7 @@ export function SupportGrants() {
   return (
     <div className="card">
       <div className="c-head"><h3>Customer-approved support grants</h3></div>
-      <p className="field help" style={{ margin: "0 16px 8px" }}>Support access grant approved by the customer (for example 4 h, read-only). Without an active grant, platform staff cannot read customer policy content. Grants are created and revoked by the customer; this list is read-only.</p>
+      <p className="field help" style={{ margin: "0 16px 8px" }}><b>Customer-approved support grants are the only route to workspace content.</b> Each grant is approved by the customer, read-only and expiring (for example 4 h). Without an active grant, platform staff, including super admins, cannot read customer workspace content. Grants are created and revoked by the customer; this list is read-only.</p>
       <div className="c-body flush" style={{ padding: 0 }}>
         <Table cols={[{ t: "Grant" }, { t: "Customer" }, { t: "Approved by" }, { t: "Approved" }, { t: "Access" }, { t: "Expires" }, { t: "Status" }]}>
           {rows.map((g) => {

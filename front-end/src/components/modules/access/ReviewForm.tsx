@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLayer } from "@/hooks/useLayer";
 import { LayerFoot } from "@/components/shell/LayerProvider";
-import { wsLog } from "@/lib/audit";
+import { sodMessage } from "@/lib/approvalFlow";
 import { bumpData, setModState } from "@/lib/store";
 import { clampText } from "@/lib/security";
 import * as svc from "@/services/access";
@@ -15,9 +15,9 @@ export function ReviewForm({ close }: { close: () => void }) {
     if (!n) { setErr(true); return; }
     try {
       await svc.createReview({ name: n, scope: clampText(scope, 160) });
-      wsLog("access.review.created", n, "Access"); close(); L.toast("Access review started");
+      close(); L.toast("Access review started");
       setModState("access.view", "reviews"); bumpData();
-    } catch { L.toast("Could not start the review", false); }
+    } catch (e) { L.toast(sodMessage(e, "Could not start the review"), false); }
   };
   return (
     <>

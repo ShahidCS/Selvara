@@ -5,7 +5,8 @@ import { roleOf } from "@/lib/rbac";
 import seed from "@/data/aiSeed.json";
 import { DATA } from "./data";
 import { appStore } from "./store";
-import { getMe, wsLog } from "./audit";
+import { getMe } from "./audit";
+import { getActor, hasRole, isSamePerson } from "./sod";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -59,18 +60,19 @@ export function aiInit(a: any) {
   return a;
 }
 
-/** Prototype: aiCanManage. Super/admin/owner roles, or the person whose surname matches the system owner's. UI gate only; the API must re-check. */
+/** Who may change an AI system: admin or owner role (base roles), or the person named as the system owner (matched with isSamePerson, not by surname:
+ * the prototype compared surnames, so two people sharing a surname both managed the system). UI gate only: the services call the same rule. */
 export function aiCanManage(a: any, roleId: string = appStore.get().role): boolean {
-  if (roleId === "super" || roleId === "admin" || roleId === "owner") return true;
-  const me = getMe().name;
-  if (!a || !a.owner || !me) return false;
-  return String(a.owner).split(" ").pop() === me.split(" ").pop();
+  if (hasRole(roleId, "admin", "owner")) return true;
+  if (!a || !a.owner) return false;
+  return isSamePerson(a.owner, getActor().name);
 }
-/** "Legal & Privacy or admin" confirmer rule used by the EU AI Act confirmation (source: S.role super/admin or surname Rivera). */
-export function aiIsLegalOrAdmin(roleId: string = appStore.get().role): boolean {
-  const me = getMe().name;
-  return roleId === "super" || roleId === "admin" || (!!me && /Rivera/i.test(me));
-}
+/** Who may confirm/approve (second person) decisions: admin or owner role. The prototype also allowed anyone whose name matched "Rivera"; removed (SOD_MATRIX: "role gate admin/owner"). */
+export const aiCanDecide = (roleId: string = appStore.get().role): boolean => hasRole(roleId, "admin", "owner");
+/** Kept for callers of the old name; now the same admin/owner role gate (no surname matching). */
+export const aiIsLegalOrAdmin = aiCanDecide;
+/** People who may never confirm/approve a decision about this system: the system owner (record owner) plus the given drafters/submitters. */
+export const aiForbidden = (a: any, ...extra: unknown[]): string[] => [a?.owner, ...extra].filter(Boolean).map(String);
 export function aiEuRationale(c: string): string {
   return ({ "High-risk": "Used in a regulated decision context that affects individuals; the full set of high-risk obligations applies.", "Limited risk": "Interacts with people and must disclose that it is AI; transparency obligations apply.", "Minimal risk": "Internal productivity use with no automated decisions on individuals; no specific obligations.", Prohibited: "Falls within an unacceptable-risk category and must not be operated." } as Record<string, string>)[c] || "Not yet classified under the EU AI Act.";
 }

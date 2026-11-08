@@ -1,6 +1,8 @@
 import { DATA } from "@/lib/data";
 import { bumpData } from "@/lib/store";
 import { wsLog } from "@/lib/audit";
+import { getActor } from "@/lib/sod";
+import { uiMessage } from "@/lib/grcSod";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import * as svc from "@/services/controls";
 import { FormHandle, newForm, val, useErrFlag, REQ } from "./modalForm";
@@ -12,7 +14,7 @@ function ControlBody({ h }: { h: FormHandle }) {
       <div className="field"><label htmlFor="cc-title">Control title {REQ}</label><input className="input" id="cc-title" placeholder="e.g. Secrets rotated every 90 days" ref={(e) => { h.els.title = e; }} /></div>
       <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div className="field"><label htmlFor="cc-dom">Domain</label><select className="select" id="cc-dom" ref={(e) => { h.els.dom = e; }}>{svc.CONTROL_DOMAINS.map((d) => <option key={d}>{d}</option>)}</select></div>
-        <div className="field"><label htmlFor="cc-owner">Owner</label><input className="input" id="cc-owner" defaultValue="J. Avery" ref={(e) => { h.els.owner = e; }} /></div>
+        <div className="field"><label htmlFor="cc-owner">Owner</label><input className="input" id="cc-owner" defaultValue={getActor().name} ref={(e) => { h.els.owner = e; }} /></div>
       </div>
       <p className="field help" id="cc-err" role={err ? "alert" : undefined} style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>Control title is required.</p>
     </>
@@ -23,9 +25,11 @@ export function openCreateControl(L: LayerApi) {
   const submit = async () => {
     const t = val(h, "title").trim();
     if (!t) { h.showErr?.(); return; }
-    const { id } = await svc.createControl({ title: t, domain: val(h, "dom"), owner: val(h, "owner").trim() });
-    wsLog("control.created", id + ", " + t, "Control");
-    L.closeLayer(); L.toast("Custom control " + id + " created"); bumpData();
+    try {
+      const { id } = await svc.createControl({ title: t, domain: val(h, "dom"), owner: val(h, "owner").trim() });
+      wsLog("control.created", id + ", " + t, "Control");
+      L.closeLayer(); L.toast("Custom control " + id + " created"); bumpData();
+    } catch (e) { L.toast(uiMessage(e), false); }
   };
   L.openModal("Add custom control", <ControlBody h={h} />,
     <><button className="btn btn-secondary" onClick={L.closeLayer}>Cancel</button><button className="btn btn-primary" onClick={submit}>Create control</button></>);
@@ -51,9 +55,11 @@ export function openCreateTest(L: LayerApi) {
   const submit = async () => {
     const name = val(h, "name").trim();
     if (!name) { h.showErr?.(); return; }
-    const { id } = await svc.createTest({ name, source: val(h, "src").trim(), control: val(h, "ctrl"), logic: val(h, "logic").trim() });
-    wsLog("test.created", name, "Control");
-    L.closeLayer(); L.toast("Custom test " + id + " created"); bumpData();
+    try {
+      const { id } = await svc.createTest({ name, source: val(h, "src").trim(), control: val(h, "ctrl"), logic: val(h, "logic").trim() });
+      wsLog("test.created", name, "Control");
+      L.closeLayer(); L.toast("Custom test " + id + " created"); bumpData();
+    } catch (e) { L.toast(uiMessage(e), false); }
   };
   L.openModal("Build custom test", <TestBody h={h} ctrlOpts={ctrlOpts} />,
     <><button className="btn btn-secondary" onClick={L.closeLayer}>Cancel</button><button className="btn btn-primary" onClick={submit}>Create test</button></>);

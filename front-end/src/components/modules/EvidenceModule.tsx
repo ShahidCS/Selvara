@@ -1,8 +1,8 @@
 import { Icon, Page, activate } from "@/components/ui";
 import { DATA } from "@/lib/data";
-import { useData, useModState } from "@/lib/store";
+import { useApp, useData, useModState } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
-import { evInit } from "@/services/evidence";
+import { evInit, whyCannotWrite } from "@/services/evidence";
 import EvidencePreview, { EmptyPreview } from "./evidence/EvidencePreview";
 import { EvidenceForm, SEL_KEY } from "./evidence/EvidenceForms";
 
@@ -10,11 +10,13 @@ import { EvidenceForm, SEL_KEY } from "./evidence/EvidenceForms";
 export default function EvidenceModule() {
   useData();
   const L = useLayer();
+  useApp((s) => s.role);
+  const writeWhy = whyCannotWrite();
   const [sel, setSel] = useModState<string | null>(SEL_KEY, null);
   DATA.evidence.forEach(evInit);
   const selected = sel != null && DATA.evidence.some((e) => e.id === sel) ? sel : null;
   return (
-    <Page mod="evidence" acts={<button className="btn btn-primary" onClick={() => L.openModal("Add evidence", (close) => <EvidenceForm close={close} />)}><Icon name="plus" />Add evidence</button>}>
+    <Page mod="evidence" acts={<button className="btn btn-primary" disabled={!!writeWhy} title={writeWhy || undefined} onClick={() => L.openModal("Add evidence", (close) => <EvidenceForm close={close} />)}><Icon name="plus" />Add evidence</button>}>
       <div className="split">
         <div className="card">
           <div className="c-head"><h3>Evidence</h3><div className="r"><span className="tag">{DATA.evidence.length}</span></div></div>

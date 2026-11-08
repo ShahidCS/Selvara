@@ -23,3 +23,18 @@
 
 ## Security notes
 UI gate only: the API must authorize settings changes, approver changes and invitations (tenant admin), generate single-use expiring invitation tokens, validate the invited role server-side (never trust the client-chosen role) and write audit entries. The permission matrix is informational (the source labels it "server-side permission model" but it is enforced by the client route guard only). Reset uses a constant in-app path and clears only the UI-preference key; no user value is reflected into the URL.
+
+---
+## Hardening vs prototype (SOD_MATRIX) - supersedes the Open questions above where they conflict
+**What changed**
+- `teamCanManage` = admin/admin2 only; every mutation asserts `admin` in `services/team.ts`.
+- **Invite**: role validated against `USER_ROLES` (no silent fallback). A privileged role (admin, owner, super*) goes through the approvals engine (`team-invite`, approver `admin`, a different admin) before the invitation is issued. Invitation links expire after `SOD.INVITE_TTL_H` (72 h): expiry shown in a new Invitations table, expiry audited (`member.invitation.expired`), revoke action audited. Duplicate pending invites refused.
+- **Roles**: new "Role" action per member (`changeMemberRole`). Nobody changes their own role (button disabled with reason); granting a privileged role needs a second admin (`team-role`, forbid subject and requester); the last remaining Company Admin cannot be demoted (also enforced on offboarding in People). Members table now shows a Workspace role column (`lib/teamRoles.ts`).
+- **Approvers / SLAs / review cycles**: admin required and audited with before/after in the service (`team.setting.changed`, `procurement.approver.added|removed`); the last approver cannot be removed. Single approval is enough. `team/SettingsTab.tsx` was not modified by this work (the password-policy section belongs to another change).
+- MFA reset of a member goes through the person drawer (same four-eyes flow as People).
+
+**Security notes (additions)**: invitation tokens must be single-use, hashed at rest and expire server-side; this demo creates no token. Role changes and the last-admin rule must be enforced atomically by the API.
+
+**Conflicts resolved by owner decision**: old Open question 2 (no wsLog on approver removal) done; the "no role gate" note replaced by admin-only.
+
+**Open questions**: (1) Seed people have job titles only; workspace roles are a demo mapping (U-01, U-05 Company Admin, U-02 Owner). The signed-in personas (Jordan A., Casey Morgan) are not rows in the workforce list, so the self-role rule is exercised by logic, not by demo data. (2) No UI to remove a member from Team (offboarding is in People). (3) Baseline list has no editor; if added it must follow the same admin + audit rule.

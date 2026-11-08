@@ -7,6 +7,9 @@ import { GrantsTable } from "./access/GrantsTable";
 import { ContractorForm } from "./people/ContractorForm";
 import { openPersonDrawer } from "./people/PersonDrawer";
 import { useResetMfa } from "./people/actions";
+import { PendingApprovals } from "./mfa/PendingApprovals";
+import { KINDS } from "@/services/people";
+import { sodReason } from "@/lib/sod";
 
 export default function PeopleModule() {
   useData();
@@ -24,6 +27,7 @@ export default function PeopleModule() {
         <Kpi icon="access" label="MFA enrolled" value={mfa + "/" + n} tone="good" />
         <Kpi icon="alert" label="Unmanaged" value={n - comp} tone="bad" />
       </div>
+      <PendingApprovals kinds={KINDS} title="Pending approvals (MFA reset, offboarding)" subjectLabel="Person" />
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head" style={{ padding: "0 8px", gap: 8 }}>
           <div className="tabs" role="tablist">
@@ -40,7 +44,7 @@ export default function PeopleModule() {
                   <td className="strong">{p.name}</td><td>{p.role}</td><td>{p.dept}</td>
                   <td><StatusChip s={p.device === "Compliant" ? "OK" : p.device === "At risk" ? "Needs evidence" : "Open"} /> <span style={{ color: "var(--muted)", fontSize: 12 }}>{p.device}</span></td>
                   <td>{p.mfa ? <Chip cls="ok" icon="check">Enrolled</Chip> : <Chip cls="neutral" icon="dot">Not enrolled</Chip>}</td>
-                  <td className="r" {...stop}>{canAct ? <button className="btn btn-ghost sm" disabled={!p.mfa} aria-label={`Reset MFA for ${p.name}`} onClick={() => resetMfa(p.id)}><Icon name="refresh" />Reset MFA</button> : null}</td>
+                  <td className="r" {...stop}>{canAct ? <button className="btn btn-ghost sm" disabled={!p.mfa || !!sodReason("self-service MFA reset is not allowed, ask another admin", p.name)} title={sodReason("self-service MFA reset is not allowed, ask another admin", p.name) || undefined} aria-label={`Reset MFA for ${p.name}`} onClick={() => resetMfa(p.id)}><Icon name="refresh" />Reset MFA</button> : null}</td>
                 </tr>
               ))}
             </Table>

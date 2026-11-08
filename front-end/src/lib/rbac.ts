@@ -27,8 +27,8 @@ export function firstMod(roleId: string, space: "ws" | "admin"): string | null {
 export function landingPath(roleId: string, currentSpace: string): string {
   const spaces = allowedSpaces(roleId);
   const sp = (spaces.includes(currentSpace) ? currentSpace : spaces[0]) as "ws" | "admin";
-  const mod = modAllowed(roleId, sp, "overview") ? "overview" : sp === "admin" && modAllowed(roleId, sp, "customers") ? "customers" : firstMod(roleId, sp);
+  const mod = sp === "ws" && modAllowed(roleId, sp, "overview") ? "overview" : sp === "admin" && modAllowed(roleId, sp, "customers") ? "customers" : firstMod(roleId, sp);
   return `/${sp}/${mod || "overview"}`;
 }
 /** Who may administer framework scope/mappings (prototype: fwCanAdmin). */
-export const fwCanAdmin = (roleId: string) => ["super", "admin", "owner"].includes(roleId);
+export const fwCanAdmin = (roleId: string) => ["super", "admin", "owner"].includes(roleId.replace(/2$/, ""));

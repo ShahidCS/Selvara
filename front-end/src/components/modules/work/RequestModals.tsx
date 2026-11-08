@@ -4,9 +4,13 @@ import { LayerFoot } from "@/components/shell/LayerProvider";
 import { getMe, wsLog } from "@/lib/audit";
 import { bumpData } from "@/lib/store";
 import { nowStamp } from "@/lib/format";
-import { ACCESS_REQUESTS, VENDOR_REQS } from "@/lib/requests";
+import { VENDOR_REQS } from "@/lib/requests";
 import { setModState } from "@/lib/store";
 import { useGo, useRoute } from "@/lib/route";
+import { sodMessage } from "@/lib/approvalFlow";
+import { hasRole } from "@/lib/sod";
+import { useApp } from "@/lib/store";
+import * as accessSvc from "@/services/access";
 
 const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
 
@@ -15,23 +19,26 @@ export function AccessRequestForm({ close }: { close: () => void }) {
   const L = useLayer(); const go = useGo(); const route = useRoute();
   const [sys, setSys] = useState(""); const [lvl, setLvl] = useState("Read"); const [user, setUser] = useState(getMe().name); const [reason, setReason] = useState("");
   const [err, setErr] = useState(false);
-  const submit = () => {
+  const employee = hasRole(useApp((x) => x.role), "employee");
+  const submit = async () => {
     const s = sys.trim();
     if (!s) { setErr(true); return; }
-    ACCESS_REQUESTS.unshift({ id: "AR-" + String(ACCESS_REQUESTS.length + 3).padStart(2, "0"), user: user.trim() || getMe().name, system: s, level: lvl, reason: reason.trim() || "—", status: "Pending" });
-    wsLog("access.requested", s, "Access"); close(); L.toast("Access request submitted");
-    setModState("access.view", "requests"); bumpData();
-    if (route.mod !== "access") go("/ws/access");
+    try {
+      await accessSvc.createRequest({ system: s, level: lvl, user, reason });
+      close(); L.toast("Access request submitted");
+      setModState("access.view", "requests"); bumpData();
+      if (route.mod !== "access") go("/ws/access");
+    } catch (e) { L.toast(sodMessage(e, "Could not submit the request"), false); }
   };
   return (
     <>
       <div>
         <div className="field"><label htmlFor="arq-sys">System <Req /></label><input className="input" id="arq-sys" data-focus placeholder="e.g. Analytics warehouse" value={sys} onChange={(e) => setSys(e.target.value)} aria-invalid={err} aria-describedby={err ? "arq-err" : undefined} /></div>
         <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div className="field"><label htmlFor="arq-lvl">Level</label><select className="select" id="arq-lvl" value={lvl} onChange={(e) => setLvl(e.target.value)}><option>Read</option><option>Write</option><option>Admin</option></select></div>
-          <div className="field"><label htmlFor="arq-user">User</label><input className="input" id="arq-user" value={user} onChange={(e) => setUser(e.target.value)} /></div>
+          <div className="field"><label htmlFor="arq-lvl">Level</label><select className="select" id="arq-lvl" value={lvl} onChange={(e) => setLvl(e.target.value)}>{accessSvc.LEVELS.map((x) => <option key={x}>{x}</option>)}</select></div>
+          <div className="field"><label htmlFor="arq-user">User</label><input className="input" id="arq-user" value={user} readOnly={employee} maxLength={100} onChange={(e) => setUser(e.target.value)} />{employee ? <span className="help">Employees can request access for themselves only.</span> : null}</div>
         </div>
-        <div className="field"><label htmlFor="arq-reason">Reason</label><input className="input" id="arq-reason" placeholder="Why is this access needed?" value={reason} onChange={(e) => setReason(e.target.value)} /></div>
+        <div className="field"><label htmlFor="arq-reason">Reason</label><input className="input" id="arq-reason" maxLength={300} placeholder={lvl === "Admin" ? "Required for Admin: why is this access needed?" : "Why is this access needed?"} value={reason} onChange={(e) => setReason(e.target.value)} /></div>
         <p className="field help" id="arq-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>System is required.</p>
       </div>
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={submit}>Submit request</button></LayerFoot>

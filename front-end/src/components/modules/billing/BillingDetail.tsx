@@ -1,30 +1,31 @@
 import { Empty, Icon, StatusChip, Table } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
-import { adminLog } from "@/lib/adminAudit";
+import { sodMessage } from "@/lib/elevation";
 import { money } from "@/lib/format";
 import { useGo } from "@/lib/route";
 import { useModState } from "@/lib/store";
 import { findCustomer } from "@/services/customers";
 import * as svc from "@/services/billing-admin";
+import { useGate } from "../admin/ElevateGate";
+import { FinanceForm } from "./BillingModals";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /** Prototype: billingDetail (Current / History tabs), invoiceAction, resendInvoice. `id` comes from the URL and is looked up in CUSTOMERS. */
 export function BillingDetail({ id }: { id: string }) {
-  const L = useLayer(); const go = useGo(); const [tab, setTab] = useModState<string>("billing.dt", "Current");
+  const L = useLayer(); const go = useGo(); const gate = useGate(); const [tab, setTab] = useModState<string>("billing.dt", "Current");
   const c = findCustomer(id);
   if (!c) return <Empty icon="alert" title="Page not found" action={<button className="btn btn-primary" onClick={() => go("/ws/overview")}>Back to Overview</button>}>That route doesn&apos;t exist or has moved.</Empty>;
   const rate = svc.rateForCurrency(c.currency);
   const act = async (invId: string, action: svc.InvoiceAction) => {
     try {
-      const r = await svc.invoiceAction(id, invId, action);
-      if (action === "Paid") { adminLog("invoice.marked_paid", r.id + ", " + r.name, { tenant: id, before: "Past due", after: "Paid", categories: ["Billing"] }); L.toast(r.id + " marked paid"); }
-      else if (action === "Retry") { adminLog("invoice.payment_retried", r.id + ", " + r.name, { tenant: id, categories: ["Billing"] }); L.toast("Payment retry queued for " + r.id); }
-      else { adminLog("invoice.voided", r.id + ", " + r.name, { tenant: id, after: "Void", categories: ["Billing"] }); L.toast(r.id + " voided"); }
-    } catch { L.toast("That invoice action could not be completed", false); }
+      const r = await svc.invoiceAction(id, invId, action); // the service writes the audit entry
+      L.toast(action === "Retry" ? "Payment retry queued for " + r.id : r.id + " voided");
+    } catch (e) { L.toast(sodMessage(e, "That invoice action could not be completed"), false); }
   };
+  const fin = (invId: string, kind: svc.FinanceKind) => L.openModal(svc.FINANCE_LABEL[kind] + " " + invId, (close) => <FinanceForm cid={id} invId={invId} kind={kind} close={close} />);
   const resend = async (invId: string) => {
-    try { const r = await svc.resendInvoice(id, invId); adminLog("invoice.resent", invId + ", " + r.name + " (" + r.email + ")"); L.toast("Invoice " + invId + " resent to " + r.email); }
-    catch { L.toast("Could not resend the invoice", false); }
+    try { const r = await svc.resendInvoice(id, invId); L.toast("Invoice " + invId + " resent to " + r.email); }
+    catch (e) { L.toast(sodMessage(e, "Could not resend the invoice"), false); }
   };
   const chip = c.status === "Past due" ? "Past due" : c.status === "Trial" ? "Trial" : "Active";
   return (
@@ -57,10 +58,13 @@ export function BillingDetail({ id }: { id: string }) {
                 <td className="strong num">{iv.id}</td><td>{iv.date}</td><td className="r num">{money(iv.amount, iv.cur)}</td><td className="r num">{money(iv.tax, iv.cur)}</td><td><StatusChip s={iv.status} /></td>
                 <td className="r"><div className="btngrp no-print" style={{ justifyContent: "flex-end" }}>
                   {iv.status === "Past due" ? <>
-                    <button className="btn btn-ghost sm" aria-label={`Mark ${iv.id} paid`} onClick={() => act(iv.id, "Paid")}><Icon name="check" />Mark paid</button>
-                    <button className="btn btn-ghost sm" aria-label={`Retry payment for ${iv.id}`} onClick={() => act(iv.id, "Retry")}><Icon name="refresh" />Retry</button></> : null}
-                  {iv.status !== "Void" ? <button className="btn btn-ghost sm" aria-label={`Void ${iv.id}`} onClick={() => act(iv.id, "Void")}><Icon name="x" />Void</button> : null}
-                  <button className="btn btn-ghost sm" aria-label={`Resend ${iv.id}`} onClick={() => resend(iv.id)}><Icon name="ext" />Resend</button>
+                    <button className="btn btn-ghost sm" aria-label={`Mark ${iv.id} paid (manual override)`} disabled={gate.locked} title={gate.title} onClick={() => fin(iv.id, "markpaid")}><Icon name="check" />Mark paid</button>
+                    <button className="btn btn-ghost sm" aria-label={`Retry payment for ${iv.id}`} disabled={gate.locked} title={gate.title} onClick={() => act(iv.id, "Retry")}><Icon name="refresh" />Retry</button>
+                    <button className="btn btn-ghost sm" aria-label={`Write off ${iv.id}`} disabled={gate.locked} title={gate.title} onClick={() => fin(iv.id, "writeoff")}><Icon name="alert" />Write off</button></> : null}
+                  {iv.status === "Paid" ? <button className="btn btn-ghost sm" aria-label={`Refund ${iv.id}`} disabled={gate.locked} title={gate.title} onClick={() => fin(iv.id, "refund")}><Icon name="back" />Refund</button> : null}
+                  {iv.status !== "Void" ? <button className="btn btn-ghost sm" aria-label={`Credit ${iv.id}`} disabled={gate.locked} title={gate.title} onClick={() => fin(iv.id, "credit")}><Icon name="plus" />Credit</button> : null}
+                  {iv.status !== "Void" ? <button className="btn btn-ghost sm" aria-label={`Void ${iv.id}`} disabled={gate.locked} title={gate.title} onClick={() => act(iv.id, "Void")}><Icon name="x" />Void</button> : null}
+                  <button className="btn btn-ghost sm" aria-label={`Resend ${iv.id}`} disabled={gate.locked} title={gate.title} onClick={() => resend(iv.id)}><Icon name="ext" />Resend</button>
                   <button className="btn btn-ghost sm" aria-label={`Download ${iv.id} as PDF`} onClick={() => L.toast(`Downloading ${iv.id} (demo)`)}><Icon name="download" />PDF</button>
                 </div></td>
               </tr>

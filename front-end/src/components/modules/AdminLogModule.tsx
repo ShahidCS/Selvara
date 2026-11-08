@@ -6,6 +6,7 @@ import { useApp, useData, useModState } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
 import * as svc from "@/services/adminlog";
 import { openConfirmReset } from "./team/ResetDemo";
+import { useGate } from "./admin/ElevateGate";
 import { AdminChainView, AdminExportsView } from "./adminlog/AdminViews";
 import { RopaRegister } from "./auditlog/RopaRegister";
 
@@ -15,7 +16,7 @@ const FAIL = "Could not complete that action";
 /** Prototype: REND.adminlog. Read-only viewer: rows can only be filtered/exported, never edited or deleted. */
 export default function AdminLogModule() {
   useData();
-  const L = useLayer();
+  const L = useLayer(); const gate = useGate();
   const can = svc.canAdminLog(useApp((s) => s.role));
   const [v, setV] = useModState<string>("adminlog.view", "log");
   const [q, setQ] = useModState<string>("adminlog.q", "");
@@ -36,7 +37,7 @@ export default function AdminLogModule() {
     <><button className="btn btn-secondary" disabled={!can} onClick={() => fn("json")}><Icon name="download" />JSON</button><button className="btn btn-secondary" disabled={!can} onClick={() => fn("csv")}><Icon name="download" />CSV</button></>
   );
   const acts = view === "ropa" ? expBtns(doRopa) : view === "exp" ? undefined : (
-    <><button className="btn btn-secondary" onClick={() => openConfirmReset(L)}><Icon name="alert" />Reset demo data</button>{expBtns(doExport)}</>
+    <><button className="btn btn-secondary" disabled={gate.locked} title={gate.title} onClick={() => openConfirmReset(L)}><Icon name="alert" />Reset demo data</button>{expBtns(doExport)}</>
   );
   const rows = view === "log" ? svc.alogRows(filter) : [];
   return (

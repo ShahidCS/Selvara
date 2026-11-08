@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Icon } from "@/components/ui";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { useLayer } from "@/hooks/useLayer";
-import { adminLog } from "@/lib/adminAudit";
+import { ELEV_REASON_MIN, sodMessage } from "@/lib/elevation";
+import { useGate } from "../admin/ElevateGate";
 import { setModState, getModState } from "@/lib/store";
 import { isEmail } from "@/lib/security";
 import { PLANS } from "@/services/billing";
@@ -10,7 +11,7 @@ import * as svc from "@/services/customers";
 
 /** Prototype: onboardCustomer / onboardSyncModules / onboardSubmit. Opens as a modal; `go('/admin/customers')` is done by the caller when needed. */
 export function OnboardForm({ close }: { close: () => void }) {
-  const L = useLayer();
+  const L = useLayer(); const gate = useGate(); const [reason, setReason] = useState("");
   const [name, setName] = useState(""); const [region, setRegion] = useState(svc.ONBOARD_REGIONS[0]); const [plan, setPlan] = useState("Professional");
   const [cur, setCur] = useState(svc.ONBOARD_CURRENCIES[0]); const [bill, setBill] = useState(svc.ONBOARD_BILLING_METHODS[0]); const [cycle, setCycle] = useState("Annual");
   const [an, setAn] = useState(""); const [ae, setAe] = useState("");
@@ -20,14 +21,14 @@ export function OnboardForm({ close }: { close: () => void }) {
   const submit = async () => {
     const n = name.trim(), a = an.trim(), e = ae.trim();
     const miss: string[] = []; if (!n) miss.push("company name"); if (!a) miss.push("admin name"); if (!e || !isEmail(e)) miss.push("a valid admin email");
+    if (reason.trim().length < ELEV_REASON_MIN) miss.push("a reason of at least " + ELEV_REASON_MIN + " characters");
     if (miss.length) { setErr("Please provide " + miss.join(", ") + "."); return; }
     try {
-      const c = await svc.onboard({ name: n, adminName: a, adminEmail: e, region, plan, currency: cur, cycle, billingMethod: bill, modules: svc.PLAN_MODULES.filter((m) => mods.includes(m)) });
-      adminLog("customer.onboarded", c.name + ", " + region, { tenant: c.id, after: "Plan " + plan, basis: "Contract", categories: ["Account", "Billing"] });
+      const c = await svc.onboard({ name: n, adminName: a, adminEmail: e, region, plan, currency: cur, cycle, billingMethod: bill, modules: svc.PLAN_MODULES.filter((m) => mods.includes(m)), reason });
       close(); L.toast(c.name + " onboarded, invite sent to " + c.contact.email);
       setModState("customers.sel", c.id);
       setModState("customers.recent", [c.id, ...getModState<string[]>("customers.recent", []).filter((x) => x !== c.id)].slice(0, 4));
-    } catch { L.toast("Could not create the customer", false); }
+    } catch (x) { L.toast(sodMessage(x, "Could not create the customer"), false); }
   };
   return (
     <>
@@ -51,8 +52,9 @@ export function OnboardForm({ close }: { close: () => void }) {
           ))}
         </div>
       </div>
+      <div className="field" style={{ marginTop: 12 }}><label htmlFor="oReason">Reason for onboarding (recorded in the audit log)</label><textarea className="input" id="oReason" maxLength={300} value={reason} onChange={(x) => setReason(x.target.value)} /></div>
       {err ? <div id="onbErr" className="errmsg" role="alert" style={{ marginTop: 10, display: "flex" }}><Icon name="alert" />{err}</div> : null}
-      <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={submit}><Icon name="plus" />Create customer</button></LayerFoot>
+      <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={submit} disabled={gate.locked} title={gate.title}><Icon name="plus" />Create customer</button></LayerFoot>
     </>
   );
 }

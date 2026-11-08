@@ -27,3 +27,22 @@
 * Rate-feed integrity: two-feed cross-check, staleness and move thresholds, signed feed data, previous-rate retention, per-invoice rate locking and an audit trail for every override must live on the server.
 * Money precision: rates are JS floats as in the source (display only here); the API should use fixed-precision decimals.
 * No HTML sinks; the Held reason and all values render as React text.
+
+## Changes vs prototype (owner decision, docs/SOD_MATRIX.md sections 2 and 3)
+| Prototype | Now | Where |
+|---|---|---|
+| Edit saved a rate immediately; no audit | Manual rate/tax override is a REQUEST (reason >= 15, ticket). The row keeps its current values until a DIFFERENT elevated super admin approves in the "Pending approvals" panel; then the values apply and `rate.override.applied` is logged with before/after, initiator, approver, approval id, ticket | `requestRateOverride`, `decideRates`, `rates/RateEdit.tsx` |
+| Held rows: Approve / Reject by anyone | Release / Reject are requests too (a feed hold is a control; one person may not lift it). Second elevated super admin approves; audited (`rate.held.released/rejected`) | `requestHeldDecision`, `HeldRequestForm` |
+| Everything available to support | All mutations need an elevated session; support can browse only. Buttons disabled "Elevate to make changes"; banner links to `/admin/elevation` (refresh and sample feed too) | `guard()`, `useGate` |
+| Thresholds 3% / 1% / 48h | Unchanged (still copy only, enforced server-side) | `RATE_THRESHOLDS` |
+| - | Panel shows Approve/Reject with reason >= 10 characters, disabled with `whyCannotApprove` text; initiator sees Withdraw; rows with a pending request show "Pending approval" and cannot be edited again | `admin/PendingApprovals.tsx` |
+| `rates.refresh` not audited | `rates.refresh.requested` logged | `refreshRates` |
+
+## Open questions (added)
+10. Source quirk kept: rejecting a held rate sets it Applied and keeps the NEW rate (toast no longer claims the previous rate is kept; no previous rate is stored). The real API must restore the previous applied rate.
+11. Should releasing/rejecting a held rate be dual-controlled? The matrix only names "manual rate/tax override"; it was treated as an override of the feed hold (conservative). Easy to relax.
+12. Overrides do not update the seed `RATES` list that Billing reads for tax lines and USD conversion (source separation kept: Rates module works on its own copy).
+
+## Security notes (added)
+* Dual control and elevation are UI/demo enforcement; the API must verify two distinct authenticated, elevated super admins, bounds, and lock the rate in force into invoices.
+* Conflicts resolved by owner decision: single-person rate edit replaced by request + second approval; audit added.

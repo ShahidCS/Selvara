@@ -1,5 +1,6 @@
 import { DATA, FW_ID, FW_SHORT } from "@/lib/data";
-import { bumpData, useData, useModState } from "@/lib/store";
+import { bumpData, useApp, useData, useModState } from "@/lib/store";
+import { uiMessage } from "@/lib/grcSod";
 import { wsLog } from "@/lib/audit";
 import { downloadText } from "@/lib/format";
 import { useGo } from "@/lib/route";
@@ -33,6 +34,8 @@ export default function ControlsModule() {
   useData();
   const L = useLayer();
   const go = useGo();
+  useApp((s) => s.role);
+  const manageWhy = svc.whyCannotManage(), runWhy = svc.whyCannotRunTests();
   const [view, setView] = useModState<View>("controls.view", "controls");
   const [q, setQ] = useModState("controls.q", "");
   const [status, setStatus] = useModState("controls.status", "All");
@@ -57,21 +60,23 @@ export default function ControlsModule() {
     L.toast("Matrix exported");
   };
   const syncAll = async () => {
-    await svc.syncAllTests();
-    wsLog("tests.synced", DATA.tests.length + " tests", "Control");
-    L.toast("All tests synced (demo)"); bumpData();
+    try {
+      await svc.syncAllTests();
+      wsLog("tests.synced", DATA.tests.length + " tests", "Control");
+      L.toast("All tests synced (demo)"); bumpData();
+    } catch (e) { L.toast(uiMessage(e), false); }
   };
 
   const acts = view === "controls" ? (
     <>
       <button className="btn btn-secondary" onClick={() => go("/ws/frameworks")}><Icon name="frameworks" />Frameworks</button>
       <button className="btn btn-secondary" onClick={soa}><Icon name="download" />Export SoA</button>
-      <button className="btn btn-primary" onClick={() => openCreateControl(L)}><Icon name="plus" />Add custom control</button>
+      <button className="btn btn-primary" disabled={!!manageWhy} title={manageWhy || undefined} onClick={() => openCreateControl(L)}><Icon name="plus" />Add custom control</button>
     </>
   ) : view === "tests" ? (
     <>
-      <button className="btn btn-secondary" onClick={syncAll}><Icon name="refresh" />Sync all</button>
-      <button className="btn btn-primary" onClick={() => openCreateTest(L)}><Icon name="plus" />Build custom test</button>
+      <button className="btn btn-secondary" disabled={!!runWhy} title={runWhy || undefined} onClick={syncAll}><Icon name="refresh" />Sync all</button>
+      <button className="btn btn-primary" disabled={!!manageWhy} title={manageWhy || undefined} onClick={() => openCreateTest(L)}><Icon name="plus" />Build custom test</button>
     </>
   ) : (
     <button className="btn btn-secondary" onClick={matrixExport}><Icon name="download" />Export matrix (CSV)</button>

@@ -9,7 +9,7 @@ export const TRUST_FAQ: { q: string; a: string }[] = clone(seed.TRUST_FAQ);
 export const TRUST_SUBPROC: { name: string; purpose: string; region: string }[] = clone(seed.TRUST_SUBPROC);
 export const TRUST_UPDATES: { at: string; title: string }[] = clone(seed.TRUST_UPDATES);
 export interface TrustAccount { company: string; domain: string; nda: string; viewers: string[]; access: string; status: string }
-export interface TrustRequest { id: string; who: string; company: string; resource: string; reason: string; at: string }
+export interface TrustRequest { id: string; who: string; company: string; resource: string; reason: string; at: string; enteredBy?: string }
 export interface TrustDecision { at: string; who: string; resource: string; decision: string; by: string; note: string }
 export interface TrustChat { at: string; who: string; q: string; a: string }
 /** Reassignable collections live on one object so every module sees the current value. */
@@ -23,14 +23,16 @@ export const TRUST: {
   chatbot: seed.TRUST_CHATBOT, chats: clone(seed.TRUST_CHATS),
 };
 
-export interface AnswerLibEntry { q: string; a: string; verified: boolean; uses: number }
+/** `author`/`editedBy`: who wrote or last changed the answer (never allowed to verify it); `verifiedBy`: the different admin/owner who did. */
+export interface AnswerLibEntry { q: string; a: string; verified: boolean; uses: number; author?: string; editedBy?: string; verifiedBy?: string }
 export const ANSWER_LIB: AnswerLibEntry[] = clone(seed.ANSWER_LIB);
 export const KB_DOCS: { name: string; type: string }[] = clone(seed.KB_DOCS);
 export const VENDOR_Q: { q: string; a: string; required: boolean }[] = clone(seed.VENDOR_Q);
 
-export const INCIDENT: { active: boolean; started: string | null } = { active: false, started: null };
+export const INCIDENT: { active: boolean; started: string | null; startedBy?: string; closedBy?: string } = { active: false, started: null };
 export const STANDARD_TERMS: { term: string; val: string }[] = clone(seed.STANDARD_TERMS);
 
-export const REPORT_FREQ: string[] = clone(seed.REPORT_FREQ);
-export interface SchedPack { name: string; freq: string; detail: string; recip: string; next: string }
+/** "On demand" was missing from the source list although the form branch and the seeded "Audit evidence pack" use it (made reachable). */
+export const REPORT_FREQ: string[] = [...clone(seed.REPORT_FREQ), ...(seed.REPORT_FREQ.includes("On demand") ? [] : ["On demand"])];
+export interface SchedPack { name: string; freq: string; detail: string; recip: string; next: string; external?: boolean; approvedBy?: string; approvalId?: string }
 export const SCHED_PACKS: SchedPack[] = clone(seed.SCHED_PACKS);

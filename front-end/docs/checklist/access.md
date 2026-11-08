@@ -34,3 +34,17 @@
 - Server-side validation of lengths/enums and rate limits; request/review ids generated server-side (`Math.random` ids here are demo-only).
 
 **Insecure source behaviour and handling:** (1) No role/SoD gates: ported as-is and flagged, with a policy hook. (2) Source addressed requests/reviews by array index, which could hit the wrong row after list mutation; now addressed by id (reviews also by account index within the id) with status guards, without visible change. (3) Decisions on non-pending/closed items were possible via re-entrancy; now rejected with a generic message. (4) Raw exception text is never shown.
+
+---
+## Hardening vs prototype (SOD_MATRIX) - supersedes the Open questions above where they conflict
+**What changed**
+- **Roles**: `canActOnAccess` = admin or owner only; services call `assertRole`. Employees (and others) can only **request** (and only for themselves, Admin-level needs a reason >= 10 chars): `createRequest` in `services/access.ts` (the shared `AccessRequestForm` now calls it and records the requester).
+- **Approve/Deny**: needs a reason (>= 10 chars); approver is neither the requester nor the beneficiary (button disabled with the reason). **Admin-level requests or privileged systems** (level Admin/Super admin, or a system matching identity/production/iam/vault or already holding an admin grant) need **two approvers**: first approval opens an approvals-engine request (`kind "access-request"`, 72 h), a *different* admin/owner gives the second; deny at either stage ends it. Approval now provisions the grant into `DATA.access` (`access.granted` audit).
+- **Reviews**: reviewer != account holder (Keep/Revoke disabled on own row, refused in service); each decision audited with reviewer; creator recorded; completing a review that contains privileged accounts needs a completer != creator (seed review attributed to "Casey Morgan"); **Revoke decisions are applied at completion**: matching `DATA.access` grant set to Revoked and removed (`access.revoked` audit); unmatched rows are logged `access.revoke.unmatched` for manual follow-up.
+- Audit logging moved into the service so it cannot be skipped by a caller.
+
+**Security notes (additions)**: all of the above must be enforced by the API; the UI only disables buttons. Revocation must propagate to the source systems.
+
+**Conflicts resolved by owner decision**: old Open questions 1 (no role gates; employees decide), 2 (revoke/approve had no effect), 5 (reviewers decide own access) are replaced by the rules above.
+
+**Open questions**: (1) Matrix says revocations "create follow-up tasks": only an audit line is written, no task record. (2) Seed review accounts use short names/other system names, so some do not match inventory rows and need manual follow-up. (3) Privileged-system detection is a name heuristic; a real system needs a flag on the system record. (4) The seed access requests have no requester field; the beneficiary is treated as the requester.

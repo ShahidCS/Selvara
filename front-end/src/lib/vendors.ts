@@ -1,6 +1,7 @@
 /* Third-party (vendor) helpers ported from the prototype (source lines 3246-3325). */
 import { DATA } from "./data";
 import { appStore } from "./store";
+import { hasRole } from "./sod";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const VENDOR_TIERS = ["Critical", "Medium", "Low"];
@@ -10,8 +11,19 @@ export const TIER_TONE: Record<string, string> = { Critical: "bad", Medium: "war
 export const REASSESS_OUTCOMES = ["Approved, continue", "Approved with conditions", "Escalate, remediation required"];
 export const FINDING_SEVS = ["High", "Medium", "Low"];
 
-/** Who may approve/dismiss vendor requests (prototype: vendorCanManage). UI gate only: the API must enforce it. */
-export const vendorCanManage = (roleId: string = appStore.get().role) => ["super", "admin", "owner", "analyst"].includes(roleId);
+/** Who may approve/dismiss vendor requests and run vendor decisions. SOD_MATRIX: admin and owner (base roles). The prototype also listed `analyst`
+ * (and `super`), who cannot open the module per ROLE_MODS (analyst: no vendors; super: no workspace), so they are removed (deny by default).
+ * UI gate only: the services call the same rule and the API must enforce it. */
+export const vendorCanManage = (roleId: string = appStore.get().role) => hasRole(roleId, "admin", "owner");
+/** "P. Nair, Support" -> "P. Nair" (seed requesters carry a team suffix that would break person matching). */
+export const personOnly = (s: unknown): string => String(s ?? "").split(",")[0].trim();
+/** Score 0-100 with up to 2 decimals ("7.9" stays 7.9, "12abc" and "" are invalid). Returns null when invalid. */
+export function parseScore(raw: unknown): number | null {
+  const t = String(raw ?? "").trim();
+  if (!/^\d{1,3}(\.\d{1,2})?$/.test(t)) return null;
+  const n = Number(t);
+  return n >= 0 && n <= 100 ? n : null;
+}
 
 /** Prototype: vInit. Fills id and demo detail lazily (idempotent). The source id (`V-` + first 4 letters/digits of the name) could collide; a numeric suffix keeps ids unique. */
 export function vInit(v: any) {

@@ -34,3 +34,16 @@
 - Validate/normalise contractor fields and enforce uniqueness of ids on the server.
 
 **Insecure source behaviour and handling:** (1) MFA reset has no audit log and no confirmation: ported as-is, flagged (Open question 1). (2) No role gate beyond module access: kept; a policy hook (`canManagePeople`) is in place for a one-line change. (3) Offboarding leaves access grants in place: kept, flagged. (4) Id collision on contractors: fixed without visible change. (5) Transfer target is free text, not a validated user: kept, length-capped only.
+
+---
+## Hardening vs prototype (SOD_MATRIX) - supersedes the Open questions above where they conflict
+**What changed**
+- **Reset MFA** (table and drawer): opens the request form (3 identity checks, ticket, reason enum+text, named approver, effects text). Needs requester `admin`, approver a different `admin`/`owner` (not requester, not subject); **2 approvers** when the member is privileged (Admin/Super admin grant or admin/owner role). Self-service reset is refused (button disabled with the reason). Effects (MFA cleared, sessions revoked, re-enrolment forced, recovery codes invalidated) happen only on final approval; request expires after 24 h (audited). Audit entries `person.mfa.reset.requested|reset|approved...` added (resolves old Open question 1).
+- **Offboard**: transfer-to is a select of known people (service validates against `DATA.people`, not the subject). A person with privileged access (grants with Admin/Super admin level, or an admin/owner role) needs a second approver != requester via the approvals engine (`kind "offboard"`, 72 h expiry). On completion the service **revokes every `DATA.access` row of that person** (status set to Revoked, row removed, `access.revoked` audit per grant), denies their pending access requests and logs `person.offboarded` with the count. The revoke/reclaim checkboxes are now fixed-on (they were cosmetic). Cannot offboard yourself; the last remaining Company Admin cannot be offboarded.
+- `addContractor` now requires admin/owner. A `PendingApprovals` list appears above the table.
+
+**Security notes (additions)**: all rules are in `services/people.ts` and repeated by the UI; the API must too (second approver, revocation in the identity provider/source systems, device wipe, session kill). Revocation here only touches the demo inventory.
+
+**Conflicts resolved by owner decision**: old Open questions 1 (no audit on MFA reset), 2 (offboard leaves grants) and the "no role gate" notes are replaced by the rules above.
+
+**Open questions**: (1) Owner subjects (e.g. Owen Hart) are privileged, so an MFA reset needs two approvers; with the three workspace personas only one eligible person exists, so the request is refused ("needs 2 eligible approvers"). (2) Seed people carry job titles, not workspace roles; privilege is derived from grants plus `lib/teamRoles.ts` (demo mapping). (3) Pending offboarding keeps the person listed until approved.

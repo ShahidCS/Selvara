@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { Empty, Icon, Page, StatusChip, Table } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
-import { useApp, useData, useModState, bumpData } from "@/lib/store";
+import { useApp, useData, useModState } from "@/lib/store";
+import { pendingAdminApprovals } from "@/lib/adminApprovals";
+import { sodMessage } from "@/lib/elevation";
 import * as svc from "@/services/rates";
-import { RateEditForm } from "./rates/RateEdit";
+import { HeldRequestForm, RateEditForm } from "./rates/RateEdit";
+import { ElevateGateBanner, useGate } from "./admin/ElevateGate";
+import { PendingApprovals } from "./admin/PendingApprovals";
 
 /** Prototype: REND.rates (Exchange Rates & Tax, Held/Applied workflow). Module state (query, region, details) survives navigation like the prototype's RATE. */
 export default function RatesModule() {
-  useData(); const L = useLayer();
+  useData(); const L = useLayer(); const gate = useGate();
   const allowed = svc.ratesCanManage(useApp((s) => s.role));
   const [q, setQ] = useModState("rates.q", ""); const [region, setRegion] = useModState("rates.region", "All"); const [rules, setRules] = useModState("rates.rules", false);
   const [refreshing, setRefreshing] = useState(false); const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -17,17 +21,17 @@ export default function RatesModule() {
   const held = svc.RATE_ROWS.filter((r) => r.status === "Held").length;
   const ql = q.toLowerCase();
   const rows = svc.RATE_ROWS.filter((r) => (region === "All" || r.region === region || (region === "Americas" && r.code === "US")) && (!q || `${r.country} ${r.currency}`.toLowerCase().includes(ql)));
-  const decide = async (r: svc.RateRow, ok: boolean) => {
-    try { await svc.decideRate(r.code, ok); L.toast(ok ? `${r.country} rate approved and applied` : `${r.country} rate rejected, previous rate kept`); bumpData(); }
-    catch { L.toast("Could not update the rate", false); }
-  };
+  const pending = new Set(pendingAdminApprovals("rates.").map((a) => a.subject));
+  const decide = (r: svc.RateRow, ok: boolean) => L.openModal((ok ? "Release held rate: " : "Reject held rate: ") + r.country, (close) => <HeldRequestForm code={r.code} ok={ok} close={close} />);
   const refresh = async () => {
     setRefreshing(true);
-    try { await svc.refreshRates(); } catch { setRefreshing(false); L.toast("Could not refresh the rates", false); return; }
+    try { await svc.refreshRates(); } catch (e) { setRefreshing(false); L.toast(sodMessage(e, "Could not refresh the rates"), false); return; }
     timer.current = setTimeout(() => { setRefreshing(false); L.toast("Rates refreshed from primary feed"); }, 950);
   };
   return (
     <Page mod="rates">
+      <ElevateGateBanner />
+      <PendingApprovals prefix="rates." title="Pending approvals" run={svc.decideRates} withdraw={svc.withdrawRates} />
       <div className="card" style={{ flex: "0 0 auto" }}><div className="c-body" style={{ gap: 10 }}>
         <div style={{ display: "flex", alignItems: "start", gap: 14, flexWrap: "wrap" }}>
           <div style={{ flex: "1 1 320px", minWidth: 0 }}>
@@ -48,8 +52,8 @@ export default function RatesModule() {
           <div style={{ textAlign: "right", fontSize: 12, color: "var(--muted)", minWidth: 140 }}>Last updated<br /><b style={{ color: "var(--ink)" }}>Today, 06:00 GST</b></div>
         </div>
         <div className="btngrp">
-          <button className="btn btn-primary" id="refreshBtn" onClick={refresh} disabled={refreshing} aria-busy={refreshing}>{refreshing ? <span className="spin" /> : <Icon name="refresh" />}Refresh rates</button>
-          <button className="btn btn-secondary" onClick={() => L.toast("Sample feed run (demo)")}><Icon name="rates" />Run sample feed <span className="tag" style={{ marginLeft: 4 }}>Offline demo</span></button>
+          <button className="btn btn-primary" id="refreshBtn" onClick={refresh} disabled={refreshing || gate.locked} title={gate.title} aria-busy={refreshing}>{refreshing ? <span className="spin" /> : <Icon name="refresh" />}Refresh rates</button>
+          <button className="btn btn-secondary" disabled={gate.locked} title={gate.title} onClick={() => L.toast("Sample feed run (demo)")}><Icon name="rates" />Run sample feed <span className="tag" style={{ marginLeft: 4 }}>Offline demo</span></button>
         </div>
       </div></div>
       <div className="card" style={{ flex: "1 1 auto" }}>
@@ -65,12 +69,12 @@ export default function RatesModule() {
                   <td className="strong">{r.country}</td><td className="num">{r.currency}</td>
                   <td className="r num">{r.rate.toLocaleString("en-US", { minimumFractionDigits: r.rate < 10 ? 4 : 2 })}</td>
                   <td>{r.tax.type} {r.tax.rate}%</td><td>{r.tax.eff}</td>
-                  <td>{r.status === "Held" ? <span className="chip warn" title={r.reason}><Icon name="alert" />Held for review</span> : <StatusChip s="Applied" />}</td>
+                  <td>{r.status === "Held" ? <span className="chip warn" title={r.reason}><Icon name="alert" />Held for review</span> : <StatusChip s="Applied" />}{pending.has(r.code) ? <> <span className="chip info"><Icon name="clock" />Pending approval</span></> : null}</td>
                   <td className="r" style={{ whiteSpace: "nowrap" }}>
                     {r.status === "Held" ? <>
-                      <button className="btn btn-ghost sm" aria-label={`Approve ${r.country} rate`} onClick={() => decide(r, true)}><Icon name="check" />Approve</button>
-                      <button className="btn btn-ghost sm" aria-label={`Reject ${r.country} rate`} onClick={() => decide(r, false)}><Icon name="x" />Reject</button></>
-                      : <button className="btn btn-ghost sm" aria-label={`Edit ${r.country}`} onClick={() => L.openDrawer("Edit " + r.country, "Currency, exchange rate and tax", (close) => <RateEditForm code={r.code} close={close} />)}><Icon name="edit" />Edit</button>}
+                      <button className="btn btn-ghost sm" aria-label={`Request release of ${r.country} rate`} disabled={gate.locked || pending.has(r.code)} title={gate.title || (pending.has(r.code) ? "A request is already pending" : undefined)} onClick={() => decide(r, true)}><Icon name="check" />Release</button>
+                      <button className="btn btn-ghost sm" aria-label={`Request rejection of ${r.country} rate`} disabled={gate.locked || pending.has(r.code)} title={gate.title || (pending.has(r.code) ? "A request is already pending" : undefined)} onClick={() => decide(r, false)}><Icon name="x" />Reject</button></>
+                      : <button className="btn btn-ghost sm" aria-label={`Edit ${r.country}`} disabled={gate.locked || pending.has(r.code)} title={gate.title || (pending.has(r.code) ? "A request is already pending" : undefined)} onClick={() => L.openDrawer("Edit " + r.country, "Currency, exchange rate and tax", (close) => <RateEditForm code={r.code} close={close} />)}><Icon name="edit" />Edit</button>}
                   </td>
                 </tr>
               ))}

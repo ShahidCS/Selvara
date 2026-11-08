@@ -23,3 +23,13 @@ See `docs/checklist/elevation.md` (standing access vs elevation, support grants,
 * Read-only page: no setting can be changed from the UI; nothing is stored.
 * The lists describe server-enforced policy; the portal front end enforces none of them. Do not read this page as evidence of control.
 * All text is static React text; no HTML from strings, internal links only via `useGo`.
+
+## Changes vs prototype (owner decision, docs/SOD_MATRIX.md sections 2 and 3)
+* "Privileged access (this console)" list now states the enforced model: elevation for every change (reason 15+ characters, ticket, 60 minutes), super admins admin-space only, support never elevates or approves, dual control for finance above USD 1,000, all write-offs and rate overrides, and customer-approved support grants as the only route to customer content.
+* The page remains read-only and informational; the elevation banner above it is the same component as on Elevated Access.
+
+## Open questions (added)
+3. "Password baseline" and "Authentication & sessions" copy still describes composition rules, last-5 reuse and 30-minute reset links, which conflicts with SOD_MATRIX section 6 (no composition rules, no password history, reset token <= 15 min). Left unchanged (credential policy is outside this scope); needs the owner/auth module.
+
+## Security notes (added)
+* Landing: `landingPath` in `lib/rbac.ts` sends `super`/`super2` to `/admin/overview` (admin `*` makes `overview` allowed there) instead of `/admin/customers`; reported to the lead, not edited.

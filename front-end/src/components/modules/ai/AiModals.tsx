@@ -8,7 +8,7 @@ import { DATA } from "@/lib/data";
 import { bumpData } from "@/lib/store";
 import { AI_ANNEX_AREAS, AI_AUTONOMY, AI_BIAS_STATUSES, AI_FRIA_STATUSES, AI_GUARDRAILS, AI_ROLES, AI_SHADOW, AI_TIERS, aiFind, aiInit, aiLog } from "@/lib/ai";
 import * as svc from "@/services/ai";
-import { attempt } from "../issues/util";
+import { attempt } from "../sodKit";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Reopen = (() => void) | undefined;
@@ -120,14 +120,15 @@ function GuardForm({ id, reopen }: { id: string; reopen: Reopen }) {
   const [g, setG] = useState(String(a?.guardrail ?? AI_GUARDRAILS[0][0]));
   if (!a) return <NotFound />;
   const rule = (AI_GUARDRAILS.find((x) => x[0] === g) || AI_GUARDRAILS[0])[1];
-  const save = () => act(() => svc.setGuardrail(id, g), (r) => { aiLog("ai.guardrail.set", a.name); L.closeLayer(); reopen?.(); bumpData(); L.toast("Guardrail tier set to " + r.guardrail); });
+  const save = () => act(() => svc.setGuardrail(id, g), (r) => { aiLog("ai.guardrail.change_requested", a.name + " → " + r.guardrail); L.closeLayer(); reopen?.(); bumpData(); L.toast("Guardrail change to " + r.guardrail + " requested; a second approver must confirm"); });
   return (
     <>
       <div>
         <div className="field"><label htmlFor="aG">Guardrail tier</label><select className="select" id="aG" data-focus value={AI_GUARDRAILS.some((x) => x[0] === g) ? g : AI_GUARDRAILS[0][0]} onChange={(e) => setG(e.target.value)}>{AI_GUARDRAILS.map((x) => <option key={x[0]}>{x[0]}</option>)}</select></div>
         <div id="aGrule" className="field help" style={{ marginTop: 4 }}>{rule}</div>
+        <p className="field help" style={{ marginTop: 8 }}>A guardrail change takes effect only after a second admin or owner (not you, not the system owner) approves it.</p>
       </div>
-      <Foot L={L} label="Save" onSave={save} />
+      <Foot L={L} label="Request change" onSave={save} />
     </>
   );
 }

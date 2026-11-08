@@ -61,6 +61,16 @@
    "tenant": "cust-101"
   },
   {
+   "id": "owner2",
+   "name": "Control, Policy and Risk Owner",
+   "person": "Taylor Reed",
+   "initials": "TR",
+   "spaces": [
+    "ws"
+   ],
+   "tenant": "cust-101"
+  },
+  {
    "id": "employee",
    "name": "Employee",
    "person": "Priya Nair",
@@ -198,6 +208,29 @@
   },
   "admin2": {
    "ws": "*"
+  },
+  "owner2": {
+   "ws": [
+    "overview",
+    "me",
+    "work",
+    "reports",
+    "frameworks",
+    "controls",
+    "evidence",
+    "policies",
+    "audits",
+    "issues",
+    "people",
+    "access",
+    "risk",
+    "ai",
+    "vendors",
+    "trust",
+    "questionnaires",
+    "commitments",
+    "appsec"
+   ]
   }
  },
  "SCOPES": [

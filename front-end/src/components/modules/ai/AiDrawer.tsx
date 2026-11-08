@@ -3,18 +3,20 @@ import { useCallback } from "react";
 import { Chip, Icon, StatusChip } from "@/components/ui";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { useLayer } from "@/components/shell/LayerProvider";
-import { getMe } from "@/lib/audit";
+import { getApproval } from "@/lib/approvals";
+import { sodReason } from "@/lib/sod";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { useGo } from "@/lib/route";
-import { AI_GUARDRAILS, aiCanManage, aiEuRationale, aiFind, aiInit, aiIsLegalOrAdmin, aiLog } from "@/lib/ai";
+import { AI_GUARDRAILS, aiCanDecide, aiCanManage, aiEuRationale, aiFind, aiForbidden, aiInit, aiLog } from "@/lib/ai";
 import * as svc from "@/services/ai";
-import { attempt } from "../issues/util";
+import { WhyNot, attempt } from "../sodKit";
 import { AiBiasChip, AiEuChip, AiFriaChip, AiGuardChip } from "./AiChips";
 import { openAssign, openBias, openEdit, openEuClassify, openFria, openGuard, openOversight } from "./AiModals";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const AI_TABS: [string, string][] = [["over", "Overview"], ["eu", "EU AI Act"], ["fria", "Impact"], ["bias", "Bias"], ["signals", "Signals"]];
-const GATE = <p style={{ fontSize: 12, color: "var(--muted)", margin: "10px 0 0" }}>Read-only — only the AI system owner or an admin can change this.</p>;
+const GATE = <p style={{ fontSize: 12, color: "var(--muted)", margin: "10px 0 0" }}>Read-only — only the AI system owner, an admin or an owner can change this.</p>;
+const pendingOf = (ref: unknown) => (ref ? getApproval(String(ref))?.status === "Pending" : false);
 const card = (bg: string, extra?: object) => ({ boxShadow: "none", background: bg, borderColor: "transparent", ...extra });
 
 function AiDrawerBody({ id }: { id: string }) {
@@ -25,7 +27,7 @@ function AiDrawerBody({ id }: { id: string }) {
   const a = aiFind(id);
   if (!a) return <p className="field help">AI system not found.</p>;
   aiInit(a);
-  const manage = aiCanManage(a); const me = getMe().name;
+  const manage = aiCanManage(a); const decider = aiCanDecide();
   const reopen = () => openAiDrawer(L, id);
   /** Run a service call; a refusal shows the source toast, an exception a generic one. */
   const act = (p: () => Promise<svc.Res<any>>, ok: (r: any) => void) => attempt(L, async () => { const r = await p(); if (!r.ok) { L.toast(r.msg); return; } ok(r); });
@@ -39,6 +41,7 @@ function AiDrawerBody({ id }: { id: string }) {
   let body: React.ReactNode = null;
   if (tab === "over") {
     const gr = AI_GUARDRAILS.find((g) => g[0] === a.guardrail) || AI_GUARDRAILS[0];
+    const reviewWhy = !decider ? "Completing a review is an approval: only admin or owner can do it." : sodReason("you registered or own this system, so a different admin or owner must complete its review", a.registeredBy, a.owner);
     body = (
       <>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}><AiEuChip c={a.euClass} /> <AiGuardChip g={a.guardrail} /> <StatusChip s={a.status} /> <span className="tag">{a.lifecycle}</span></div>
@@ -51,7 +54,7 @@ function AiDrawerBody({ id }: { id: string }) {
         <div style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}><AiGuardChip g={a.guardrail} /></div>
           <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>{gr[1]}</div>
-          {manage ? <button className="btn btn-ghost sm" style={{ marginTop: 8 }} onClick={() => openGuard(L, id, reopen)}><Icon name="edit" />Change guardrail tier</button> : null}
+          {manage ? <button className="btn btn-ghost sm" style={{ marginTop: 8 }} disabled={pendingOf(a.guardrailPending)} onClick={() => openGuard(L, id, reopen)}><Icon name="edit" />{pendingOf(a.guardrailPending) ? "Change awaiting approval" : "Request guardrail change"}</button> : null}
         </div>
         <div className="hr" /><div className="sectitle">ISO/IEC 42001 &amp; EU AI Act obligations</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -65,16 +68,18 @@ function AiDrawerBody({ id }: { id: string }) {
               <button className="btn btn-secondary sm" onClick={() => openEdit(L, id)}><Icon name="edit" />Edit</button>
               <button className="btn btn-secondary sm" onClick={() => openAssign(L, id)}><Icon name="user" />Assign owner</button>
               <button className="btn btn-secondary sm" onClick={() => act(() => svc.attachEvidence(id), (r) => { aiLog("ai.evidence.attached", a.name); L.toast("Evidence attached to " + r.name); bumpData(); })}><Icon name="evidence" />Attach evidence</button>
-              <button className="btn btn-secondary sm" onClick={() => act(() => svc.toggleReview(id), (r) => { aiLog(r.completed ? "ai.review.completed" : "ai.review.started", a.name); L.closeLayer(); L.toast((r.completed ? "Review completed for " : "Review started for ") + r.name); bumpData(); })}><Icon name="play" />{a.status === "In review" ? "Complete review" : "Start review"}</button>
-              <button className="btn btn-danger sm" onClick={() => act(() => svc.archiveSystem(id), (r) => { aiLog("ai.archived", a.name); L.closeLayer(); bumpData(); L.toast(r.name + " archived"); })}><Icon name="archive" />Archive</button>
+              <button className="btn btn-secondary sm" disabled={a.status === "In review" && !!reviewWhy} aria-describedby={a.status === "In review" && reviewWhy ? "ai-rw" : undefined} onClick={() => act(() => svc.toggleReview(id), (r) => { aiLog(r.completed ? "ai.review.completed" : "ai.review.started", a.name); L.closeLayer(); L.toast((r.completed ? "Review completed for " : "Review started for ") + r.name); bumpData(); })}><Icon name="play" />{a.status === "In review" ? "Complete review" : "Start review"}</button>
+              <button className="btn btn-danger sm" disabled={pendingOf(a.archivePending)} onClick={() => act(() => svc.archiveSystem(id), (r) => { aiLog("ai.archive.requested", a.name); L.closeLayer(); bumpData(); L.toast("Archive of " + r.name + " requested; a second approver must confirm"); })}><Icon name="archive" />{pendingOf(a.archivePending) ? "Archive awaiting approval" : "Request archive"}</button>
             </div>
+            {a.status === "In review" ? <WhyNot id="ai-rw" text={reviewWhy} /> : null}
           </>
         ) : GATE}
       </>
     );
   } else if (tab === "eu") {
     const st = a.euState || { state: "Not classified", draftBy: a.owner };
-    const canConfirm = manage && st.state === "Draft" && st.draftBy !== me && aiIsLegalOrAdmin();
+    const confirmWhy = !decider ? "Confirmation is reserved for an admin or owner." : sodReason("you drafted this classification or own the system, so a different admin or owner must confirm it", ...aiForbidden(a, st.draftBy));
+    const canConfirm = manage && st.state === "Draft" && !confirmWhy;
     body = (
       <>
         <div className="sectitle">EU AI Act classification</div>
@@ -87,7 +92,7 @@ function AiDrawerBody({ id }: { id: string }) {
           <dt>Drafted by</dt><dd>{st.draftBy || a.owner}</dd>
           <dt>Confirmed by</dt><dd>{st.state === "Confirmed" ? st.by + (st.at ? " · " + st.at : "") : <span style={{ color: "var(--muted)" }}>Awaiting a second person</span>}</dd>
         </dl>
-        {st.state === "Draft" ? <div className="card" style={card("var(--warn-bg)", { marginTop: 10 })}><div className="c-body" style={{ padding: "10px 12px", fontSize: 12.5, color: "var(--warn-ink)" }}>Draft legal determination. It must be confirmed by Legal &amp; Privacy or an admin other than the drafter before the ISO 42001 AI-inventory test passes.</div></div> : null}
+        {st.state === "Draft" ? <div className="card" style={card("var(--warn-bg)", { marginTop: 10 })}><div className="c-body" style={{ padding: "10px 12px", fontSize: 12.5, color: "var(--warn-ink)" }}>Draft legal determination. It must be confirmed by an admin or owner other than the drafter (and not the system owner) before the tier, guardrail and the ISO 42001 AI-inventory test take effect.</div></div> : null}
         <div className="hr" /><div className="sectitle">What the categories mean</div>
         <dl className="meta-grid lstart"><dt>Prohibited</dt><dd>Unacceptable-risk uses — not permitted.</dd><dt>High-risk</dt><dd>Full obligations: risk management, data governance, documentation, human oversight, logging.</dd><dt>Limited risk</dt><dd>Transparency — users are told they interact with AI.</dd><dt>Minimal risk</dt><dd>No specific obligations; voluntary codes.</dd></dl>
         {manage ? (
@@ -96,7 +101,7 @@ function AiDrawerBody({ id }: { id: string }) {
               <button className="btn btn-primary sm" onClick={() => openEuClassify(L, id, reopen)}><Icon name="shieldcheck" />{st.state === "Not classified" ? "Classify under EU AI Act" : "Re-run classification"}</button>
               {st.state === "Draft" ? <button className="btn btn-secondary sm" disabled={!canConfirm} onClick={() => act(() => svc.confirmEu(id), () => { aiLog("ai.euact.confirmed", a.name); bumpData(); L.toast("Classification confirmed"); })}><Icon name="check" />Confirm classification</button> : null}
             </div>
-            {st.state === "Draft" && !canConfirm ? <p className="field help" style={{ marginTop: 6 }}>Confirmation is reserved for Legal &amp; Privacy or an admin other than the drafter.</p> : null}
+            {st.state === "Draft" && !canConfirm ? <WhyNot text={confirmWhy} /> : null}
           </>
         ) : GATE}
       </>
@@ -104,19 +109,20 @@ function AiDrawerBody({ id }: { id: string }) {
   } else if (tab === "fria") {
     const f = a.fria || { status: "Not started", review: "None" }; const rev = f.review || "None";
     const revChip = rev === "Approved" ? <Chip cls="ok" icon="check">Approved</Chip> : rev === "Submitted" ? <Chip cls="warn" icon="clock">Submitted for approval</Chip> : rev === "Changes requested" ? <Chip cls="bad" icon="alert">Changes requested</Chip> : rev === "Draft" ? <Chip cls="neutral">Draft</Chip> : <Chip cls="neutral">Not started</Chip>;
-    const canApprove = manage && rev === "Submitted" && f.submittedBy !== me;
+    const approveWhy = !decider ? "Approval is reserved for an admin or owner." : sodReason("you submitted, authored or own this assessment, so a different admin or owner must approve it", ...aiForbidden(a, f.submittedBy, f.by));
+    const canApprove = manage && rev === "Submitted" && !approveWhy;
     body = (
       <>
         <div className="sectitle">AI impact assessment (FRIA / DPIA)</div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}><AiFriaChip f={f} /> {revChip}</div>
         <dl className="meta-grid lstart"><dt>Completed</dt><dd>{f.date ? f.date : "—"}</dd><dt>Submitted by</dt><dd>{f.submittedBy ? f.submittedBy : "—"}</dd><dt>Approved by</dt><dd>{f.approvedBy ? f.approvedBy : <span style={{ color: "var(--muted)" }}>—</span>}</dd></dl>
         {f.summary ? <p style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 8, lineHeight: 1.55 }}>{f.summary}</p> : null}
-        <div className="card" style={{ boxShadow: "none", background: "var(--surface-2)", marginTop: 10 }}><div className="c-body" style={{ padding: "10px 12px", fontSize: 12, color: "var(--muted)" }}>Approval updates evidence <strong>D-07 (AI system impact assessment)</strong> and counts toward ISO/IEC 42001 clause 6.1.4. The approver must be someone other than the submitter.</div></div>
+        <div className="card" style={{ boxShadow: "none", background: "var(--surface-2)", marginTop: 10 }}><div className="c-body" style={{ padding: "10px 12px", fontSize: 12, color: "var(--muted)" }}>Approval updates evidence <strong>D-07 (AI system impact assessment)</strong> and counts toward ISO/IEC 42001 clause 6.1.4. The approver must be an admin or owner other than the submitter, the author and the system owner. An approved assessment is never edited in place: changes start a new version.</div></div>
         {rev === "Submitted" ? <div className="card" style={card("var(--warn-bg)", { marginTop: 8 })}><div className="c-body" style={{ padding: "10px 12px", fontSize: 12.5, color: "var(--warn-ink)" }}>Submitted by {f.submittedBy || "—"}, awaiting a second approver.</div></div> : null}
         {manage ? (
           <>
             <div className="btngrp" style={{ marginTop: 12 }}>
-              {(rev === "None" || rev === "Draft" || rev === "Changes requested") ? <button className="btn btn-secondary sm" onClick={() => openFria(L, id, reopen)}><Icon name="edit" />{rev === "None" ? "Record impact assessment" : "Edit"}</button> : null}
+              {(rev === "None" || rev === "Draft" || rev === "Changes requested" || rev === "Approved") ? <button className="btn btn-secondary sm" onClick={() => openFria(L, id, reopen)}><Icon name="edit" />{rev === "None" ? "Record impact assessment" : rev === "Approved" ? "Start new version (needs approval again)" : "Edit"}</button> : null}
               {(rev === "Draft" || rev === "Changes requested") ? <button className="btn btn-primary sm" onClick={() => act(() => svc.submitFria(id), () => { aiLog("ai.impact_assessment.submitted", a.name); bumpData(); L.toast("Impact assessment submitted for approval"); })}><Icon name="check" />Submit for approval</button> : null}
               {rev === "Submitted" ? (
                 <>
@@ -125,7 +131,7 @@ function AiDrawerBody({ id }: { id: string }) {
                 </>
               ) : null}
             </div>
-            {rev === "Submitted" && !canApprove ? <p className="field help" style={{ marginTop: 6 }}>Approval is reserved for someone other than the submitter.</p> : null}
+            {rev === "Submitted" && !canApprove ? <WhyNot text={approveWhy} /> : null}
           </>
         ) : GATE}
       </>

@@ -29,3 +29,15 @@
 * UI-only enforcement: the role gate (`canAdminLog`, Platform Super Admin and Support) is re-checked in the service layer but must be enforced by the API; the server must set actor, role, IP and timestamp itself, authorise and rate-limit exports, and keep an audit entry for every export/verify.
 * Log fields (actor, object, before/after) are attacker-influenced strings: rendered only as React text (ASVS 7.3.1, no log injection); exports use `csvCell` + `safeFileName`.
 * IPs shown are synthetic documentation-range values; real IPs/device data are personal data (RoPA PA-01/PA-15): retention and access to the real log need DPO sign-off. The RoPA register is a synthetic sample.
+
+## Changes vs prototype (owner decision, docs/SOD_MATRIX.md section 2)
+* Stays read-only for everyone: no edit or delete path exists. Browsing, filtering, chain verify and exports do not need elevation (reads).
+* Every export (log JSON/CSV, RoPA, evidence package) and chain verification writes an audit entry; the log export entry now records the filter used and the number of rows exported (`adminlog.exported`).
+* "Reset demo data" (reload with seeded data, drops the in-memory log) is a mutation in `/admin/*`: disabled "Elevate to make changes" unless elevated. Demo-only control; it must not exist in production.
+* New entries written by the other admin modules now include the elevation ticket, actor, initiator/approver and reasons (see customers, billing, rates).
+
+## Open questions (added)
+7. Should the Evidence package generation (creates a register entry) need elevation? Treated as an audited read/export (no elevation).
+
+## Security notes (added)
+* Actor, role, IP, time and ticket must be set server-side; the elevation ticket here is client state.

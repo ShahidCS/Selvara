@@ -32,3 +32,26 @@
 * PII: customer contacts and user e-mails render as React text only; nothing is stored in browser storage beyond UI state in memory. GDPR: audit entries contain names and e-mails (`invoice.resent`), see RoPA.
 * Inputs: names clamped (100), e-mails validated (`isEmail`), plans/modules/regions/currencies/cycles/roles/countries checked against allow-lists in the service. Onboarding is not idempotent (needs a client request id on the API).
 * No HTML sinks; no card data handled.
+
+## Changes vs prototype (owner decision, docs/SOD_MATRIX.md sections 2 and 3)
+| Prototype | Now | Where |
+|---|---|---|
+| Any Support/Super could change plans, modules, onboard and manage tenant users at any time | Every mutation needs an active elevated session (`assertElevated`, `SodError("Elevation required")`) plus `assertRole(super, support)`. Support can browse but can never elevate, so it cannot change anything | `services/customers.ts` `guard()` |
+| Buttons always enabled | Disabled with title "Elevate to make changes"; page banner links to `/admin/elevation`; read-only browsing unchanged | `admin/ElevateGate.tsx`, `CustomersModule`, `PlanTab`, `Onboard`, `UsersTab`, `UserForms` |
+| Downgrade below seats in use allowed | BLOCKED in service and form: "Cannot move to X: N seats are in use and X includes M. Remove users first." | `changePlan` |
+| No reason | Onboarding and plan change require a reason of at least 15 characters; recorded with the elevation ticket in the admin log | `reasonOf`, forms |
+| Audit written by the UI after the call | Services write `adminLog` (action, subject, tenant, before/after, reason, elevation ticket); UI no longer logs (no duplicates) | `audit()` in the service |
+| Reset MFA (single and bulk) changed state directly | Removed. It bypassed the MFA four-eyes flow; the menu item and bulk button now lead to MFA Resets (`/admin/mfa`); `userAction("resetmfa")` and bulk "mfa" throw `SodError` | `MFA_RESET_VIA_MODULE` |
+| Bulk user export audited in UI only | Audited by `auditUserExport` (read, no elevation) | service |
+| Raw "could not ..." toasts | Toast shows the `SodError` message only (`sodMessage`), generic text otherwise | all forms |
+
+## Open questions (added)
+9. Changing a tenant user's role (for example to Company Admin) is done here by ONE elevated super admin. SOD_MATRIX "Team: grant/change a role" asks a different admin to approve inside a customer workspace; for platform staff acting on a tenant, should this need the approvals engine too? Not built (not listed in section 3 for this module).
+10. Seat changes: there is no separate seat editor; seats follow the plan. The downgrade block compares plan seats with `usage.seatsUsed`.
+11. Module toggles need elevation and audit but no reason (no form in the source).
+12. Remove user / suspend (single and bulk) are elevation + audit only, no second approver.
+
+## Security notes (added)
+* Elevation is UI state in this demo; the API must hold its own elevation record and reject every mutation without it. The same applies to the downgrade block, reason requirement and the MFA-reset redirect.
+* Support: module read access only; never an elevated session.
+* Conflicts resolved by owner decision: standing super-admin access to everything is replaced by elevation-gated mutation; MFA reset must use the request/approval flow.

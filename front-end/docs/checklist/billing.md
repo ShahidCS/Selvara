@@ -28,3 +28,26 @@
 * Audit entry `invoice.resent` stores the billing e-mail (PII); consider logging an id instead.
 * No card numbers are collected or shown anywhere in this module. Exports are toasts (no files); if made real, use `csvCell` + `safeFileName`.
 * Customer id from the URL is looked up as an own property of `CUSTOMERS`; unknown ids render "Page not found".
+
+## Changes vs prototype (owner decision, docs/SOD_MATRIX.md sections 2 and 3)
+| Prototype | Now | Where |
+|---|---|---|
+| Any Support/Super could mark paid, retry, void, resend, issue invoices, edit pricing | Every mutation needs an elevated session; support cannot elevate. Buttons disabled "Elevate to make changes"; banner links to `/admin/elevation` | `guard()` in `services/billing-admin.ts`, `useGate` |
+| Mark paid single click | Manual override = finance action (reason >= 15, ticket `[A-Z]{2,6}-\d{1,6}`) | `financeRequest` |
+| No credit / refund / write-off | Added as invoice actions (Credit, Refund on Paid, Write off on Past due; Mark paid on Past due) via one form (`billing/BillingModals.tsx` `FinanceForm`) | `FinanceForm` |
+| - | Amount in USD (invoice currency divided by the applied rate in `RATES`, rate = units per 1 USD). At or below `SOD.FINANCE_DUAL_USD` (1,000) a single elevated super admin completes it, audited with ticket. Above, an unknown or Held rate, and ALL write-offs: `requestApproval` domain "admin", approverRoles ["super"], forbid [initiator], needs 1, 24 h expiry | `toUsd`, `needsSecondApprover`, `createAdminApproval` |
+| - | "Pending approvals" panel (Billing list and customer billing pages; shown only when something is pending): Approve / Reject with reason >= 10 characters, disabled with `whyCannotApprove` text (or "Elevate to make changes"); the initiator sees Withdraw | `admin/PendingApprovals.tsx`, `lib/adminApprovals.ts` |
+| Audit written by the UI | Services write `adminLog` incl. initiator, second approver, approval id, reason and ticket (`invoice.<kind>.applied`, `invoice.voided`, `invoice.payment_retried`, `invoice.resent`, `invoices.issued`, `pricing.updated`) | service |
+| Approval of a request by the same person | Blocked by the engine (`requestedBy`, `forbid`) and by `assertRole("super")`; the approver must be elevated, so a persona switch (super to super2) needs its own elevation | `decideFinance` |
+
+## Open questions (added)
+9. "Mark paid" amount is the full invoice total (amount + tax) in the invoice currency; refunds are capped at total minus already refunded; credits at the invoice total. Confirm the intended caps (credits against balance rather than an invoice?).
+10. A currency without an applied rate (or whose seed rate is Held, e.g. GBP) is treated as ABOVE the threshold (needs a second approver). Confirm.
+11. Void, Retry, Resend, Issue invoices, Pricing: elevation + audit only (not listed in the dual-control table). Void also cancels a receivable; should it be dual-control like write-off?
+12. Written-off invoices get status "Written off" (neutral chip); the customer balance is reduced.
+13. Approval expiry is the engine default (24 h) and is audited on sweep.
+
+## Security notes (added)
+* Dual control, elevation, USD conversion and the threshold are UI/demo enforcement: the API must re-check actor identity (user ids, not names), both elevation records, the rate source (server-side) and apply the change atomically with the audit entry; amounts as integer minor units.
+* Approvals live in the in-memory approvals store (lost on reload); the real API must persist and authorise them.
+* Conflicts resolved by owner decision: single-person "mark paid" removed; write-offs and large credits/refunds always need a second elevated super admin.

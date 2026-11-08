@@ -42,5 +42,5 @@ export function riskNorm(r: any): void {
   r._n = true;
 }
 export function riskLog(r: any, a: string): void { r.history = r.history || []; r.history.push({ ts: nowStamp().slice(0, 10), by: getMe().name, a }); }
-export const riskCanEdit = (): boolean => ["super", "admin", "owner", "analyst"].includes(appStore.get().role);
+export const riskCanEdit = (): boolean => ["super", "admin", "owner", "analyst"].includes(appStore.get().role.replace(/2$/, ""));
 export const riskCount = () => DATA.risks.length;

@@ -17,9 +17,11 @@ export const AUTH_RULES = ["MFA enforced for every user on every tenant — tena
   "Reset links: single use, 15-minute expiry, generic response, MFA required before the new password is accepted, all sessions revoked and the user notified",
   "Session cookies Secure, HttpOnly, SameSite=Strict; idle timeout 15 minutes for privileged roles and 30 otherwise, 12-hour absolute limit, step-up for sensitive actions",
   "New-device and new-country sign-in alerts to the user"];
-export const PRIV_RULES = ["Hardware security key required for super admins", "Just-in-time elevation, 60-minute maximum, with reason recorded",
+export const PRIV_RULES = ["Hardware security key required for super admins", "Just-in-time elevation for every change in this console: 60-minute maximum, reason (15+ characters) and ticket reference recorded",
+  "Super admins have the admin space only (no workspace access); support can browse and request, never elevate or approve",
+  "Dual control: credits, refunds and manual paid marks above USD 1,000, every write-off and every rate or tax override need a second, different elevated super admin",
   "Console reachable only from allow-listed networks", "MFA resets need identity checks and a second approver",
-  "No standing access to customer content; support grants are approved by the customer and time-boxed", "All actions streamed to the SIEM and reviewed weekly"];
+  "No standing access to customer content; customer-approved support grants (read-only, expiring) are the only route", "All actions streamed to the SIEM and reviewed weekly"];
 
 function Rules({ title, rules, children }: { title: string; rules: string[]; children?: React.ReactNode }) {
   return (

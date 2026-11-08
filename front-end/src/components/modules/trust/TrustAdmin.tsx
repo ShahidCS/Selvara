@@ -1,13 +1,14 @@
 import { Chip, Icon, Page, StatusChip, Table } from "@/components/ui";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
-import { getMe, wsLog } from "@/lib/audit";
-import { bumpData, useData, useModState } from "@/lib/store";
+import { wsLog } from "@/lib/audit";
+import { hasRole } from "@/lib/sod";
+import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { TRUST } from "@/lib/trustData";
 import * as svc from "@/services/trust";
+import { ApprovalsPanel, WhyNot, attempt } from "../sodKit";
 import { BlockDomainForm, DenyForm, PublishForm } from "./TrustModals";
 
-const FAIL = "Something went wrong. Please try again.";
 const TABS: [string, string][] = [["resources", "Resources"], ["access", "Access & requests"], ["activity", "Activity & history"], ["chat", "Chatbot"]];
 const SEC = { margin: "0 0 8px" } as const;
 
@@ -16,40 +17,35 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
   useData();
   const [tab, setTab] = useModState("trust.adm", "resources");
   const reqCount = TRUST.requests.length;
+  const canAct = hasRole(useApp((s) => s.role), "admin", "owner");
+  const noRole = canAct ? null : "Only admin or owner can do this.";
 
-  const approve = async (id: string) => {
-    try {
-      const r = await svc.approveRequest(id, getMe().name);
-      if (!r) return;
-      wsLog("trust.access.approved", r.who + " → " + r.resource, "Policy");
-      L.toast("Access approved for " + r.who); bumpData();
-    } catch { L.toast(FAIL, false); }
-  };
+  const approve = (id: string) => attempt(L, async () => {
+    const r = await svc.approveRequest(id);
+    if (!r) return;
+    wsLog("trust.access.approved", r.who + " → " + r.resource, "Policy");
+    L.toast("Access approved for " + r.who); bumpData();
+  });
   const deny = (id: string) => { if (TRUST.requests.some((x) => x.id === id)) L.openModal("Deny access request", <DenyForm id={id} L={L} />); };
-  const revoke = async (i: number) => {
-    try {
-      const a = await svc.revokeAccount(i);
-      if (!a) return;
-      wsLog("trust.account.revoked", a.company, "Policy"); L.toast(a.company + " access revoked"); bumpData();
-    } catch { L.toast(FAIL, false); }
-  };
-  const unblock = async (d: string) => {
-    try { await svc.unblockDomain(d); wsLog("trust.domain.unblocked", d, "Policy"); L.toast(d + " unblocked"); bumpData(); } catch { L.toast(FAIL, false); }
-  };
-  const toggleChatbot = async () => {
-    try { const on = await svc.setChatbot(!TRUST.chatbot); wsLog("trust.chatbot." + (on ? "enabled" : "disabled"), "Trust Center chatbot", "Policy"); bumpData(); } catch { L.toast(FAIL, false); }
-  };
-  const toggleVis = async (i: number) => {
-    try {
-      const t = await svc.toggleVisibility(i);
-      wsLog("trust.visibility.changed", t.name + " → " + t.access, "Policy");
-      L.toast(t.name + " is now " + (t.access === "Public" ? "public" : "access-controlled")); bumpData();
-    } catch { L.toast(FAIL, false); }
-  };
+  const revoke = (i: number) => attempt(L, async () => {
+    const a = await svc.revokeAccount(i);
+    if (!a) return;
+    wsLog("trust.account.revoked", a.company, "Policy"); L.toast(a.company + " access revoked"); bumpData();
+  });
+  const unblock = (d: string) => attempt(L, async () => { await svc.unblockDomain(d); wsLog("trust.domain.unblocked", d, "Policy"); L.toast(d + " unblocked"); bumpData(); });
+  const toggleChatbot = () => attempt(L, async () => { const on = await svc.setChatbot(!TRUST.chatbot); wsLog("trust.chatbot." + (on ? "enabled" : "disabled"), "Trust Center chatbot", "Policy"); bumpData(); });
+  const toggleVis = (i: number) => attempt(L, async () => {
+    const t = await svc.toggleVisibility(i);
+    if (t.pending) { wsLog("trust.visibility.publish_requested", t.name, "Policy"); L.toast("Publishing " + t.name + " needs approval from a different admin or owner"); bumpData(); return; }
+    wsLog("trust.visibility.changed", t.name + " → " + t.access, "Policy");
+    L.toast(t.name + " is now access-controlled"); bumpData();
+  });
 
   let body;
   if (tab === "resources") {
     body = (
+      <>
+      <ApprovalsPanel prefix="trust." title="Publishing approvals (four-eyes)" />
       <div className="panels" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gridAutoRows: "min-content", alignContent: "start" }}>
         {DATA.trust.map((t, i) => (
           <div className="card" key={i}><div className="c-body">
@@ -57,11 +53,12 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
             <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 8 }}><Icon name={t.access === "Public" ? "check" : "access"} /> {t.access}</div>
             <div className="btngrp" style={{ marginTop: 12 }}>
               <button className="btn btn-secondary sm" onClick={() => L.toast("Opened " + t.name + " (demo)")}><Icon name="ext" />View</button>
-              <button className="btn btn-ghost sm" onClick={() => toggleVis(i)}>{t.access === "Public" ? "Make private" : "Make public"}</button>
+              <button className="btn btn-ghost sm" disabled={!canAct || !!t.publishPending} title={noRole || undefined} onClick={() => toggleVis(i)}>{t.access === "Public" ? "Make private" : t.publishPending ? "Awaiting approval" : "Request to make public"}</button>
             </div>
           </div></div>
         ))}
       </div>
+      </>
     );
   } else if (tab === "access") {
     body = (
@@ -75,8 +72,11 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
                   <td>{r.who}{svc.isBlockedWho(r.who) ? <> <span className="chip bad" style={{ marginLeft: 4 }}><Icon name="alert" />Blocked domain</span></> : null}<div style={{ fontSize: 11.5, color: "var(--muted)" }}>{r.company} · {r.at}</div></td>
                   <td>{r.resource}</td><td style={{ fontSize: 12, color: "var(--muted)" }}>{r.reason}</td>
                   <td className="r" style={{ whiteSpace: "nowrap" }}>
-                    <button className="btn btn-ghost sm" onClick={() => approve(r.id)}><Icon name="check" />Approve</button>
-                    <button className="btn btn-ghost sm" onClick={() => deny(r.id)}>Deny</button>
+                    {(() => { const why = svc.approveBlockReason(r); return (<>
+                      <button className="btn btn-ghost sm" disabled={!!why} aria-describedby={why ? "tra-" + r.id : undefined} onClick={() => approve(r.id)}><Icon name="check" />Approve</button>
+                      <button className="btn btn-ghost sm" disabled={!canAct} title={noRole || undefined} onClick={() => deny(r.id)}>Deny</button>
+                      <WhyNot id={"tra-" + r.id} text={why} />
+                    </>); })()}
                   </td>
                 </tr>
               ))}
@@ -91,7 +91,7 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
                 <td style={{ fontSize: 12 }}>{a.nda === "Pending" ? <Chip cls="warn" icon="clock">Pending</Chip> : <Chip cls="ok" icon="check">{a.nda}</Chip>}</td>
                 <td style={{ fontSize: 12 }}>{a.viewers.length ? a.viewers.map((v, j) => <span key={j}>{j ? <br /> : null}{v}</span>) : <span style={{ color: "var(--muted)" }}>None yet</span>}</td>
                 <td style={{ fontSize: 12 }}>{a.access}</td><td><StatusChip s={a.status} /></td>
-                <td className="r">{a.status === "Active" ? <button className="btn btn-ghost sm" onClick={() => revoke(i)}>Revoke</button> : null}</td>
+                <td className="r">{a.status === "Active" ? <button className="btn btn-ghost sm" disabled={!canAct} title={noRole || undefined} onClick={() => revoke(i)}>Revoke</button> : null}</td>
               </tr>
             ))}
           </Table>
@@ -116,7 +116,7 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
                 <span className="chip neutral" key={d}>{d} <button onClick={() => unblock(d)} aria-label={"Unblock " + d} style={{ appearance: "none", border: 0, background: "none", color: "var(--muted)", cursor: "pointer", padding: "0 0 0 4px" }}>×</button></span>
               )) : <span style={{ fontSize: 12.5, color: "var(--muted)" }}>No blocked domains.</span>}
             </div>
-            <button className="btn btn-secondary sm" onClick={() => L.openModal("Block a domain", <BlockDomainForm L={L} />)}><Icon name="plus" />Block a domain</button>
+            <button className="btn btn-secondary sm" disabled={!canAct} title={noRole || undefined} onClick={() => L.openModal("Block a domain", <BlockDomainForm L={L} />)}><Icon name="plus" />Block a domain</button>
           </section>
         </div>
       </div>
@@ -142,7 +142,7 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
         <div className="card" style={{ boxShadow: "none", background: "var(--accent-weak)", borderColor: "transparent", marginBottom: 12 }}>
           <div className="c-body" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px" }}>
             <div style={{ flex: "1 1 auto" }}><div style={{ fontWeight: 600 }}>Trust Center chatbot</div><div style={{ fontSize: 12.5, color: "var(--muted)" }}>Answers visitor questions from your published FAQ and verified answer library only. {TRUST.chatbot ? "Currently on." : "Currently off."}</div></div>
-            <button className={`btn ${TRUST.chatbot ? "btn-secondary" : "btn-primary"} sm`} onClick={toggleChatbot}>{TRUST.chatbot ? "Turn off" : "Turn on"}</button>
+            <button className={`btn ${TRUST.chatbot ? "btn-secondary" : "btn-primary"} sm`} disabled={!canAct} title={noRole || undefined} onClick={toggleChatbot}>{TRUST.chatbot ? "Turn off" : "Turn on"}</button>
           </div>
         </div>
         <div className="sectitle" style={SEC}>Conversation log</div>
@@ -160,7 +160,7 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
   return (
     <Page mod="trust" acts={<>
       <button className="btn btn-secondary" onClick={setPublic}><Icon name="ext" />Preview public page</button>
-      {tab === "resources" ? <button className="btn btn-primary" onClick={() => L.openModal("Publish resource", <PublishForm L={L} />)}><Icon name="plus" />Publish resource</button> : null}
+      {tab === "resources" ? <button className="btn btn-primary" disabled={!canAct} title={noRole || undefined} onClick={() => L.openModal("Publish resource", <PublishForm L={L} />)}><Icon name="plus" />Publish resource</button> : null}
     </>}>
       <div className="card" style={{ flex: "0 1 auto", minHeight: 0 }}>
         <div className="c-head"><div className="seg" role="tablist">{TABS.map((t) => (

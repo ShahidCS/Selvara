@@ -48,7 +48,7 @@ export function exportLog(fmt: "json" | "csv", f: AlogFilter) {
     const ok = fmt === "json"
       ? downloadText(safeFileName("admin-audit-log.json"), JSON.stringify(rows, null, 2))
       : downloadText(safeFileName("admin-audit-log.csv"), [COLS.join(",")].concat(rows.map((r) => COLS.map((c) => csvCell(c === "categories" ? (r.categories || []).join("|") : r[c])).join(","))).join("\n"));
-    adminLog("adminlog.exported", cn + " entries, " + fmt.toUpperCase(), AUDIT_OPTS);
+    adminLog("adminlog.exported", rows.length + " of " + cn + " entries, " + fmt.toUpperCase(), { ...AUDIT_OPTS, after: `filter: tenant=${f.tenant}, basis=${f.basis}, text=${f.q ? "set" : "none"}; read export, no elevation required` });
     return ok;
   }, () => post<boolean>("/admin/audit/exports", { format: fmt, filter: f }));
 }
