@@ -49,3 +49,24 @@ Enforced by the UI only (the API must enforce all of these):
 * **Public form abuse:** subscribe / request-access / ask-a-question are anonymous: add rate limiting, bot protection and server-side validation (email, lengths).
 * **Chatbot:** this port is keyword matching over verified answers + FAQ, not an LLM. If replaced by an LLM: answer only from the published corpus (verified entries), never from internal/unverified/tenant-private data; treat the visitor question as untrusted (prompt injection: no tool access, no system-prompt disclosure, no instructions from retrieved text), filter output, rate limit, log and review. Verifying an answer (Questionnaires) publishes it to the external chatbot: gate that action.
 * Free text (reason, note, question, emails, domains) is clamped (`clampText` + `maxLength`), emails use `isEmail`, and every value (including chatbot answers and chat logs written by external visitors) renders as React text only. No HTML/markdown rendering, no `dangerouslySetInnerHTML`. Source inline `onclick` handlers with interpolated ids/domains were removed.
+
+## Hardening (docs/SOD_MATRIX.md, owner decision 2026-11)
+Services throw `SodError`; `wsLog` calls kept; publishing uses `lib/approvals.ts` (`ApprovalsPanel` on the Resources tab). Verify of answers: see `questionnaires.md`.
+
+**What changed vs the prototype**
+| Area | Prototype | Now |
+|---|---|---|
+| Admin actions (approve/deny/revoke, block/unblock domain, chatbot, visibility, publish) | no role check beyond reaching the admin view | admin/owner (`assertRole`), buttons disabled with a reason |
+| Blocklisted domains | Approve ignored the blocklist (OQ 1) | refused in the service (`SodError`, logged `trust.access.approve.denied`) and the button is disabled with the reason text; match is case-insensitive on the domain and its parents |
+| Approve access request | any admin | approver != requester/entered-by |
+| Make public / Publish as Public | immediate | four-eyes approval (approver != editor/requester); the resource is not listed (publish) or stays access-controlled (toggle) until approved; "Make private" and "On request, NDA" publish stay immediate |
+| Anonymous request-access | logged and toasted, never queued, reason dropped (OQ 2) | enqueued into the admin pending queue (`TR-n`), reason stored clamped to 300, rate limited (3 per email and 30 overall per hour, 200 queued max), duplicate/public/over-queue requests get the same success reply (no enumeration); copy shown on the form |
+
+**Resolved open questions (owner decision):** OQ 1 (blocklist enforced), OQ 2 (queue + reason), OQ 8 (visibility is role-gated and four-eyes for public). Still open: OQ 3-7, 9.
+
+**Open question added:** the "rate limiting copy as the board states" could not be found in the repo (no Trust board text); the limits come from SPEC_BOARDS 9.G2 (sign-up: 3 per hour per email) and the copy is "You can send up to 3 requests per hour from one email address. Our security team reviews every request and will reply by email." Replace with the board's exact wording.
+
+**Security notes (additions)**
+* Rate limiting here is an in-memory demo keyed by email; the real API must limit by IP/device, add bot protection, verify the email and never reveal queue/blocklist state.
+* The editor of a resource (`editedBy`) is recorded on publish/make-private and forbidden from approving its publication; seeded resources have none.
+* Verified answers feed the public chatbot: gated in `questionnaires.md`.

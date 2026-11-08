@@ -1,6 +1,7 @@
 import { Icon, Page, StatusChip, Table, activate } from "@/components/ui";
 import { DATA } from "@/lib/data";
-import { useData, useModState } from "@/lib/store";
+import { useApp, useData, useModState } from "@/lib/store";
+import { whyCannotWrite } from "@/services/issues";
 import { useLayer } from "@/hooks/useLayer";
 import { DueText, openIssueDrawer, openIssueForm } from "./issues/IssueLayers";
 
@@ -12,10 +13,12 @@ const COLS = ["Open", "In progress", "Closed"];
 export default function IssuesModule() {
   useData();
   const L = useLayer();
+  useApp((s) => s.role);
+  const writeWhy = whyCannotWrite();
   const [view, setView] = useModState<"table" | "kanban">("issues.view", "table");
   const open = (id: string) => openIssueDrawer(L, id);
   return (
-    <Page mod="issues" acts={<button className="btn btn-primary" onClick={() => openIssueForm(L, null)}><Icon name="plus" />New issue</button>}>
+    <Page mod="issues" acts={<button className="btn btn-primary" disabled={!!writeWhy} title={writeWhy || undefined} onClick={() => openIssueForm(L, null)}><Icon name="plus" />New issue</button>}>
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head"><h3>Remediation</h3><div className="r"><div className="seg" role="tablist">
           <button role="tab" aria-selected={view === "table"} onClick={() => setView("table")}><Icon name="rows" />Table</button>

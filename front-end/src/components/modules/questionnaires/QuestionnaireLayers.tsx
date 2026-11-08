@@ -7,9 +7,10 @@ import { wsLog } from "@/lib/audit";
 import { bumpData, setModState, useData } from "@/lib/store";
 import { clampText } from "@/lib/security";
 import * as svc from "@/services/questionnaires";
+import { getApproval } from "@/lib/approvals";
+import { WhyNot, attempt } from "../sodKit";
 
 const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
-const FAIL = "Something went wrong. Please try again.";
 
 /* ---- drawer (source qDrawer / qAdvance / qComplete) ---- */
 function DrawerBody({ i, L }: { i: number; L: LayerApi }) {
@@ -18,21 +19,18 @@ function DrawerBody({ i, L }: { i: number; L: LayerApi }) {
   if (!q) return <p className="field help">Questionnaire not found.</p>;
   const [a, b] = svc.splitProg(q.prog);
   const pct = svc.qPct(q.prog);
-  const advance = async () => {
-    try {
-      const out = await svc.advanceQuestionnaire(i);
-      wsLog("questionnaire.updated", q.name + " " + q.prog, "Vendor");
-      L.closeLayer(); L.toast("Progress updated"); bumpData();
-      if (out.a < out.b) openQuestionnaireDrawer(L, i);
-    } catch { L.toast(FAIL, false); }
-  };
-  const complete = async () => {
-    try {
-      await svc.completeQuestionnaire(i);
-      wsLog("questionnaire.completed", q.name, "Vendor");
-      L.closeLayer(); L.toast(q.name + " marked complete"); bumpData();
-    } catch { L.toast(FAIL, false); }
-  };
+  const advance = () => attempt(L, async () => {
+    const out = await svc.advanceQuestionnaire(i);
+    wsLog("questionnaire.updated", q.name + " " + q.prog, "Vendor");
+    L.closeLayer(); L.toast("Progress updated"); bumpData();
+    if (out.a < out.b) openQuestionnaireDrawer(L, i);
+  });
+  const waiting = getApproval(q.pendingSend)?.status === "Pending";
+  const complete = () => attempt(L, async () => {
+    await svc.requestSend(i);
+    wsLog("questionnaire.send_requested", q.name + " (" + q.prog + ")", "Vendor");
+    L.closeLayer(); L.toast("Submitted for review; a different admin or owner must approve sending it"); bumpData();
+  });
   return (
     <>
       <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 12 }}>
@@ -41,11 +39,13 @@ function DrawerBody({ i, L }: { i: number; L: LayerApi }) {
       </div>
       <dl className="meta-grid"><dt>Answered</dt><dd>{a} of {b}</dd><dt>Remaining</dt><dd>{b - a}</dd><dt>Due</dt><dd>{q.due}</dd></dl>
       <div className="hr"></div><div className="sectitle">Actions</div>
+      <p className="field help" style={{ margin: "0 0 8px" }}>Sending a questionnaire to the customer is approved by an admin or owner who did not write or edit it.</p>
+      {waiting ? <WhyNot text="Awaiting review by someone other than the author. It cannot be edited meanwhile." /> : null}
       <div className="btngrp">
         {q.status !== "Complete" ? (
           <>
-            <button className="btn btn-secondary sm" onClick={advance}><Icon name="check" />Answer next 10</button>
-            <button className="btn btn-primary sm" onClick={complete}><Icon name="check" />Mark complete</button>
+            <button className="btn btn-secondary sm" disabled={waiting} onClick={advance}><Icon name="check" />Answer next 10</button>
+            <button className="btn btn-primary sm" disabled={waiting} onClick={complete}><Icon name="check" />{waiting ? "Awaiting review" : "Submit for review"}</button>
           </>
         ) : <button className="btn btn-secondary sm" onClick={() => L.toast("Exported responses (demo)")}><Icon name="download" />Export responses</button>}
       </div>
@@ -61,16 +61,14 @@ export function openQuestionnaireDrawer(L: LayerApi, i: number) {
 /* ---- add answer (source qAddAnswer / qDoAddAnswer) ---- */
 export function AddAnswerForm({ L }: { L: LayerApi }) {
   const [q, setQ] = useState(""); const [a, setA] = useState(""); const [err, setErr] = useState(false);
-  const submit = async () => {
+  const submit = () => attempt(L, async () => {
     const qq = clampText(q, 300), aa = clampText(a, 2000);
     if (!qq || !aa) { setErr(true); return; }
-    try {
-      await svc.addAnswer(qq, aa);
-      wsLog("answer.added", qq.slice(0, 40), "Vendor");
-      L.closeLayer(); L.toast("Answer added to library");
-      setModState("questionnaires.view", "library"); bumpData();
-    } catch { L.toast(FAIL, false); }
-  };
+    await svc.addAnswer(qq, aa);
+    wsLog("answer.added", qq.slice(0, 40), "Vendor");
+    L.closeLayer(); L.toast("Answer added to library");
+    setModState("questionnaires.view", "library"); bumpData();
+  });
   return (
     <>
       <div>
@@ -86,16 +84,14 @@ export function AddAnswerForm({ L }: { L: LayerApi }) {
 /* ---- import questionnaire (source qImport / qDoImport) ---- */
 export function ImportForm({ L }: { L: LayerApi }) {
   const [name, setName] = useState(""); const [total, setTotal] = useState("120"); const [due, setDue] = useState("30 Nov 2026"); const [err, setErr] = useState(false);
-  const submit = async () => {
+  const submit = () => attempt(L, async () => {
     const n = clampText(name, 160);
     if (!n) { setErr(true); return; }
     const tot = Math.min(100000, Math.max(1, parseInt(total, 10) || 120));
-    try {
-      await svc.importQuestionnaire(n, tot, clampText(due, 40));
-      wsLog("questionnaire.imported", n, "Vendor");
-      L.closeLayer(); L.toast("Questionnaire imported"); bumpData();
-    } catch { L.toast(FAIL, false); }
-  };
+    await svc.importQuestionnaire(n, tot, clampText(due, 40));
+    wsLog("questionnaire.imported", n, "Vendor");
+    L.closeLayer(); L.toast("Questionnaire imported"); bumpData();
+  });
   return (
     <>
       <div>

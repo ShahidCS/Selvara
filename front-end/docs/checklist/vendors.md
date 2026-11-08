@@ -45,3 +45,26 @@ Exported hook for other modules: `useVendorDrawer()` (from `VendorsModule`), ope
 - Requests are removed by `splice` on the shared `VENDOR_REQS` array (the source reassigned the variable).
 - Every mutation goes through `src/services/vendors.ts` (`viaApi`) inside try/catch with a generic toast. Every source `wsLog` call is kept (actor from `getMe()`).
 - Finding ids are demo values (`Math.random`), not tokens.
+
+## Hardening (docs/SOD_MATRIX.md, owner decision 2026-11)
+Services throw `SodError` (the UI shows only its message); every step still calls `wsLog`; the four-eyes steps go through `lib/approvals.ts` via `lib/approvalKit.ts` (handler applies the change only after the last approver) and the `ApprovalsPanel` card ("Vendor approvals").
+
+**What changed vs the prototype**
+| Area | Prototype | Now |
+|---|---|---|
+| Who may decide | request approval gated by `vendorCanManage` (super, admin, owner, analyst); drawer actions open to everyone with the module | every vendor decision and mutation needs admin/owner (`assertRole` in each service); drawer buttons disabled with the reason / read-only for others |
+| `vendorCanManage` | listed `analyst` (and `super`) who cannot open the module (ROLE_MODS) | admin, owner only (analyst has no `vendors` module; super has no workspace) |
+| Approve a vendor request | any manager, incl. the requester | approver != requester (`personOnly` strips the team suffix of seed names like "P. Nair, Support"); Critical tier opens a 2-approver request (roles admin/owner, requester forbidden, 72 h) and the vendor is added only when both have approved |
+| Onboarding gate Approve | any manager | approver != whoever requested or added the vendor; Critical tier needs 2 approvers; Block stays immediate (safe direction) |
+| Tier change | immediate | request + approval by a different admin/owner (not the initiator, not the vendor's requester/adder); applied on approval |
+| Certificate waiver | did not exist | new "Request waiver": reason (>= 10), expiry (future, <= 12 months), approver != initiator; the cert shows "Waived" with approval id and named approver |
+| Add vendor score | `parseInt(..)||75` turned 0 into 75, out-of-range clamped | blank defaults to 75; otherwise 0-100 with up to 2 decimals or "Enter a score between 0 and 100." (inline error) |
+| Reassess score | `parseInt` ("7.9" -> 7, "12abc" -> 12) | same strict decimal parser; recorder (`recordedBy`) is always the signed-in person |
+
+**Resolved open questions (owner decision):** OQ 1 (gate other actions with `vendorCanManage`, drawer read-only otherwise: done; analyst removed), OQ 2 and OQ 3 (score parsing: fixed). Still open: OQ 4-10 unchanged.
+
+**Security notes (additions)**
+* Four-eyes is enforced in the service layer from the signed-in persona; the real API must repeat it from the session identity (requester/adder ids, not names), count distinct approvers server-side and write its own audit entry.
+* Names are compared with `isSamePerson`; seed vendors have no `requestedBy`/`addedBy`, so only the engine's "not the initiator" rule applies to them.
+* The initiator of a Critical request/gate cannot also be one of the two approvers (engine rule: requester never approves), so Critical onboarding takes three people (initiator + two). Decide whether the initiator should count as the first approver.
+* `VendorRequestForm` (Work) is not edited: it stores `requester` as the full persona name; `pendingApproval` is added to the request object by this module.

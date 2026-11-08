@@ -2,6 +2,10 @@ import { Chip, Icon } from "@/components/ui";
 import { useApp, useData } from "@/lib/store";
 import { useLayer, type LayerApi } from "@/hooks/useLayer";
 import { wsLog } from "@/lib/audit";
+import { adminLog } from "@/lib/adminAudit";
+import { roleOf } from "@/lib/rbac";
+import { appStore } from "@/lib/store";
+import { attempt } from "../sodKit";
 import * as svc from "@/services/integrations";
 
 export const HealthChip = ({ h }: { h: string }) =>
@@ -10,21 +14,14 @@ export const HealthChip = ({ h }: { h: string }) =>
 /** Actions shared by the table and the drawer (prototype: intToggle / intSync / intSyncAll). */
 export function useIntegrationActions() {
   const L = useLayer();
-  const toggle = async (name: string) => {
-    try {
-      const r = await svc.toggleIntegration(name); if (!r) { L.toast("Connector not found", false); return; }
-      wsLog("integration." + (r.connected ? "connected" : "disconnected"), name, "System");
-      L.toast(name + " " + (r.connected ? "connected (read-only)" : "disconnected"));
-    } catch { L.toast("Could not update the connector", false); }
-  };
-  const sync = async (name: string) => {
-    try { if (await svc.syncIntegration(name)) { wsLog("integration.synced", name, "System"); L.toast("Synced " + name + " (demo)"); } }
-    catch { L.toast("Could not sync the connector", false); }
-  };
-  const syncAll = async () => {
-    try { await svc.syncAllIntegrations(); wsLog("integrations.synced", "all connectors", "System"); L.toast("Syncing all connectors (demo)"); }
-    catch { L.toast("Could not sync the connectors", false); }
-  };
+  const toggle = (name: string) => attempt(L, async () => {
+    const r = await svc.toggleIntegration(name); if (!r) { L.toast("Connector not found", false); return; }
+    wsLog("integration." + (r.connected ? "connected" : "disconnected"), name, "System");
+    if (!r.connected) adminLog("integration.disconnected", name, { tenant: roleOf(appStore.get().role).tenant || "", categories: ["Integration"], basis: "Legitimate interest" });
+    L.toast(name + " " + (r.connected ? "connected (read-only)" : "disconnected"));
+  });
+  const sync = (name: string) => attempt(L, async () => { if (await svc.syncIntegration(name)) { wsLog("integration.synced", name, "System"); L.toast("Synced " + name + " (demo)"); } });
+  const syncAll = () => attempt(L, async () => { await svc.syncAllIntegrations(); wsLog("integrations.synced", "all connectors", "System"); L.toast("Syncing all connectors (demo)"); });
   return { toggle, sync, syncAll };
 }
 

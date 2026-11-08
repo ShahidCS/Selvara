@@ -81,7 +81,7 @@ function ensureSeed() {
       payload: { mrId: r.id, adminId: adm ? adm.id : "", custId: r.custId, reason: r.reason, reasonText: "Migrated from the pre-contract seed data", approver: "Jordan Avery", prevMfa: "Enrolled" },
     };
     approvals.set((s) => ({ list: [a, ...s.list] }));
-    r.approvalId = a.id; r.ticket = a.ticket; r.approver = "Jordan Avery"; r.method = "Pre-contract seed (checks not recorded)"; r.expiresAt = a.expiresAt;
+    r.approvalId = a.id; r.ticket = a.ticket; r.approver = "Dana Whitfield"; r.method = "Pre-contract seed (checks not recorded)"; r.expiresAt = a.expiresAt;
     adminLog("approval.mfa-reset-admin.requested", `${a.title} (${a.id}); demo seed with fresh 24 h expiry`, { tenant: r.custId, categories: ["Approval", "Authentication"], actor: r.by });
   });
 }

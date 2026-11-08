@@ -52,3 +52,27 @@ Exported hook for other modules: `useAiDrawer()` (from `AiModule`), opens the dr
 - Every mutation goes through `src/services/ai.ts` (`viaApi`) inside try/catch with a generic toast. Refusals use the source toasts.
 - Third-party / vendor data handling: AI inventory fields ("Data it can reach") are descriptive text only; no customer data is stored. Seed data is synthetic.
 - No uploads, external links or exports in this module (no `validateUpload`, `safeHref`, `csvCell` needed). Navigation uses `useGo`.
+
+## Hardening (docs/SOD_MATRIX.md, owner decision 2026-11)
+Services throw `SodError`; `aiLog` / `wsLog` calls kept; four-eyes steps use `lib/approvals.ts` through `lib/approvalKit.ts` and the `ApprovalsPanel` ("AI governance approvals").
+
+**What changed vs the prototype**
+| Area | Prototype | Now |
+|---|---|---|
+| `aiCanManage` | admin/owner/super role OR surname of the system owner equals mine | admin or owner role, or `isSamePerson(system owner, me)` (no surname matching) |
+| EU class confirmation | `draftBy !== me` and (super/admin or name contains "Rivera") | role admin/owner (`aiCanDecide`), confirmer is not the drafter and not the system owner (`assertNotSelf`); the Legal & Privacy name hack is gone (`aiIsLegalOrAdmin` kept as an alias) |
+| EU draft | overwrote tier and guardrail immediately | a draft only proposes (`euDraft`); tier and guardrail are applied when a second person confirms |
+| Impact assessment approval | submitter != approver, any manager | role admin/owner and approver is not the submitter, the author (`fria.by`) or the system owner; Return needs the same role and not the submitter |
+| Impact assessment edit | edit/approved states loose | refused while Submitted; editing an Approved one keeps it as a version (`friaVersions`) and starts a new draft that needs approval again (button "Start new version") |
+| Guardrail change | immediate | approval by a second admin/owner (not the requester, not the system owner); applied on approval; button shows "Change awaiting approval" |
+| Archive | immediate | same four-eyes approval |
+| Register system | ungated | admin/owner/analyst (`assertRole`); registering never approves: "Complete review" (In review -> Approved) needs admin/owner who did not register and does not own the system |
+| Discovered AI dismiss | ungated | admin/owner/analyst |
+| `setTier` (unreachable in the UI) | set the tier | refused: the tier only changes through the confirmed classification |
+
+**Resolved open questions (owner decision):** OQ 2 and 3 (surname hacks replaced by role gates and `isSamePerson`), OQ 4 (services re-check, registration gated). Still open: OQ 1, 5-12.
+
+**Security notes (additions)**
+* Role gates, "confirmer != drafter", "approver != submitter" and the second approver for guardrail/archive are enforced in `src/services/ai.ts`; the real API must enforce them from user ids (names are compared with `isSamePerson`, seed owners are initials like "A. Rivera").
+* Two analysts can still register; `analyst` cannot open the module under ROLE_MODS, so the analyst rule is only reachable through the API.
+* Every decision is audited: approval engine entries (`approval.<kind>.requested/approved`), `ai.guardrail.approved`, `ai.archive.approved` with approvers and requester, plus the existing `aiLog` calls.

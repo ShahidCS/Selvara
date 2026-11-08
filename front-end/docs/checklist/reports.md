@@ -24,3 +24,19 @@ Source: lines 3496-3525 (`REPORT_FREQ`, `SCHED_PACKS`, `REND.reports`, generate/
 * Reports and distribution are UI-only gated (no role gate in source). The API must generate reports with the caller's permissions, restrict who may schedule distribution, and validate/limit external recipients (data-leak risk when emailing packs).
 * Generated file is plain text containing only the report name and a timestamp; no user HTML is embedded. Any future HTML report must escape all values with `esc()` and open via blob URL as the board pack does.
 * Download file name is sanitised; recipients/detail are clamped and render as React text.
+
+## Hardening (docs/SOD_MATRIX.md, owner decision 2026-11)
+Services throw `SodError`; `wsLog` kept; external distribution uses `lib/approvals.ts` (`ApprovalsPanel` "External distribution awaiting a different admin").
+
+**What changed vs the prototype**
+| Area | Prototype | Now |
+|---|---|---|
+| Schedule / remove / generate | ungated | admin/owner (`assertRole`), buttons disabled with the reason for others |
+| External distribution | saved at once | recipients are external unless a known internal group (Board, Exec team, Risk Committee, ...) or an address on the workspace's own email domain (deny by default); an external schedule is a request that a DIFFERENT admin approves (owner/admin initiate, approver role admin); nothing is saved or distributed until then; internal-only schedules save at once; the row shows "External, approved by <name>" |
+| "On demand" frequency (OQ 1, unreachable) | branch existed but `REPORT_FREQ` lacked it | "On demand" appended to `REPORT_FREQ` in `lib/trustData.ts` (minimal fix); "Send on" is hidden and detail empty for it, next = "—" |
+
+**Resolved open questions (owner decision):** OQ 1. Still open: OQ 2-5.
+
+**Open question added:** the internal-group list and the "own email domain" test are a heuristic for free-text recipients (see `externalRecipients` in `services/reports.ts`); the real API must validate recipient addresses against the tenant's directory and block external ones without approval.
+
+**Security notes (additions):** changing an existing external schedule creates a new pending request; the previous approved schedule stays active until the new one is approved (the pending one is not applied in place).

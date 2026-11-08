@@ -14,7 +14,7 @@ export const uiMessage = (e: unknown): string => (e instanceof SodError ? e.mess
 export function samePerson(a: unknown, b: unknown): boolean {
   if (isSamePerson(a, b)) return true;
   const parts = (n: unknown) => {
-    const s = String(n ?? "").trim().toLowerCase().replace(/[.,]/g, " ").replace(/\s+/g, " ");
+    const s = String(n ?? "").toLowerCase().replace(/[.,]/g, " ").replace(/\s+/g, " ").trim();
     if (!s) return null;
     const p = s.split(" ");
     return { f: p[0], l: p[p.length - 1], one: p.length === 1 };

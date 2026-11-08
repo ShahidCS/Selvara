@@ -33,3 +33,22 @@ Source: lines 3443-3478 (`REND.questionnaires`, `qRender`, `vendorPortal`, `qDra
 * Verified library answers are published to external visitors via the chatbot: require approval workflow server-side, content review, and never include internal-only text.
 * All questionnaire names, answers, due text render as React text; inputs clamped (`clampText`, `maxLength`), numbers range-checked. No uploads exist in the source (none added).
 * Vendor answers are held in memory only (no client storage). A real API must validate, size-limit and persist submissions and prevent edits after submit.
+
+## Hardening (docs/SOD_MATRIX.md, owner decision 2026-11)
+Services throw `SodError`; `wsLog` calls kept; sending uses `lib/approvals.ts` (`ApprovalsPanel` above the "In flight" table).
+
+**What changed vs the prototype**
+| Area | Prototype | Now |
+|---|---|---|
+| Send externally ("Mark complete" sets 100%, due "Submitted") | immediate | "Submit for review" by the author; a reviewer (admin/owner) who is not the author (importer) and has not edited it approves, then the send is applied (`questionnaire.completed` logged with author and reviewer). Edits are blocked while it awaits review |
+| Verify answer (feeds the PUBLIC Trust Center chatbot) | any viewer of the library, immediate | admin/owner only; verifier != the answer's author/editor (`author` set on Add answer); `verifiedBy` recorded; audited (`answer.verified` with author); the button is disabled with the reason, verified rows show who verified |
+| Import / answer / add answer | ungated | admin, owner, employee (the roles that open the module); vendors only use the portal view |
+
+**Open questions added**
+1. "Submit for review" still lets the author mark a questionnaire complete at any progress (source behaviour: sets answered = total). The reviewer sees the progress in the approval title; decide whether to require 100% first.
+2. Questionnaires are addressed by index in the UI; a stable `qid` is added lazily for the approval payload.
+3. The vendor portal view (vendor role answering our questionnaire) is outside the matrix and unchanged.
+
+**Security notes (additions)**
+* Author/editor tracking (`author`, `editors`, `ANSWER_LIB.author/editedBy`) is mock-state; the real API must record user ids and enforce reviewer != author and verifier != author itself.
+* Chatbot corpus = verified answers only, so Verify is the publication control for external answers.

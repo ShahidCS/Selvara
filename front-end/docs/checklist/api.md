@@ -29,3 +29,19 @@
 **UI-only (must be enforced by the API):** `apiCanManage`; key issuance and storage (generate server-side, show plaintext once, store only hash + prefix, scopes enforced per request, rotation/expiry); webhook signing secrets (server-side, per-endpoint, rotate); RBAC on every mutation; audit entries written server-side.
 **Webhook URL (SSRF):** `isSafeWebhookUrl` (`lib/security.ts`) accepts only `https:` URLs without credentials, rejects IPv6 literals, `localhost`, `*.local/.internal/.intranet/.lan/.home/.corp`, single-label hosts, non-dotted numeric hosts (decimal/hex/octal forms are normalised by `URL` and then range-checked) and IPv4 in 0/8, 10/8, 100.64/10, 127/8, 169.254/16, 172.16/12, 192.168/16, 198.18/15, multicast and reserved. This is a client-side convenience only: the server must resolve DNS at delivery time, pin and re-check the address (DNS rebinding), refuse redirects, and cap response size/time.
 **Secrets in the UI:** the demo key comes from `crypto.getRandomValues` (`secureHex`), lives only in the modal's props and is dropped on close; it is never logged (`wsLog` has label + scope only), stored, or put in a URL. All user text renders as React text; no `eval`/`new Function`; ids are demo ids (`Date.now`).
+
+## Hardening (docs/SOD_MATRIX.md, owner decision 2026-11)
+Services throw `SodError`; `wsLog` calls kept (never the key); approvals use `lib/approvals.ts` (`ApprovalsPanel` on the Keys and Webhooks tabs).
+
+**What changed vs the prototype**
+| Area | Prototype | Now |
+|---|---|---|
+| `apiCanManage` | super, admin, owner | admin only (owner/super cannot open the module); every service `assertRole("admin")` |
+| Read-only key | issued and shown once | unchanged: single admin, shown once in the creation modal |
+| Write-scope key (Read/Write) | issued and shown once | a request: the row is "Pending approval" with no prefix and no secret; a SECOND admin approves; the key is then generated and shown ONCE, only to the requesting admin ("Show key once"), 60-minute reveal window, then the key is revoked and logged; the approver never sees it |
+| Webhook | added Active | created "Pending approval", never delivers, Test/Pause disabled until a second admin approves; https-only URL (`isSafeWebhookUrl`) re-checked in the service |
+| Revoke, delete webhook/test, push event, create/run test | gated by UI only | admin only in the service |
+
+**Resolved open questions (owner decision):** OQ 1 (the "reveal" now exists, once, to the requester after approval). Still open: OQ 2-8.
+
+**Security notes (additions):** the one-time secret lives in an in-memory vault (`VAULT` in `services/api.ts`) until revealed; it is never in approval payloads, logs, props of other users or storage. The real API must generate and hash keys server-side, bind the reveal to the requester's session, and expire unrevealed keys.

@@ -1,5 +1,8 @@
 /* Integrations API stubs. Mock mode performs the prototype's in-memory mutation; the caller then does wsLog / toast / bumpData.
- * The real API MUST enforce authorization, hold connector credentials/OAuth tokens server-side only, and request least-privilege (read-only) scopes. */
+ * CONTRACT (docs/SOD_MATRIX.md): connecting, disconnecting and syncing a connector need the admin role (assertRole -> SodError); disconnecting is audited in the
+ * workspace log and the admin log by the caller. The real API MUST enforce authorization, hold connector credentials/OAuth tokens server-side only, and request
+ * least-privilege (read-only) scopes. */
+import { assertRole, hasRole } from "@/lib/sod";
 import seed from "@/data/integrationsSeed.json";
 import { apiFetch, viaApi } from "./http";
 
@@ -9,13 +12,15 @@ export const INTEGRATIONS: Integration[] = clone(seed.INTEGRATIONS) as Integrati
 const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
 const enc = encodeURIComponent;
 
-/** UI gate only (prototype: intCanManage, exact list). Deny by default. */
-export const intCanManage = (roleId: string) => ["super", "admin", "owner", "analyst"].includes(roleId);
+/** Admin only (base role). The prototype also listed super/owner/analyst, none of whom can open the Integrations module per ROLE_MODS. UI gate only: services call assertRole too. */
+export const intCanManage = (roleId: string) => hasRole(roleId, "admin");
+const gate = (what: string) => assertRole(what, "admin");
 export const intFind = (name: string) => INTEGRATIONS.find((x) => x.name === name);
 
 /** Prototype: intToggle. Returns the new status, or null when unknown. */
 export function toggleIntegration(name: string) {
   return viaApi<{ name: string; connected: boolean } | null>(() => {
+    gate("connecting or disconnecting an integration");
     const r = intFind(name); if (!r) return null;
     r.status = r.status === "Connected" ? "Not connected" : "Connected";
     if (r.status === "Connected") { r.lastSync = "just now"; r.health = "Healthy"; if (r.records === "—") r.records = "syncing…"; }
@@ -26,6 +31,7 @@ export function toggleIntegration(name: string) {
 /** Prototype: intSync (no status check in the source: syncing a disconnected connector marks it Healthy). */
 export function syncIntegration(name: string) {
   return viaApi<boolean>(() => {
+    gate("syncing an integration");
     const r = intFind(name); if (!r) return false;
     r.lastSync = "just now"; r.health = "Healthy"; return true;
   }, () => post<boolean>(`/integrations/${enc(name)}/sync`, {}));
@@ -33,6 +39,7 @@ export function syncIntegration(name: string) {
 /** Prototype: intSyncAll (connected connectors only). */
 export function syncAllIntegrations() {
   return viaApi<number>(() => {
+    gate("syncing integrations");
     const c = INTEGRATIONS.filter((x) => x.status === "Connected");
     c.forEach((r) => { r.lastSync = "just now"; r.health = "Healthy"; });
     return c.length;

@@ -35,3 +35,24 @@ Source: `Assurance-GRC-Portal.html` lines 2370-2432 (`REND.issues`, `issDrawer` 
 - New issue ids bump past existing ones (source `R-(60+len)` could collide after a delete, making `issFind` return the wrong record). Ids are demo values only.
 - All mutations go through `src/services/issues.ts` (`viaApi`), wrapped in try/catch with a generic toast. Every source `wsLog` call is kept; actor from `getMe()`.
 - No uploads, links or exports in this module (so no `validateUpload`/`safeHref`/`csvCell` needed).
+
+---
+## Hardening update (docs/SOD_MATRIX.md section 3, Issue)
+Files: `services/issues.ts`, `issues/IssueLayers.tsx`, `IssuesModule.tsx`, `src/lib/grcSod.ts`, approvals engine.
+
+### What changed vs the prototype
+* Severity list now includes Critical. Closing a High/Critical issue is refused by `setIssueStatus`; instead "Propose closure" (note >= 10 chars) creates an approvals-engine request (`issue.close`, 14 days). The verifier (admin/owner/analyst) must NOT be the assignee, the issue owner or the proposer, and records a verification note (>= 10 chars); only then does the issue close, with the verification (who/when/note/proposer) shown on the issue. Reject and Withdraw exist. Medium/Low close directly (closer = creator is logged, not blocked).
+* After creation, editing owner / due / severity needs admin or owner (analysts can edit the title, tasks, root cause; inputs are disabled with the reason). Changes are blocked while a closure is pending.
+* Reopening a closed issue needs admin/owner. Delete needs admin/owner, is refused for open High/Critical issues and for issues referenced by an audit finding (fixes prototype open question 3).
+* Default owner of a new issue is the signed-in person; `createdBy` is recorded. Issues are limited to admin/owner/analyst for writes (read-only otherwise).
+* wsLog events carry ids and actors: `issue.created|updated|status.changed|closure.proposed|closure.rejected|closure.withdrawn|closed.verified|deleted`.
+
+### Conflicts resolved by owner decision
+Prototype had no gate and one-click close; replaced by the matrix. The model has a single `owner` field, so assignee and owner are the same person (an optional `assignee` is honoured if present).
+
+### Security notes
+Verifier independence, severity-change rights and delete rules must be enforced by the API with user ids; the approval record must be immutable. Severity downgrade to dodge verification is limited to admin/owner and logged with before/after values.
+
+### Open questions
+1. Should verification also be required when a Medium issue is edited up to High and closed in the same session? Not needed today because a severity edit is admin/owner-only and logged.
+2. Add a separate `assignee` field to issues?

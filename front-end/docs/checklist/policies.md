@@ -46,3 +46,40 @@ Must be enforced by the real API:
 * Server-owned version numbering, timestamps and acceptance counts; "Remind" must be rate-limited server-side and send to real recipients only.
 * Version history must be append-only and tamper-evident; published versions should be immutable (a revision creates a new draft).
 * Policy text/titles must continue to be rendered as text; if rich-text policy bodies are added, sanitise server-side and render through a vetted sanitiser.
+
+---
+## Hardening update (docs/SOD_MATRIX.md sections 3 and 5)
+Files: `services/policies.ts` (rules + audit), `policies/PolicyLayers.tsx`, `PoliciesModule.tsx`, shared `src/lib/grcSod.ts` (new, add-only helpers), approvals engine `src/lib/approvals.ts`.
+
+### What changed vs the prototype
+| Prototype | Now |
+|---|---|
+| Statuses Draft / In review / Active; any user could submit, approve or edit | Draft -> In review (NAMED approver) -> Approved (immutable, effective date) -> Published (`status` "Active") -> Review due (derived from next-review date, never stored) |
+| "Approvers & reviewers" list, never enforced; "Add approval step" | Removed. One named approver per version, chosen from workspace people with role admin/owner who are not the author or any editor |
+| Anyone could edit | Only the policy owner (creator) edits content; admin may reassign ownership to an admin/owner successor with a reason (logged); admin cannot reassign to self |
+| Approve & publish in one click by anyone (incl. the submitter) | Approve and Publish are two audited steps by the named approver; `assertNotSelf`-style check against author and all editors (`whyCannotApprove`/`whyCannotPublish`); UI buttons disabled with the reason |
+| `parseFloat` version arithmetic ("NaN draft") | Explicit minor bump (4.2 -> 4.3, new policy 0.1, first approval 1.0). Old versions become Superseded and stay in the version history |
+| Editing a published policy changed it in place | Editing an Active policy creates a NEW draft version (with a mandatory change reason); the published version stays untouched and visible until the new one is approved and published |
+| Employees saw the same buttons | Employees/auditors read-only; employees can acknowledge the published version; policy form has no owner field |
+| none | Change log (date, version, who, what, why) and version history (author/last editor, approver, effective date, why) |
+| none | Emergency change (admin only, justification >= 20 chars): publishes immediately, creates exception `PX-n` + an approvals-engine request (`policy.emergency`) that a different admin/owner (not the publisher, not an author) must approve within 5 business days; banner in the drawer and chip in the register ("approval pending" / "OVERDUE"); approve or reject, audited, late decisions flagged |
+Every transition calls `wsLog` with policy id and version: `policy.created|draft.created|draft.saved|submitted|approver.named|returned|approved|published|emergency.published|exception.approved|rejected|owner.reassigned|control.mapped|acceptance.reminded|acknowledged`. Services throw `SodError`; the UI shows its message as a toast (any other error shows the generic message).
+
+### Conflicts resolved by owner decision (SOD_MATRIX replaces prototype)
+* Prototype: submitter may approve own policy. Decision: never. Prototype "Edit" for all: creator only. Prototype "N.0 on publish": minor bump. Board spec says owner = approver is not forbidden; the matrix forbids author/last editor as approver, so owner = approver is refused.
+* Board statuses (Awaiting approval, Annual review) are not adopted; "Review due" is a derived chip within 30 days of the next review date.
+
+### Security notes
+Enforced in the service layer (mock) and mirrored in the UI; the real API must enforce again:
+* Role gates (`admin`/`owner` write, employee/auditor read), creator-only edit, named-approver-only approve/publish/request-changes, author/last-editor exclusion, effective-date gate on publish, admin-only emergency publish and reassignment, retrospective approval by a different person.
+* Approved/published versions are never mutated: edits go to a new draft version. In the demo this is a service rule; the API must store versions append-only and hash them.
+* Approver/successor eligibility is derived from the persona role table; the API must use real user ids and role membership, not display names. Name matching uses `samePerson` (lib/grcSod.ts), stricter than `isSamePerson` because seed names ("J. Avery") and personas ("Jordan A.") differ.
+* Policy text is plain text rendered as React text (clamped to 8000 chars). No HTML. Acknowledgement is bound to the exact version (`lib/me.ackOf`).
+* The 5 business day deadline is calculated client-side (weekends only, no holiday calendar); the server must own the clock and the reminders/escalation.
+* Approval of a normal version is stored on the version record (named approver + reason + date), not in the approvals queue; only the emergency exception uses the engine (decided to avoid creating engine records during render of migrated seed data).
+
+### Open questions
+1. Seed "In review" policies have no named approver (owner is a non-manager persona, e.g. P. Nair); an admin must reassign ownership to progress them. Acceptable?
+2. Persona "Jordan A." (admin) is the seed's "J. Avery"; matched by `samePerson`. Fix the persona name in `roles.json` or keep the alias rule?
+3. Acceptance counts remain random demo values (the Policies drawer ring); the Me workspace holds real per-user acknowledgements.
+4. Remarks/collaborators/policy library from `docs/SPEC_BOARDS.md` section 2 are not part of this change.

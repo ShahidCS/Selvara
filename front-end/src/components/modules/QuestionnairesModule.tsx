@@ -5,6 +5,7 @@ import { wsLog } from "@/lib/audit";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { ANSWER_LIB, KB_DOCS } from "@/lib/trustData";
 import * as svc from "@/services/questionnaires";
+import { ApprovalsPanel, WhyNot, attempt } from "./sodKit";
 import { AddAnswerForm, ImportForm, openQuestionnaireDrawer } from "./questionnaires/QuestionnaireLayers";
 import VendorPortal from "./questionnaires/VendorPortal";
 
@@ -18,13 +19,11 @@ export default function QuestionnairesModule() {
   const [view, setView] = useModState("questionnaires.view", "flight");
   if (role === "vendor") return <VendorPortal L={L} />;
 
-  const verify = async (i: number) => {
-    try {
-      await svc.verifyAnswer(i);
-      wsLog("answer.verified", ANSWER_LIB[i].q.slice(0, 40), "Vendor");
-      L.toast("Answer verified"); bumpData();
-    } catch { L.toast("Something went wrong. Please try again.", false); }
-  };
+  const verify = (i: number) => attempt(L, async () => {
+    const a = ANSWER_LIB[i]; await svc.verifyAnswer(i);
+    wsLog("answer.verified", ANSWER_LIB[i].q.slice(0, 40) + " (author " + (a.author || "unknown") + "; published to the public chatbot)", "Vendor");
+    L.toast("Answer verified"); bumpData();
+  });
   const acts = view === "flight"
     ? <button className="btn btn-primary" onClick={() => L.openModal("Import questionnaire", <ImportForm L={L} />)}><Icon name="plus" />Import questionnaire</button>
     : view === "library"
@@ -34,6 +33,8 @@ export default function QuestionnairesModule() {
   let body;
   if (view === "flight") {
     body = (
+      <>
+      <div style={{ padding: "12px 12px 0" }}><ApprovalsPanel prefix="q." title="Questionnaires awaiting review before sending" /></div>
       <Table cols={[{ t: "Questionnaire" }, { t: "Progress" }, { t: "Due" }, { t: "Status" }, { t: "" }]}>
         {DATA.questionnaires.map((q, i) => (
           <tr key={i} className="clickable" {...activate(() => openQuestionnaireDrawer(L, i))}>
@@ -43,6 +44,7 @@ export default function QuestionnairesModule() {
           </tr>
         ))}
       </Table>
+      </>
     );
   } else if (view === "library") {
     body = (
@@ -52,7 +54,7 @@ export default function QuestionnairesModule() {
             <td className="strong" style={{ maxWidth: 220 }}>{a.q}</td><td style={{ maxWidth: 320, color: "var(--muted)" }}>{a.a}</td>
             <td>{a.verified ? <Chip cls="ok" icon="check">Verified</Chip> : <Chip cls="warn" icon="clock">Unverified</Chip>}</td>
             <td className="r num">{a.uses}</td>
-            <td className="r">{a.verified ? null : <button className="btn btn-ghost sm" onClick={() => verify(i)}><Icon name="check" />Verify</button>}</td>
+            <td className="r">{a.verified ? <span style={{ fontSize: 11.5, color: "var(--muted)" }}>{a.verifiedBy ? "by " + a.verifiedBy : ""}</span> : (() => { const why = svc.verifyBlockReason(a); return (<><button className="btn btn-ghost sm" disabled={!!why} aria-describedby={why ? "vf-" + i : undefined} onClick={() => verify(i)}><Icon name="check" />Verify</button><WhyNot id={"vf-" + i} text={why} /></>); })()}</td>
           </tr>
         ))}
       </Table>

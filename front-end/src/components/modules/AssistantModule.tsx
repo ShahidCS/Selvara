@@ -4,6 +4,7 @@ import { useApp, useData, useModState } from "@/lib/store";
 import { SUBNAV } from "@/lib/subnav";
 import { useLayer } from "@/hooks/useLayer";
 import { asstCanManage } from "@/services/assistant";
+import { ApprovalsPanel } from "./sodKit";
 import { AgentForm } from "./assistant/AgentForm";
 import { AskTab } from "./assistant/AskTab";
 import { AgentsTab, McpTab, RunLogTab } from "./assistant/Tables";
@@ -25,6 +26,7 @@ export default function AssistantModule() {
           </div>
         </div>
         <div className="c-body scroll" id="asstBody" ref={bodyRef}>
+          {view === "agents" || view === "mcp" ? <ApprovalsPanel prefix="assistant." title="Enable / grant approvals (four-eyes)" /> : null}
           {view === "ask" ? <AskTab scrollRef={bodyRef} /> : view === "agents" ? <AgentsTab manage={manage} /> : view === "log" ? <RunLogTab manage={manage} /> : <McpTab manage={manage} />}
         </div>
       </div>

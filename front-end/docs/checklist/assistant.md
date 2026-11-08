@@ -24,3 +24,20 @@
 
 ## Security notes
 UI gate only: `asstCanManage`; the API must authorize agent create/run/delete, run approvals (ideally separate approver) and MCP grants, and log them itself. Prompts and replies are React text only (no HTML, no markdown rendering). Replies are labelled draft / review required and never act. In a real integration treat prompts and any retrieved data as untrusted (prompt injection), keep model credentials server-side, gate every tool call by the MCP grant, and avoid writing prompt contents to the audit log.
+
+## Hardening (docs/SOD_MATRIX.md, owner decision 2026-11)
+Services throw `SodError`; `wsLog` calls kept; enabling uses `lib/approvals.ts` (`ApprovalsPanel` on the Agents and MCP tabs).
+
+**What changed vs the prototype**
+| Area | Prototype | Now |
+|---|---|---|
+| `asstCanManage` | super, admin, owner | admin, owner (base roles; super has no workspace); services also `assertRole` |
+| Approve/Reject an agent run | any manager, no confirmation, even the person who ran it (OQ 3, 4) | approver != the person who triggered the run (`requestedBy`, recorded by "Run now"), admin/owner, confirmation step with a reason (>= 10 chars), decider and reason shown and logged; buttons disabled with the reason |
+| Create a custom agent | active at once | created "Pending approval"; enabling needs a different admin/owner (not the creator); cannot run until then |
+| Resume a paused agent | immediate | counts as enabling: approval by a different admin/owner; Pause stays immediate |
+| Run now | allowed for Paused agents (OQ 5) | only Active agents |
+| MCP grant | immediate | Grant is an approval by a different admin/owner; Revoke stays immediate; chip "Grant requested" while pending |
+
+**Resolved open questions (owner decision):** OQ 3 (separation of duties), OQ 4 (confirmation step), OQ 5. Still open: OQ 1, 2, 6, 7.
+
+**Security notes (additions):** agent-triggered seed runs (R1) have no `requestedBy`, so any admin/owner may decide them; the real API must record the triggering identity (human or schedule) and refuse a self-decision. Reasons are written to the audit log: do not put secrets in them.

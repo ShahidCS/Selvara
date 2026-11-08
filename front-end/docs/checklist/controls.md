@@ -45,3 +45,25 @@ Source: `Assurance-GRC-Portal.html` lines 1599-1702. React: `src/components/modu
 4. The test drawer for a test with no `items` renders an empty table (no empty-state copy in source).
 5. Tests created with result "Needs data" display as "Needs evidence" (source mapping), kept as is.
 6. Control/test drawers are snapshots taken at open (as in source); they do not live-update while open.
+
+---
+## Hardening update (docs/SOD_MATRIX.md section 3, Control)
+Files: `services/controls.ts`, `controls/useControlDrawer.tsx`, `controls/exceptionModals.tsx` (new), `controls/createModals.tsx`, `ControlsModule.tsx`, `src/lib/grcSod.ts`, approvals engine.
+
+### What changed vs the prototype
+* Attestation: only the control owner (admin/owner role AND named as the control owner); the "Attested by" name is set from the sign-in, not typed. Others see the button disabled with the reason.
+* Manual status: new "Change status" (owner, reason >= 10 chars) only for controls WITHOUT linked automated tests. For tested controls manual override is blocked ("status follows tests"); Run now / Sync all recompute the status from the tests (any Fail -> Fail, all Pass -> Pass, else Needs evidence) and log `control.status.followed-tests`.
+* Exceptions / waivers: request (admin/owner) with reason, compensating-control note (>= 20 chars) and expiry (future, <= 12 months); approver via the approvals engine must be admin/owner and not the requester and not the control owner; shown in the drawer with Pending / Approved / Overdue(expired) / Rejected; expiry is audited when the drawer is opened (`control.exception.expired`).
+* Create control/test, add mapping, deactivate test: admin/owner; run/sync tests: admin/owner/analyst; Tasklane ticket: admin/owner/analyst. Auditors and employees are read-only; buttons disabled with the reason. Default owner of a new control is the signed-in person.
+* New wsLog events: `control.attested`, `control.status.changed`, `control.exception.requested|approved|rejected|expired`.
+
+### Conflicts resolved by owner decision
+Prototype let anyone attest and had no status control or exceptions; replaced by the matrix row "Control: attest / change status / accept exception by control owner; exception approver != requester, with expiry and compensating-control note".
+
+### Security notes
+* UI gating is not a control. The API must verify control ownership by user id, derive test-driven status server-side, and treat exception approval/expiry as server-owned records (expiry job).
+* An approved exception does not change the control status in the demo; it is a separate record shown beside it.
+
+### Open questions
+1. Seed controls owned by "J. Avery" are attestable only by the admin persona "Jordan A." (alias match). Admin2 / owner cannot attest them. Intended?
+2. Applying `followTests` on Run/Sync may flip seed controls whose status disagrees with their tests; accepted as the intended "status follows tests".

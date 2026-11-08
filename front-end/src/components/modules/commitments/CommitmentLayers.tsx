@@ -7,22 +7,20 @@ import { wsLog } from "@/lib/audit";
 import { bumpData } from "@/lib/store";
 import { clampText } from "@/lib/security";
 import * as svc from "@/services/commitments";
+import { attempt } from "../sodKit";
 
 const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
-const FAIL = "Something went wrong. Please try again.";
 
 /* ---- start incident (source incidentStart / incidentDoStart) ---- */
 export function StartIncidentForm({ L }: { L: LayerApi }) {
   const [sum, setSum] = useState("");
-  const submit = async () => {
+  const submit = () => attempt(L, async () => {
     const s = clampText(sum, 200);
-    try {
-      await svc.startIncident(s);
-      wsLog("incident.started", s || "incident drill", "Policy");
-      adminLog("incident.started", s || "incident drill", { categories: ["Incident"], basis: "Legal obligation" });
-      L.closeLayer(); L.toast("Incident clock started"); bumpData();
-    } catch { L.toast(FAIL, false); }
-  };
+    await svc.startIncident(s);
+    wsLog("incident.started", s || "incident drill", "Policy");
+    adminLog("incident.started", s || "incident drill", { categories: ["Incident"], basis: "Legal obligation" });
+    L.closeLayer(); L.toast("Incident clock started"); bumpData();
+  });
   return (
     <>
       <div>
@@ -53,15 +51,13 @@ export async function openAnalysis(L: LayerApi) {
 /* ---- import contract (source commImport / commDoImport) ---- */
 export function ImportContractForm({ L }: { L: LayerApi }) {
   const [name, setName] = useState(""); const [detail, setDetail] = useState(""); const [err, setErr] = useState(false);
-  const submit = async () => {
+  const submit = () => attempt(L, async () => {
     const n = clampText(name, 160);
     if (!n) { setErr(true); return; }
-    try {
-      await svc.importContract(n, clampText(detail, 200));
-      wsLog("contract.imported", n, "Policy");
-      L.closeLayer(); L.toast("Contract imported"); bumpData();
-    } catch { L.toast(FAIL, false); }
-  };
+    await svc.importContract(n, clampText(detail, 200));
+    wsLog("contract.imported", n, "Policy");
+    L.closeLayer(); L.toast("Contract imported"); bumpData();
+  });
   return (
     <>
       <div>

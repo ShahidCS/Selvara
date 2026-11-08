@@ -46,3 +46,24 @@ Must be enforced by the real API (UI only in the prototype):
 * Authoritative version numbers, timestamps and "collected by" (client supplies actor and dates in the demo; server must derive them from the session).
 * Server-side length/enum validation, id generation (the `EV-nnn` scheme is demo-only; `Math.random` sizes are not meaningful).
 * Version history immutability; history is editable in memory here.
+
+---
+## Hardening update (docs/SOD_MATRIX.md section 3, Evidence)
+Files: `services/evidence.ts`, `evidence/EvidenceForms.tsx`, `evidence/EvidencePreview.tsx`, `EvidenceModule.tsx`, `src/lib/grcSod.ts`, approvals engine.
+
+### What changed vs the prototype
+* New review state per record (Pending review / Accepted / Rejected, with reviewer, date, note). Accept/Reject by owner/analyst/admin; the reviewer must differ from the collector and from every contributor (collector, each version author, each attachment adder). Reject needs a note of >= 10 chars.
+* "Collected by" is always the signed-in person (read-only field); it can no longer be typed or edited, so it cannot be used to dodge the reviewer check.
+* Delete is now "Request deletion": admin only, reason >= 15 chars, creates an approvals-engine request (`evidence.delete`, 72 h); a DIFFERENT admin approves (record removed, tombstone with requester/approver/reason kept in `EVIDENCE_TOMBSTONES`) or rejects; requester can withdraw. A banner shows the pending request.
+* Any content change to accepted evidence (edit, new version, attach, remove attachment) resets it to Pending review (logged `evidence.review.reset`).
+* Add/edit/attach/new version limited to admin/owner/analyst (auditors and employees read-only, buttons disabled with the reason).
+* Attachments keep `validateUpload` + `safeFileName` (unchanged).
+* wsLog now written by the service with ids and versions: `evidence.created|updated|accepted|rejected|delete.requested|delete.rejected|delete.withdrawn|deleted|attachment.added|attachment.removed|version.created|review.reset`.
+
+### Conflicts resolved by owner decision
+Prototype had no role gate and one-click delete: replaced by the matrix (accept: reviewer != collector; delete: admin + reason + second admin).
+
+### Security notes
+* All gates are mirrored by the API requirement: reviewer identity from the session (not a name), contributor tracking server-side, immutable review record, soft delete + tombstone, second-admin approval verified server-side.
+* Still a typed file name only (no real upload); real uploads need MIME/magic-byte checks, malware scan, storage outside web root, `Content-Disposition: attachment`.
+* Open question: should "Accepted" evidence be locked from deletion without an audit freeze reference? Not enforced today.

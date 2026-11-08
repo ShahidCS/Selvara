@@ -49,3 +49,25 @@ Source: `Assurance-GRC-Portal.html` lines 2286-2368 (`REND.audits`, `auditDetail
 - Report export is plain text (`text/plain`), file name through `safeFileName`; report modal values are React text. No CSV export in this module.
 - All service calls are wrapped in try/catch with a generic toast (no raw error text). Every `wsLog` call from the source is kept; actor comes from `getMe()`.
 - No file/evidence upload exists in this source module (PBC items are text requests only), so `validateUpload` is not used; if evidence attach is added it must use `validateUpload` + `safeFileName`.
+
+---
+## Hardening update (docs/SOD_MATRIX.md section 3, Audit)
+Files: `services/audits.ts`, `audits/AuditDetail.tsx`, `audits/AuditModals.tsx`, `audits/util.ts`, `AuditsModule.tsx`, `src/lib/grcSod.ts`.
+
+### What changed vs the prototype (gate gaps from Open question 2 and 8 fixed)
+* `auditCanManage` was an exact-id list (`super`, `admin`, `owner`, `analyst`): it missed `admin2` and wrongly included `super` (no workspace access) and `analyst`. It is now `hasRole(role, "admin", "owner")`. The service re-checks (`whyCannotManage`) for EVERY organisation-record mutation: new audit, advance stage, freeze populations, send to auditor, end access, add/advance PBC items, create issue from a finding. The auditor and all other roles are read-only (buttons disabled with the reason).
+* Auditors can raise information requests (new "Information requests" tab, IR-nn, management responds, auditor closes) and draft findings (status Draft, not counted as open findings). Management accepts a draft into an issue ("Accept into issue", the issue is owned by the accepting manager for external-led audits) or declines it with a reason. Auditor actions require: auditor role, the engagement's lead is that auditor, and auditor access "granted" (not none/ended).
+* An auditor opening an engagement that is not external-led gets "Page not found" (client-side scoping only; the API must scope per engagement).
+* Ending auditor access / completing: blocked while drafted findings await a decision or information requests are open; closing with open findings or outstanding PBC items needs a reason (>= 10 chars) recorded in the log. Advancing straight to Complete is refused while the auditor still has access (use "Complete & end auditor access").
+* New audits are led by the signed-in person (`Internal, <name>`); default PBC owner likewise. "Information requests" (auditor header button) opens the first assigned engagement's requests tab.
+* New wsLog events: `audit.finding.drafted|rejected`, `audit.ir.raised|answered|closed`, `audit.auditor.access.ended` (now with reason). Existing `audit.*` entries keep their ids.
+
+### Conflicts resolved by owner decision
+Prototype let any role in the module advance stages or create issues, and the auditor intro text contradicted it. The matrix makes auditors read-only except IRs and draft findings.
+
+### Security notes
+Everything above is UI + service (mock) only; the API must authorise per audit and per role, scope auditors to their engagements (IDOR), make frozen populations immutable and revoke the auditor's session on end. The report export remains plain text.
+
+### Open questions
+1. Auditors can only act on engagements whose lead is them; seed has M. Blake on AUD-01/AUD-04. Intended, or any external auditor of the firm?
+2. Analyst previously managed audits; now read-only because management is admin/owner. Analyst has no audits module access today anyway.
