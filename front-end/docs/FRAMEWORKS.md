@@ -303,6 +303,8 @@ CIS source: https://www.cisecurity.org/controls/cis-controls-list
 
 ## 5. Naming accuracy
 
+> **Applied 2026-11-08:** the catalogue names for `iso22301` ("ISO 22301 (BCMS)"), `sbp` ("SBP AML/CFT/CPF Regulations") and `sbpetg` ("SBP Enterprise Technology Governance & Risk Management Framework") were corrected in `src/data/seed.json`. Other items below remain open.
+
 Findings compare catalogue names in `seed.json` with official titles. Recommendations are wording proposals only; no code or seed files were changed.
 
 | Seed id | Current name | Issue | Recommended wording |

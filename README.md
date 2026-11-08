@@ -2,7 +2,14 @@
 
 **A governance, risk and compliance (GRC) platform for regulated organisations.** One control set, mapped to every framework you answer to, with the evidence, approvals and audit trail that auditors and regulators expect.
 
+[![CI](https://github.com/ShahidCS/Selvara/actions/workflows/ci.yml/badge.svg)](https://github.com/ShahidCS/Selvara/actions/workflows/ci.yml)
+![Licence: proprietary](https://img.shields.io/badge/licence-proprietary%20(all%20rights%20reserved)-lightgrey)
+![Node 20.9+](https://img.shields.io/badge/node-%E2%89%A520.9-339933)
+![Status: front-end complete, backend pending](https://img.shields.io/badge/status-front--end%20complete%2C%20backend%20pending-orange)
+
 > **Status: front-end complete, backend not yet built.** The web application is fully built in React / Next.js and runs on synthetic in-memory data. There is no server, database or real authentication yet. See [Project status](#project-status).
+
+![Selvara overview dashboard](docs/screenshots/01-overview.png)
 
 ---
 
@@ -10,19 +17,24 @@
 
 - [Overview](#overview)
 - [Who it is for](#who-it-is-for)
+- [Screenshots](#screenshots)
 - [Key features](#key-features)
+- [Standards, regulations and frameworks covered](#standards-regulations-and-frameworks-covered)
 - [Security and segregation of duties](#security-and-segregation-of-duties)
 - [Roles and access model](#roles-and-access-model)
 - [Screens at a glance](#screens-at-a-glance)
 - [Tech stack](#tech-stack)
 - [Getting started](#getting-started)
 - [Configuration](#configuration)
+- [Testing and CI](#testing-and-ci)
 - [Repository layout](#repository-layout)
 - [Documentation](#documentation)
 - [Project status](#project-status)
+- [Roadmap](#roadmap)
+- [Maintainers](#maintainers)
 - [Contributing](#contributing)
 - [Security reporting](#security-reporting)
-- [License](#license)
+- [Licence](#licence)
 
 ## Overview
 
@@ -50,10 +62,21 @@ The product ships as a web front-end. Backend requirements (authentication, auth
 
 It is designed with **regulated sectors in mind** (banks and financial institutions, critical-infrastructure operators and similar), where segregation of duties and defensible audit trails are mandatory rather than nice to have.
 
+## Screenshots
+
+All screenshots use synthetic data.
+
+| | |
+|---|---|
+| ![Frameworks](docs/screenshots/02-frameworks.png) **Frameworks:** requirement-level readiness for ISO/IEC 27001, with groups, status filters and gap export | ![Risk register](docs/screenshots/03-risk-register.png) **Risk register:** inherent, current and residual scoring with treatment and acceptance workflow |
+| ![Audit engagement](docs/screenshots/04-audit-engagement.png) **Audits:** engagement pipeline, requests, findings and auditor access controls | ![Trust Center](docs/screenshots/05-trust-center.png) **Trust Center:** public and on-request resources, access requests and activity |
+| ![Policies](docs/screenshots/06-policies.png) **Policies:** lifecycle, versions and named approvers | ![MFA resets](docs/screenshots/07-admin-mfa-four-eyes.png) **Four-eyes MFA resets:** approval is disabled until the approver has an elevated session |
+| ![Dark theme](docs/screenshots/08-overview-dark.png) **Dark theme** (light, dark and auto are supported) | ![Vendor portal](docs/screenshots/09-vendor-portal.png) **External vendor assessment portal:** standalone, verified entry |
+
 ## Key features
 
 ### Assurance
-- **Frameworks library**: 25 standards, regulations and frameworks, including ISO/IEC 27001, 27002, 27005, 27701, 22301, 42001, 29100 and 30107-1; SOC 2; NIST CSF 2.0, SP 800-37 and SP 800-207; PCI DSS 4.0.1; GDPR; EU AI Act; DORA; NIS2; UAE PDPL and IA Standards; DIFC; SAMA CSF; SBP rules; PECA 2016; AML/CFT. Requirement-level scoring, N/A justification, gap-assessment export, and an "add a framework" flow with keyword-based control matching.
+- **Frameworks library**: 25 catalogue entries (see the [coverage table](#standards-regulations-and-frameworks-covered)). Requirement-level scoring, N/A justification, gap-assessment export, and an "add a framework" flow with keyword-based control matching.
 - **Controls and tests**: control library with owners, cross-framework mappings, attestation, exceptions with expiry and compensating controls, automated test results, Statement-of-Applicability export, and a framework-by-control matrix.
 - **Evidence**: collection, review and acceptance with versioning, attachment validation and a request-deletion workflow.
 - **Policies**: full lifecycle (draft, review, approved, published), version history, change log, named approvers, acknowledgement tracking.
@@ -86,6 +109,68 @@ It is designed with **regulated sectors in mind** (banks and financial instituti
 
 ### Experience
 - Light, dark and auto themes; collapsible sidebar with rail flyouts; command palette (`Ctrl/Cmd + K`); responsive down to phone width; keyboard-operable with focus-trapped dialogs and a skip link. WCAG 2.2 AA is the target.
+
+## Standards, regulations and frameworks covered
+
+Selvara ships a catalogue of **25 standards, regulations and frameworks** with roughly **1,200 modelled requirements** and a shared control library mapped across them. "Covered" means: a catalogue entry, requirement-level scoring from the status of mapped controls, control mapping, N/A justification and a gap export. It does **not** mean certification, a regulator's acceptance, legal advice, or a substitute for the text of the standard or law.
+
+Status below was researched on **2026-11-08**. Several items changed recently, so check the official text before relying on a date.
+
+### International standards
+
+| Catalogue entry | Issuer | Edition tracked or current | Requirements modelled |
+|---|---|---|---|
+| ISO/IEC 27001:2022 (ISMS) | ISO/IEC | 2022, Amendment 1:2024 (climate action) | 123 |
+| ISO/IEC 27002:2022 (security controls) | ISO/IEC | 2022 | 93 |
+| ISO/IEC 27701 (privacy information management) | ISO/IEC | 2025 edition is current: standalone, replaces 2019 | 8 |
+| ISO 22301 (business continuity) | ISO | 2019, Amendment 1:2024 | 6 |
+| ISO/IEC 27005 (information security risk) | ISO/IEC | 2022 | 6 |
+| ISO/IEC 42001 (AI management system) | ISO/IEC | 2023 | 70 |
+| ISO/IEC 29100 (privacy framework) | ISO/IEC | 2024 edition is current | 24 |
+| ISO/IEC 30107-1 (biometric presentation attack detection) | ISO/IEC | 2023 | 12 |
+| PCI DSS v4.0.1 | PCI Security Standards Council | v4.0.1 is the only active version; future-dated requirements mandatory since 31 Mar 2025 | 10 |
+
+### European Union
+
+| Catalogue entry | Instrument | Notes | Requirements modelled |
+|---|---|---|---|
+| GDPR | Regulation (EU) 2016/679 | Proposed "Digital Omnibus" changes are not adopted | 12 |
+| EU AI Act | Regulation (EU) 2024/1689, amended by (EU) 2026/1744 | High-risk obligations moved to 2 Dec 2027 (Annex III) and 2 Aug 2028 (Annex I) | 10 |
+| DORA | Regulation (EU) 2022/2554 | Applies since 17 Jan 2025 | 289 |
+| NIS2 | Directive (EU) 2022/2555 | National transposition varies | 52 |
+
+### Middle East and South Asia
+
+| Catalogue entry | Issuer | Notes | Requirements modelled |
+|---|---|---|---|
+| UAE PDPL | UAE federal (Federal Decree-Law 45 of 2021) | Executive regulations status unclear in sources | 8 |
+| DIFC Data Protection Law | DIFC (Law No. 5 of 2020) | Applies in the DIFC, not UAE mainland | 7 |
+| UAE Information Assurance Standards | UAE federal authorities | Issuer and current version need confirmation | 188 |
+| SAMA Cyber Security Framework | SAMA (Saudi Central Bank) | Version 1.0 (2017); catalogue is a subset | 8 |
+| SBP Enterprise Technology Governance and Risk Management Framework | State Bank of Pakistan | BPRD Circular 05/2017 | 60 |
+| SBP AML/CFT/CPF Regulations | State Bank of Pakistan | BPRD Circular 05/2020 as amended | 7 |
+| PECA 2016 | Government of Pakistan | Cybercrime statute, amended 2025 | 46 |
+
+### United States frameworks
+
+| Catalogue entry | Issuer | Edition tracked or current | Requirements modelled |
+|---|---|---|---|
+| SOC 2 | AICPA | 2017 Trust Services Criteria (revised points of focus 2022) | 11 |
+| NIST CSF 2.0 | NIST | February 2024 | 106 |
+| NIST SP 800-207 Zero Trust Architecture | NIST | August 2020 | 35 |
+| NIST SP 800-37 Risk Management Framework | NIST | Revision 2 | 47 |
+
+### Financial crime
+
+| Catalogue entry | Notes | Requirements modelled |
+|---|---|---|
+| AML/CFT and sanctions | Composite of screening and monitoring requirements; the closest official reference is the FATF Recommendations | 7 |
+
+**Add your own.** The "Add a regulation, standard or guideline" flow loads templates (NIS2, CIS Controls v8.1, HIPAA Security Rule, SAMA CSF) or pasted requirements and matches each line to control domains by keyword. These are starting points, not full catalogues.
+
+**Be aware of uneven depth.** The requirement count shows how much of a framework is modelled, not how much of it exists. DORA (289), UAE IA (188) and ISO/IEC 27001 (123) are modelled in depth, while ISO 22301 (6), ISO/IEC 27701 (8) and SOC 2 (11) are summaries. Requirement titles are paraphrased (licensed standard text is not reproduced) and control mappings are draft content that needs review by qualified compliance staff.
+
+Per-framework detail, official issuers, status notes, sources, naming accuracy and frameworks not yet covered are in [`front-end/docs/FRAMEWORKS.md`](front-end/docs/FRAMEWORKS.md). Most sources there are secondary (law-firm and certification-body pages), so it marks what is not verified.
 
 ## Security and segregation of duties
 
@@ -136,7 +221,8 @@ Use the account menu (top right) to switch persona. Role switching is a demonstr
 - **Styling:** the original design tokens and component CSS, with Tailwind CSS for layout utilities
 - **State:** small external stores (React `useSyncExternalStore`); no state-management dependency
 - **Data:** synthetic seed data in memory; service layer with API stubs ready for a real backend
-- **Dependencies:** intentionally minimal (no UI kit, no spreadsheet or charting libraries); `npm audit` reports no vulnerabilities in production dependencies at the time of writing
+- **Testing:** Vitest (unit) and Playwright (end to end)
+- **Dependencies:** intentionally minimal (no UI kit, no spreadsheet or charting libraries); production dependencies are checked with `npm audit` in CI
 - **Browsers:** last two versions of Chrome, Edge, Firefox, Safari and iOS Safari
 
 ## Getting started
@@ -158,6 +244,9 @@ Other commands:
 npm run typecheck   # tsc --noEmit
 npm run build       # production build
 npm start           # serve the production build
+npm test            # unit tests (Vitest)
+npm run test:e2e    # end-to-end tests (Playwright)
+npm run ci          # typecheck, unit tests, build
 ```
 
 ### Try the dual-control flows
@@ -175,11 +264,23 @@ Copy `front-end/.env.example` to `front-end/.env.local`. There are no secrets in
 | `NEXT_PUBLIC_API_MODE` | `mock` | `mock` serves seeded synthetic data; `http` calls a real API |
 | `NEXT_PUBLIC_API_BASE_URL` | empty | Base URL of the GRC API (used only in `http` mode; also added to the CSP `connect-src`) |
 
+## Testing and CI
+
+- **Unit tests (Vitest)** cover the security helpers, the credential policy, segregation-of-duties and approvals engine, the risk Board-evidence rules (including the 15 / 16 boundary), framework scoring and output encoding.
+- **End-to-end tests (Playwright)** cover every route, the full persona-by-route access matrix, privileged-access gating, read-only roles, the password policy, injection resistance and the vendor portal.
+- **CI** (GitHub Actions) runs type-check, unit tests, build, `npm audit` on production dependencies, and the end-to-end suite on every push and pull request. Dependabot proposes weekly grouped updates.
+
+Details, including what is not covered (backend, visual regression, load), are in [`front-end/docs/TESTING.md`](front-end/docs/TESTING.md).
+
 ## Repository layout
 
 ```
 Selvara/
 ├── README.md                 this file
+├── LICENSE                   proprietary, all rights reserved
+├── SECURITY.md               vulnerability reporting policy
+├── .github/                  CI workflow and Dependabot configuration
+├── docs/screenshots/         images used in this README
 └── front-end/                Next.js application
     ├── src/
     │   ├── pages/            routes: /ws, /admin, /auth, /vendor-portal
@@ -188,7 +289,8 @@ Selvara/
     │   ├── services/         API stubs and business rules (deny by default)
     │   ├── data/             synthetic seed data
     │   ├── hooks/ styles/ assets/
-    ├── docs/                 inventory, checklists, security contract, decisions
+    ├── tests/ e2e/           unit and end-to-end tests
+    ├── docs/                 inventory, checklists, security contract, frameworks, decisions
     └── scripts/              developer tools for preparing seed data
 ```
 
@@ -197,8 +299,10 @@ Selvara/
 | Document | Contents |
 |---|---|
 | [`front-end/README.md`](front-end/README.md) | Front-end setup and structure in detail |
+| [`front-end/docs/FRAMEWORKS.md`](front-end/docs/FRAMEWORKS.md) | Researched reference for every framework, regulation and standard covered |
 | [`front-end/docs/SOD_MATRIX.md`](front-end/docs/SOD_MATRIX.md) | Segregation-of-duties, privileged-access and credential-policy contract |
 | [`front-end/docs/SECURITY.md`](front-end/docs/SECURITY.md) | Controls in place, known limitations, backend requirements, test log |
+| [`front-end/docs/TESTING.md`](front-end/docs/TESTING.md) | Test strategy, how to run it, CI, gaps |
 | [`front-end/docs/DECISIONS.md`](front-end/docs/DECISIONS.md) | Decisions taken and decisions still open |
 | [`front-end/docs/CHECKLIST.md`](front-end/docs/CHECKLIST.md) | Feature-to-component map with a per-module checklist in `docs/checklist/` |
 | [`front-end/docs/SPEC_BOARDS.md`](front-end/docs/SPEC_BOARDS.md) | Comparison of the design boards with the implemented product |
@@ -210,11 +314,11 @@ Selvara/
 |---|---|
 | Front-end (all screens, roles, workflows) | Complete |
 | Segregation of duties, privileged-access gating, credential policy | Implemented in the front-end service layer |
+| Automated tests and CI | Unit and end-to-end suites with GitHub Actions |
 | Backend (API, database, authentication, sessions) | **Not built** |
-| Automated test suite and CI | **Not yet added** (manual and scripted browser checks are recorded in `docs/SECURITY.md`) |
 | Production readiness | **Not production-ready** |
 
-What a production deployment still needs (details in `docs/SECURITY.md`):
+What a production deployment still needs (details in `front-end/docs/SECURITY.md`):
 
 - Authentication, sessions, CSRF protection and server-side authorization with tenant isolation
 - Stable user identifiers for segregation-of-duties checks (the demo compares display names)
@@ -226,18 +330,32 @@ What a production deployment still needs (details in `docs/SECURITY.md`):
 
 All data in this repository is **synthetic**. Names, customers, vendors, addresses and figures are fictional.
 
+## Roadmap
+
+Planned work, in rough priority order. This is a direction, not a commitment, and carries no dates.
+
+1. **Backend foundation:** API, database, authentication (sessions, MFA and passkeys), server-side authorization and tenant isolation.
+2. **Server-side enforcement of the rules the front-end already models:** segregation of duties by stable user id, persisted approvals and elevation records, append-only signed audit storage.
+3. **Production hardening:** nonce-based CSP, rate limiting, upload scanning, signed expiring links, server-generated recovery codes.
+4. **Product depth:** deepen the shallow framework catalogues (for example ISO 22301, ISO/IEC 27701, SOC 2, SAMA CSF), resolve the open items in [`front-end/docs/DECISIONS.md`](front-end/docs/DECISIONS.md), and port the remaining policy-library and third-party-risk improvements described in [`front-end/docs/SPEC_BOARDS.md`](front-end/docs/SPEC_BOARDS.md).
+5. **Engineering quality:** TypeScript strict mode, lint configuration, automated accessibility checks, visual regression tests.
+
+## Maintainers
+
+- Owner and maintainer: [@ShahidCS](https://github.com/ShahidCS)
+
 ## Contributing
 
-Contributions are welcome once the project's governance is settled. Until then:
+Selvara is proprietary software (see [Licence](#licence)). Contributions are accepted from contributors authorised by the owner, under the terms agreed with them. If you have been invited to contribute:
 
 1. Read [`front-end/docs/PORTING_GUIDE.md`](front-end/docs/PORTING_GUIDE.md) and [`front-end/docs/SOD_MATRIX.md`](front-end/docs/SOD_MATRIX.md) first. New mutations must call the service layer (deny by default), write an audit entry and follow the secure-coding rules.
-2. Run `npm run typecheck` and `npm run build` before opening a pull request.
+2. Run `npm run ci` and `npm run test:e2e` in `front-end/` before opening a pull request.
 3. Never commit secrets, real personal data or customer information. Use synthetic data only.
 
 ## Security reporting
 
-Please do not open public issues for suspected vulnerabilities. A dedicated reporting channel has not been set up yet; until it is, contact the repository owner privately.
+Please do **not** open public issues for suspected vulnerabilities. Email **[security@selvara.com](mailto:security@selvara.com)**. The full policy is in [`SECURITY.md`](SECURITY.md).
 
-## License
+## Licence
 
-No license has been selected yet. Until one is added, all rights are reserved by the repository owner and the code may not be reused.
+Copyright (c) 2026 Selvara. **All rights reserved.** This is proprietary software: it is not open source or free software, and no right to use, copy, modify, distribute or host it is granted except under a separate written agreement. See [`LICENSE`](LICENSE).

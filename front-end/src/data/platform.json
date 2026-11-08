@@ -330,7 +330,7 @@
    "kind": "Admin",
    "reason": "New device enrolment",
    "method": "Manager confirmation",
-   "by": "J. Avery",
+   "by": "D. Whitfield",
    "at": "05 Oct 2026",
    "status": "Approved",
    "decidedBy": "N. Hasan",
@@ -346,7 +346,7 @@
    "by": "Support, T. Ahmed",
    "at": "28 Sep 2026",
    "status": "Rejected",
-   "decidedBy": "J. Avery",
+   "decidedBy": "D. Whitfield",
    "decidedAt": "28 Sep 2026"
   }
  ],
@@ -384,7 +384,7 @@
  "ADMIN_SEED": [
   {
    "at": "2026-10-22 10:05",
-   "actor": "J. Avery",
+   "actor": "D. Whitfield",
    "role": "Platform Super Admin",
    "tenant": "cust-105",
    "action": "customer.onboarded",
@@ -432,7 +432,7 @@
   },
   {
    "at": "2026-10-26 09:14",
-   "actor": "J. Avery",
+   "actor": "D. Whitfield",
    "role": "Platform Super Admin",
    "tenant": "",
    "action": "rates.held.flagged",
