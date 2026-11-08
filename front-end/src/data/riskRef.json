@@ -1,0 +1,130 @@
+{
+ "RISK_ENT": [
+  {
+   "id": "ENT-1",
+   "title": "Data protection & privacy failure",
+   "owner": "A. Rivera",
+   "kids": [
+    "RK-03",
+    "RK-10",
+    "RK-12"
+   ]
+  },
+  {
+   "id": "ENT-2",
+   "title": "Operational resilience failure",
+   "owner": "J. Avery",
+   "kids": [
+    "RK-01",
+    "RK-05",
+    "RK-09",
+    "RK-11"
+   ]
+  },
+  {
+   "id": "ENT-3",
+   "title": "Regulatory non-compliance",
+   "owner": "J. Avery",
+   "kids": [
+    "RK-07"
+   ]
+  },
+  {
+   "id": "ENT-4",
+   "title": "Insider & access abuse",
+   "owner": "O. Hart",
+   "kids": [
+    "RK-02",
+    "RK-06",
+    "RK-08"
+   ]
+  },
+  {
+   "id": "ENT-5",
+   "title": "AI & automation risk",
+   "owner": "A. Rivera",
+   "kids": [
+    "RK-04"
+   ]
+  }
+ ],
+ "RISK_PARTIES": [
+  {
+   "party": "Data subjects (customers)",
+   "req": "Lawful, secure processing of personal and KYC data",
+   "loc": "Global",
+   "links": [
+    "RK-03",
+    "RK-10",
+    "RK-12"
+   ]
+  },
+  {
+   "party": "Financial regulators (SBP, SAMA, DIFC, FCA)",
+   "req": "AML/sanctions effectiveness and timely breach reporting",
+   "loc": "UK, UAE, KSA, Pakistan",
+   "links": [
+    "RK-07",
+    "RK-10",
+    "RK-12"
+   ]
+  },
+  {
+   "party": "Board & executive management",
+   "req": "Risk kept within approved appetite",
+   "loc": "Global",
+   "links": [
+    "RK-01",
+    "RK-05",
+    "RK-11"
+   ]
+  },
+  {
+   "party": "Enterprise customers",
+   "req": "Service availability and contractual security commitments",
+   "loc": "Global",
+   "links": [
+    "RK-01",
+    "RK-09",
+    "RK-11"
+   ]
+  },
+  {
+   "party": "Cyber-insurance provider",
+   "req": "Control attestations and incident notification",
+   "loc": "UK",
+   "links": [
+    "RK-01",
+    "RK-08"
+   ]
+  }
+ ],
+ "RISK_JUR": {
+  "RK-03": "UAE",
+  "RK-07": "EU",
+  "RK-10": "UAE",
+  "RK-12": "Pakistan",
+  "RK-08": "Global"
+ },
+ "CAT_TEAM": {
+  "Technology": "Engineering",
+  "People": "Security",
+  "Third party": "Vendor risk",
+  "AI": "Data science",
+  "Operational": "Operations",
+  "Compliance": "Compliance",
+  "AML": "Financial crime"
+ },
+ "ACCEPT_AUTH": {
+  "Low": "Risk owner",
+  "Medium": "Department head",
+  "High": "CISO",
+  "Extreme": "Board / CEO"
+ },
+ "ACCEPT_RANK": {
+  "Risk owner": 0,
+  "Department head": 1,
+  "CISO": 2,
+  "Board / CEO": 3
+ }
+}
