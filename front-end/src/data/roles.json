@@ -6,8 +6,17 @@
    "person": "Jordan Avery",
    "initials": "SM",
    "spaces": [
-    "admin",
-    "ws"
+    "admin"
+   ],
+   "tenant": null
+  },
+  {
+   "id": "super2",
+   "name": "Platform Super Admin",
+   "person": "Riley Quinn",
+   "initials": "RQ",
+   "spaces": [
+    "admin"
    ],
    "tenant": null
   },
@@ -26,6 +35,16 @@
    "name": "Company Admin",
    "person": "Jordan A.",
    "initials": "SM",
+   "spaces": [
+    "ws"
+   ],
+   "tenant": "cust-101"
+  },
+  {
+   "id": "admin2",
+   "name": "Company Admin",
+   "person": "Casey Morgan",
+   "initials": "CM",
    "spaces": [
     "ws"
    ],
@@ -94,7 +113,6 @@
  ],
  "ROLE_MODS": {
   "super": {
-   "ws": "*",
    "admin": "*"
   },
   "support": {
@@ -174,6 +192,12 @@
     "issues",
     "controls"
    ]
+  },
+  "super2": {
+   "admin": "*"
+  },
+  "admin2": {
+   "ws": "*"
   }
  },
  "SCOPES": [
