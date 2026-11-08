@@ -1,0 +1,179 @@
+{
+ "ROLES": [
+  {
+   "id": "super",
+   "name": "Platform Super Admin",
+   "person": "Jordan Avery",
+   "initials": "SM",
+   "spaces": [
+    "admin",
+    "ws"
+   ],
+   "tenant": null
+  },
+  {
+   "id": "support",
+   "name": "Platform Support",
+   "person": "Sam Hayes",
+   "initials": "H",
+   "spaces": [
+    "admin"
+   ],
+   "tenant": null
+  },
+  {
+   "id": "admin",
+   "name": "Company Admin",
+   "person": "Jordan A.",
+   "initials": "SM",
+   "spaces": [
+    "ws"
+   ],
+   "tenant": "cust-101"
+  },
+  {
+   "id": "owner",
+   "name": "Control, Policy and Risk Owner",
+   "person": "Owen Hart",
+   "initials": "OH",
+   "spaces": [
+    "ws"
+   ],
+   "tenant": "cust-101"
+  },
+  {
+   "id": "employee",
+   "name": "Employee",
+   "person": "Priya Nair",
+   "initials": "PN",
+   "spaces": [
+    "ws"
+   ],
+   "tenant": "cust-101"
+  },
+  {
+   "id": "auditor",
+   "name": "External Auditor",
+   "person": "Morgan Blake",
+   "initials": "MB",
+   "spaces": [
+    "ws"
+   ],
+   "tenant": "cust-101"
+  },
+  {
+   "id": "vendor",
+   "name": "Vendor Contact",
+   "person": "Grace Lin",
+   "initials": "GL",
+   "spaces": [
+    "ws"
+   ],
+   "tenant": null
+  },
+  {
+   "id": "viewer",
+   "name": "Trust Center Visitor",
+   "person": "Lee Park",
+   "initials": "LP",
+   "spaces": [
+    "ws"
+   ],
+   "tenant": null
+  },
+  {
+   "id": "analyst",
+   "name": "Risk Analyst",
+   "person": "Sam Lee",
+   "initials": "SL",
+   "spaces": [
+    "ws"
+   ],
+   "tenant": "cust-101"
+  }
+ ],
+ "ROLE_MODS": {
+  "super": {
+   "ws": "*",
+   "admin": "*"
+  },
+  "support": {
+   "admin": [
+    "customers",
+    "billing",
+    "rates",
+    "mfa",
+    "adminlog"
+   ]
+  },
+  "admin": {
+   "ws": "*"
+  },
+  "owner": {
+   "ws": [
+    "overview",
+    "work",
+    "reports",
+    "frameworks",
+    "controls",
+    "evidence",
+    "policies",
+    "audits",
+    "issues",
+    "people",
+    "access",
+    "risk",
+    "ai",
+    "vendors",
+    "trust",
+    "questionnaires",
+    "commitments"
+   ]
+  },
+  "employee": {
+   "ws": [
+    "overview",
+    "work",
+    "policies",
+    "access",
+    "questionnaires"
+   ]
+  },
+  "auditor": {
+   "ws": [
+    "overview",
+    "audits",
+    "controls",
+    "evidence",
+    "policies",
+    "frameworks"
+   ]
+  },
+  "vendor": {
+   "ws": [
+    "questionnaires",
+    "trust"
+   ]
+  },
+  "viewer": {
+   "ws": [
+    "trust"
+   ]
+  },
+  "analyst": {
+   "ws": [
+    "overview",
+    "work",
+    "risk",
+    "issues",
+    "controls"
+   ]
+  }
+ },
+ "SCOPES": [
+  "ISO 27001",
+  "SOC 2",
+  "GDPR",
+  "All frameworks"
+ ]
+}

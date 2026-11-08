@@ -1,0 +1,306 @@
+{
+ "NAV": {
+  "ws": [
+   {
+    "g": "Overview",
+    "items": [
+     [
+      "overview",
+      "Overview",
+      "overview"
+     ],
+     [
+      "work",
+      "My Work",
+      "work"
+     ],
+     [
+      "reports",
+      "Reports",
+      "reports"
+     ]
+    ]
+   },
+   {
+    "g": "Assurance",
+    "items": [
+     [
+      "frameworks",
+      "Frameworks",
+      "frameworks"
+     ],
+     [
+      "controls",
+      "Controls & Tests",
+      "controls"
+     ],
+     [
+      "evidence",
+      "Evidence",
+      "evidence"
+     ],
+     [
+      "policies",
+      "Policies",
+      "policies"
+     ],
+     [
+      "audits",
+      "Audits",
+      "audits"
+     ],
+     [
+      "issues",
+      "Issues",
+      "issues"
+     ]
+    ]
+   },
+   {
+    "g": "Internal Risk",
+    "items": [
+     [
+      "people",
+      "People & Devices",
+      "people"
+     ],
+     [
+      "access",
+      "Access",
+      "access"
+     ],
+     [
+      "risk",
+      "Risk Register",
+      "risk"
+     ],
+     [
+      "ai",
+      "AI Governance",
+      "ai"
+     ]
+    ]
+   },
+   {
+    "g": "External Risk",
+    "items": [
+     [
+      "vendors",
+      "Third Parties",
+      "vendors"
+     ]
+    ]
+   },
+   {
+    "g": "Customer Trust",
+    "items": [
+     [
+      "trust",
+      "Trust Center",
+      "trust"
+     ],
+     [
+      "questionnaires",
+      "Questionnaires",
+      "questionnaires"
+     ],
+     [
+      "commitments",
+      "Commitments",
+      "commitments"
+     ]
+    ]
+   },
+   {
+    "g": "Workspace",
+    "items": [
+     [
+      "integrations",
+      "Integrations",
+      "integrations"
+     ],
+     [
+      "api",
+      "API, Webhooks & Custom Tests",
+      "api"
+     ],
+     [
+      "assistant",
+      "AI Assistant",
+      "assistant"
+     ],
+     [
+      "team",
+      "Team & Settings",
+      "team"
+     ],
+     [
+      "billingws",
+      "Billing & Invoices",
+      "billing"
+     ],
+     [
+      "auditlog",
+      "Audit Logs",
+      "log"
+     ]
+    ]
+   }
+  ],
+  "admin": [
+   {
+    "g": "Customers & Platform",
+    "items": [
+     [
+      "customers",
+      "Customers & Usage",
+      "customers"
+     ],
+     [
+      "billing",
+      "Billing",
+      "billing"
+     ],
+     [
+      "rates",
+      "Exchange Rates & Tax",
+      "rates"
+     ]
+    ]
+   },
+   {
+    "g": "Platform Security",
+    "items": [
+     [
+      "mfa",
+      "MFA Resets",
+      "access"
+     ],
+     [
+      "adminlog",
+      "Admin Audit Log",
+      "log"
+     ]
+    ]
+   }
+  ]
+ },
+ "TITLE": {
+  "overview": [
+   "Overview",
+   "Security posture at a glance"
+  ],
+  "work": [
+   "My Work",
+   "Items assigned to you across the programme"
+  ],
+  "reports": [
+   "Reports",
+   "Generate and export assurance reports"
+  ],
+  "frameworks": [
+   "Frameworks",
+   "Readiness across every framework in scope"
+  ],
+  "controls": [
+   "Controls & Tests",
+   "Control status, owners and evidence"
+  ],
+  "evidence": [
+   "Evidence",
+   "Collected evidence and provenance"
+  ],
+  "policies": [
+   "Policies",
+   "Policy library and review workflow"
+  ],
+  "audits": [
+   "Audits",
+   "Upcoming, in-progress and completed audits"
+  ],
+  "issues": [
+   "Issues",
+   "Remediation actions and findings"
+  ],
+  "people": [
+   "People & Devices",
+   "Workforce, devices and MFA posture"
+  ],
+  "access": [
+   "Access",
+   "Access grants and recertification"
+  ],
+  "risk": [
+   "Risk Register",
+   "Enterprise risk, scored and treated"
+  ],
+  "ai": [
+   "AI Governance",
+   "Model inventory and risk tiers"
+  ],
+  "vendors": [
+   "Third Parties",
+   "Vendor risk and review schedule"
+  ],
+  "trust": [
+   "Trust Center",
+   "What customers can see and request"
+  ],
+  "questionnaires": [
+   "Questionnaires",
+   "Security questionnaires in flight"
+  ],
+  "commitments": [
+   "Commitments",
+   "Contractual security commitments"
+  ],
+  "auth": [
+   "Sign-in & Security",
+   "Authentication experience, the same for every customer"
+  ],
+  "integrations": [
+   "Integrations",
+   "Connected tools and data sources"
+  ],
+  "api": [
+   "API, Webhooks & Custom Tests",
+   "Developer surface and custom checks"
+  ],
+  "assistant": [
+   "AI Assistant",
+   "Draft answers and summaries (review required)"
+  ],
+  "team": [
+   "Team & Settings",
+   "People, roles and workspace settings"
+  ],
+  "billingws": [
+   "Billing & Invoices",
+   "Your subscription and invoices"
+  ],
+  "auditlog": [
+   "Audit Logs",
+   "Immutable record of every action"
+  ],
+  "customers": [
+   "Customers & Usage",
+   "Search a customer to view profile and usage"
+  ],
+  "billing": [
+   "Billing",
+   "Customer billing, invoices and payment status"
+  ],
+  "rates": [
+   "Exchange Rates & Tax",
+   "Live exchange rates (per 1 USD) and tax by country"
+  ],
+  "mfa": [
+   "MFA Resets",
+   "Reset multi-factor auth for customer admins, four-eyes approval"
+  ],
+  "adminlog": [
+   "Admin Audit Log",
+   "Immutable record of platform administrator actions"
+  ]
+ }
+}
