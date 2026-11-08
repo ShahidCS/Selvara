@@ -22,3 +22,13 @@ Status: living document. Generated code needs technical, security and management
 5. **`Math.random` ids** appear in demo flows (ported from the prototype); they are not security tokens.
 
 Per-module "Security notes" live in `docs/checklist/<module>.md`.
+
+## Test log
+### Phase 2 review (local build, owner-authorized)
+* **Dependencies:** `npm audit --omit=dev` reported 1 critical + 1 high on Next 14.2.35 (last 14.x). Upgraded to Next 16.4.5 / React 19: **0 vulnerabilities**. Build, type-check and UI smoke tests pass.
+* **Static review:** no `dangerouslySetInnerHTML`, `innerHTML`, `document.write`, `eval`, `new Function`; no `href`/`src` from data without `safeHref`; no `target=_blank` without `noopener`; client storage limited to role/theme/collapsed; no `console.*` of record data.
+* **Active testing (pentest methodology, `http://localhost`, mock data):** 112 logged payload attempts (HTML/SVG/`javascript:`/template/CSV-formula payloads) in URL params, hash, query and every create/edit form in Work, Issues, Frameworks, Evidence, Policies, People and Controls, then re-visited all pages: no script execution, no injected elements, no dialogs. CSV gap export: no unguarded formula cells. Unknown ids (`/ws/audits/<payload>`) render "Page not found".
+* **Config:** dotfiles, `package.json`, `src/*`, `next.config.js` and source maps return 404/absent; TRACE/PUT/DELETE/OPTIONS return 405; CSP, nosniff, frame-ancestors none, HSTS, Permissions-Policy present on pages and static assets; no server banner.
+* **Fixed during review:** board-pack export opened a tab *and* downloaded (a `noopener` feature makes `window.open` return null); MFA reset had no audit entry (source gap), now logs `person.mfa.reset`; real staff names removed from docs and from `scripts/anonymize.js` (map now supplied locally via `ANON_MAP`).
+* **Not covered (needs a real backend):** authentication, session, CSRF, server-side authorization/IDOR, rate limiting, upload scanning. See "Known limitations".
+* **History note:** commits before this one contain real staff names in `docs/INVENTORY.md`. Rewriting git history is a user decision (not done).

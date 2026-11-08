@@ -152,7 +152,7 @@ export function LayerProvider({ children }: { children: ReactNode }) {
   const [layer, setLayer] = useState<Layer>(null);
   const [toastMsg, setToastMsg] = useState<{ msg: string; neg: boolean; k: number } | null>(null);
   const [toastOn, setToastOn] = useState(false);
-  const tRef = useRef<ReturnType<typeof setTimeout>>();
+  const tRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const router = useRouter();
 
   const closeLayer = useCallback(() => {

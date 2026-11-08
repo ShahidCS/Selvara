@@ -39,7 +39,7 @@ Source: `Assurance-GRC-Portal.html` lines 1599-1702. React: `src/components/modu
 
 ## Open questions
 
-1. Default owner in "Add custom control" was `J. Avery`; replaced with the synthetic `J. Avery` per the guide's name map.
+1. Default owner in "Add custom control" is the synthetic `J. Avery` (the source default was a real person's name).
 2. Source CSV exports quoted only cells containing `",\n` and had no formula guard; the port uses `csvCell` (guide rule 7), so every data cell is quoted and `=+-@` prefixes get an apostrophe. Header row is unquoted as in source.
 3. The linked-test row in the control drawer sets `CTRL.view='tests'` without re-rendering in source; in React the Controls module switches to the Tests view whenever it is next shown (same persisted-state semantics). If opened from Frameworks, the next visit to Controls lands on Tests.
 4. The test drawer for a test with no `items` renders an empty table (no empty-state copy in source).

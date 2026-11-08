@@ -52,9 +52,7 @@ and write the question into your module's checklist file under "Open questions".
 
 ## Data and secrets
 
-* All demo data is synthetic. Do not copy real names. The substitutions already applied: Jordan Avery -> Jordan Avery (J. Avery -> J. Avery, "Jordan A." -> "Jordan A."),
-  Owen Hart -> Owen Hart (O. Hart -> O. Hart), Sam Hayes / Sam Hayes -> Sam Hayes. Apply the same map to any data you extract (a helper exists at
-  `scripts/anonymize.js`). Third-party framework / standard names (ISO, NIST, GDPR, ...) stay.
+* All demo data is synthetic. Do not copy real names. Real names in the source were replaced with synthetic ones (e.g. "Jordan Avery", "Owen Hart", "Sam Hayes"). The real-name map is kept out of the repo: supply it locally through `ANON_MAP` (see `scripts/anonymize.js`) when extracting any further data. Third-party framework / standard names (ISO, NIST, GDPR, ...) stay.
 * No keys, tokens, passwords or real hostnames. Sample IPs must stay in documentation ranges (203.0.113.x, 198.51.100.x, 192.0.2.x, 10.x).
 
 ## Extracting seed data from the source

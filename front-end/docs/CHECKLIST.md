@@ -10,12 +10,12 @@ Status below is the migration state of each route. "Pending" screens render an e
 | `/ws/work` | My Work | `WorkModule` | 1 | Done | [work](checklist/work.md) |
 | `/ws/frameworks` | Frameworks | `FrameworksModule` | 1 | Done | [frameworks](checklist/frameworks.md) |
 | `/ws/controls` | Controls & Tests | `ControlsModule` | 1 | Done | [controls](checklist/controls.md) |
-| `/ws/evidence` | Evidence | `EvidenceModule` | 2 | Pending | |
-| `/ws/policies` | Policies | `PoliciesModule` | 2 | Pending | |
-| `/ws/audits` | Audits | `AuditsModule` | 2 | Pending | |
-| `/ws/issues` | Issues | `IssuesModule` | 2 | Pending | |
-| `/ws/people` | People & Devices | `PeopleModule` | 2 | Pending | |
-| `/ws/access` | Access | `AccessModule` | 2 | Pending | |
+| `/ws/evidence` | Evidence | `EvidenceModule` | 2 | Done | [evidence](checklist/evidence.md) |
+| `/ws/policies` | Policies | `PoliciesModule` | 2 | Done | [policies](checklist/policies.md) |
+| `/ws/audits` | Audits | `AuditsModule` | 2 | Done | [audits](checklist/audits.md) |
+| `/ws/issues` | Issues | `IssuesModule` | 2 | Done | [issues](checklist/issues.md) |
+| `/ws/people` | People & Devices | `PeopleModule` | 2 | Done | [people](checklist/people.md) |
+| `/ws/access` | Access | `AccessModule` | 2 | Done | [access](checklist/access.md) |
 | `/ws/risk` | Risk Register (+ import wizard) | `RiskModule` | 3 | Pending | |
 | `/ws/ai` | AI Governance | `AiModule` | 3 | Pending | |
 | `/ws/vendors` | Third Parties | `VendorsModule` | 3 | Pending | |

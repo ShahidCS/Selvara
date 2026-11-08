@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/router";
 import { Icon } from "@/components/ui";
 import { appStore, getModState, persist, setModState, useApp, useData, useModVersion } from "@/lib/store";
 import { NAV, allowedSpaces, modAllowed, roleOf } from "@/lib/rbac";
@@ -44,6 +45,7 @@ function NavTip({ tip, onEnter, onLeave, go, hide }: { tip: { anchor: HTMLElemen
 
 export function Sidebar() {
   const go = useGo();
+  const router = useRouter();
   const route = useRoute();
   useData(); // nav counts follow DATA
   useModVersion(); // sub-nav highlight follows module tabs
@@ -51,7 +53,7 @@ export function Sidebar() {
   const space = route.space === "admin" ? "admin" : "ws";
   const spaces = allowedSpaces(s.role);
   const [tip, setTip] = useState<{ anchor: HTMLElement; label: string; parent?: string } | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastMod = useRef<string | null>(null);
   const navRef = useRef<HTMLElement>(null);
   const scrollTop = useRef(0);
@@ -71,6 +73,7 @@ export function Sidebar() {
   // like the prototype, a group's open state is fixed the first time it is rendered (the active group opens, others stay closed)
   const groupOpen = (g: { g: string; items: any[] }) => (g.g in s.groupsOpen ? s.groupsOpen[g.g] !== false : g.items.some((it) => it[0] === route.mod));
   useEffect(() => {
+    if (!router.isReady) return; // asPath is a placeholder until hydrated
     const missing = groups.filter((g) => !(g.g in appStore.get().groupsOpen));
     if (missing.length) appStore.set((x) => ({ groupsOpen: { ...x.groupsOpen, ...Object.fromEntries(missing.map((g) => [g.g, g.items.some((it) => it[0] === route.mod)])) } }));
   });

@@ -15,7 +15,7 @@ No seed data extraction was needed (`DATA.evidence` already exists).
 | Preview: meta grid, notes | 2228-2229 | `EvidencePreview` | done | |
 | Attachments table + "No files attached." + Remove | 2230-2231 | `EvidencePreview` | done | icon button has aria-label |
 | Version history (newest first) | 2232-2233 | `EvidencePreview` | done | |
-| Add/edit form (name*, type, collected by, notes) | 2235-2238 | `EvidenceForm` | done | default collected-by "J. Avery" (anonymised from J. Avery) |
+| Add/edit form (name*, type, collected by, notes) | 2235-2238 | `EvidenceForm` | done | default collected-by "J. Avery" (synthetic owner name) |
 | Create: id `EV-(209+n)`, unshift, history "Evidence created", log `evidence.created`, toast "Evidence added", select new | 2239-2242 | `EvidenceForm`, `svc.createEvidence` | done | |
 | Validation "Name is required." | 2240, 2244 | `EvidenceForm` | done | |
 | Edit: log `evidence.updated`, toast "Changes saved" | 2243-2244 | `EvidenceForm`, `svc.updateEvidence` | done | |

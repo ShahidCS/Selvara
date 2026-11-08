@@ -68,7 +68,7 @@ Also: `FRAMEWORK_REQS` (a very large per-framework requirement catalogue), the I
    - OK, or different?
 4. **Styling.** You asked for Tailwind plus CSS. I plan to keep the original design tokens as CSS variables in `src/styles`, and use Tailwind for layout and utilities mapped to those tokens. This keeps pixel fidelity.
 5. **Routing.** You listed `src/pages`. Do you want the Pages Router (matches your layout) or the App Router (current Next default)? Hash routes become real paths, for example `/ws/risk`.
-6. **Seed data and org policy.** The seed data contains what look like real names (for example "Jordan Avery", "Sam Hayes") and tenant and vendor names. Under your org's data-handling rule I will replace them with synthetic placeholders (John Doe style) unless you confirm the data is already synthetic.
+6. **Seed data and org policy.** The seed data contains what look like real names (personal names of staff) and tenant and vendor names. Under your org's data-handling rule I will replace them with synthetic placeholders (John Doe style) unless you confirm the data is already synthetic.
 7. **Branch.** You asked for a "front-end" branch or folder. This session is pinned to `claude/ecstatic-knuth-xymoyc`, so I will put everything in a `front-end/` folder on that branch. Is that fine, or should I push a separate `front-end` branch?
 8. **Fonts.** The source uses SF Pro (system fallback) and Inter (Google Fonts). B bundles Geist. Which should ship? Self-hosting Inter via `next/font` is my default.
 9. **Checklist.** Each phase will extend `front-end/docs/CHECKLIST.md`, mapping each source feature to its React component.

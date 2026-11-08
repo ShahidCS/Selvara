@@ -64,7 +64,8 @@ export default function OverviewModule() {
     let w: Window | null = null;
     try {
       const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
-      w = window.open(url, "_blank", "noopener");
+      w = window.open(url, "_blank");
+      if (w) w.opener = null; // detach (the "noopener" feature would make window.open return null)
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch { /* fall through to download */ }
     if (w) { L.toast("Board pack ready — use Print / Save as PDF"); return; }
