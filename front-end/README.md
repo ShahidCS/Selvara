@@ -6,7 +6,7 @@ The original design tokens and component CSS are kept verbatim (`src/styles/port
 
 ## Run
 
-Requires Node 18.18+ (tested on Node 22) and npm.
+Requires Node 20.9+ (tested on Node 22) and npm.
 
 ```bash
 cd front-end
