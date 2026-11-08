@@ -4,7 +4,8 @@ import { DATA } from "@/lib/data";
 import { nowStamp, } from "@/lib/format";
 import { clampText } from "@/lib/security";
 import type { Grid } from "./parse";
-import { riskLog, riskNorm } from "./riskLocal";
+import { riskCancelPending, riskLog as riskLogShared, riskNorm, riskOpenActions, riskRevalidateAcceptance } from "@/lib/risk";
+const riskLog = riskLogShared;
 
 export const CATS = ["Technology", "People", "Third party", "AI", "Operational", "Compliance", "AML"];
 export const MAX_FIELD = 500; // clampText cap for imported strings
@@ -99,7 +100,7 @@ export function compute(g: Grid, map: Record<string, number>, conflict: "update"
 }
 
 /* ---- run import (mutates DATA; caller does wsLog is done here, then toast/bumpData) ---- */
-export function applyImport(parsed: Parsed[], fileName: string, wsLog: (a: string, t: string, c?: string) => unknown): { nNew: number; nUpd: number } {
+export function applyImport(parsed: Parsed[], fileName: string, wsLog: (a: string, t: string, c?: string) => unknown, editor?: string): { nNew: number; nUpd: number } {
   let nNew = 0, nUpd = 0; const fn = clampText(fileName, 120);
   const today = () => nowStamp().slice(0, 10);
   parsed.filter((p) => p.result !== "Skip").forEach((p) => {
@@ -108,16 +109,24 @@ export function applyImport(parsed: Parsed[], fileName: string, wsLog: (a: strin
     if (a.mode === "Update") {
       const r = found; if (!r) return; // source: silently skipped when the id is gone
       r.title = a.title; r.cat = a.cat; r.owner = a.owner; r.l = a.l; r.i = a.i; r.rl = a.rl; r.ri = a.ri;
-      r.cl = Math.max(a.rl, a.l - 1); r.ci = Math.max(a.ri, a.i - 1); r.treat = a.treat; r.status = a.status === "Accepted" ? r.status : a.status;
+      r.cl = Math.max(a.rl, a.l - 1); r.ci = Math.max(a.ri, a.i - 1);
+      /* an import never closes a risk that has open actions, never changes an accepted risk's status, and never records an acceptance (own workflow) */
+      if (r.status === "Accepted") { /* keep: acceptance is re-checked below against the new scores */ }
+      else if (a.status === "Closed" && riskOpenActions(r).length) { riskLog(r, "Import tried to close this risk but treatment actions are still open; status kept"); }
+      else { r.treat = a.treat; r.status = a.status; }
+      if (r.status !== "Accepted") r.treat = a.treat;
+      if (editor) r.lastEditedBy = editor;
       if (a.due) r.planned = a.due;
       if (a.controls) r.desc = clampText((r.desc ? r.desc + " · " : "") + "Existing controls: " + a.controls, 2000);
       r.reviewed = today();
       riskLog(r, "Updated by import (" + fn + ")"); nUpd++;
+      riskRevalidateAcceptance(r);
+      if (r.pendingAcceptance && r.rl * r.ri !== r.pendingAcceptance.score) riskCancelPending(r, "residual score changed by import");
     } else {
       if (found) return; // never overwrite or duplicate an id that appeared after the preview was computed
       const st = a.status === "Accepted" ? "Open" : a.status;
       const r: any = { id: a.id, title: a.title, desc: a.controls ? "Existing controls: " + a.controls : "", cat: a.cat, owner: a.owner, l: a.l, i: a.i, cl: Math.max(a.rl, a.l - 1), ci: Math.max(a.ri, a.i - 1), rl: a.rl, ri: a.ri, treat: a.treat, status: st, review: "Draft", linked: [], imported: true, planned: a.due || "", identified: today(), reviewed: today() };
-      riskNorm(r); r.review = "Draft"; r.status = st; riskLog(r, "Imported from " + fn); DATA.risks.push(r); nNew++;
+      if (editor) r.lastEditedBy = editor; riskNorm(r); r.review = "Draft"; r.status = st; riskLog(r, "Imported from " + fn); DATA.risks.push(r); nNew++;
     }
   });
   wsLog("risk.register.imported", nNew + " new, " + nUpd + " updated (" + fn + ")", "Risk");

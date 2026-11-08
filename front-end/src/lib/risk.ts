@@ -4,8 +4,11 @@ import type { CSSProperties } from "react";
 import refs from "@/data/riskRef.json";
 import { DATA } from "./data";
 import { nowStamp } from "./format";
-import { getMe } from "./audit";
+import { getMe, wsLog } from "./audit";
+import { approvals } from "./approvals";
 import { appStore } from "./store";
+import { SOD } from "./sod";
+import { riskNeedsBoard } from "./riskBoard";
 export { riskOpen, sInh, sCur, sRes } from "./metrics";
 import { sCur, sRes } from "./metrics";
 
@@ -95,6 +98,42 @@ export function riskLog(r: any, a: string) {
 /** Acceptance expires within 60 days (prototype `soon`). */
 export const expiresSoon = (exp?: string) => !!exp && exp < isoInDays(60);
 
-export const RISK_CSV_COLS = ["id", "title", "cat", "team", "jur", "owner", "l", "i", "cl", "ci", "rl", "ri", "inherentScore", "currentScore", "residualScore", "rating", "priority", "treat", "status", "review", "identified", "reviewed"];
+/* ---- acceptance integrity (owner decision: acceptance threshold 15 is distinct from RISK_APPETITE 11) ---- */
+/** Highest rating band index an acceptance covers: the band of the score it was accepted at; legacy records fall back to the band the authority may accept. */
+function acceptedCapIdx(acc: any): number {
+  if (typeof acc.score === "number") return RBANDS.indexOf(rband(acc.score));
+  const rank = ACCEPT_RANK[acc.by] ?? 0; let idx = 0;
+  RBANDS.forEach((b, i) => { if ((ACCEPT_RANK[ACCEPT_AUTH[b.name]] ?? 0) <= rank) idx = i; });
+  return idx;
+}
+/** After any score change: if the acceptance no longer holds (residual above the accepted band, or above the Board threshold with no evidence)
+ *  the risk goes back to Open and the reason is logged. Returns the reason, or null when the acceptance still holds. */
+export function riskRevalidateAcceptance(r: any): string | null {
+  if (r.status !== "Accepted" || !r.acceptance) return null;
+  const acc = r.acceptance; const sc = r.rl * r.ri; let why = "";
+  if (RBANDS.indexOf(rband(sc)) > acceptedCapIdx(acc)) why = "residual rose to " + rband(sc).name + " (" + sc + "), above the accepted band";
+  else if (riskNeedsBoard(sc) && !acc.board) why = "residual " + sc + " is above " + SOD.RISK_BOARD_THRESHOLD + " and has no Board approval evidence";
+  if (!why) return null;
+  r.invalidatedAcceptance = { ...acc, invalidatedAt: todayIso(), invalidatedReason: why };
+  delete r.acceptance; r.status = "Open"; r.treat = "Mitigate";
+  riskLog(r, "Acceptance invalidated: " + why);
+  wsLog("risk.acceptance.invalidated", r.id + ": " + why + (acc.board ? " (Board ref " + acc.board.ref + ")" : ""), "Risk");
+  return why;
+}
+/** Drop an acceptance that is waiting for evidence verification (scores changed, risk closed...) and withdraw its approval request. */
+export function riskCancelPending(r: any, why: string): boolean {
+  const p = r.pendingAcceptance; if (!p) return false;
+  const ap = approvals.get().list.find((a) => a.id === p.approvalId);
+  if (ap && ap.status === "Pending") { ap.status = "Withdrawn"; ap.decidedReason = why.slice(0, 300); approvals.set((s) => ({ list: [...s.list] })); }
+  delete r.pendingAcceptance; riskLog(r, "Pending acceptance cancelled: " + why);
+  wsLog("risk.acceptance.pending_cancelled", r.id + ": " + why + " (" + (p.board?.ref || "") + ", " + (p.approvalId || "") + ")", "Risk");
+  return true;
+}
+/** "Effective" | "Awaiting evidence verification" | "" for display. */
+export const riskAcceptState = (r: any): string => (r.pendingAcceptance ? "Awaiting evidence verification" : r.acceptance ? "Effective" : "");
+/** Open treatment actions (not done, not cancelled) block closing. */
+export const riskOpenActions = (r: any): any[] => (r.actions || []).filter((a: any) => !a.done && !a.cancelled);
+
+export const RISK_CSV_COLS = ["id", "title", "cat", "team", "jur", "owner", "l", "i", "cl", "ci", "rl", "ri", "inherentScore", "currentScore", "residualScore", "rating", "priority", "treat", "status", "review", "identified", "reviewed", "boardRef", "boardDate", "acceptanceState"];
 /* friendly header labels so an exported register re-imports cleanly (export -> edit -> re-import by Risk ID) */
-export const RISK_CSV_HEADERS = ["Risk ID", "Title", "Category", "Team", "Jurisdiction", "Owner", "Likelihood", "Impact", "Current likelihood", "Current impact", "Residual likelihood", "Residual impact", "Inherent score", "Current score", "Residual score", "Rating", "Priority", "Treatment", "Status", "Review", "Identified", "Reviewed"];
+export const RISK_CSV_HEADERS = ["Risk ID", "Title", "Category", "Team", "Jurisdiction", "Owner", "Likelihood", "Impact", "Current likelihood", "Current impact", "Residual likelihood", "Residual impact", "Inherent score", "Current score", "Residual score", "Rating", "Priority", "Treatment", "Status", "Review", "Identified", "Reviewed", "Board decision ref", "Board decision date", "Acceptance state"];

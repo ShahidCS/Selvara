@@ -60,7 +60,7 @@ export default function RiskGov() {
           {accs.length ? accs.map((r) => (
             <button key={r.id} className="linkbtn" onClick={() => riskOpenDetail(r.id)} style={row}>
               <span style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}><span className="strong">{r.id} {r.title}</span>{expiresSoon(r.acceptance.until) ? <Chip cls="warn" icon="clock">Expires &lt;60d</Chip> : <Chip cls="ok" icon="check">Valid</Chip>}</span>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>By {r.acceptance.by} · residual {sRes(r)} · valid until {r.acceptance.until || "—"}</span>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>By {r.acceptance.by}{r.acceptance.board ? " (Board approved " + r.acceptance.board.ref + ", " + r.acceptance.board.date + ")" : ""} · residual {sRes(r)} · valid until {r.acceptance.until || "—"}</span>
             </button>
           )) : <p className="field help" style={{ margin: 0 }}>No accepted risks.</p>}
         </div></section>

@@ -40,6 +40,7 @@ export default function RiskCrit() {
                 <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>Lowest authority that can accept: <strong>{ACCEPT_AUTH[b.name]}</strong></div></div>
             </div>
           ))}
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8 }}><strong>Acceptance threshold:</strong> a residual score of 15 or below can be accepted by the authority above, without Board approval. Above 15 the acceptance needs Board approval evidence (decision reference, date, approving body, minutes), verified by a second person. This threshold is separate from the risk appetite below.</div>
           <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8 }}>Risk appetite: the organisation targets residual exposure at Medium or below; High and Extreme residual risks require a dated treatment plan and, if accepted, time-bound sign-off.</div>
         </div></section>
       </div>

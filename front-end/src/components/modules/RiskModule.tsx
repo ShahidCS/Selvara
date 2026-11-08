@@ -32,16 +32,19 @@ export function useRiskDrawer() {
 const TABS: [string, string][] = [["dash", "Dashboard"], ["reg", "Register"], ["crit", "Scoring Criteria"], ["ip", "Interested Parties"], ["gov", "Governance"]];
 
 export default function RiskModule() {
-  useData();
   const L = useLayer();
   const role = useApp((s) => s.role);
   riskNormAll();
+  const dv = useData();
   const [tab] = useModState(K_TAB, "dash");
   const canEdit = riskCanEdit(role);
 
   /* the prototype cleared the selection whenever the tab changed (riskTab / sidebar sub-nav); a selection only exists on the Register tab */
   const prev = useRef(tab);
   useEffect(() => { if (prev.current !== tab) { prev.current = tab; if (tab !== "reg") setModState<string | null>(K_SEL, null); } }, [tab]);
+
+  /* reconcile Board-evidence acceptances with their approval requests (approved/rejected/expired elsewhere) */
+  useEffect(() => { svc.syncBoardEvidence(); }, [dv]);
 
   const doImport = () => {
     if (!riskCanEdit()) { L.toast("You do not have permission to import risks"); return; }

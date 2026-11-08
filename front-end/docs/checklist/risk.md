@@ -25,10 +25,33 @@ Source: `Assurance-GRC-Portal.html` lines 2411-2811. The import wizard (2813-298
 | API stubs | - | `src/services/risks.ts` | Done | `viaApi` per mutation; mock mode mutates `DATA`. |
 | Helper for other modules | - | `RiskModule.tsx` exports `useRiskDrawer`, `riskOpenDetail`, `riskGoReg`; `src/lib/risk.ts` | Done | |
 
+## Changed vs prototype (owner decision 2026-11, contract `docs/SOD_MATRIX.md`)
+| Area | Prototype | Now | Where |
+|---|---|---|---|
+| Acceptance threshold | any authority could be chosen, incl. Board / CEO | `SOD.RISK_BOARD_THRESHOLD = 15`. Residual <= 15: ladder (`ACCEPT_AUTH/RANK`), Board / CEO rung not selectable, effective at once. Residual > 15: Board approval evidence form (decision ref `BRD-YYYY-NN`, date not future and <= 90 days old, approving body, minutes reference or file name, expiry <= 12 months, reason >= 20 chars); cannot be saved without all fields | `lib/riskBoard.ts`, `services/risks.ts acceptRisk`, `RiskDetail.tsx AcceptForm` |
+| Evidence verification | none | Recorder (admin) creates approval `risk.board-evidence` (`approverRoles` admin/owner, forbid risk owner, last editor, submitter; recorder is the requester). Acceptance is effective only when Approved; until then "Awaiting evidence verification". Verify / Reject / Withdraw in the risk panel | `decideBoardEvidence`, `withdrawBoardEvidence`, `syncBoardEvidence`, `VerifyBox` |
+| Acceptor | anyone with edit | acceptor != owner, != last editor, != submitter (`assertNotSelf` in service + disabled form with the reason text) | `acceptRisk` |
+| Approve review (Submitted -> Approved) | submitter could approve | approver != last editor/submitter (service + disabled button) | `approveRisk` |
+| Close | any editor, any time | blocked while a treatment action is open ("Close or cancel the open actions first."); closer != last editor; closer != owner when actions exist. Actions can now be cancelled with a reason | `closeRisk`, `closeBlock`, `cancelAction` |
+| Score edits after acceptance | acceptance kept | acceptance invalidated (status Open, reason in history and audit) when residual rises above the accepted band, or above 15 without Board evidence; a pending acceptance is cancelled when the residual changes | `lib/risk.ts riskRevalidateAcceptance/riskCancelPending`, `setScore` |
+| Display | - | "Board approved - ref - date" chip, evidence block, ref in Governance list | `RiskDetail`, `RiskGov` |
+| Export | - | CSV columns Board decision ref, Board decision date, Acceptance state | `RISK_CSV_COLS`, `exportRegisterCsv` |
+| Import | updates applied directly | see `risk-import.md` (staged approval, Pending imports panel in Register tab) | `PendingImports.tsx` |
+| Errors | generic toast | `SodError` text is shown (`risk/util.ts attemptR`); any other exception stays generic | |
+| Last editor | not tracked | `lastEditedBy` / `submittedBy` on the risk (create, scores, controls, actions, submit, reopen, import) | `services/risks.ts touch` |
+
+Audit (`wsLog`, reference ids only, no file content): `risk.accepted` (ref, approval id, recorder), `risk.board-evidence.recorded/verified/rejected/withdrawn/expired`, `risk.acceptance.invalidated/pending_cancelled`, `risk.action.cancelled`, `risk.closed`; approval engine adds `approval.risk.board-evidence.*`.
+
+## Conflicts resolved by owner decision
+1. **Risk acceptance criteria: "15 without board approval; above that backed by board approval evidence."** Replaces the prototype's free choice of authority (Board / CEO could be picked for anything). Boundary: 15 accepts without Board, 16 needs evidence (possible 5x5 products: 15, 16, 20, 25). Checked with a throwaway script, not in the repo.
+2. **Appetite (11) vs acceptance threshold (15) are distinct.** `RISK_APPETITE` stays 11 (heat-map edge, dashboard text "Medium or below"). **Open question for the owner: should appetite also move to 15?** If yes the heat-map edge and the Scoring Criteria appetite text change too.
+3. **"Risk owner" rung vs acceptor != owner.** The ladder still names "Risk owner" as the lowest authority for Low risks, but the person recording must not be the owner, last editor or submitter. The rung is the authority level, not the actor; the SoD rule wins.
+4. **Prototype "Approve" by the submitter** is no longer possible (contract section 1: no self-approval).
+
 ## Open questions (ported as-is)
 1. "Only mine" matches owner by a hard-coded demo surname, independent of the role switcher. Ported as `/Avery/` (same convention as WorkModule) so it matches the synthetic persona; it ignores `getMe()`.
 2. The dashboard breakdown links strip `'` from the group name (to survive inline JS); a React port does not need that, so a category containing an apostrophe now filters correctly (the source would have matched nothing). Missing values group as "—" and filtering by it matches nothing, as in the source.
-3. Changing any score does not reset `review` (an Approved risk keeps "Approved" after its scores are edited), and approval/acceptance do not check who submitted. Port as-is.
+3. Changing any score does not reset `review` (an Approved risk keeps "Approved" after its scores are edited). Acceptance is now invalidated by score edits (see above); the review state is still not reset. Approval/acceptance now check who edited/submitted.
 4. `riskSave` ids use `RK-<count+1>`; the source could collide after imports. A collision loop was added (the id is still demo-only).
 5. "Accepted & valid" counts every risk with an `acceptance`, expired or not. "Accepted by" authority is a free choice from a list (no link to the actor's role).
 6. `riskNorm` on an unparsable `reviewed` date (accepted risk without acceptance) threw RangeError in the source; falls back to today here.
@@ -39,6 +62,10 @@ Source: `Assurance-GRC-Portal.html` lines 2411-2811. The import wizard (2813-298
 11. Added (not in source): read-only hint lines where the source rendered nothing for non-editors (acceptance, submit, parties, snapshots), "Enter a valid date." for a malformed acceptance date, aria-labels on heat cells/unmap/link selects.
 
 ## Security notes
+* **Four-eyes is enforced in `services/risks.ts` (`assertNotSelf`, `assertRole`, approvals engine) and mirrored by disabled controls with the reason text. Names are compared with `isSamePerson`; the real API must compare authenticated user ids, derive the recorder/verifier from the session (never from a form field) and use a trusted clock for the 90-day / 12-month checks.**
+* **Board evidence:** only reference, date, body and file NAME are stored (`validateUpload` allow-list pdf/docx/png/jpg, 10 MB, `safeFileName`); the file content is never read or uploaded by this front-end, so nothing proves the minutes exist. A real API must store the attachment (malware scan, object-level authorization) and ideally link the decision to a board-records system. Evidence is not editable: a change means a new request.
+* **Approvals engine is an in-memory demo** (`lib/approvals.ts`); persistence, expiry (72 h here) and authorisation belong to the API. The risk store reconciles pending acceptances with their approvals on module load / data change (`syncBoardEvidence`).
+* **Import cannot bypass controls:** an import update never changes an Accepted risk's status, never closes a risk with open actions, and re-checks acceptance against the new scores; imported rows never record an acceptance.
 * **All role gates are UI-only.** `riskCanEdit` (super, admin, owner, analyst) and `riskCanApprove` (super, admin) hide/disable controls and are re-checked in `services/risks.ts` (mock), but a real API must enforce them per endpoint (ASVS 4.1.1) and check object ownership/tenant (IDOR).
 * **Segregation of duties (acceptance and approval) is not enforced by the prototype and must be by the API:**
   * Anyone with `riskCanEdit` (including owner/analyst) can record an acceptance and *pick any accepting authority*, including "Board / CEO". Only the rank of the *selected* authority is compared with the residual rating's required authority; the actor's real authority is never checked. The API must derive the accepting authority from the authenticated principal, not from a form field.

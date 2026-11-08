@@ -7,6 +7,7 @@ import { bumpData, setModState } from "@/lib/store";
 import { attempt } from "../issues/util";
 import * as svc from "@/services/risks";
 import { K_SEL, K_TAB } from "./nav";
+import { attemptR } from "./util";
 
 const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
 const grid2 = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 } as const;
@@ -74,6 +75,27 @@ export function AddActionForm({ id, close }: { id: string; close: () => void }) 
         <p className="field help" id="rka-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>Action is required.</p>
       </div>
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={add}>Add</button></LayerFoot>
+    </>
+  );
+}
+
+/** Cancel an open treatment action (needs a reason; cancelled actions no longer block closing the risk). */
+export function CancelActionForm({ id, ai, text, close }: { id: string; ai: number; text: string; close: () => void }) {
+  const L = useLayer();
+  const [why, setWhy] = useState(""); const [err, setErr] = useState("");
+  const go = () => attemptR(L, async () => {
+    const res = await svc.cancelAction(id, ai, why);
+    if (!res.ok) { setErr(res.msg || ""); return; }
+    wsLog("risk.action.cancelled", id + ": " + res.text, "Risk"); close(); bumpData();
+  });
+  return (
+    <>
+      <div>
+        <p style={{ margin: "0 0 10px", fontSize: 13 }}>Cancel the action <strong>{text}</strong>? It stays in the history.</p>
+        <div className="field"><label htmlFor="rkc-why">Reason (at least 10 characters)</label><input className="input" id="rkc-why" data-focus maxLength={300} value={why} onChange={(e) => setWhy(e.target.value)} /></div>
+        <p className="field help" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
+      </div>
+      <LayerFoot><button className="btn btn-secondary" onClick={close}>Keep action</button><button className="btn btn-primary" onClick={go}>Cancel action</button></LayerFoot>
     </>
   );
 }

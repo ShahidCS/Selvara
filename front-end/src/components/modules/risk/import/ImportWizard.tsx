@@ -6,6 +6,7 @@ import { LayerFoot } from "@/components/shell/LayerProvider";
 import { Chip, Icon } from "@/components/ui";
 import { bumpData } from "@/lib/store";
 import { safeFileName, validateUpload } from "@/lib/security";
+import { SodError } from "@/lib/sod";
 import { commitRiskImport } from "@/services/riskImport";
 import { type Counts, type Parsed, compute } from "./convert";
 import { IMP_FIELDS, ImportError, LIMITS, autoMap, buildGrid, importMessage, parseCSV, readXlsx, type Grid } from "./parse";
@@ -111,11 +112,12 @@ export function ImportWizard({ L, onDone }: { L: LayerApi; onDone?: () => void }
     if (!riskCanEdit()) { L.toast("You do not have permission to import risks"); return; }
     busy.current = true;
     try {
-      const { nNew, nUpd } = await commitRiskImport(parsed, fileName);
+      const { nNew, nUpd, staged, approvalId } = await commitRiskImport(parsed, fileName);
       L.closeLayer();
-      L.toast("Imported " + nNew + " new" + (nUpd ? " and updated " + nUpd : "") + " risk" + (nNew + nUpd !== 1 ? "s" : ""));
+      if (staged) L.toast("Import " + approvalId + " is waiting for approval by a second admin. No risk has been changed yet.");
+      else L.toast("Imported " + nNew + " new" + (nUpd ? " and updated " + nUpd : "") + " risk" + (nNew + nUpd !== 1 ? "s" : ""));
       bumpData(); onDone?.();
-    } catch { busy.current = false; L.toast("Import failed. Nothing was changed.", false); }
+    } catch (e) { busy.current = false; L.toast(e instanceof SodError ? e.message : "Import failed. Nothing was changed.", false); }
   };
 
   const titleOk = map["title"] != null && map["title"] >= 0;
@@ -188,6 +190,7 @@ export function ImportWizard({ L, onDone }: { L: LayerApi; onDone?: () => void }
             <label style={{ display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}><input type="radio" name="impconf" checked={conflict === "update"} onChange={() => { setConflict("update"); runCompute("update"); }} /> Update the existing risk</label>
             <label style={{ display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}><input type="radio" name="impconf" checked={conflict === "new"} onChange={() => { setConflict("new"); runCompute("new"); }} /> Add as a new risk with a new ID</label>
           </div>
+          {counts.nUpd > 0 ? <p className="field help" role="note" style={{ margin: "0 0 12px", color: "var(--warn-ink)", fontWeight: 600 }}>{counts.nUpd} existing risk{counts.nUpd !== 1 ? "s" : ""} would be updated. Updates are not applied directly: a second admin must approve the import first. New risks in the same file are held with it.</p> : null}
           <div style={{ border: "1px solid var(--line)", borderRadius: 10, overflow: "auto", maxHeight: 320 }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead><tr style={{ background: "var(--surface-2)" }}>
@@ -223,7 +226,7 @@ export function ImportWizard({ L, onDone }: { L: LayerApi; onDone?: () => void }
         {step === 3 && (
           <>
             <button className="btn btn-secondary" onClick={() => setStep(2)}>Back to columns</button>
-            <button className="btn btn-primary" disabled={!n} onClick={run}>Import {n} risk{n !== 1 ? "s" : ""}</button>
+            <button className="btn btn-primary" disabled={!n} onClick={run}>{counts && counts.nUpd > 0 ? "Submit " + n + " risk" + (n !== 1 ? "s" : "") + " for approval" : "Import " + n + " risk" + (n !== 1 ? "s" : "")}</button>
           </>
         )}
       </LayerFoot>

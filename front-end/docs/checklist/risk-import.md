@@ -27,8 +27,18 @@ React: `src/components/modules/risk/import/{openImportWizard.tsx, ImportWizard.t
 | Footer per step (Cancel / Choose another file + Check rows (disabled until title mapped) / Back to columns + Import n risk(s)) | 2976-2980 | ImportWizard `LayerFoot` | done | |
 | Local helpers `rband`, `riskNorm`, `riskLog`, `riskCanEdit` | 2414-2466, 2690 | riskLocal.ts | done | private copies (src/lib/risk.ts did not exist); switch to the shared ones once available |
 
+## Changed vs prototype (owner decision 2026-11, `docs/SOD_MATRIX.md`)
+* An import that would **update existing risk ids** is no longer applied directly. `commitRiskImport` stages it as an approval request (`kind "risk.import"`, `needs 1`, `approverRoles ["admin"]`, `forbid [importer]`, 72 h expiry). Rows of the same file that are new ids are held with it. Imports of **only new ids** still apply at once.
+* Step 3 of the wizard shows a notice and the button reads "Submit n risks for approval" when updates are present; the toast names the request id and says nothing changed yet. Parsing, limits and preview are untouched.
+* **Pending imports** panel at the top of the Register tab (`risk/PendingImports.tsx`): list with importer, counts and ids; Approve / Reject (reason >= 10 chars) for an admin who is not the importer, otherwise disabled with the reason; the importer can Withdraw. Approving applies the staged rows once (`decideRiskImport` -> `applyImport`), rejecting changes nothing.
+* `applyImport` hardening for the update path: status of an Accepted risk is kept and the acceptance re-validated against the new scores; "Closed" is ignored while treatment actions are open; `lastEditedBy` is set to the importer.
+* Audit: `risk.import.staged / approved / rejected` (request id, counts, clamped file name), plus the approval engine's `approval.risk.import.*` and the existing `risk.register.imported` on apply.
+
+## Conflicts resolved by owner decision
+* Open question 1 below ("should update-by-ID require the approval workflow?") is answered: yes, with a second admin (approver != importer). Source default "Update the existing risk" stays selectable, but its effect is staged.
+
 ## Open questions
-1. **Update vs "never overwrite existing ids".** The source default ("Update the existing risk" when the Risk ID exists) overwrites an existing risk on purpose; ported as-is, with the "new ID" alternative. New rows can never take an existing id (also re-checked at commit time). Should update-by-ID require the approval workflow (review status is untouched by an update in the source)?
+1. **(Resolved, see above)** Update vs "never overwrite existing ids". The source default ("Update the existing risk" when the Risk ID exists) overwrites an existing risk on purpose; ported as-is, with the "new ID" alternative. New rows can never take an existing id (also re-checked at commit time). Should update-by-ID require the approval workflow (review status is untouched by an update in the source)?
 2. **`.xls`.** The source accepted only `.xlsx,.csv` in the picker, and any other extension was parsed as CSV text (binary garbage). The allow-list now includes `xls` as requested but it is rejected with "Old .xls files are not supported. Save the sheet as .xlsx or CSV". Drop `xls` from the list if it should not even be selectable.
 3. Source copy "Up to 2,000 rows" and the silent 2,000-row truncation were changed to 5,000 with an explicit rejection message (security brief).
 4. Source message "Could not read the file." (FileReader error) is now the generic "Could not read this CSV file.".
@@ -62,5 +72,8 @@ Limits chosen (`parse.ts` `LIMITS`, `convert.ts`):
 * **Authorization:** `riskCanEdit()` checked on open and again on import (UI-only, as in the source: the API must enforce it). Audit: `risk.register.imported` (counts and clamped file name) and a per-risk history entry, as in the source.
 * **No network/storage:** file content never leaves the browser and is not stored in localStorage; the `commitRiskImport` stub in `src/services/riskImport.ts` only forwards already-validated rows in http mode.
 * **Not covered (needs backend):** malware scanning, server-side size/row limits, server-side re-validation, rate limiting, who may update which risk.
+
+* **Four-eyes on updates:** enforced in `services/riskImport.ts` (`assertRole admin`, approvals engine forbids the importer) and mirrored in the panel. Staged rows live in the in-memory approval payload; a real API must persist them server-side, re-validate at approval time and compare user ids, not names. A mixed file is staged as a whole (new + updates), which is stricter than the matrix requires.
+* **Not covered:** an approver sees the file name and ids only, not a field-level diff of the update; consider adding one before production.
 
 Tests (throwaway, not in repo): CSV with BOM/quotes/embedded newline, hand-made xlsx (shared strings with rich runs and entities, inline strings, sparse columns, empty rows, formula cell), 30 MB zip-bomb part (rejected, `limit-size`), column 100+ (rejected), garbage zip (generic error).

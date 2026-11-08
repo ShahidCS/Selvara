@@ -6,6 +6,7 @@ import { Ib, Lb, RBANDS, RISK_STATUSES, riskOpen, riskPriority, riskRatingOf, sC
 import { useModState } from "@/lib/store";
 import { K_RF, K_SEL, RF_INIT, RiskFilter, riskClearFilters, riskOpenDetail } from "./nav";
 import { ScoreChip } from "./RiskBits";
+import PendingImports from "./PendingImports";
 import RiskDetail from "./RiskDetail";
 
 function Sel({ id, val, opts, label, set }: { id: keyof RiskFilter; val: string; opts: string[]; label: string; set: (v: string) => void }) {
@@ -47,6 +48,7 @@ export default function RiskRegister() {
 
   return (
     <>
+      <PendingImports />
       <section className="card"><div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
           <label className="field" style={{ flex: "2 1 220px", margin: 0 }}><span className="flab">Search</span>
