@@ -4,7 +4,7 @@ Source: `Assurance-GRC-Portal.html` lines 2411-2811. The import wizard (2813-298
 
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|
-| Scales `Lb/Ib`, `RBANDS`, `rband`, `RISK_APPETITE`, tint/heat colour helpers, `riskPriority`, `ACCEPT_AUTH/RANK`, `CAT_TEAM`, `RISK_JUR`, `RISK_ENT`, `RISK_PARTIES` | 2412-2446 | `src/lib/risk.ts`, data in `src/data/riskRef.json` | Done | Reference data extracted with `scripts/extract-source.js`; two real staff names replaced by synthetic ones ("J. Avery" -> "J. Avery", "O. Hart" -> "O. Hart"). |
+| Scales `Lb/Ib`, `RBANDS`, `rband`, `RISK_APPETITE`, tint/heat colour helpers, `riskPriority`, `ACCEPT_AUTH/RANK`, `CAT_TEAM`, `RISK_JUR`, `RISK_ENT`, `RISK_PARTIES` | 2412-2446 | `src/lib/risk.ts`, data in `src/data/riskRef.json` | Done | Reference data extracted with `scripts/extract-source.js`; two real staff names replaced by synthetic ones (to synthetic names). |
 | Score/rating/band chips | 2424-2426 | `risk/RiskBits.tsx` | Done | Number/band name always in the chip text. |
 | `riskNorm`, `riskNormAll`, `riskFindR`, `riskCtrl`, `riskLog`, `riskCanEdit`, `riskCanApprove` | 2451-2469, 2690 | `src/lib/risk.ts` | Done | Exported for the import wizard and other modules. `riskNormAll()` runs on every module render (idempotent via `_n`). |
 | Page, tab bar (`risk.tab` shared with sidebar), Import/Export/Add acts | 2471-2499 | `RiskModule.tsx`, `risk/nav.ts` | Done | Selection clears when leaving Register (as `riskTab`). Import button only for `riskCanEdit`; handler re-checks ("You do not have permission to import risks"). |
@@ -35,7 +35,7 @@ Source: `Assurance-GRC-Portal.html` lines 2411-2811. The import wizard (2813-298
 7. Accepting a risk sets `treat = "Accept"`; reopening forces `treat = "Mitigate"` regardless of the previous decision.
 8. Accept form fields reset whenever the required authority changes (source re-rendered the whole panel on every action); the form is keyed by risk id + required authority.
 9. The export button is available to every role (source has no gate) and logs `risk.register.exported`.
-10. Inherent/current/residual "Add risk" form always sets owner default to a fixed persona ("J. Avery"); source used a fixed real persona name. Avery", not the signed-in user.
+10. Inherent/current/residual "Add risk" form always sets owner default to a fixed persona ("J. Avery"); source used a fixed real persona name. [real name]", not the signed-in user.
 11. Added (not in source): read-only hint lines where the source rendered nothing for non-editors (acceptance, submit, parties, snapshots), "Enter a valid date." for a malformed acceptance date, aria-labels on heat cells/unmap/link selects.
 
 ## Security notes
