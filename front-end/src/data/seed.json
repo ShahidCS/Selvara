@@ -133,7 +133,7 @@
   },
   {
    "id": "iso22301",
-   "name": "ISO/IEC 22301 (BCMS)",
+   "name": "ISO 22301 (BCMS)",
    "kind": "Standard",
    "region": "Global",
    "pct": 81,
@@ -265,7 +265,7 @@
   },
   {
    "id": "sbp",
-   "name": "SBP AML/CFT/CPF Reg. 8",
+   "name": "SBP AML/CFT/CPF Regulations",
    "kind": "Regulation",
    "region": "Pakistan",
    "pct": 77,
@@ -342,7 +342,7 @@
   },
   {
    "id": "sbpetg",
-   "name": "SBP Enterprise Technology Governance & Risk",
+   "name": "SBP Enterprise Technology Governance & Risk Management Framework",
    "kind": "Regulation",
    "region": "Pakistan",
    "pct": 58,
