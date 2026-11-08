@@ -1,0 +1,191 @@
+{
+ "intro": "What engineering must implement and test before go-live to stop account discovery, brute force, request forgery, privilege escalation and data leaking through API responses. Mapped to OWASP ASVS 4.0.3 (Level 2) and the OWASP API Security Top 10 (2023).",
+ "coreRule": {
+  "heading": "Core rule: the browser is untrusted",
+  "body": "Everything in a request (user ID, email, role, tenant, price, status, hidden fields) can be edited in DevTools or a proxy. The server works out who the caller is from the session cookie alone, loads their role and tenant from its own database, and checks permission on every request and every record. Hiding a button in the UI is not a control."
+ },
+ "neverSend": [
+  "Internal or sequential user, tenant or record IDs (use random, non-guessable IDs where an ID is needed)",
+  "Roles, permissions or tenant IDs that the server later trusts",
+  "Password hashes, MFA secrets, recovery codes, reset tokens",
+  "Session or access tokens in the body, URL or localStorage",
+  "Failed-attempt counters, lock status or \"account exists\" flags",
+  "Other users’ emails, phone numbers or IPs beyond what the role is allowed to see",
+  "Stack traces, SQL errors, file paths, framework or server versions",
+  "Fields the screen does not display (no \"select *\" serialisation)"
+ ],
+ "badResponse": "HTTP/1.1 200 OK\nServer: [server name and version]\nX-Powered-By: [framework name]\n\n{\n  \"user\": {\n    \"id\": \"[sequential internal id]\",\n    \"email\": \"[user email]\",\n    \"role\": \"[role the server later trusts]\",\n    \"tenant_id\": \"[internal tenant id]\",\n    \"password_hash\": \"[hash]\",\n    \"mfa_secret\": \"[secret]\",\n    \"failed_attempts\": \"[counter]\",\n    \"locked\": \"[flag]\"\n  },\n  \"token\": \"[bearer token in body, saved to localStorage]\"\n}",
+ "goodResponse": "HTTP/1.1 200 OK\nContent-Type: application/json\nCache-Control: no-store\nSet-Cookie: __Host-mfa_pending=[opaque]; Max-Age=300; Secure; HttpOnly; SameSite=Strict; Path=/\n\n{\n  \"next\": \"mfa\"\n}",
+ "groups": [
+  {
+   "id": "identity-authorisation",
+   "title": "Server-side identity and authorisation",
+   "threat": "Changing a user_id, policy_id or tenant_id in a request to read or change another person’s or company’s data, or sending role=admin to gain rights (IDOR, privilege escalation).",
+   "controls": [
+    "Identity comes only from the server-side session; user_id, email, role or tenant sent by the client is ignored",
+    "Every query is scoped by the session’s tenant (row-level security in the database as a second layer)",
+    "Object-level check on every read and write: does this user have this right on this record?",
+    "Function-level check on every admin endpoint; deny by default",
+    "Allow-list of writable fields per endpoint; role, owner, tenant and status are never bindable from the body (mass assignment)",
+    "Policy edits verified against owner_id = session user on the server, not by hiding the button"
+   ],
+   "refs": "ASVS V4 (Access control) · API1 BOLA, API3 property-level authorisation, API5 function-level authorisation",
+   "test": "Automated cross-tenant and cross-user tests with two accounts swapping IDs on every endpoint"
+  },
+  {
+   "id": "account-discovery",
+   "title": "Account discovery (enumeration)",
+   "threat": "Trying emails on sign-in, sign-up, forgot-password or invite screens to learn which accounts exist, then targeting them.",
+   "controls": [
+    "Same status code, body and response time for existing and non-existing emails on login, sign-up, forgot-password and MFA",
+    "Dummy password hash computed for unknown emails so timing matches",
+    "Sign-up always answers \"check your inbox\"; an existing user gets a different email, not a different screen",
+    "Lockout applies to any email string, so locking does not reveal real accounts",
+    "No public user search, profile URLs or autocomplete of emails before sign-in",
+    "Invite and reset links carry only an opaque token, never an email or user ID"
+   ],
+   "refs": "ASVS V2.2 (General authenticator security), V2.5 (Credential recovery) · API2 Broken authentication",
+   "test": "Compare responses and timing for real vs unknown emails (100 runs each); differences must be within noise"
+  },
+  {
+   "id": "brute-force",
+   "title": "Brute force and credential stuffing",
+   "threat": "Guessing passwords or MFA codes for a known email, or testing leaked email/password pairs from other breaches.",
+   "controls": [
+    "Per-email, per-IP and per-device limits with growing delays (see table below)",
+    "Bot check from the 3rd failure; WAF bot management at the edge",
+    "Detect many emails from one IP or many IPs on one email; block and alert",
+    "Breached-password check at sign-up and password change",
+    "MFA required for every account, so a correct password alone is not enough",
+    "MFA codes: single use, 30-second window, 5 attempts per sign-in",
+    "Owner alerted by email after repeated failures or a new-device sign-in"
+   ],
+   "refs": "ASVS V2.2.1, V2.1.7, V2.8 (One-time verifiers) · API2, API4 Unrestricted resource consumption",
+   "test": "Scripted brute-force and stuffing runs in staging; confirm throttling, alerts and no bypass via alternate endpoints (mobile API, legacy routes)"
+  },
+  {
+   "id": "password-reset",
+   "title": "Password reset and account recovery",
+   "threat": "Resetting someone else’s password by guessing or reusing a token, changing the email in the request, or poisoning the reset link.",
+   "controls": [
+    "Token: 256-bit random, stored only as a hash, single use, 30-minute expiry, bound to one account",
+    "The server finds the account from the token; any email or user_id in the reset request is ignored",
+    "New request or successful reset invalidates all older tokens",
+    "Reset link built from a fixed base URL, never from the Host header",
+    "Reset revokes all sessions and still requires MFA; the owner is notified",
+    "Admins can only send a reset link to the member’s verified email; they never see or set passwords",
+    "MFA reset: identity check plus second approver; audited"
+   ],
+   "refs": "ASVS V2.5 (Credential recovery) · API2",
+   "test": "Token reuse, expiry, swap-user, Host-header injection and parallel-request (race) tests"
+  },
+  {
+   "id": "sessions-csrf",
+   "title": "Sessions, tokens and request forgery",
+   "threat": "Stealing or fixing a session, or making a signed-in user’s browser send an unwanted request (CSRF).",
+   "controls": [
+    "Session in a cookie with __Host- prefix, Secure, HttpOnly, SameSite=Strict; opaque and server-side revocable",
+    "New session ID after sign-in, MFA and any role change",
+    "Idle and absolute timeouts; sign-out and password change kill all sessions",
+    "CSRF token on every state-changing request, plus Origin/Referer checks",
+    "Re-authentication (password + MFA) for sensitive actions: change email, reset another user’s MFA, export data, change billing",
+    "No tokens in URLs, logs or browser storage"
+   ],
+   "refs": "ASVS V3 (Session management), V4.2.2 (CSRF) · API2",
+   "test": "Session fixation, CSRF on every POST/PUT/DELETE, cookie flag scan, logout invalidation"
+  },
+  {
+   "id": "data-minimisation",
+   "title": "Data minimisation in API responses",
+   "threat": "Reading sensitive fields from DevTools or a proxy that the screen never shows.",
+   "controls": [
+    "Response DTOs per endpoint with explicit field lists; no direct serialisation of database models",
+    "Masking by role (e.g. members see colleagues’ names, not emails or IPs)",
+    "Random UUIDs instead of sequential IDs where an ID must be exposed",
+    "Cache-Control: no-store on all authenticated and auth responses",
+    "No sensitive data in query strings, error messages or analytics events"
+   ],
+   "refs": "ASVS V8 (Data protection), V13 (API) · API3",
+   "test": "Schema review of every response against the screen’s needs; automated check for forbidden field names"
+  },
+  {
+   "id": "input-handling",
+   "title": "Input handling",
+   "threat": "Injection, oversized payloads or unexpected types used to break the server or bypass checks.",
+   "controls": [
+    "Strict schema validation on every request (type, length, format; unknown fields rejected)",
+    "Parameterised queries and ORM only; no string-built SQL",
+    "Output encoding and Content-Security-Policy against XSS in policies and comments",
+    "File uploads: type checked by content, size limit, malware scan, stored outside the web root",
+    "Request size and pagination limits"
+   ],
+   "refs": "ASVS V5 (Validation, sanitisation, encoding), V12 (Files) · API4, API8",
+   "test": "DAST in CI plus manual injection testing of rich-text and upload fields"
+  },
+  {
+   "id": "errors-headers-transport",
+   "title": "Errors, headers and transport",
+   "threat": "Learning the technology stack or internals from error pages and headers.",
+   "controls": [
+    "Generic error messages with a reference ID; details only in server logs",
+    "Remove Server, X-Powered-By and version headers",
+    "HSTS, CSP, X-Content-Type-Options, frame-ancestors none, Referrer-Policy strict-origin",
+    "TLS 1.2+ only; CORS limited to the app’s own origin, no wildcards with credentials",
+    "No debug endpoints, API explorers or source maps in production"
+   ],
+   "refs": "ASVS V7.4 (Error handling), V9 (Communications), V14 (Configuration) · API8 Security misconfiguration",
+   "test": "Header scan, forced-error testing, TLS configuration scan"
+  },
+  {
+   "id": "logging-monitoring",
+   "title": "Logging, monitoring and alerting",
+   "threat": "Attacks going unnoticed, or logs themselves leaking secrets.",
+   "controls": [
+    "Log every sign-in, failure, lock, reset, MFA change, role change and admin action with actor, tenant, IP and result",
+    "Never log passwords, tokens, MFA codes or full request bodies on auth routes",
+    "Hash-chained, write-once audit store; streamed to the SIEM",
+    "Alerts: failure spikes, stuffing patterns, impossible travel, admin actions outside hours, cross-tenant access denials",
+    "Users see their own sign-in history and active sessions"
+   ],
+   "refs": "ASVS V7.1–V7.3 (Logging) · ISO 27001 A.8.15–A.8.16 · SOC 2 CC7.2",
+   "test": "Replay attack scenarios and confirm the alert fires within the agreed time"
+  }
+ ],
+ "rateLimitsIntro": "Limits are keyed on the identifier string the caller sends, not on whether an account exists, so unknown emails behave exactly like real ones. Tune from monitoring after launch.",
+ "rateLimits": [
+  { "ep": "POST /auth/login", "id": "5 failures per 15 min, then 15-min pause; bot check from the 3rd", "ip": "20 per min; more than 50 distinct emails per hour blocks the IP", "then": "429 with the same body for every email; owner alerted if the account exists" },
+  { "ep": "POST /auth/mfa/verify", "id": "5 wrong codes per pending sign-in", "ip": "30 per min", "then": "Pending sign-in cancelled; password step must restart after the wait" },
+  { "ep": "POST /auth/password/forgot", "id": "3 per hour", "ip": "10 per hour", "then": "Request dropped quietly; response is still 202 \"accepted\"" },
+  { "ep": "POST /auth/password/reset", "id": "5 attempts per token", "ip": "10 per hour", "then": "Token voided; user must request a new link" },
+  { "ep": "POST /auth/signup", "id": "3 per hour", "ip": "5 per hour; bot check always", "then": "Same 202 \"accepted\" response" },
+  { "ep": "Invite acceptance link", "id": "Single use, 72-hour expiry", "ip": "10 per hour", "then": "Link voided; admin must re-invite" },
+  { "ep": "Authenticated API", "id": "600 per min per session", "ip": "1,200 per min", "then": "429; exports limited to 10 per hour and always logged" }
+ ],
+ "matrixIntro": "Checked in the API on every request. The tenant always comes from the session, so no role can reach another company's records. Deny by default; any action not listed is refused.",
+ "matrixRoles": ["Super admin", "Company admin", "Policy owner", "Member", "Auditor"],
+ "matrix": [
+  { "action": "View company policies", "cells": ["No (customer-approved grant only)", "Yes", "Yes", "Yes", "Yes"] },
+  { "action": "Edit policy content", "cells": ["No", "Own (created by them)", "Own (created by them)", "No", "No"] },
+  { "action": "Approve a policy", "cells": ["No", "If named approver", "If named approver", "No", "No"] },
+  { "action": "Reassign policy owner", "cells": ["No", "Yes", "No", "No", "No"] },
+  { "action": "Add remarks", "cells": ["No", "Yes", "Own + invited", "If invited", "No"] },
+  { "action": "Add collaborators", "cells": ["No", "Yes", "Own policies", "No", "No"] },
+  { "action": "Invite / offboard members", "cells": ["No", "Yes", "No", "No", "No"] },
+  { "action": "Send password reset link", "cells": ["Company admins only", "Own company members", "No", "No", "No"] },
+  { "action": "Reset another user’s MFA", "cells": ["Yes (two approvers)", "Own company members", "No", "No", "No"] },
+  { "action": "Change company settings", "cells": ["No", "Yes", "No", "No", "No"] },
+  { "action": "View company audit log", "cells": ["Platform log only", "Yes", "No", "No", "Yes"] },
+  { "action": "Onboard / suspend customers, billing", "cells": ["Yes", "No", "No", "No", "No"] },
+  { "action": "Read another company’s data", "cells": ["No (grant only)", "No", "No", "No", "No"] }
+ ],
+ "releaseGate": [
+  "Penetration test of the web app and API by an independent firm; all critical and high findings fixed and retested",
+  "OWASP ASVS Level 2 self-assessment completed and signed off by the CISO",
+  "Automated cross-tenant / cross-user (IDOR) test suite passing in CI",
+  "Enumeration timing test: no measurable difference between real and unknown emails",
+  "Rate limits and alerts demonstrated in staging with scripted attacks",
+  "Response schema review: no forbidden fields in any API response",
+  "Security headers, TLS and cookie flags verified by scan",
+  "Secrets in a vault; no keys in code, images or front-end bundles"
+ ]
+}
