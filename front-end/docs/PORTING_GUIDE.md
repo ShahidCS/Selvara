@@ -74,3 +74,24 @@ The prototype has no network calls. Each module that mutates data should call th
 * `npx tsc --noEmit` and `npx next build` pass with no errors.
 * Visually compared with the prototype (light + dark, desktop + <=760px).
 * `docs/checklist/<module>.md` written: table of `source feature | source lines | React component/file | status | notes`, plus "Open questions".
+
+## Secure coding rules (mandatory; OWASP ASVS v4)
+
+Client-side code is not a trust boundary. Everything the UI hides (RBAC, validation) must also be enforced by the real API; mark any place where the
+prototype relied on the UI alone in your checklist under "Security notes".
+
+1. **No HTML from strings.** Never use `dangerouslySetInnerHTML`, `innerHTML`, `document.write`, `eval`, `new Function`, or string-built `setTimeout`. React escapes text; keep it that way (ASVS 5.2.4, 5.3.3).
+   Generated standalone documents (reports, board pack) must escape every interpolated value with `esc()` from `@/lib/format` and must not embed user HTML.
+2. **Links from data:** `href={safeHref(url)}` (`@/lib/security`); `target="_blank"` always with `rel="noopener noreferrer"`. No `javascript:`/`data:` URLs.
+3. **Uploads (evidence, imports):** gate with `validateUpload` (extension allow-list, size, non-empty); display names via `safeFileName`; read with `FileReader`/`File.text()` only;
+   never render uploaded content as HTML/SVG; CSV/XLSX imports are parsed as data and every cell is treated as text. Cap rows/columns when previewing (DoS).
+4. **CSV/Excel exports:** every cell through `csvCell` (formula injection guard). Download names through `safeFileName`.
+5. **Validate on input** with positive checks (length caps via `clampText`, `isEmail`, `isIsoDate`, enums checked against the allowed list, numbers range-checked). Keep the prototype's messages.
+   Never trust ids from the URL: look them up in DATA and render "not found" when missing.
+6. **No secrets or PII in client storage.** Only role/theme/collapsed UI preferences go to localStorage (via `lib/store.ts`). No tokens, no record data. Do not log record contents to the console.
+7. **Audit log integrity (V7):** keep every `wsLog` call from the source; log security-relevant decisions (grants, revocations, approvals, exports, role switches) with an actor from `getMe()`; never log secrets. Log text is rendered as React text (no log injection into HTML).
+8. **Authorization:** reuse `fwCanAdmin`-style role checks from `lib/rbac.ts`; deny by default; show a read-only state, not just a hidden button. Port every role gate in the source exactly. Where the source had none and the action is destructive/sensitive, port as-is and flag it under Security notes (do not invent policy).
+9. **Randomness:** ids that were `Math.random()` in the source are demo ids only; do not use them for anything security-relevant. Use `crypto.randomUUID()` for new tokens/links (e.g. share links) if one is needed.
+10. **Dependencies:** do not add npm packages without telling the lead (supply chain). Spreadsheet parsing for the import wizard is hand-written in the source; do not pull in a library.
+11. **Errors:** show the prototype's messages; never render raw exception text. Wrap risky parsing (JSON.parse, file reads) in try/catch with a generic message (ASVS 7.4.1).
+12. **Redirects/navigation** only to in-app paths via `useGo`.
