@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]   # branch pushes are covered by pull_request; avoids running every check twice
   pull_request:
 
 permissions:
