@@ -1,3 +1,4 @@
+import { adminLog } from "@/lib/adminAudit";
 import { Chip, Empty, Icon, Kpi, Page, StatusChip, Table } from "@/components/ui";
 import { useApp, useData, useModState, bumpData } from "@/lib/store";
 import { wsLog } from "@/lib/audit";
@@ -67,7 +68,7 @@ export function AuditDetail({ id }: { id: string }) {
       <button className="btn btn-primary" onClick={() => attempt(L, async () => {
         const txt = await svc.exportReport(id);
         downloadText(safeFileName(a.id + "-report.txt", "audit-report.txt"), txt);
-        /* source also wrote adminLog('audit.report.generated', name, {categories:['Audit'], basis:'Legal obligation'}) to the admin chain; see checklist */
+        adminLog("audit.report.generated", a.name, { categories: ["Audit"], basis: "Legal obligation" });
         wsLog("audit.report.generated", a.name, "Audit"); L.closeLayer(); L.toast("Report exported (demo)");
       })}><Icon name="download" />Export</button>
     </>);

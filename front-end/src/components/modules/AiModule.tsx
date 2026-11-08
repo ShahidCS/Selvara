@@ -1,3 +1,4 @@
+import { adminLog } from "@/lib/adminAudit";
 import { Icon, Kpi, Page, Ring, StatusChip, Table, activate } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { bumpData, useData } from "@/lib/store";
@@ -26,7 +27,7 @@ export default function AiModule() {
   const stop = { onClick: (e: React.MouseEvent) => e.stopPropagation(), onKeyDown: (e: React.KeyboardEvent) => e.stopPropagation() };
   const dismiss = (id: string) => attempt(L, async () => {
     const ok = await svc.dismissShadow(id); if (!ok) return;
-    wsLog("ai.shadow.dismissed", id, "AI governance"); // source: wsLog + adminLog (admin chain not ported)
+    wsLog("ai.shadow.dismissed", id, "AI governance"); adminLog("ai.shadow.dismissed", id, { categories: ["AI governance"] });
     L.toast("Removed from the discovered list"); bumpData();
   });
   const open = (id: string) => openAiDrawer(L, id);

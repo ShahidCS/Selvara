@@ -1,3 +1,4 @@
+import { adminLog } from "@/lib/adminAudit";
 import { useState } from "react";
 import { Table } from "@/components/ui";
 import { LayerFoot } from "@/hooks/useLayer";
@@ -18,7 +19,7 @@ export function StartIncidentForm({ L }: { L: LayerApi }) {
     try {
       await svc.startIncident(s);
       wsLog("incident.started", s || "incident drill", "Policy");
-      // source also wrote adminLog("incident.started", ..., {categories:["Incident"], basis:"Legal obligation"}) to the admin chain; see checklist
+      adminLog("incident.started", s || "incident drill", { categories: ["Incident"], basis: "Legal obligation" });
       L.closeLayer(); L.toast("Incident clock started"); bumpData();
     } catch { L.toast(FAIL, false); }
   };

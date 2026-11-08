@@ -1,3 +1,5 @@
+import { adminLog } from "@/lib/adminAudit";
+import { roleOf } from "@/lib/rbac";
 /* AI governance helpers (ported from the prototype's `ai*` helpers, source lines 3012-3245).
  * Seed constants come from src/data/aiSeed.json (extracted with scripts/extract-source.js). */
 import seed from "@/data/aiSeed.json";
@@ -72,5 +74,5 @@ export function aiIsLegalOrAdmin(roleId: string = appStore.get().role): boolean 
 export function aiEuRationale(c: string): string {
   return ({ "High-risk": "Used in a regulated decision context that affects individuals; the full set of high-risk obligations applies.", "Limited risk": "Interacts with people and must disclose that it is AI; transparency obligations apply.", "Minimal risk": "Internal productivity use with no automated decisions on individuals; no specific obligations.", Prohibited: "Falls within an unacceptable-risk category and must not be operated." } as Record<string, string>)[c] || "Not yet classified under the EU AI Act.";
 }
-/** Prototype: aiLog wrote to the admin audit chain only (`adminLog`, not ported yet). Here it goes to the workspace chain so the decision is still recorded. */
-export function aiLog(action: string, name: string) { wsLog(action, name, "AI governance"); }
+/** Prototype: aiLog writes to the platform admin audit chain only (tenant = the signed-in role's tenant). */
+export function aiLog(action: string, name: string) { adminLog(action, name, { tenant: roleOf(appStore.get().role).tenant || "", categories: ["AI governance"] }); }
