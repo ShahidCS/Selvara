@@ -29,10 +29,10 @@ Status below is the migration state of each route. "Pending" screens render an e
 | `/ws/team` | Team & Settings | `TeamModule` | 3 | Done | [team](checklist/team.md) |
 | `/ws/billingws` | Billing & Invoices | `BillingWsModule` | 3 | Done | [billingws](checklist/billingws.md) |
 | `/auth` | Sign-in & security | `AuthModule` | 3 | Done | [auth](checklist/auth.md) |
-| `/ws/auditlog` | Audit logs | `AuditLogModule` | 4 | Pending | |
-| `/admin/customers` | Customers & Usage | `CustomersModule` | 4 | Pending | |
-| `/admin/billing[/id]` | Billing | `BillingModule` | 4 | Pending | |
-| `/admin/rates` | Exchange Rates & Tax | `RatesModule` | 4 | Pending | |
-| `/admin/mfa` | MFA Resets | `MfaModule` | 4 | Pending | |
-| `/admin/adminlog` | Admin Audit Log | `AdminLogModule` | 4 | Pending | |
-| design board | 10 spec screens in the dashboard bundle (provider console, vendor assessment portal, auditor/vendor/public Trust Center, ...) | n/a | 4+ | Awaiting scope answer (see INVENTORY.md Q1) | |
+| `/ws/auditlog` | Audit logs | `AuditLogModule` | 4 | Done | [auditlog](checklist/auditlog.md) |
+| `/admin/customers` | Customers & Usage | `CustomersModule` | 4 | Done | [customers](checklist/customers.md) |
+| `/admin/billing[/id]` | Billing | `BillingModule` | 4 | Done | [billing](checklist/billing.md) |
+| `/admin/rates` | Exchange Rates & Tax | `RatesModule` | 4 | Done | [rates](checklist/rates.md) |
+| `/admin/mfa` | MFA Resets | `MfaModule` | 4 | Done | [mfa](checklist/mfa.md) |
+| `/admin/adminlog` | Admin Audit Log | `AdminLogModule` | 4 | Done | [adminlog](checklist/adminlog.md) |
+| spec boards | Decision: keep the portal design; port only what the portal lacks (Phase 5): external Vendor assessment portal, Member workspace view, Super admin elevated-session console, Application security controls (read-only page) | n/a | 5 | In progress | see docs/SPEC_BOARDS.md |

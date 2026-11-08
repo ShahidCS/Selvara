@@ -37,3 +37,5 @@ export function wsLog(action: string, target: string, cat?: string): WsEntry {
   const entry = { seq, prev, ...e, hash: hashStr(body(e, prev, seq)) } as WsEntry;
   WS_AUDIT.push(entry); bumpData(); return entry;
 }
+/** Canonical string that is hashed for a workspace entry (exported so the chain view can re-check each link). */
+export const wsChainBody = body;

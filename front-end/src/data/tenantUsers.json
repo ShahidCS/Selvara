@@ -1,0 +1,149 @@
+{
+ "USERS": [
+  {
+   "id": "U-01",
+   "name": "Rashid Al Maktoum",
+   "email": "rashid@northwind.example",
+   "custId": "cust-101",
+   "role": "Company Admin",
+   "status": "Active",
+   "mfa": "Enrolled",
+   "country": "United Arab Emirates",
+   "city": "Dubai",
+   "last": "Today 07:12"
+  },
+  {
+   "id": "U-02",
+   "name": "Maryam Noor",
+   "email": "maryam@northwind.example",
+   "custId": "cust-101",
+   "role": "Control, Policy and Risk Owner",
+   "status": "Active",
+   "mfa": "Enrolled",
+   "country": "United Arab Emirates",
+   "city": "Abu Dhabi",
+   "last": "Yesterday 18:40"
+  },
+  {
+   "id": "U-03",
+   "name": "Owen Hart",
+   "email": "owen@northwind.example",
+   "custId": "cust-101",
+   "role": "Risk Analyst",
+   "status": "Active",
+   "mfa": "Enrolled",
+   "country": "United Arab Emirates",
+   "city": "Dubai",
+   "last": "Today 09:05"
+  },
+  {
+   "id": "U-04",
+   "name": "Priya Nair",
+   "email": "priya@northwind.example",
+   "custId": "cust-101",
+   "role": "Employee",
+   "status": "Active",
+   "mfa": "Not enrolled",
+   "country": "United Arab Emirates",
+   "city": "Sharjah",
+   "last": "3 days ago"
+  },
+  {
+   "id": "U-05",
+   "name": "Morgan Blake",
+   "email": "morgan@audit.example",
+   "custId": "cust-101",
+   "role": "External Auditor",
+   "status": "Invited",
+   "mfa": "Not enrolled",
+   "country": "United Kingdom",
+   "city": "London",
+   "last": "-"
+  },
+  {
+   "id": "U-06",
+   "name": "Ayesha Khan",
+   "email": "ayesha@contoso.example",
+   "custId": "cust-102",
+   "role": "Company Admin",
+   "status": "Active",
+   "mfa": "Reset pending",
+   "country": "Pakistan",
+   "city": "Karachi",
+   "last": "18 Oct 2026"
+  },
+  {
+   "id": "U-07",
+   "name": "Bilal Raza",
+   "email": "bilal@contoso.example",
+   "custId": "cust-102",
+   "role": "Employee",
+   "status": "Suspended",
+   "mfa": "Enrolled",
+   "country": "Pakistan",
+   "city": "Lahore",
+   "last": "02 Oct 2026"
+  },
+  {
+   "id": "U-08",
+   "name": "Faisal Al-Harbi",
+   "email": "faisal@najmpay.example",
+   "custId": "cust-103",
+   "role": "Company Admin",
+   "status": "Active",
+   "mfa": "Enrolled",
+   "country": "Saudi Arabia",
+   "city": "Riyadh",
+   "last": "Today 09:40"
+  },
+  {
+   "id": "U-09",
+   "name": "Noura Al-Qahtani",
+   "email": "noura@najmpay.example",
+   "custId": "cust-103",
+   "role": "Control, Policy and Risk Owner",
+   "status": "Active",
+   "mfa": "Enrolled",
+   "country": "Saudi Arabia",
+   "city": "Jeddah",
+   "last": "Yesterday"
+  },
+  {
+   "id": "U-10",
+   "name": "Olivia Grant",
+   "email": "olivia@tailspin.example",
+   "custId": "cust-104",
+   "role": "Company Admin",
+   "status": "Invited",
+   "mfa": "Not enrolled",
+   "country": "United Kingdom",
+   "city": "London",
+   "last": "-"
+  },
+  {
+   "id": "U-11",
+   "name": "Sean O'Brien",
+   "email": "sean@liffey.example",
+   "custId": "cust-105",
+   "role": "Company Admin",
+   "status": "Active",
+   "mfa": "Enrolled",
+   "country": "Ireland",
+   "city": "Dublin",
+   "last": "2 days ago"
+  },
+  {
+   "id": "U-12",
+   "name": "Aoife Byrne",
+   "email": "aoife@liffey.example",
+   "custId": "cust-105",
+   "role": "Employee",
+   "status": "Active",
+   "mfa": "Enrolled",
+   "country": "Ireland",
+   "city": "Cork",
+   "last": "Today 06:30"
+  }
+ ],
+ "USERSEQ": 20
+}

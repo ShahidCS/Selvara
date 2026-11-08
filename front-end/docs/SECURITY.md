@@ -41,3 +41,10 @@ Per-module "Security notes" live in `docs/checklist/<module>.md`.
 * **Auth gallery:** demo only; no password/OTP stored, logged or sent; correct `autocomplete`; documented deviations from ASVS 2.1 (composition rules, ASCII-only, breach-check copy without a check) in `checklist/auth.md`.
 * **Open decisions:** re-import overwriting an existing risk id (source behaviour); `.xls` selectable then rejected; no separation of duties on risk acceptance / vendor approval / AI confirmation in the source (UI-only gates, API must enforce).
 * **Data policy:** repo-wide scan for the replaced real names and the company name returns 0 matches in the working tree (git history of the first commits still has two names).
+
+### Phase 4 review (local build, owner-authorized)
+* **Routes:** `/ws/auditlog` and `/admin/{customers,billing,billing/<id>,rates,mfa,adminlog}` render; unknown billing id shows the not-found state; Platform Support is redirected from `/ws/risk` to `/admin/customers` (module RBAC enforced).
+* **Injection:** 3 payload classes (HTML/SVG/CSV-formula) through the customer search and every admin modal field, then re-visited all admin pages: no execution, no injected elements, no dialogs (166 logged attempts in total for the engagement).
+* **Audit integrity:** admin chain is append-only in the UI (no edit/delete), chain-verify view states it is a demo (FNV-1a). AI decisions, audit-report export and incident start now write to the admin chain as in the source.
+* **MFA reset (account-takeover vector):** four-eyes enforced in UI and service (requester cannot approve; only Pending can be decided). Known limits: name-based comparison; requester may Reject own request (source behaviour). Real API must add step-up auth, out-of-band verification, server-side dual control with user ids.
+* **Data policy:** repo scan for replaced names/company name: 0 matches after fixing a seed file (`tenantUsers.json`) and its derived email.
