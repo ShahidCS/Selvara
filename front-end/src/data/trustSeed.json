@@ -1,0 +1,287 @@
+{
+ "TRUST_FAQ": [
+  {
+   "q": "Where is customer data hosted?",
+   "a": "In-region, with UAE and EU data residency options. See the Sub-processors list for details."
+  },
+  {
+   "q": "Do you hold ISO 27001 and SOC 2?",
+   "a": "Yes. The ISO 27001 certificate is public; the SOC 2 Type II report is available under NDA."
+  },
+  {
+   "q": "How are security issues reported?",
+   "a": "Through our disclosure address; critical reports are acknowledged within one business day."
+  }
+ ],
+ "TRUST_SUBPROC": [
+  {
+   "name": "Meridian Cloud",
+   "purpose": "Cloud hosting",
+   "region": "UAE / EU"
+  },
+  {
+   "name": "Arbor Identity",
+   "purpose": "Identity",
+   "region": "EU"
+  },
+  {
+   "name": "Clearwater Payments",
+   "purpose": "Payments",
+   "region": "US / EU"
+  },
+  {
+   "name": "Northlight",
+   "purpose": "Monitoring",
+   "region": "EU"
+  }
+ ],
+ "TRUST_UPDATES": [
+  {
+   "at": "24 Oct 2026",
+   "title": "Completed Q3 access recertification"
+  },
+  {
+   "at": "02 Oct 2026",
+   "title": "Published refreshed penetration-test summary"
+  },
+  {
+   "at": "15 Sep 2026",
+   "title": "Added EU data-residency option"
+  }
+ ],
+ "TRUST_ACCOUNTS": [
+  {
+   "company": "Globex Corp",
+   "domain": "globex.example",
+   "nda": "Signed 12 Oct 2026",
+   "viewers": [
+    "a.lee@globex.example",
+    "r.ortiz@globex.example"
+   ],
+   "access": "SOC 2 Type II, Pen-test summary",
+   "status": "Active"
+  },
+  {
+   "company": "Initech Ltd",
+   "domain": "initech.example",
+   "nda": "Signed 28 Sep 2026",
+   "viewers": [
+    "cfo@initech.example"
+   ],
+   "access": "SOC 2 Type II",
+   "status": "Active"
+  },
+  {
+   "company": "Umbrella Health",
+   "domain": "umbrella.example",
+   "nda": "Pending",
+   "viewers": [],
+   "access": "—",
+   "status": "Invited"
+  }
+ ],
+ "TRUST_REQUESTS": [
+  {
+   "id": "TR-14",
+   "who": "m.park@contoso.example",
+   "company": "Contoso",
+   "resource": "SOC 2 Type II report",
+   "reason": "Vendor due diligence",
+   "at": "25 Oct 2026"
+  },
+  {
+   "id": "TR-13",
+   "who": "security@wayne.example",
+   "company": "Wayne Enterprises",
+   "resource": "Penetration-test summary",
+   "reason": "Annual supplier review",
+   "at": "24 Oct 2026"
+  }
+ ],
+ "TRUST_DECISIONS": [
+  {
+   "at": "22 Oct 2026",
+   "who": "j.diaz@acme.example",
+   "resource": "SOC 2 Type II report",
+   "decision": "Approved",
+   "by": "J. Avery",
+   "note": ""
+  },
+  {
+   "at": "20 Oct 2026",
+   "who": "temp@freemail.example",
+   "resource": "SOC 2 Type II report",
+   "decision": "Denied",
+   "by": "J. Avery",
+   "note": "Non-business email domain"
+  }
+ ],
+ "TRUST_ACTIVITY": [
+  {
+   "at": "Today 09:14",
+   "who": "a.lee@globex.example",
+   "what": "Viewed SOC 2 Type II report"
+  },
+  {
+   "at": "Yesterday 16:40",
+   "who": "r.ortiz@globex.example",
+   "what": "Downloaded pen-test summary"
+  },
+  {
+   "at": "24 Oct 11:02",
+   "who": "cfo@initech.example",
+   "what": "Viewed live control status"
+  },
+  {
+   "at": "23 Oct 15:20",
+   "who": "a.lee@globex.example",
+   "what": "Accepted NDA"
+  }
+ ],
+ "TRUST_MODEHIST": [
+  {
+   "at": "24 Oct 2026",
+   "who": "J. Avery",
+   "change": "Set Vulnerability management status to In review"
+  },
+  {
+   "at": "02 Oct 2026",
+   "who": "O. Hart",
+   "change": "Published refreshed penetration-test summary"
+  },
+  {
+   "at": "15 Sep 2026",
+   "who": "J. Avery",
+   "change": "Added EU data-residency option to the public page"
+  }
+ ],
+ "TRUST_BLOCKED": [
+  "freemail.example",
+  "tempmail.example"
+ ],
+ "TRUST_CHATBOT": true,
+ "TRUST_CHATS": [
+  {
+   "at": "Today 10:22",
+   "who": "globex.example",
+   "q": "Do you encrypt data at rest?",
+   "a": "Yes — all customer data is encrypted at rest with AES-256; keys are managed in a dedicated KMS."
+  },
+  {
+   "at": "Yesterday 14:05",
+   "who": "initech.example",
+   "q": "What is your RTO/RPO?",
+   "a": "RTO 4 hours, RPO 1 hour for the core platform, validated by quarterly restore tests."
+  }
+ ],
+ "ANSWER_LIB": [
+  {
+   "q": "Do you encrypt data at rest?",
+   "a": "Yes. All customer data is encrypted at rest with AES-256; keys are managed in a dedicated KMS.",
+   "verified": true,
+   "uses": 34
+  },
+  {
+   "q": "Do you hold SOC 2 Type II?",
+   "a": "Yes. The current SOC 2 Type II report is available under NDA via our Trust Center.",
+   "verified": true,
+   "uses": 28
+  },
+  {
+   "q": "What is your RTO/RPO?",
+   "a": "RTO 4 hours, RPO 1 hour for the core platform; validated by quarterly restore tests.",
+   "verified": false,
+   "uses": 9
+  }
+ ],
+ "KB_DOCS": [
+  {
+   "name": "Security whitepaper 2026",
+   "type": "PDF"
+  },
+  {
+   "name": "Data processing addendum (template)",
+   "type": "DOCX"
+  },
+  {
+   "name": "Network architecture summary",
+   "type": "PDF"
+  }
+ ],
+ "VENDOR_Q": [
+  {
+   "q": "Do you encrypt customer data at rest and in transit?",
+   "a": "",
+   "required": true
+  },
+  {
+   "q": "Do you enforce MFA for all workforce accounts?",
+   "a": "",
+   "required": true
+  },
+  {
+   "q": "Do you hold ISO 27001 or SOC 2? Attach evidence.",
+   "a": "",
+   "required": true
+  },
+  {
+   "q": "How quickly do you notify customers of a data breach?",
+   "a": "",
+   "required": true
+  },
+  {
+   "q": "Do you run independent penetration tests at least annually?",
+   "a": "",
+   "required": false
+  }
+ ],
+ "STANDARD_TERMS": [
+  {
+   "term": "Breach notification",
+   "val": "Notify affected customers within 48 hours of confirmation"
+  },
+  {
+   "term": "Uptime",
+   "val": "99.9% monthly availability for the core platform"
+  },
+  {
+   "term": "Data return / deletion",
+   "val": "Return or delete customer data within 30 days of termination"
+  },
+  {
+   "term": "Sub-processor changes",
+   "val": "30 days' notice before adding a new sub-processor"
+  }
+ ],
+ "REPORT_FREQ": [
+  "Weekly",
+  "Monthly",
+  "Quarterly",
+  "Bi-annually",
+  "Yearly",
+  "Custom"
+ ],
+ "SCHED_PACKS": [
+  {
+   "name": "Board security pack",
+   "freq": "Monthly",
+   "detail": "1st of month",
+   "recip": "Board, Exec team",
+   "next": "01 Dec 2026"
+  },
+  {
+   "name": "Risk committee pack",
+   "freq": "Quarterly",
+   "detail": "Quarter end",
+   "recip": "Risk Committee",
+   "next": "31 Dec 2026"
+  },
+  {
+   "name": "Audit evidence pack",
+   "freq": "On demand",
+   "detail": "",
+   "recip": "External auditor",
+   "next": "—"
+  }
+ ]
+}
