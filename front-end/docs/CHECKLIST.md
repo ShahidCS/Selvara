@@ -35,4 +35,10 @@ Status below is the migration state of each route. "Pending" screens render an e
 | `/admin/rates` | Exchange Rates & Tax | `RatesModule` | 4 | Done | [rates](checklist/rates.md) |
 | `/admin/mfa` | MFA Resets | `MfaModule` | 4 | Done | [mfa](checklist/mfa.md) |
 | `/admin/adminlog` | Admin Audit Log | `AdminLogModule` | 4 | Done | [adminlog](checklist/adminlog.md) |
-| spec boards | Decision: keep the portal design; port only what the portal lacks (Phase 5): external Vendor assessment portal, Member workspace view, Super admin elevated-session console, Application security controls (read-only page) | n/a | 5 | In progress | see docs/SPEC_BOARDS.md |
+| `/ws/me` | Member workspace (spec board) | `MeModule` | 5 | Done | [me](checklist/me.md) |
+| `/admin/elevation` | Elevated access (spec board; simulated, not a control) | `ElevationModule` | 5 | Done | [elevation](checklist/elevation.md) |
+| `/admin/security` | Platform security rules (spec board) | `PlatformSecurityModule` | 5 | Done | [platform-security](checklist/platform-security.md) |
+| `/ws/appsec` | Application security controls reference (spec board) | `AppSecModule` | 5 | Done | [appsec](checklist/appsec.md) |
+| `/vendor-portal` | External vendor assessment portal (standalone, no shell) | `VendorPortalPage` | 5 | Done | [vendorportal](checklist/vendorportal.md) |
+| spec boards (rest) | Policy library, Third-party risk, Risk register, Company admin x2, Sign-in/MFA | n/a | n/a | Not ported: they restyle or extend modules the portal already has. Gaps and conflicts: [SPEC_BOARDS.md](SPEC_BOARDS.md); decisions: [DECISIONS.md](DECISIONS.md) | |
+| 26 "Screen:" boards | Second visual style of existing modules | n/a | n/a | Not ported by decision (portal design kept) | |

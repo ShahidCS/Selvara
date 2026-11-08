@@ -48,3 +48,9 @@ Per-module "Security notes" live in `docs/checklist/<module>.md`.
 * **Audit integrity:** admin chain is append-only in the UI (no edit/delete), chain-verify view states it is a demo (FNV-1a). AI decisions, audit-report export and incident start now write to the admin chain as in the source.
 * **MFA reset (account-takeover vector):** four-eyes enforced in UI and service (requester cannot approve; only Pending can be decided). Known limits: name-based comparison; requester may Reject own request (source behaviour). Real API must add step-up auth, out-of-band verification, server-side dual control with user ids.
 * **Data policy:** repo scan for replaced names/company name: 0 matches after fixing a seed file (`tenantUsers.json`) and its derived email.
+
+### Phase 5 review (local build, owner-authorized)
+* **Vendor portal (external, standalone):** no app chrome, `noindex`; unknown/invalid emails get fixed wording; attempt limits lock the form; OTP input `one-time-code`/numeric; email/code never in URL, storage, network or logs (masked address only); evidence upload rejects `.exe` and >25 MiB, prefill rejects non-xlsx/csv; hostile text renders inert. Demo OTP/MFA/scan are stubs; the real server must enforce token entropy/expiry, rate limits, enumeration-safe timing, MFA, no-store, malware scan, object-level authorization.
+* **Elevation:** in-memory simulation, super-only, audited (`admin.elevated/ended/expired`); not a control.
+* **RBAC checks:** employee redirected away from `/ws/appsec`, allowed `/ws/me`; support cannot request elevation, can read Platform Security.
+* **Final regression:** 35 routes render with no console errors or dialogs; `npm audit --omit=dev`: 0 vulnerabilities; name scan: 0 matches.

@@ -58,7 +58,7 @@ scripts/             dev tools to extract/anonymise seed data from the prototype
 
 ## Status
 
-Migration is delivered in phases; see `docs/CHECKLIST.md`. Unmigrated routes show a "Not migrated yet" notice.
+All 29 portal routes plus the five screens the spec boards added are migrated (`docs/CHECKLIST.md`). Open owner decisions: `docs/DECISIONS.md`. Security notes and test log: `docs/SECURITY.md`.
 
 ## Review note
 
