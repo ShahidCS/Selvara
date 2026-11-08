@@ -13,7 +13,7 @@ export function AuthCard({ children }: { children: ReactNode }) {
   return (
     <div style={{ maxWidth: 380, margin: "24px auto" }}>
       <div className="card"><div className="c-body" style={{ padding: 22 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16 }}><span className="avatar" style={{ background: "var(--accent)", color: "#fff" }}>A</span><div style={{ fontWeight: 600, fontSize: 16 }}>Assurance</div></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16 }}><span className="avatar" style={{ background: "var(--accent)", color: "#fff" }}>S</span><div style={{ fontWeight: 600, fontSize: 16 }}>Selvara</div></div>
         {children}
       </div></div>
       <p className="field help" style={{ textAlign: "center", marginTop: 12 }}>Preview of the hosted sign-in experience. Every customer gets the same enforced security.</p>

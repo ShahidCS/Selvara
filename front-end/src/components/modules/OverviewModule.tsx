@@ -69,7 +69,7 @@ export default function OverviewModule() {
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch { /* fall through to download */ }
     if (w) { L.toast("Board pack ready — use Print / Save as PDF"); return; }
-    if (!downloadText("Assurance-Board-Pack.html", html, "text/html;charset=utf-8")) { L.toast("Download not available in this view"); return; }
+    if (!downloadText("Selvara-Board-Pack.html", html, "text/html;charset=utf-8")) { L.toast("Download not available in this view"); return; }
     L.toast("Board pack downloaded — open it, then Print / Save as PDF");
   };
 

@@ -122,7 +122,7 @@ export function Sidebar() {
         <div className="sb-top">
           <div className="sb-logo">
             <svg className="mark" viewBox="0 0 30 30" fill="none" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" stroke="var(--accent)" strokeWidth="2.4" /><rect x="14" y="14" width="13" height="13" rx="4" fill="#E8653F" /></svg>
-            <span>Assurance</span>
+            <span>Selvara</span>
           </div>
         </div>
         {spaces.length > 1 ? (

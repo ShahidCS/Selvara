@@ -1,6 +1,6 @@
-# Assurance GRC Portal: front-end
+# Selvara: front-end
 
-React / Next.js (Pages Router, TypeScript) migration of the `Assurance GRC Portal` HTML prototype.
+React / Next.js (Pages Router, TypeScript) migration of the original single-file HTML prototype (then called "Assurance GRC Portal").
 The original design tokens and component CSS are kept verbatim (`src/styles/portal.css`); Tailwind provides layout utilities mapped to the same tokens
 (preflight disabled so the original base styles are untouched). All data is synthetic and in memory.
 

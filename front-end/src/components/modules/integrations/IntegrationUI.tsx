@@ -40,7 +40,7 @@ function ConnectorBody({ name, close }: { name: string; close: () => void }) {
       </div>
       <dl className="meta-grid"><dt>Category</dt><dd>{r.cat}</dd><dt>Type</dt><dd>{r.type}</dd><dt>Access scope</dt><dd>{r.scope}</dd><dt>Last sync</dt><dd>{r.lastSync}</dd><dt>Records pulled</dt><dd>{r.records}</dd></dl>
       <div className="hr" /><div className="sectitle">Data use</div>
-      <p className="field help">Data is pulled read-only to evaluate controls and tests. Assurance does not write back except to approved remediation ticketing connectors. Synthetic sample for the prototype.</p>
+      <p className="field help">Data is pulled read-only to evaluate controls and tests. Selvara does not write back except to approved remediation ticketing connectors. Synthetic sample for the prototype.</p>
       {manage ? (
         <>
           <div className="hr" />

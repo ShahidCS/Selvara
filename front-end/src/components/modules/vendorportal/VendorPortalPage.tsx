@@ -114,7 +114,7 @@ export default function VendorPortalPage() {
           <div aria-hidden="true" style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="shieldcheck" /></div>
           <div>
             <div style={{ fontWeight: 700 }}>Vendor assessment portal</div>
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>Assurance · requested by {INVITE.customerName}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>Selvara · requested by {INVITE.customerName}</div>
           </div>
         </div>
         {authed ? (

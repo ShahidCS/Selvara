@@ -83,10 +83,10 @@ export function boardPackHTML(): string {
   .bp-foot b{color:#8A5600}
   @media print{html,body{background:#fff}.bp-toolbar{display:none}.bp-sheet{box-shadow:none;border-radius:0;margin:0;max-width:none}.bp-section{break-inside:avoid}.bp-cover{break-after:avoid}@page{size:A4;margin:14mm}}`;
  const mark=`<svg viewBox="0 0 30 30" fill="none" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" stroke="#fff" stroke-width="2.4"/><rect x="14" y="14" width="13" height="13" rx="4" fill="#E8653F"/></svg>`;
- return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Assurance — Board &amp; Executive Security Pack</title><style>${css}</style></head><body>
+ return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Selvara — Board &amp; Executive Security Pack</title><style>${css}</style></head><body>
   <div class="bp-toolbar"><button class="bp-btn pri" onclick="window.print()">Print / Save as PDF</button></div>
   <div class="bp-sheet">
-   <div class="bp-cover"><div class="bp-brand">${mark}<b>Assurance</b></div>
+   <div class="bp-cover"><div class="bp-brand">${mark}<b>Selvara</b></div>
      <h1>Board &amp; Executive Security Pack</h1>
      <div class="bp-sub">Security, risk &amp; compliance posture — ${esc(period)}</div>
      <div class="bp-chips"><span class="bp-chip">Draft for review</span><span class="bp-chip">Confidential</span><span class="bp-chip">Prepared by ${esc(ME.name)}</span><span class="bp-chip">${esc(dateStr)}</span></div>
@@ -107,7 +107,7 @@ export function boardPackHTML(): string {
        <table class="bp-table"><thead><tr><th>ID</th><th>Issue</th><th>Severity</th><th>Owner</th><th>Due</th></tr></thead><tbody>${issRows}</tbody></table></div>
      <div class="bp-section"><div class="bp-h"><span class="n">6</span><h2>Audits in motion</h2></div>
        <table class="bp-table"><thead><tr><th>Audit</th><th>Framework</th><th>Auditor</th><th>Stage</th><th class="bp-ctr">Progress</th></tr></thead><tbody>${audRows}</tbody></table></div>
-     <div class="bp-foot"><b>Draft only.</b> This pack is generated from the current Assurance workspace and contains sample data. Compliance and risk outputs require review and approval by qualified compliance, legal or risk personnel before use or distribution. Generated ${esc(dateStr)} · Information Security — Confidential.</div>
+     <div class="bp-foot"><b>Draft only.</b> This pack is generated from the current Selvara workspace and contains sample data. Compliance and risk outputs require review and approval by qualified compliance, legal or risk personnel before use or distribution. Generated ${esc(dateStr)} · Information Security — Confidential.</div>
    </div>
   </div></body></html>`;
 }

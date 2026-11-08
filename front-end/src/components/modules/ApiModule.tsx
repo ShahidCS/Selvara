@@ -93,7 +93,7 @@ export default function ApiModule() {
             </Table>
           ) : (
             <>
-              <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--muted)" }}>Push API: private resources can be pushed to Assurance over the event stream for custom tests. Recent deliveries:</div>
+              <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--muted)" }}>Push API: private resources can be pushed to Selvara over the event stream for custom tests. Recent deliveries:</div>
               <Table minw={780} cols={[{ t: "Event" }, { t: "Resource" }, { t: "HTTP" }, { t: "Latency" }, { t: "When" }]}>
                 {svc.API.events.map((r, i) => (
                   <tr key={i}><td className="num">{r.ev}</td><td className="num">{r.res}</td><td><Chip cls="ok" icon="check">{r.http}</Chip></td><td className="num">{r.lat}</td><td style={{ color: "var(--muted)" }}>{r.when}</td></tr>
