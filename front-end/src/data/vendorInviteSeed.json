@@ -1,0 +1,9 @@
+{
+  "token": "demo-invite-token",
+  "invitedEmail": "contact@vendor.example",
+  "customerName": "Example Co",
+  "vendorSubject": "Example Vendor Ltd, identity verification sub-processor",
+  "expiresAt": "09 Nov 2026",
+  "dueAt": "09 Nov 2026",
+  "clarifyBy": "05 Nov 2026"
+}
