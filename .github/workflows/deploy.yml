@@ -9,7 +9,8 @@ name: Deploy (reusable)
 #   secret   VERCEL_TOKEN                      scoped deploy token for this environment only
 #   variable VERCEL_ORG_ID, VERCEL_PROJECT_ID
 #   optional secret VERCEL_AUTOMATION_BYPASS_SECRET (lets the smoke test reach a protected preview)
-#   optional variable STAGING_ALIAS (stable staging domain), ATTESTATIONS_ENABLED=false, COSIGN_ENABLED=false
+#   optional variable STAGING_ALIAS (stable staging domain), ATTESTATIONS_ENABLED=false (skip provenance attestations),
+#   COSIGN_ENABLED=true (opt in to keyless Sigstore signing; OFF by default, see the note on the signing step)
 
 on:
   workflow_call:
@@ -119,14 +120,15 @@ jobs:
           subject-path: ${{ env.ARTIFACT }}
           sbom-path: sbom.cdx.json
 
-      # Keyless signing records the signer identity and repository name in the PUBLIC Sigstore transparency log.
-      # Set the variable COSIGN_ENABLED=false if that disclosure is not acceptable for a private repository.
+      # Keyless signing records the signer identity and repository name in the PUBLIC Sigstore transparency log, which is
+      # not acceptable by default for a private repository. It is therefore OFF unless the variable COSIGN_ENABLED is
+      # exactly 'true'. (GitHub artifact attestations above are stored privately by GitHub and are not affected.)
       - name: Install cosign
-        if: vars.COSIGN_ENABLED != 'false'
+        if: vars.COSIGN_ENABLED == 'true'
         uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
 
       - name: Sign build archive (cosign, keyless)
-        if: vars.COSIGN_ENABLED != 'false'
+        if: vars.COSIGN_ENABLED == 'true'
         run: cosign sign-blob --yes --bundle "$ARTIFACT.cosign.bundle" "$ARTIFACT"
 
       # Deploy exactly what was attested: discard the build directory and extract the verified archive.

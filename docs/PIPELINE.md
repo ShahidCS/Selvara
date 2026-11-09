@@ -73,7 +73,8 @@ Policy: **High and Critical findings block; Medium and below are reported.**
    | both (optional) | `VERCEL_AUTOMATION_BYPASS_SECRET` | secret | Lets the smoke test reach a deployment protected by Vercel Authentication. |
    | `staging` (optional) | `STAGING_ALIAS` | variable | A stable staging hostname, for example `staging.example.com`. |
    | repository (Settings > Variables) | `DEPLOY_ENABLED` | variable | Set to `true` once the rows above exist. Until then pushes to `main` run CI and the security gates but skip the staging deployment. |
-   | either (optional) | `ATTESTATIONS_ENABLED`, `COSIGN_ENABLED` | variable | Set to `false` to switch off provenance attestations or keyless signing (see below). |
+   | either (optional) | `ATTESTATIONS_ENABLED` | variable | Set to `false` to switch off provenance attestations (needed if your GitHub plan does not support them for private repositories). |
+   | either (optional) | `COSIGN_ENABLED` | variable | **Off by default.** Set to `true` to add a keyless Sigstore signature, which publishes the repository name and workflow identity to the public Sigstore log. |
 
 4. **Set up commit signing** (see [Commit signing](#commit-signing)).
 5. **Switch deployment on** by setting the repository variable `DEPLOY_ENABLED=true`.
@@ -98,6 +99,48 @@ Likewise the `production` environment lists you as the only reviewer with *preve
 
 `required_signatures` rejects unsigned commits on `main`. Because only squash merging is allowed, GitHub creates the merge commit itself and signs it, so pull-request branches may contain unsigned commits. Each person who pushes release **tags** must sign them: `git tag -s vX.Y.Z -m "vX.Y.Z"` with a key that is registered as a signing key on their GitHub account. Commits created by automation in some environments show as *Unverified*; that does not block a squash merge but would block a direct push to `main` (which the ruleset forbids anyway).
 
+### Setting up your own signing key (SSH signing, about five minutes)
+
+Use a dedicated key just for signing. Do this on the machine where you commit and tag.
+
+```bash
+# 1. create the key (use a passphrase; a hardware key is even better: ssh-keygen -t ed25519-sk)
+ssh-keygen -t ed25519 -C "<the email verified on your GitHub account>" -f ~/.ssh/id_ed25519_signing
+
+# 2. tell git to sign everything with it
+git config --global gpg.format ssh
+git config --global user.signingkey ~/.ssh/id_ed25519_signing.pub
+git config --global commit.gpgsign true
+git config --global tag.gpgsign true
+
+# 3. let git verify signatures locally
+echo "<your-email> $(cat ~/.ssh/id_ed25519_signing.pub)" >> ~/.ssh/allowed_signers
+git config --global gpg.ssh.allowedSignersFile ~/.ssh/allowed_signers
+```
+
+4. On GitHub: **Settings > SSH and GPG keys > New SSH key**, set **Key type: Signing Key**, paste the contents of `~/.ssh/id_ed25519_signing.pub`. (Adding the key only as an *authentication* key does not make commits verified.)
+5. Optional but recommended: on the same page enable **Vigilant mode** ("Flag unsigned commits as unverified"), so any unsigned commit under your name is visible.
+6. Check it: `git commit --allow-empty -m "test signing" && git log --show-signature -1` should say *Good "git" signature*, and the commit shows **Verified** on GitHub after you push.
+
+Commits made by automation in cloud or sandbox environments cannot use your key and show as *Unverified*. That is why `main` only accepts squash merges: GitHub creates and signs the merge commit itself.
+
+### Vercel setup: where each value goes
+
+Do these once, in this order. Create tokens yourself and paste them only into GitHub's secret form, never into a chat, an issue or a file in the repository.
+
+| # | Where | What to do |
+|---|---|---|
+| 1 | **Vercel** > Add New > Project | Import this repository. Set **Root Directory** to `front-end`, framework **Next.js**. Do not rely on its automatic deployments: `front-end/vercel.json` already disables them. |
+| 2 | **Vercel** > Team Settings > General, and Project Settings > General | Copy the **Team ID** (this is `VERCEL_ORG_ID`) and the **Project ID** (`VERCEL_PROJECT_ID`). For a personal account the Team ID is shown under Account Settings. |
+| 3 | **Vercel** > Account Settings > Tokens > Create | Create **two** tokens, one named for staging and one for production. Scope them to your team, give each an expiry (for example 90 days) and note the renewal date. Copy each once. |
+| 4 | **GitHub** > repo > Settings > Environments > `staging` | *Add environment secret* `VERCEL_TOKEN` (the staging token). *Add environment variables* `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`. (`apply-settings.sh` creates the environments if they do not exist yet.) |
+| 5 | **GitHub** > Settings > Environments > `production` | Same three entries, with the **production** token. |
+| 6 | **GitHub** > Settings > Secrets and variables > Actions > **Variables** tab > New repository variable | `DEPLOY_ENABLED` = `true`. Until this exists, merges to `main` run CI and the security gates but skip the staging deployment. |
+| 7 (optional) | **Vercel** > Project > Settings > Deployment Protection > *Protection Bypass for Automation* | Generate the secret, then add it as environment secret `VERCEL_AUTOMATION_BYPASS_SECRET` in both GitHub environments. Needed only if the deployment is behind Vercel Authentication, otherwise the smoke test receives a 401 and fails on purpose. |
+| 8 (optional) | **GitHub** > Environments > `staging` > Variables | `STAGING_ALIAS` = a stable hostname such as `staging.example.com` (it must already be assigned to the Vercel project). |
+
+Where is each variable read? `DEPLOY_ENABLED` in `deploy-staging.yml`; everything else in `deploy.yml`. If the first staging run fails at *Validate inputs*, one of the values in steps 4 or 5 is missing in that environment.
+
 ## Releasing
 
 ```bash
@@ -121,7 +164,7 @@ Anyone can check that a release archive was built by this repository's workflow 
 gh attestation verify selvara-frontend-v1.2.3.tar.gz --repo ShahidCS/Selvara
 # checksum
 sha256sum -c selvara-frontend-v1.2.3.tar.gz.sha256
-# keyless signature (Sigstore)
+# keyless signature (Sigstore). Only present if COSIGN_ENABLED=true was set for that release
 cosign verify-blob selvara-frontend-v1.2.3.tar.gz \
   --bundle selvara-frontend-v1.2.3.tar.gz.cosign.bundle \
   --certificate-identity-regexp '^https://github.com/ShahidCS/Selvara/\.github/workflows/(deploy|release)\.yml@refs/tags/v' \
@@ -165,7 +208,7 @@ Recorded decisions, so they are reviewed rather than forgotten. Each should be r
 | The pinned Vercel CLI's transitive dependencies currently carry known advisories (one Critical in `tar`, about twenty High, mostly denial of service in build tooling) because Vercel pins the vulnerable versions exactly. Counted 2026-11-09. | The CLI only processes our own build output on an ephemeral runner; forcing overrides into a CLI that cannot be tested here could break deployments silently. | Isolated install, `--ignore-scripts`, token scoped per environment, excluded from the blocking Trivy scan but included in the OSV scan and Dependabot. | Each Vercel CLI release; monthly. |
 | `script-src 'unsafe-inline'` in the CSP (Pages Router injects inline bootstrap scripts). | No nonce middleware yet. | CSP otherwise strict; documented in `front-end/docs/SECURITY.md`; the smoke test asserts no `unsafe-eval`. | Before production traffic: move to a nonce-based CSP. |
 | LGPL-3.0 optional native binaries (`@img/sharp-*`) in the lockfile. | Unused (no `next/image`), dynamically linked, unmodified. | Time-boxed exception in `.github/license-policy.json`. | Exception expiry (2027-05-09) and before distributing the build. |
-| Keyless signing writes the repository name and workflow identity to the public Sigstore log. | Provides independently verifiable signatures. | Set `COSIGN_ENABLED=false` if that disclosure is unacceptable. | Decision on repository visibility. |
+| Keyless Sigstore signing would write the repository name and workflow identity to the public Sigstore log. | **Decision (owner): off.** Signing is opt-in (`COSIGN_ENABLED=true`). Integrity and origin evidence still come from GitHub's private artifact attestations and the SHA-256 checksum. | Default off in `deploy.yml`. | Decision on repository visibility, or if a customer requires a detached signature. |
 | ZAP baseline is a passive scan. | Active scanning needs a safe, isolated target. | Fails on High; weekly schedule. | When a staging data set exists, add an authenticated active scan. |
 | Sole-maintainer review exception. | Only one maintainer exists. | Required checks still apply; bypass is pull-request-only and audited. | A second maintainer joins. |
 
