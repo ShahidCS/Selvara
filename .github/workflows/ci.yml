@@ -56,6 +56,14 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Proves what the licence exceptions rely on: no sharp/libvips, node_modules or native addons in the shipped output.
+      - name: Check what will be shipped
+        run: node ../.github/scripts/check-shipped-artifact.mjs .next/static .next/server
+
+      - name: Check third-party notices are current
+        run: node .github/scripts/generate-notices.mjs --check
+        working-directory: .
+
       - name: Dependency audit (production, high and above)
         run: npm audit --omit=dev --audit-level=high
 

@@ -82,7 +82,7 @@ Policy: **High and Critical findings block; Medium and below are reported.**
 
 ## Branch and tag protection
 
-`.github/rulesets/main.json` requires, on `main`: pull requests only, one approving review from a code owner who did not push last, stale approvals dismissed on push, conversations resolved, squash merge only, linear history, **signed commits**, no force push and no deletion, nine required status checks that must be up to date, and no CodeQL alert of High or above.
+`.github/rulesets/main.json` requires, on `main`: pull requests only, one approving review from a code owner who did not push last, stale approvals dismissed on push, conversations resolved, squash merge only, linear history, **signed commits**, no force push and no deletion, ten required status checks that must be up to date, and no CodeQL alert of High or above.
 
 `.github/rulesets/release-tags.json` makes `v*` tags creatable only by repository admins and immutable (no update, delete or move).
 
@@ -177,8 +177,9 @@ cosign verify-blob selvara-frontend-v1.2.3.tar.gz \
 - Top-level `permissions: {}`; each job grants only what it needs. Only the final release job can write repository contents.
 - No `pull_request_target`; no `${{ github.event.* }}`, `head_ref`, `ref_name` or inputs interpolated into shell (values go through `env:`); inputs to the deploy workflow are validated against strict patterns.
 - `persist-credentials: false` on every checkout; `npm ci --ignore-scripts` everywhere, so dependency install scripts never run.
-- The deploy token is scoped to its environment and handed only to the three steps that need it; third-party actions in the same job never see it.
-- The Vercel CLI is installed from its own lockfile in `.github/vercel-cli`, apart from the application's dependencies.
+- The deploy token is scoped to its environment and handed only to the single deploy step. The build runs with no secrets at all (the project link is written from non-secret variables), so neither the Vercel CLI builders nor third-party actions ever see it.
+- The Vercel CLI is installed from its own lockfile in `.github/vercel-cli`, apart from the application's dependencies, with same-major `overrides` for patched transitive packages. The required check "Deploy tooling audit" blocks any new High/Critical advisory in that tree (accepted ones are in `audit-baseline.json` with an expiry date).
+- `check-shipped-artifact.mjs` fails the build if the shipped output contains `node_modules`, native addons, serverless bundles or sharp/libvips, which is what the licence exceptions rely on. `THIRD_PARTY_NOTICES.md` is generated from the lockfile and checked in CI.
 - The build is deterministic (sorted, zero-timestamp archive); the deploy step re-verifies the checksum and deploys the extracted archive, so the deployed bytes are the attested bytes.
 - Concurrency groups stop superseded pull-request runs but never interrupt a deployment half way.
 
@@ -201,11 +202,11 @@ The build runs on GitHub-hosted runners and emits signed provenance, which is th
 
 ## Accepted risks
 
-Recorded decisions, so they are reviewed rather than forgotten. Each should be revisited when its trigger occurs.
+The full register, with owners, compensating controls, expiry dates and exit criteria, is [EXCEPTIONS.md](EXCEPTIONS.md). Summary:
 
 | Risk | Why accepted | Controls | Review when |
 |---|---|---|---|
-| The pinned Vercel CLI's transitive dependencies currently carry known advisories (one Critical in `tar`, about twenty High, mostly denial of service in build tooling) because Vercel pins the vulnerable versions exactly. Counted 2026-11-09. | The CLI only processes our own build output on an ephemeral runner; forcing overrides into a CLI that cannot be tested here could break deployments silently. | Isolated install, `--ignore-scripts`, token scoped per environment, excluded from the blocking Trivy scan but included in the OSV scan and Dependabot. | Each Vercel CLI release; monthly. |
+| The pinned Vercel CLI's transitive dependencies still carry 10 baselined High advisories (no Critical) after overrides, because Vercel pins them exactly (EX-04). | The CLI only processes our own build output on an ephemeral runner; forcing overrides into a CLI that cannot be tested here could break deployments silently. | Isolated install, `--ignore-scripts`, token only in the deploy step, "Deploy tooling audit" blocks new advisories, expiring baseline. | Each Vercel CLI release; monthly. |
 | `script-src 'unsafe-inline'` in the CSP (Pages Router injects inline bootstrap scripts). | No nonce middleware yet. | CSP otherwise strict; documented in `front-end/docs/SECURITY.md`; the smoke test asserts no `unsafe-eval`. | Before production traffic: move to a nonce-based CSP. |
 | LGPL-3.0 optional native binaries (`@img/sharp-*`) in the lockfile. | Unused (no `next/image`), dynamically linked, unmodified. | Time-boxed exception in `.github/license-policy.json`. | Exception expiry (2027-05-09) and before distributing the build. |
 | Keyless Sigstore signing would write the repository name and workflow identity to the public Sigstore log. | **Decision (owner): off.** Signing is opt-in (`COSIGN_ENABLED=true`). Integrity and origin evidence still come from GitHub's private artifact attestations and the SHA-256 checksum. | Default off in `deploy.yml`. | Decision on repository visibility, or if a customer requires a detached signature. |

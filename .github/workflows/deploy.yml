@@ -55,8 +55,8 @@ jobs:
       VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
       VERCEL_BIN: ${{ github.workspace }}/.github/vercel-cli/node_modules/.bin/vercel
-      # NOTE: the Vercel token is NOT set here. It is passed only to the steps that need it, so third-party
-      # actions in this job (SBOM, attestation, signing) never see it.
+      # NOTE: the Vercel token is NOT set here. It is passed only to the single deploy step, so neither the Vercel CLI
+      # builders nor third-party actions in this job (SBOM, attestation, signing) ever see it.
     steps:
       - name: Validate inputs
         run: |
@@ -80,16 +80,29 @@ jobs:
         working-directory: .github/vercel-cli
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Pull Vercel project settings
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: '"$VERCEL_BIN" pull --yes --environment="$VERCEL_ENV"'
+      # The build needs NO credentials. Instead of `vercel pull` (which needs the token), the project link is written
+      # from the environment's non-secret variables, with settings that mirror front-end/vercel.json. The Vercel CLI
+      # and its builders therefore run without any secret in their environment; the token appears only in the final
+      # deploy step. Public build-time settings (NEXT_PUBLIC_*) would be passed explicitly as env: on the Build step.
+      - name: Write project link (no token)
+        run: |
+          mkdir -p .vercel
+          node -e '
+            const fs = require("fs");
+            fs.writeFileSync(".vercel/project.json", JSON.stringify({
+              orgId: process.env.VERCEL_ORG_ID, projectId: process.env.VERCEL_PROJECT_ID,
+              settings: { framework: "nextjs", rootDirectory: "front-end", sourceFilesOutsideRootDirectory: true, nodeVersion: "22.x",
+                installCommand: "npm ci --ignore-scripts --no-audit --no-fund", buildCommand: "npm run build", devCommand: null, outputDirectory: null },
+            }, null, 2));'
 
-      - name: Build
+      - name: Build (no secrets in the environment)
         run: |
           args=()
           [[ $VERCEL_ENV == production ]] && args+=(--prod)
           "$VERCEL_BIN" build "${args[@]}"
+
+      - name: Check what will be shipped
+        run: node .github/scripts/check-shipped-artifact.mjs .vercel/output
 
       - name: Package build output (deterministic archive)
         run: |

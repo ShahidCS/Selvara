@@ -207,6 +207,38 @@ jobs:
           format: table
 
   # ---------------------------------------------------------------------------------------------
+  # Deploy tooling (.github/vercel-cli): it must install from its lockfile and start, no CRITICAL advisory is ever
+  # tolerated, and a HIGH advisory is tolerated only if it is listed, with an owner, a reason and a review date, in
+  # .github/vercel-cli/audit-baseline.json. A new HIGH advisory fails here.
+  # ---------------------------------------------------------------------------------------------
+  tooling:
+    name: Deploy tooling audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Install tooling (lockfile, no install scripts)
+        working-directory: .github/vercel-cli
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Tooling starts
+        working-directory: .github/vercel-cli
+        run: ./node_modules/.bin/vercel --version
+      - name: Audit against the accepted baseline
+        working-directory: .github/vercel-cli
+        run: |
+          npm audit --omit=dev --json > "$RUNNER_TEMP/tooling-audit.json" || true
+          node "$GITHUB_WORKSPACE/.github/scripts/check-tooling-audit.mjs" "$RUNNER_TEMP/tooling-audit.json" audit-baseline.json
+
+  # ---------------------------------------------------------------------------------------------
   # DAST: ZAP baseline (passive) scan of the production build served on the runner. Blocks on any
   # HIGH alert; MEDIUM and below are reported. The same scan is not repeated against staging.
   # ---------------------------------------------------------------------------------------------

@@ -4,5 +4,33 @@
   "description": "Isolated, lockfile-pinned install of the Vercel CLI used only by the deploy workflows. Kept apart from the app's dependencies so the deploy token never meets application code.",
   "dependencies": {
     "vercel": "65.12.1"
-  }
+  },
+  "overrides": {
+    "js-yaml": "^4.3.2",
+    "smol-toml": "^1.9.1",
+    "tar": "^7.5.22",
+    "ajv": "^8.20.0",
+    "@vercel/node": {
+      "path-to-regexp": "6.3.0"
+    },
+    "@vercel/remix-builder": {
+      "path-to-regexp": "6.3.0"
+    },
+    "@vercel/backends": {
+      "path-to-regexp": "8.4.2"
+    },
+    "@vercel/express": {
+      "path-to-regexp": "8.4.2"
+    },
+    "@vercel/hono": {
+      "path-to-regexp": "8.4.2"
+    },
+    "@vercel/oidc": {
+      "zod": "4.6.7"
+    },
+    "@vercel/sandbox": {
+      "zod": "4.6.7"
+    }
+  },
+  "_overrides_comment": "Patched versions of vulnerable transitive dependencies, restricted to the SAME major version each package is already on (so behaviour cannot change). Remaining advisories need a different major version and are tracked in audit-baseline.json. Verified: the CLI installs, runs and completes 'vercel build' for this project with these pins."
 }
