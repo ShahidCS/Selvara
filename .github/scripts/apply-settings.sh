@@ -26,10 +26,15 @@ api() { # method path [json-body]
   fi
 }
 
+# Same as api, but a refusal is reported and skipped instead of stopping the script (features the plan may not include).
+api_optional() { api "$@" || echo "skipped  $1 $2 (not available for this repository or plan; see docs/EXCEPTIONS.md EX-07)"; }
+
 echo "== Repository: $REPO  mode: $([[ $APPLY == 1 ]] && echo APPLY || echo DRY-RUN)"
 
 echo; echo "== 1. Merge policy and security features"
-api PATCH "repos/$REPO" '{"allow_squash_merge":true,"allow_merge_commit":false,"allow_rebase_merge":false,"delete_branch_on_merge":true,"allow_auto_merge":false,"security_and_analysis":{"secret_scanning":{"status":"enabled"},"secret_scanning_push_protection":{"status":"enabled"}}}'
+api PATCH "repos/$REPO" '{"allow_squash_merge":true,"allow_merge_commit":false,"allow_rebase_merge":false,"delete_branch_on_merge":true,"allow_auto_merge":false}'
+# Secret scanning on a PRIVATE repository needs GitHub Advanced Security, so it is optional (Gitleaks covers it in CI).
+api_optional PATCH "repos/$REPO" '{"security_and_analysis":{"secret_scanning":{"status":"enabled"},"secret_scanning_push_protection":{"status":"enabled"}}}'
 api PUT "repos/$REPO/vulnerability-alerts"
 api PUT "repos/$REPO/automated-security-fixes"
 
