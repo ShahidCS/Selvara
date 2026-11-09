@@ -22,12 +22,14 @@ api() { # method path [json-body]
     if [[ -n $body ]]; then printf '%s' "$body" | gh api -X "$method" "$path" --input - >/dev/null && echo "applied  $method $path"
     else gh api -X "$method" "$path" >/dev/null && echo "applied  $method $path"; fi
   else
-    echo "dry-run  $method $path"; [[ -n $body ]] && echo "$body" | head -c 400 | sed 's/^/           /' && echo
+    echo "dry-run  $method $path"
+    if [[ -n $body ]]; then echo "$body" | head -c 400 | sed 's/^/           /'; echo; fi
   fi
 }
 
 # Same as api, but a refusal is reported and skipped instead of stopping the script (features the plan may not include).
-api_optional() { api "$@" || echo "skipped  $1 $2 (not available for this repository or plan; see docs/EXCEPTIONS.md EX-07)"; }
+SKIPPED=()
+api_optional() { api "$@" || { echo "skipped  $1 $2 (not available for this repository or plan)"; SKIPPED+=("$1 $2"); }; }
 
 echo "== Repository: $REPO  mode: $([[ $APPLY == 1 ]] && echo APPLY || echo DRY-RUN)"
 
@@ -41,21 +43,41 @@ api PUT "repos/$REPO/automated-security-fixes"
 echo; echo "== 2. Actions: read-only default token, only allow-listed actions, SHA pinning required"
 api PUT "repos/$REPO/actions/permissions/workflow" '{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false}'
 api PUT "repos/$REPO/actions/permissions" '{"enabled":true,"allowed_actions":"selected","sha_pinning_required":true}'
-api PUT "repos/$REPO/actions/permissions/selected-actions" '{"github_owned_allowed":true,"verified_allowed":false,"patterns_allowed":["aquasecurity/trivy-action@*","gitleaks/gitleaks-action@*","zaproxy/action-baseline@*","google/osv-scanner-action/*@*","anchore/sbom-action@*","sigstore/cosign-installer@*"]}'
+api PUT "repos/$REPO/actions/permissions/selected-actions" '{"github_owned_allowed":true,"verified_allowed":false,"patterns_allowed":["aquasecurity/trivy-action@*","aquasecurity/setup-trivy@*","gitleaks/gitleaks-action@*","zaproxy/action-baseline@*","google/osv-scanner-action/*@*","anchore/sbom-action@*","sigstore/cosign-installer@*"]}'
 
 echo; echo "== 3. Environments"
-api PUT "repos/$REPO/environments/staging" '{"wait_timer":0,"prevent_self_review":false,"reviewers":[],"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}'
-api POST "repos/$REPO/environments/staging/deployment-branch-policies" '{"name":"main","type":"branch"}'
-api PUT "repos/$REPO/environments/production" "{\"wait_timer\":$WAIT_MINUTES,\"prevent_self_review\":false,\"reviewers\":[{\"type\":\"User\",\"id\":$PROD_REVIEWER_ID}],\"deployment_branch_policy\":{\"protected_branches\":false,\"custom_branch_policies\":true}}"
-api POST "repos/$REPO/environments/production/deployment-branch-policies" '{"name":"v*.*.*","type":"tag"}'
+# Required reviewers, wait timers and deployment-branch rules on environments need a paid plan for a PRIVATE repository.
+# If GitHub refuses, the environment is created WITHOUT them (it still scopes secrets and variables) and the gap is reported.
+env_with_fallback() { # name full-body
+  local name=$1 body=$2
+  api PUT "repos/$REPO/environments/$name" "$body" && return 0
+  echo "refused  protection rules for environment $name (plan); creating it without them"
+  SKIPPED+=("environment $name: required reviewers / wait timer / branch rules (docs/EXCEPTIONS.md EX-08)")
+  api PUT "repos/$REPO/environments/$name"
+  return 1
+}
+if env_with_fallback staging '{"wait_timer":0,"prevent_self_review":false,"reviewers":[],"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}'; then
+  api_optional POST "repos/$REPO/environments/staging/deployment-branch-policies" '{"name":"main","type":"branch"}'
+fi
+if env_with_fallback production "{\"wait_timer\":$WAIT_MINUTES,\"prevent_self_review\":false,\"reviewers\":[{\"type\":\"User\",\"id\":$PROD_REVIEWER_ID}],\"deployment_branch_policy\":{\"protected_branches\":false,\"custom_branch_policies\":true}}"; then
+  api_optional POST "repos/$REPO/environments/production/deployment-branch-policies" '{"name":"v*.*.*","type":"tag"}'
+fi
 
 echo; echo "== 4. Rulesets (main protection, release tags)"
+# Rulesets on a PRIVATE repository also need a paid plan. If refused, the branch is NOT protected: this is reported loudly below.
 for f in .github/rulesets/main.json .github/rulesets/release-tags.json; do
-  name=$(node -p "require('./$f').name")
+  name=$(sed -n 's/^  "name": *"\(.*\)",\{0,1\}$/\1/p' "$f" | head -1)   # no node/jq needed
+  [[ -n $name ]] || { echo "cannot read ruleset name from $f" >&2; exit 1; }
   id=""
   if [[ $APPLY == 1 ]]; then id=$(gh api "repos/$REPO/rulesets" --jq ".[] | select(.name==\"$name\") | .id" 2>/dev/null || true); fi
-  if [[ -n $id ]]; then api PUT "repos/$REPO/rulesets/$id" "$(cat "$f")"; else api POST "repos/$REPO/rulesets" "$(cat "$f")"; fi
+  if [[ -n $id ]]; then api_optional PUT "repos/$REPO/rulesets/$id" "$(cat "$f")"; else api_optional POST "repos/$REPO/rulesets" "$(cat "$f")"; fi
 done
+
+if ((${#SKIPPED[@]})); then
+  echo; echo "!! NOT APPLIED (${#SKIPPED[@]}): these controls are missing until your plan supports them or the repository becomes public:"
+  printf '   - %s\n' "${SKIPPED[@]}"
+  echo "   See docs/EXCEPTIONS.md (EX-07, EX-08) for the compensating controls."
+fi
 
 cat <<'EOT'
 
