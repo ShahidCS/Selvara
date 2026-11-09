@@ -1,12 +1,12 @@
 ## Summary
 
-<!-- What changes and why. Link the issue or decision (docs/DECISIONS.md) if there is one. -->
+<!-- What changes and why. Link the issue or decision (docs/architecture/DECISIONS.md) if there is one. -->
 
 ## Checklist
 
 - [ ] `npm run ci` and `npm run test:e2e` pass locally (the same gates run in CI)
 - [ ] New or changed mutations go through the service layer, are deny-by-default, and write an audit entry
-- [ ] Segregation of duties preserved: nobody approves their own request (docs/SOD_MATRIX.md)
+- [ ] Segregation of duties preserved: nobody approves their own request (docs/security/SOD_MATRIX.md)
 - [ ] No secrets, tokens, real personal data or customer information (synthetic data only)
 - [ ] Any new dependency is justified, licence-compatible with a proprietary product, and has no High/Critical advisory
 - [ ] Any new GitHub Action is pinned to a full commit SHA (`.github/scripts/verify-pins.sh` passes)

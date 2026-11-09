@@ -4,7 +4,7 @@ let apiOrigin = "";
 try { if (process.env.NEXT_PUBLIC_API_BASE_URL) apiOrigin = new URL(process.env.NEXT_PUBLIC_API_BASE_URL).origin; } catch { /* invalid URL: ignored, connect-src stays 'self' */ }
 
 /* Content-Security-Policy. Next's Pages Router injects inline bootstrap scripts, so script-src needs 'unsafe-inline' unless a
- * nonce middleware is added (tracked in docs/SECURITY.md). styles are inline in many places (kept from the prototype). */
+ * nonce middleware is added (tracked in docs/security/SECURITY.md). styles are inline in many places (kept from the prototype). */
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,

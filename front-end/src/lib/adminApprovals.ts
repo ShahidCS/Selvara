@@ -1,6 +1,6 @@
 /* Glue between the generic approvals engine (approvals.ts) and the platform-admin modules (Billing, Rates).
  * Dual control for admin finance / rate overrides: initiator and approver are different, BOTH are elevated super admins
- * (docs/SOD_MATRIX.md sections 2 and 3). Added file: the engine itself is not modified. UI-side demo; the real API enforces the same rules. */
+ * (docs/security/SOD_MATRIX.md sections 2 and 3). Added file: the engine itself is not modified. UI-side demo; the real API enforces the same rules. */
 import { approve, getApproval, reject, requestApproval, sweepExpired, whyCannotApprove, withdraw, approvals, type Approval } from "./approvals";
 import { ELEVATE_TEXT, assertElevated, elevationLive } from "./elevation";
 import { clampText } from "./security";

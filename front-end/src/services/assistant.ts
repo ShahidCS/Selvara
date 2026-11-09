@@ -1,5 +1,5 @@
 /* AI Assistant stubs. Mock mode: canned, template-based drafts (no model call, no network) and in-memory agent / run / MCP state.
- * CONTRACT (docs/SOD_MATRIX.md section 3, Assistant): everything here is admin/owner only (assertRole, deny by default); approving an agent action needs an approver
+ * CONTRACT (docs/security/SOD_MATRIX.md section 3, Assistant): everything here is admin/owner only (assertRole, deny by default); approving an agent action needs an approver
  * who is not the person who triggered it, with a reason; ENABLING a custom agent (create or resume) and GRANTING MCP access are approvals by a second admin/owner
  * (approvals engine), never by the creator. Pausing an agent and revoking MCP access are immediate (safe direction). Violations throw SodError.
  * The real API MUST authorize every agent run / approval / MCP grant server-side, keep model credentials server-side, treat prompts as untrusted input

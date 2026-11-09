@@ -1,5 +1,5 @@
 /* Glue between the four-eyes approvals engine (lib/approvals.ts, not edited) and the module services that APPLY an approved change.
- * Contract: docs/SOD_MATRIX.md section 1 (approval is a separate audited step) and section 3.
+ * Contract: docs/security/SOD_MATRIX.md section 1 (approval is a separate audited step) and section 3.
  * A module registers a handler per approval `kind`; `decideApproval` records the decision through the engine and, when the last required
  * approver has signed, runs `apply` exactly once. In mock mode this all happens in memory: the real API must do the same server-side. */
 import { approve, reject, withdraw, approvals, type Approval } from "./approvals";

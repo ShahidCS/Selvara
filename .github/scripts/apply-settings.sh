@@ -52,7 +52,7 @@ env_with_fallback() { # name full-body
   local name=$1 body=$2
   api PUT "repos/$REPO/environments/$name" "$body" && return 0
   echo "refused  protection rules for environment $name (plan); creating it without them"
-  SKIPPED+=("environment $name: required reviewers / wait timer / branch rules (docs/EXCEPTIONS.md EX-08)")
+  SKIPPED+=("environment $name: required reviewers / wait timer / branch rules (docs/security/EXCEPTIONS.md EX-08)")
   api PUT "repos/$REPO/environments/$name"
   return 1
 }
@@ -76,7 +76,7 @@ done
 if ((${#SKIPPED[@]})); then
   echo; echo "!! NOT APPLIED (${#SKIPPED[@]}): these controls are missing until your plan supports them or the repository becomes public:"
   printf '   - %s\n' "${SKIPPED[@]}"
-  echo "   See docs/EXCEPTIONS.md (EX-07, EX-08) for the compensating controls."
+  echo "   See docs/security/EXCEPTIONS.md (EX-07, EX-08) for the compensating controls."
 fi
 
 cat <<'EOT'
@@ -85,6 +85,6 @@ cat <<'EOT'
   1. Settings > Environments > staging / production > add secret VERCEL_TOKEN (a separate scoped token per environment)
      and variables VERCEL_ORG_ID, VERCEL_PROJECT_ID. Optional: secret VERCEL_AUTOMATION_BYPASS_SECRET, variable STAGING_ALIAS.
   2. In Vercel: set the project Root Directory to front-end, and confirm Git auto-deploy is off (front-end/vercel.json also disables it).
-  3. Advanced Security features (code scanning, dependency review, secret scanning) are optional: this repository runs without them (docs/EXCEPTIONS.md EX-07). If the PATCH above reports them as unavailable, that is expected.
-  4. Commit signing: every contributor needs a verified signing key (see docs/PIPELINE.md, "Commit signing").
+  3. Advanced Security features (code scanning, dependency review, secret scanning) are optional: this repository runs without them (docs/security/EXCEPTIONS.md EX-07). If the PATCH above reports them as unavailable, that is expected.
+  4. Commit signing: every contributor needs a verified signing key (see docs/security/PIPELINE.md, "Commit signing").
 EOT

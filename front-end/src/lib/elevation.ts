@@ -19,7 +19,7 @@ export const ELEV_REASON_MIN = 15;
 export const ELEV_DURATIONS = [15, 30, 60] as const;
 /** Base role that may elevate (matches `super` and `super2` through baseRole). */
 export const ELEV_ROLE = "super";
-/** Exact text for disabled mutation controls and the banner link (docs/SOD_MATRIX.md section 2). */
+/** Exact text for disabled mutation controls and the banner link (docs/security/SOD_MATRIX.md section 2). */
 export const ELEVATE_TEXT = "Elevate to make changes";
 /** Ticket reference, e.g. SEC-1234. Anchored; the value is also used in audit text, so only this pattern is ever accepted. */
 export const TICKET_RE = /^[A-Z]{2,6}-\d{1,6}$/;

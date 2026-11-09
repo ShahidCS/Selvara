@@ -1,5 +1,5 @@
 /* AI governance API stubs. In mock mode each function performs the in-memory DATA mutation and returns a result for the caller, which then does the log / toast / bumpData.
- * CONTRACT (docs/SOD_MATRIX.md section 3, AI): the classification confirmer is not the drafter (nor the system owner) and holds the admin/owner role (no surname
+ * CONTRACT (docs/security/SOD_MATRIX.md section 3, AI): the classification confirmer is not the drafter (nor the system owner) and holds the admin/owner role (no surname
  * matching); the impact-assessment approver is not the submitter/recorder/owner; guardrail changes and archive are approvals by a second person (approvals engine);
  * registering a system is admin/owner/analyst and does not approve it (completing the review is a separate, different-person step). Violations throw SodError.
  * The real API MUST enforce all of it server-side from the session identity and write the audit entry itself. */

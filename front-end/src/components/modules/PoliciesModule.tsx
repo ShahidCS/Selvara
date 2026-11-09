@@ -6,7 +6,7 @@ import { hasRole } from "@/lib/sod";
 import { polInit, policyState, openExceptions, workVersion, exceptionState } from "@/services/policies";
 import { openPolicyDrawer, openPolicyForm } from "./policies/PolicyLayers";
 
-/** Policies: register, versioning and the named-approver workflow (contract: docs/SOD_MATRIX.md sections 3 and 5). */
+/** Policies: register, versioning and the named-approver workflow (contract: docs/security/SOD_MATRIX.md sections 3 and 5). */
 export default function PoliciesModule() {
   useData();
   const L = useLayer();

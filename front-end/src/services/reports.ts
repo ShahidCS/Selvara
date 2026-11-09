@@ -1,5 +1,5 @@
 /* Reports API stubs (source lines 3496-3525). Caller does wsLog/toast/bumpData.
- * CONTRACT (docs/SOD_MATRIX.md section 3, Reports): owner/admin may schedule; scheduling EXTERNAL distribution is a four-eyes approval: it is requested here and goes live
+ * CONTRACT (docs/security/SOD_MATRIX.md section 3, Reports): owner/admin may schedule; scheduling EXTERNAL distribution is a four-eyes approval: it is requested here and goes live
  * only when a DIFFERENT admin approves (approvals engine). Internal-only schedules save at once. A recipient is internal only if it is a known internal group or an
  * address on the workspace's own email domain; anything else is external (deny by default). Violations throw SodError.
  * A real API must generate reports server-side with the caller's permissions, own scheduling/recipients (validate addresses, restrict external recipients) and distribution. */

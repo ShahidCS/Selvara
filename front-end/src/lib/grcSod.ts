@@ -1,5 +1,5 @@
 /* Shared helpers for the GRC modules (policies, evidence, controls, issues, audits). ADD-ONLY companion to src/lib/sod.ts.
- * Contract: docs/SOD_MATRIX.md. UI gating is NOT a control: the API must enforce every rule again. */
+ * Contract: docs/security/SOD_MATRIX.md. UI gating is NOT a control: the API must enforce every rule again. */
 import { ROLES } from "./rbac";
 import { getActor, hasRole, isSamePerson, SodError } from "./sod";
 
