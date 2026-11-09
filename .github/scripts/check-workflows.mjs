@@ -11,23 +11,34 @@
 //  R6  every actions/checkout step sets `persist-credentials: false`
 //  R7  no `secrets: inherit`
 //  R8  plain (unquoted) `name:` values must not contain ": " or " #" (YAML would parse them as a mapping or a comment)
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
+// Workflows, plus local composite actions (.github/actions/<name>/action.yml): the same supply-chain rules apply to
+// both. Rules that only make sense for a workflow (R2 permissions, R3 triggers, R4 job timeouts, R7 secrets: inherit)
+// are skipped for actions.
 const dir = ".github/workflows";
+const actionsDir = ".github/actions";
 const files = readdirSync(dir).filter((f) => /\.ya?ml$/.test(f)).sort();
+const actionFiles = existsSync(actionsDir)
+  ? readdirSync(actionsDir, { withFileTypes: true }).filter((d) => d.isDirectory())
+      .map((d) => join(d.name, "action.yml")).filter((f) => existsSync(join(actionsDir, f))).sort()
+  : [];
+const isAction = (f) => actionFiles.includes(f);
+const pathOf = (f) => (isAction(f) ? join(actionsDir, f) : join(dir, f));
 const problems = [];
 const bad = (file, line, rule, msg) => problems.push(`${file}:${line}  [${rule}] ${msg}`);
 const indentOf = (s) => s.length - s.trimStart().length;
 const UNSAFE = /\$\{\{\s*(github\.event\.|github\.head_ref|github\.ref_name|inputs\.)/;
 
-for (const f of files) {
-  const lines = readFileSync(join(dir, f), "utf8").split("\n");
+for (const f of [...files, ...actionFiles]) {
+  const lines = readFileSync(pathOf(f), "utf8").split("\n");
+  const action = isAction(f);
   const noComment = (s) => s.replace(/(^|\s)#.*$/, "");
 
   // R2, R3, R7
-  if (!lines.some((l) => /^permissions:/.test(l))) bad(f, 1, "R2", "no top-level `permissions:` block");
-  lines.forEach((l, i) => {
+  if (!action && !lines.some((l) => /^permissions:/.test(l))) bad(f, 1, "R2", "no top-level `permissions:` block");
+  if (!action) lines.forEach((l, i) => {
     const t = noComment(l);
     if (/\bpull_request_target\b/.test(t)) bad(f, i + 1, "R3", "pull_request_target is not allowed");
     if (/^\s*secrets:\s*inherit\b/.test(t)) bad(f, i + 1, "R7", "`secrets: inherit` is not allowed; pass secrets explicitly");
@@ -81,7 +92,7 @@ for (const f of files) {
   }
 
   // R4: jobs that run steps need timeout-minutes
-  const jobsAt = lines.findIndex((l) => /^jobs:\s*$/.test(l));
+  const jobsAt = action ? -1 : lines.findIndex((l) => /^jobs:\s*$/.test(l));
   if (jobsAt >= 0) {
     const jobStarts = [];
     for (let i = jobsAt + 1; i < lines.length; i++) {
@@ -103,4 +114,4 @@ if (problems.length) {
   console.error(`Workflow policy violations (${problems.length}):\n` + problems.map((p) => "  " + p).join("\n"));
   process.exit(1);
 }
-console.log(`Workflow policy OK: ${files.length} workflow file(s) checked (${files.join(", ")}).`);
+console.log(`Workflow policy OK: ${files.length} workflow file(s) and ${actionFiles.length} local action(s) checked (${[...files, ...actionFiles].join(", ")}).`);
