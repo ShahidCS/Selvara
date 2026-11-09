@@ -294,7 +294,7 @@ Selvara/
 ├── LICENSE                   proprietary, all rights reserved
 ├── SECURITY.md               vulnerability reporting policy
 ├── .github/                  workflows, pipeline scripts, rulesets, CODEOWNERS, Dependabot configuration
-├── docs/                     pipeline documentation and README screenshots
+├── docs/                     architecture/, guides/, security/ documentation and README screenshots (see docs/ORGANIZATION.md)
 └── front-end/                Next.js application
     ├── src/
     │   ├── pages/            routes: /ws, /admin, /auth, /vendor-portal
@@ -304,7 +304,6 @@ Selvara/
     │   ├── data/             synthetic seed data
     │   ├── hooks/ styles/ assets/
     ├── tests/ e2e/           unit and end-to-end tests
-    ├── docs/                 inventory, checklists, security contract, frameworks, decisions
     └── scripts/              developer tools for preparing seed data
 ```
 
