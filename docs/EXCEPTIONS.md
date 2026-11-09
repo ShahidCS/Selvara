@@ -14,6 +14,7 @@ Review the whole register at least quarterly and whenever a "Review when" trigge
 | EX-06 | Public Sigstore signing disabled | @ShahidCS | Repository visibility decision |
 | EX-07 | No GitHub Advanced Security (private repository, current plan) | @ShahidCS | If the repository moves to an organisation with Advanced Security, or becomes public |
 | EX-08 | No environment approval gate and no rulesets (private repository, free plan) | @ShahidCS | When the account is upgraded (GitHub Pro or Team), or the repository becomes public |
+| EX-09 | No build-provenance or SBOM attestations (user-owned private repository) | @ShahidCS | If the repository becomes public or moves to an organisation whose plan supports attestations |
 
 ## EX-01 Sole-maintainer review and approval
 
@@ -32,7 +33,7 @@ unimportant.
   secret scan, dependency review, licences, tooling audit, Trivy, ZAP.
 - Commits must be signed. No force pushes, no deletion, linear history.
 - Production deploys need the environment gate, run only from a signed, verified, annotated release tag on `main`,
-  and produce a provenance attestation and SBOM for the exact bytes deployed.
+  and produce an SBOM and a checksum for the exact bytes deployed (provenance attestation: see EX-09).
 - Each bypass is recorded in the GitHub audit log. The ten-minute timer gives a window to cancel.
 - Review the audit log monthly for bypass events: Settings, Audit log, filter `action:protected_branch.policy_override`.
 
@@ -141,7 +142,7 @@ those rules and prints what was not applied. Environments still scope the secret
   carries a signature GitHub verifies, points at a commit on `main` and matches `package.json`.
 - Both deploy workflows run the full CI and security gates first and cannot deploy if any fails.
 - Only the owner has write access (sole maintainer); the Vercel token is scoped per environment, used in one step.
-- Provenance and SBOM attestations tie every deploy to the commit and the run.
+- The checksum, the SBOM and the run log tie every deploy to the commit and the run (signed attestations: see EX-09).
 - Working practice until the plan changes: open a pull request for every change, wait for all 11 checks to be green,
   merge with Squash and merge in the web UI, never push to `main` directly, and check the Actions tab before tagging.
 
@@ -150,3 +151,24 @@ private repositories (confirm on GitHub's pricing page; Advanced Security from E
 re-run `.github/scripts/apply-settings.sh --apply`, which is safe to repeat. Making the repository public also enables
 all of them. **Do not onboard regulated customers on this configuration**: it cannot show an auditor enforced
 branch protection or a production approval.
+
+## EX-09 No build-provenance or SBOM attestations
+
+**What.** GitHub's artifact attestations (build provenance and SBOM) are refused for user-owned private repositories:
+"Feature not available for user-owned private repositories. To enable this feature, please make this repository
+public." (first seen in Deploy staging run 4, 2026-11-09). The repository variable `ATTESTATIONS_ENABLED=false` turns
+the two attestation steps off, so the pipeline runs without them.
+
+**What is lost.** A signed statement, verifiable by a third party with `gh attestation verify`, that a given archive was
+built by this repository's workflow from a given commit. Without it, a recipient must trust the run log and the checksum.
+
+**Compensating controls (still in place).**
+- The archive is deterministic (sorted, zero-timestamp); its SHA-256 is computed at build, recorded, and verified again
+  immediately before the deploy step extracts and deploys exactly those bytes.
+- A CycloneDX SBOM, the checksum and the archive are kept as a run artifact for 90 days, named by commit or tag.
+- The build runs with no secrets; the Vercel token is read only by the credential check (boolean) and the deploy step.
+- Production releases come only from a signed, annotated tag on `main` that `verify-tag.sh` checks.
+
+**Exit.** Make the repository public, or move it to an organisation on a plan that supports attestations, then delete the
+variable `ATTESTATIONS_ENABLED` (the steps default to on). Run `gh attestation verify` on the next release to confirm.
+**Do not describe releases as having verifiable provenance to customers while this exception is open.**

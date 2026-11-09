@@ -199,7 +199,7 @@ cosign verify-blob selvara-frontend-v1.2.3.tar.gz \
 | CICD-SEC-6 Insufficient credential hygiene | Environment-scoped secrets, step-level scoping, Gitleaks and push protection, OIDC for signing and attestations |
 | CICD-SEC-7 Insecure system configuration | Allow-listed actions, SHA pinning required, ephemeral hosted runners |
 | CICD-SEC-8 Ungoverned third-party services | Action allow-list, pinned and verified versions |
-| CICD-SEC-9 Improper artefact integrity validation | Checksum, build-provenance and SBOM attestations, cosign signature, deploy-from-attested-archive |
+| CICD-SEC-9 Improper artefact integrity validation | SHA-256 checksum verified before deploy, deterministic archive, SBOM, deploy-from-the-verified-archive; build-provenance attestations and cosign signature are supported but currently off (EX-09, EX-06) |
 | CICD-SEC-10 Insufficient logging and visibility | Run logs and job summaries, 90-day evidence artefacts, release assets, repository audit log |
 
 The build runs on GitHub-hosted runners and emits signed provenance, which is the intent of SLSA Build level 2. It does not claim a higher level.
@@ -227,6 +227,20 @@ The full register, with owners, compensating controls, expiry dates and exit cri
 
 ## What has and has not been proven
 
-Proven locally: workflow policy checker (passes on all workflows; catches seven classes of violation on a deliberately bad file); every SHA pin against its upstream tag (33 pins); licence gate (passes on the product lockfile; blocks GPL, AGPL, unknown and expired exceptions); ZAP gate (passes, blocks High, fails closed on a missing report); release-tag gate (accepts a valid tag and rejects five invalid scenarios, using a stubbed `gh`); smoke test (passes against the real production build's headers, fails against a server without them, refuses unsafe targets); required-check names match real job names; all five workflows parse as valid YAML with consistent `needs` and reusable-workflow references, and pass an off-the-shelf schema validator (`@action-validator/cli` 0.6.0, whose bundled schema predates the documented `attestations: write` permission, so that one key is reported and is the only thing it reports); typecheck, 178 unit tests and the build with install scripts disabled.
+**Proven on GitHub and Vercel (2026-11-09, pull requests 11 to 16 and Deploy staging run 10):**
+- Every gate runs and passes on a pull request and on `main`: typecheck, unit tests, build, the shipped-output check, the third-party notices check, the runtime dependency audit, Playwright, workflow policy, CodeQL (gated on its own SARIF), Gitleaks (including a full-history scan), licence policy, deploy-tooling audit, Trivy and the ZAP baseline.
+- Staging deployment end to end: the Vercel build with no secrets, the shipped-output check, the deterministic archive and SBOM, then deploying exactly that checksum-verified archive to Vercel and a smoke test of the live security headers. The token reaches only the deploy step (it shows as `***`).
+- The credential presence check (true/false per credential, never a value) and its fail-fast message.
+- `apply-settings.sh` against the live API, including its fallbacks on a plan without environment protection or rulesets.
 
-**Not yet proven, because it needs GitHub or Vercel:** the first run of CodeQL, Gitleaks, dependency review, Trivy, OSV and ZAP (a first backlog of findings is possible); the Vercel pull, build and deploy steps; attestations (artifact attestations for **private** repositories require a GitHub plan that supports them, otherwise set `ATTESTATIONS_ENABLED=false`); and `apply-settings.sh` against the live API (use the dry run). The first pull request and the first staging deployment are the real tests; expect small fixes.
+**Found and fixed by the first real runs** (each is why a documented step exists): the Actions allow-list also needs `aquasecurity/setup-trivy`; a manual full-history Gitleaks scan flagged two lists of known-weak passwords (allow-listed by path); artifact attestations are refused for user-owned private repositories (EX-09); and secrets of an environment do not reach a job that calls a reusable workflow, so the deploy is a local composite action called from a job that declares the environment.
+
+**Proven locally:** the workflow policy checker (workflows and the local action; catches seven classes of violation on a deliberately bad file); every SHA pin against its upstream tag (39 pins); the licence gate; the ZAP gate; the SARIF gate; the release-tag gate (accepts a valid tag and rejects five invalid scenarios, using a stubbed `gh`); the smoke test; required-check names match real job names; all workflows parse as valid YAML and pass `@action-validator/cli` 0.6.0 (whose bundled schema predates the documented `attestations: write` permission, so that one key is reported and is the only thing it reports); typecheck, unit tests and the build with install scripts disabled.
+
+**Not yet proven:**
+- **The production release path:** `verify-tag.sh` against a real signed tag, the `release.yml` workflow, the `production` environment, and the `publish` job that creates the GitHub Release. Cut a first release from a signed tag and read the run before relying on it.
+- **Build provenance and SBOM attestations, and cosign signing:** both are off (EX-09, EX-06), so `gh attestation verify` does not apply yet.
+- **The staging alias** (`STAGING_ALIAS`), which is unused so far.
+- **Rulesets, branch protection and the production approval step:** GitHub refuses them on this plan (EX-08), so none of their effects are proven.
+- **Commit-signing enforcement,** which depends on those rulesets.
+- **Merging Dependabot pull requests and the weekly scheduled security run.** Dependabot is running (it has opened pull requests for the application's development dependencies), but none has been reviewed or merged through this pipeline yet; the major-version bumps (TypeScript, Tailwind, ESLint) each need their own review.

@@ -281,7 +281,7 @@ Every change reaches production only through GitHub Actions, and every release l
 - **Pull requests** run type-check, unit and end-to-end tests, a dependency audit, CodeQL static analysis, secret scanning, a runtime dependency audit, licence policy, a Trivy scan and a ZAP baseline scan. High and Critical findings block the merge.
 - **Merges to `main`** re-run every gate, then deploy to **staging** (Vercel, deployed only from Actions; Vercel's own Git deploys are disabled).
 - **Production releases** come from a **signed version tag** on `main`. The tag is verified, the gates run again, and the deployment waits for approval in a protected environment before it ships.
-- **Evidence:** every build produces a CycloneDX SBOM and a build-provenance attestation (an optional keyless Sigstore signature is available, off by default), and the deployed bytes are extracted from that exact attested archive.
+- **Evidence:** every build produces a CycloneDX SBOM and a SHA-256 checksum, and the deployed bytes are extracted from that exact checksum-verified archive. Build-provenance attestations are supported and switch on automatically where the GitHub plan allows them (currently off for this private repository); an optional keyless Sigstore signature is off by default.
 - **The pipeline protects itself:** every action is pinned to a full commit SHA, workflow permissions are least-privilege, install scripts never run in CI, and a policy check fails the build if a workflow breaks these rules.
 
 Setup, release steps, how to verify an artefact, accepted risks and what is not yet proven are in [`docs/PIPELINE.md`](docs/PIPELINE.md).
