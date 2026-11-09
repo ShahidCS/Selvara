@@ -22,5 +22,5 @@ while IFS= read -r line; do
   if [[ -z $up ]]; then echo "TAG NOT FOUND $file: $repo $tag"; fail=1
   elif [[ $up != "$sha" ]]; then echo "MISMATCH    $file: $repo $tag pinned=$sha upstream=$up"; fail=1
   else echo "ok          $repo $tag"; fi
-done < <(grep -rnE '^\s*(-\s*)?uses:' .github/workflows | sed -E 's/^([^:]+):[0-9]+:/\1:/')
+done < <(grep -rnE '^\s*(-\s*)?uses:' .github/workflows .github/actions | sed -E 's/^([^:]+):[0-9]+:/\1:/')
 echo "checked $checked pins"; exit $fail

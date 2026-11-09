@@ -32,7 +32,7 @@ flowchart LR
 | `.github/workflows/security.yml` | pull request, weekly, reused by staging and release | Workflow policy, CodeQL, Gitleaks, dependency review, licence policy, OSV, Trivy, ZAP baseline. |
 | `.github/workflows/deploy-staging.yml` | push to `main` | CI + Security, then deploys to the `staging` environment. |
 | `.github/workflows/release.yml` | push of a `vX.Y.Z` tag | Verifies the signed tag, CI + Security, deploys to `production` after approval, publishes a GitHub Release. |
-| `.github/workflows/deploy.yml` | called only by the two above | Build, package, SBOM, attestations, signature, deploy the attested archive, smoke test. |
+| `.github/actions/deploy/action.yml` | used only by the two above (a local composite action) | Build, package, SBOM, attestations, signature, deploy the attested archive, smoke test. |
 
 ## What blocks what
 
@@ -141,7 +141,9 @@ Do these once, in this order. Create tokens yourself and paste them only into Gi
 | 7 (optional) | **Vercel** > Project > Settings > Deployment Protection > *Protection Bypass for Automation* | Generate the secret, then add it as environment secret `VERCEL_AUTOMATION_BYPASS_SECRET` in both GitHub environments. Needed only if the deployment is behind Vercel Authentication, otherwise the smoke test receives a 401 and fails on purpose. |
 | 8 (optional) | **GitHub** > Environments > `staging` > Variables | `STAGING_ALIAS` = a stable hostname such as `staging.example.com` (it must already be assigned to the Vercel project). |
 
-Where is each variable read? `DEPLOY_ENABLED` in `deploy-staging.yml`; everything else in `deploy.yml`. If the first staging run fails at *Validate inputs*, one of the values in steps 4 or 5 is missing in that environment.
+Where is each value read? `DEPLOY_ENABLED` in `deploy-staging.yml`; the secrets and variables are read by the deploy job in `deploy-staging.yml` / `release.yml` (which declares the environment) and handed to `.github/actions/deploy`. The first step of the action, *Check deploy credentials are present*, prints `true`/`false` for each (never a value) and fails at once if `VERCEL_TOKEN` is missing.
+
+> **Why a composite action and not a reusable workflow?** A job that calls a reusable workflow cannot declare an environment, and secrets of an environment are only available to a job that does. The first design used a reusable workflow and the deploy job saw `VERCEL_TOKEN` as empty although it was correctly set in the environment (found on 2026-11-09). Variables of the environment did arrive; secrets did not.
 
 ## Releasing
 
@@ -211,7 +213,7 @@ The full register, with owners, compensating controls, expiry dates and exit cri
 | The pinned Vercel CLI's transitive dependencies still carry 10 baselined High advisories (no Critical) after overrides, because Vercel pins them exactly (EX-04). | The CLI only processes our own build output on an ephemeral runner; forcing overrides into a CLI that cannot be tested here could break deployments silently. | Isolated install, `--ignore-scripts`, token only in the deploy step, "Deploy tooling audit" blocks new advisories, expiring baseline. | Each Vercel CLI release; monthly. |
 | `script-src 'unsafe-inline'` in the CSP (Pages Router injects inline bootstrap scripts). | No nonce middleware yet. | CSP otherwise strict; documented in `front-end/docs/SECURITY.md`; the smoke test asserts no `unsafe-eval`. | Before production traffic: move to a nonce-based CSP. |
 | LGPL-3.0 optional native binaries (`@img/sharp-*`) in the lockfile. | Unused (no `next/image`), dynamically linked, unmodified. | Time-boxed exception in `.github/license-policy.json`. | Exception expiry (2027-05-09) and before distributing the build. |
-| Keyless Sigstore signing would write the repository name and workflow identity to the public Sigstore log. | **Decision (owner): off.** Signing is opt-in (`COSIGN_ENABLED=true`). Integrity and origin evidence still come from GitHub's private artifact attestations and the SHA-256 checksum. | Default off in `deploy.yml`. | Decision on repository visibility, or if a customer requires a detached signature. |
+| Keyless Sigstore signing would write the repository name and workflow identity to the public Sigstore log. | **Decision (owner): off.** Signing is opt-in (`COSIGN_ENABLED=true`). Integrity and origin evidence still come from GitHub's private artifact attestations and the SHA-256 checksum. | Default off in `.github/actions/deploy/action.yml`. | Decision on repository visibility, or if a customer requires a detached signature. |
 | ZAP baseline is a passive scan. | Active scanning needs a safe, isolated target. | Fails on High; weekly schedule. | When a staging data set exists, add an authenticated active scan. |
 | Sole-maintainer review exception. | Only one maintainer exists. | Required checks still apply; bypass is pull-request-only and audited. | A second maintainer joins. |
 

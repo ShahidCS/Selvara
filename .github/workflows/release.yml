@@ -57,15 +57,36 @@ jobs:
   deploy:
     name: Production
     needs: [verify-tag, ci, security]
-    uses: ./.github/workflows/deploy.yml
-    with:
-      environment: production
-      vercel-environment: production
-      label: ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The environment is declared HERE (not in a reusable workflow) so that its secrets are available to this job.
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
     permissions:
       contents: read
       id-token: write
       attestations: write
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build, attest and deploy
+        id: deploy
+        uses: ./.github/actions/deploy
+        with:
+          environment: production
+          vercel-environment: production
+          label: ${{ github.ref_name }}
+          org-id: ${{ vars.VERCEL_ORG_ID }}
+          project-id: ${{ vars.VERCEL_PROJECT_ID }}
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          bypass-secret: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          attestations: ${{ vars.ATTESTATIONS_ENABLED }}
+          cosign: ${{ vars.COSIGN_ENABLED }}
 
   publish:
     name: Publish GitHub Release
