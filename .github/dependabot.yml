@@ -1,3 +1,9 @@
+# Dependabot keeps three dependency surfaces current: the application, the isolated deploy tooling, and the
+# pinned GitHub Actions (SHA pins are updated together with their version comment).
+#
+# cooldown delays brand-new releases a few days: most malicious or broken package versions are caught and
+# pulled within that window (supply-chain defence). Security updates are not delayed by it.
+# Major version bumps are never grouped, so each gets its own pull request, its own CI run and its own review.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -5,17 +11,26 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
     groups:
       minor-and-patch:
-        update-types:
-          - minor
-          - patch
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /.github/vercel-cli
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       actions-minor-and-patch:
-        update-types:
-          - minor
-          - patch
+        update-types: [minor, patch]

@@ -21,7 +21,7 @@ We will acknowledge your report and keep you informed of progress. Please give u
 
 ## Scope
 
-In scope: the application code in this repository (`front-end/`), its build and CI configuration, and its documented security controls.
+In scope: the application code in this repository (`front-end/`), its build, CI/CD and release pipeline (`.github/`, see [`docs/PIPELINE.md`](docs/PIPELINE.md)), and its documented security controls. Reports about the pipeline itself (for example a way to deploy without the gates, or to leak a deployment token) are welcome.
 
 Out of scope: social engineering, physical attacks, denial-of-service testing, testing against systems or data you do not own, and findings that only affect unsupported browsers.
 

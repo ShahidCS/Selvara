@@ -1,0 +1,3 @@
+# ZAP baseline rule overrides: <rule id><TAB><IGNORE|WARN|FAIL><TAB><reason>
+# Empty on purpose: every default rule applies. Add an override only with a written justification and an
+# owner, in a reviewed pull request (this file is covered by CODEOWNERS).

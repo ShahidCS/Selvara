@@ -2,7 +2,8 @@
 
 **A governance, risk and compliance (GRC) platform for regulated organisations.** One control set, mapped to every framework you answer to, with the evidence, approvals and audit trail that auditors and regulators expect.
 
-[![CI](https://github.com/ShahidCS/Selvara/actions/workflows/ci.yml/badge.svg)](https://github.com/ShahidCS/Selvara/actions/workflows/ci.yml)
+[![Security](https://github.com/ShahidCS/Selvara/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/ShahidCS/Selvara/actions/workflows/security.yml)
+[![Deploy staging](https://github.com/ShahidCS/Selvara/actions/workflows/deploy-staging.yml/badge.svg?branch=main)](https://github.com/ShahidCS/Selvara/actions/workflows/deploy-staging.yml)
 ![Licence: proprietary](https://img.shields.io/badge/licence-proprietary%20(all%20rights%20reserved)-lightgrey)
 ![Node 20.9+](https://img.shields.io/badge/node-%E2%89%A520.9-339933)
 ![Status: front-end complete, backend pending](https://img.shields.io/badge/status-front--end%20complete%2C%20backend%20pending-orange)
@@ -27,6 +28,7 @@
 - [Getting started](#getting-started)
 - [Configuration](#configuration)
 - [Testing and CI](#testing-and-ci)
+- [CI/CD pipeline](#cicd-pipeline)
 - [Repository layout](#repository-layout)
 - [Documentation](#documentation)
 - [Project status](#project-status)
@@ -272,6 +274,18 @@ Copy `front-end/.env.example` to `front-end/.env.local`. There are no secrets in
 
 Details, including what is not covered (backend, visual regression, load), are in [`front-end/docs/TESTING.md`](front-end/docs/TESTING.md).
 
+## CI/CD pipeline
+
+Every change reaches production only through GitHub Actions, and every release leaves verifiable evidence.
+
+- **Pull requests** run type-check, unit and end-to-end tests, a dependency audit, CodeQL static analysis, secret scanning, a runtime dependency audit, licence policy, a Trivy scan and a ZAP baseline scan. High and Critical findings block the merge.
+- **Merges to `main`** re-run every gate, then deploy to **staging** (Vercel, deployed only from Actions; Vercel's own Git deploys are disabled).
+- **Production releases** come from a **signed version tag** on `main`. The tag is verified, the gates run again, and the deployment waits for approval in a protected environment before it ships.
+- **Evidence:** every build produces a CycloneDX SBOM and a build-provenance attestation (an optional keyless Sigstore signature is available, off by default), and the deployed bytes are extracted from that exact attested archive.
+- **The pipeline protects itself:** every action is pinned to a full commit SHA, workflow permissions are least-privilege, install scripts never run in CI, and a policy check fails the build if a workflow breaks these rules.
+
+Setup, release steps, how to verify an artefact, accepted risks and what is not yet proven are in [`docs/PIPELINE.md`](docs/PIPELINE.md).
+
 ## Repository layout
 
 ```
@@ -279,8 +293,8 @@ Selvara/
 ├── README.md                 this file
 ├── LICENSE                   proprietary, all rights reserved
 ├── SECURITY.md               vulnerability reporting policy
-├── .github/                  CI workflow and Dependabot configuration
-├── docs/screenshots/         images used in this README
+├── .github/                  workflows, pipeline scripts, rulesets, CODEOWNERS, Dependabot configuration
+├── docs/                     pipeline documentation and README screenshots
 └── front-end/                Next.js application
     ├── src/
     │   ├── pages/            routes: /ws, /admin, /auth, /vendor-portal
@@ -302,6 +316,7 @@ Selvara/
 | [`front-end/docs/FRAMEWORKS.md`](front-end/docs/FRAMEWORKS.md) | Researched reference for every framework, regulation and standard covered |
 | [`front-end/docs/SOD_MATRIX.md`](front-end/docs/SOD_MATRIX.md) | Segregation-of-duties, privileged-access and credential-policy contract |
 | [`front-end/docs/SECURITY.md`](front-end/docs/SECURITY.md) | Controls in place, known limitations, backend requirements, test log |
+| [`docs/PIPELINE.md`](docs/PIPELINE.md) | CI/CD pipeline: gates, deployment, release, supply-chain controls, accepted risks |
 | [`front-end/docs/TESTING.md`](front-end/docs/TESTING.md) | Test strategy, how to run it, CI, gaps |
 | [`front-end/docs/DECISIONS.md`](front-end/docs/DECISIONS.md) | Decisions taken and decisions still open |
 | [`front-end/docs/CHECKLIST.md`](front-end/docs/CHECKLIST.md) | Feature-to-component map with a per-module checklist in `docs/checklist/` |
@@ -314,7 +329,7 @@ Selvara/
 |---|---|
 | Front-end (all screens, roles, workflows) | Complete |
 | Segregation of duties, privileged-access gating, credential policy | Implemented in the front-end service layer |
-| Automated tests and CI | Unit and end-to-end suites with GitHub Actions |
+| Automated tests and CI/CD | Unit and end-to-end suites; security gates; Vercel deployment pipeline (needs your Vercel secrets and repository settings before first use) |
 | Backend (API, database, authentication, sessions) | **Not built** |
 | Production readiness | **Not production-ready** |
 

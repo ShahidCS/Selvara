@@ -1,0 +1,46 @@
+name: Deploy staging
+
+# Every push to main (a merged pull request) runs the full quality and security gates, then deploys to the
+# staging environment. Nothing here can reach production.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false # never interrupt a deployment half way; queue the next one
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  security:
+    name: Security
+    uses: ./.github/workflows/security.yml
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      pull-requests: read
+
+  deploy:
+    name: Staging
+    needs: [ci, security]
+    # Opt-in: stays off until the Vercel secrets exist. Set the repository variable DEPLOY_ENABLED=true (docs/PIPELINE.md).
+    if: vars.DEPLOY_ENABLED == 'true'
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+      vercel-environment: preview
+      label: staging-${{ github.sha }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write

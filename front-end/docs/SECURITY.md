@@ -76,3 +76,8 @@ Server requirements (the UI is not the control): re-enforce every rule server-si
 * **Regression:** 35 routes render with no console errors; injection payloads as Company Admin: no execution; `npm audit --omit=dev`: 0 vulnerabilities.
 * **Limits:** SoD compares display names in the demo; the API must compare stable user ids, persist approvals/elevation/audit server-side, and use a trusted clock.
 * **History:** git history rewritten to replace real names with synthetic ones (old commit ids may remain cached on the hosting service until it garbage-collects; request a purge from the host if required).
+
+## Supply chain and pipeline (see ../../docs/PIPELINE.md)
+* All GitHub Actions are pinned to full commit SHAs and checked against upstream tags; dependency install scripts never run in CI; the deploy token is environment-scoped and visible only to the steps that use it.
+* Gates on every pull request: CodeQL, Gitleaks, dependency review, licence policy, Trivy, ZAP baseline, `npm audit`; High and Critical block. Releases require a signed tag, produce an SBOM, build-provenance attestation and signature, and deploy the attested archive.
+* Accepted risks (Vercel CLI transitive advisories, CSP `unsafe-inline`, LGPL optional binaries, public Sigstore log) are recorded with owners and review triggers in `docs/PIPELINE.md`.
