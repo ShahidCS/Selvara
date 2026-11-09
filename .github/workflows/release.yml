@@ -1,0 +1,113 @@
+name: Release
+
+# Production releases are cut from a SIGNED, annotated version tag on main (vMAJOR.MINOR.PATCH):
+#   git tag -s v1.2.3 -m "v1.2.3" && git push origin v1.2.3
+# The tag is verified, CI and the security gates run, then the production deployment waits for approval in the
+# protected `production` environment (required reviewer and wait timer). A GitHub Release with the SBOM, checksum and
+# signature is published afterwards.
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  verify-tag:
+    name: Verify signed tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Check out (full history)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify tag signature, branch and version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: .github/scripts/verify-tag.sh
+
+  ci:
+    name: CI
+    needs: verify-tag
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  security:
+    name: Security
+    needs: verify-tag
+    uses: ./.github/workflows/security.yml
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      pull-requests: read
+
+  deploy:
+    name: Production
+    needs: [verify-tag, ci, security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The environment is declared HERE (not in a reusable workflow) so that its secrets are available to this job.
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build, attest and deploy
+        id: deploy
+        uses: ./.github/actions/deploy
+        with:
+          environment: production
+          vercel-environment: production
+          label: ${{ github.ref_name }}
+          org-id: ${{ vars.VERCEL_ORG_ID }}
+          project-id: ${{ vars.VERCEL_PROJECT_ID }}
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          bypass-secret: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          attestations: ${{ vars.ATTESTATIONS_ENABLED }}
+          cosign: ${{ vars.COSIGN_ENABLED }}
+
+  publish:
+    name: Publish GitHub Release
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # the only job in the pipeline that can write repository contents
+    steps:
+      - name: Download release evidence
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-evidence-${{ github.ref_name }}
+          path: evidence
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+          DEPLOY_URL: ${{ needs.deploy.outputs.url }}
+        run: |
+          ls -l evidence
+          gh release create "$TAG" evidence/* --repo "$REPO" --verify-tag --generate-notes \
+            --title "$TAG" --notes "Production deployment: $DEPLOY_URL. Verify the artefact with: gh attestation verify <archive> --repo $REPO"

@@ -1,5 +1,5 @@
 /* Member workspace (/ws/me) state. Demo only: per-user acknowledgements live in memory (never localStorage: no record data in client storage).
- * A real API owns acknowledgements (see docs/checklist/me.md "Security notes"). */
+ * A real API owns acknowledgements (see docs/guides/checklist/me.md "Security notes"). */
 import seed from "@/data/meSeed.json";
 import { DATA } from "@/lib/data";
 import { randInt } from "@/lib/security";

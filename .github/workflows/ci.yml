@@ -1,15 +1,21 @@
 name: CI
 
-on:
-  push:
-    branches: [main]   # branch pushes are covered by pull_request; avoids running every check twice
-  pull_request:
+# Quality gate: type-check, unit tests, build, dependency audit and the Playwright browser suite.
+# Runs on pull requests, and is reused (workflow_call) by the staging and release pipelines so that
+# a deployment can never skip it. Branch pushes are covered by pull_request; pushes to main run
+# through deploy-staging.yml, which calls this workflow.
 
-permissions:
-  contents: read
+on:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions: {}
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # distinct suffix per workflow: when called from deploy/release, github.workflow is the CALLER's name, so two reusable
+  # workflows would otherwise share one group and cancel each other
+  group: ${{ github.workflow }}-ci-gate-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 defaults:
@@ -21,45 +27,82 @@ jobs:
     name: Typecheck, unit tests, build, audit
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: front-end/package-lock.json
-      - run: npm ci
+
+      # --ignore-scripts: dependency install scripts never run in CI (a common supply-chain attack path).
+      # The project builds and tests without them.
+      - name: Install dependencies (no install scripts)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
       - name: Typecheck
         run: npm run typecheck
+
       - name: Unit tests
         run: npm test
+
       - name: Build
         run: npm run build
+
+      # Proves what the licence exceptions rely on: no sharp/libvips, node_modules or native addons in the shipped output.
+      - name: Check what will be shipped
+        run: node ../.github/scripts/check-shipped-artifact.mjs .next/static .next/server
+
+      - name: Check third-party notices are current
+        run: node .github/scripts/generate-notices.mjs --check
+        working-directory: .
+
       - name: Dependency audit (production, high and above)
         run: npm audit --omit=dev --audit-level=high
 
   e2e:
     name: End-to-end (Playwright, Chromium)
-    runs-on: ubuntu-latest
     needs: verify
+    runs-on: ubuntu-latest
     timeout-minutes: 25
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: front-end/package-lock.json
-      - run: npm ci
+
+      - name: Install dependencies (no install scripts)
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
+
       - name: Run e2e tests (builds and starts the app on port 3100)
         run: npm run test:e2e
-      - name: Upload Playwright report
+        env:
+          CI: "true"
+
+      - name: Upload Playwright report (failures only)
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-report
-          path: front-end/playwright-report/
-          retention-days: 7
+          path: front-end/playwright-report
+          retention-days: 14
           if-no-files-found: ignore

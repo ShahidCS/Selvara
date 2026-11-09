@@ -1,5 +1,5 @@
 /* Third-party (vendor) API stubs. Mock mode mutates DATA / VENDOR_REQS and returns what the caller needs for wsLog / toast.
- * CONTRACT (docs/SOD_MATRIX.md section 3, Vendor): every decision is admin/owner only (assertRole, deny by default); approving a request or the
+ * CONTRACT (docs/security/SOD_MATRIX.md section 3, Vendor): every decision is admin/owner only (assertRole, deny by default); approving a request or the
  * onboarding gate needs an approver other than the requester / whoever added the vendor; Critical tier needs TWO approvers (approvals engine);
  * a tier change and a certificate waiver are approvals by someone other than the initiator (waivers carry reason + expiry + named approver).
  * Rule violations throw SodError (the UI shows its message). The real API MUST enforce all of this server-side from the session identity. */

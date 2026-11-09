@@ -1,4 +1,4 @@
-/* Issues API stubs (see services/audits.ts for the pattern). Contract: docs/SOD_MATRIX.md section 3 (Issue).
+/* Issues API stubs (see services/audits.ts for the pattern). Contract: docs/security/SOD_MATRIX.md section 3 (Issue).
  * Rules live here (SodError, deny by default); the UI mirrors them via the `whyCannot*` helpers. The real API must enforce them again. */
 import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";

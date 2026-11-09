@@ -29,7 +29,7 @@ export const ONBOARD_PLANS = ["Starter", "Professional", "Enterprise"];
 const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
 const del = <T,>(path: string) => apiFetch<T>(path, { method: "DELETE" });
 
-/** Module access (support and super both have it): browsing only. Every MUTATION additionally needs an active elevated session (docs/SOD_MATRIX.md section 2). */
+/** Module access (support and super both have it): browsing only. Every MUTATION additionally needs an active elevated session (docs/security/SOD_MATRIX.md section 2). */
 export const customersCanManage = (roleId: string) => modAllowed(roleId, "admin", "customers");
 /** Deny by default for every mutation: role (super / super2 / support as the source allowed), module access, then an active elevation.
  *  Support passes the role check but can never elevate, so it can browse but not change. */
@@ -117,7 +117,7 @@ const USER_AUDIT: Record<UserAction, [string, string]> = {
   resetmfa: ["user.mfa.reset", ""], resetpw: ["user.password.reset", "Password reset email sent"], resend: ["user.invite.resent", ""], verify: ["user.verification.resent", ""],
   logout: ["user.session.revoked", "All sessions revoked"], suspend: ["user.suspended", "Suspended"], activate: ["user.reactivated", "Active"],
 };
-/** MFA resets are NOT done here any more: they need identity checks, a ticket and a second approver (docs/SOD_MATRIX.md section 4), i.e. the MFA Resets module. */
+/** MFA resets are NOT done here any more: they need identity checks, a ticket and a second approver (docs/security/SOD_MATRIX.md section 4), i.e. the MFA Resets module. */
 export const MFA_RESET_VIA_MODULE = "MFA resets need a request and a second approver. Use MFA Resets.";
 export function userAction(cid: string, uid: string, kind: UserAction) {
   return viaApi<TenantUser>(() => {

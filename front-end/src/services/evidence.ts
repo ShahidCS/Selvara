@@ -1,4 +1,4 @@
-/* Evidence API stubs. Contract: docs/SOD_MATRIX.md section 3 (Evidence). Mock mode performs the in-memory DATA mutation and writes wsLog;
+/* Evidence API stubs. Contract: docs/security/SOD_MATRIX.md section 3 (Evidence). Mock mode performs the in-memory DATA mutation and writes wsLog;
  * rules live here (SodError, deny by default) and the UI mirrors them through the `whyCannot*` helpers. In http mode each call goes to the
  * (not yet existing) API, which must re-validate every field, enforce authorization, scan/store uploaded files and own review/deletion state. */
 import { DATA } from "@/lib/data";

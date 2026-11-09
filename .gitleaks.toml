@@ -1,0 +1,21 @@
+# Gitleaks configuration: the default ruleset plus a narrow allowlist for synthetic demo values.
+title = "Selvara secret scanning"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic documentation values only. Real secrets must never be allow-listed."
+regexes = [
+  '''ak_demo_[A-Za-z0-9]+''',            # clearly synthetic demo API-key prefix shown in the UI
+  '''demo-invite-token''',               # fixed placeholder token of the vendor-portal demo
+  '''(example|vendor|northwind|contoso|tailspin|liffey|najmpay)\.(example|test|invalid)''',
+]
+paths = [
+  '''package-lock\.json$''',
+  '''docs/screenshots/.*''',
+  # Lists of well-known WEAK passwords, used to REJECT them (ASVS 2.1.7). They are not credentials. Keep this to
+  # exactly these two files: a real secret must never be allow-listed.
+  '''front-end/src/data/commonPasswords\.json$''',
+  '''front-end/tests/unit/credentials\.test\.ts$''',
+]

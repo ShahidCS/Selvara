@@ -1,0 +1,105 @@
+{
+  "_comment": "Known, accepted HIGH advisories in the deploy tooling (.github/vercel-cli). A CRITICAL advisory is never accepted. A HIGH advisory that is not listed here fails the 'Deploy tooling audit' job; a listed one fails after review_by so it is re-assessed. Remove entries when npm stops reporting them. Owner: @ShahidCS.",
+  "accepted": [
+    {
+      "id": "GHSA-X8MW-P69M-V3MX",
+      "package": "@fastify/busboy",
+      "severity": "high",
+      "title": "@fastify/busboy vulnerable to Denial of Service via prototype-named multipart part header",
+      "vulnerable_range": ">=1.0.0 <3.2.1",
+      "reason": "Transitive dependency of Vercel's builders for other frameworks (Python, Express, Hono, Remix, Node functions) and of the CLI's HTTP client. This project builds a static Next.js site, so those builders do not run and the vulnerable code is not reachable with our inputs; the class is denial of service or ReDoS. No patched release exists within the major version the CLI pins, and forcing a different major is untested and could break deployments. Assessed 2026-11-09.",
+      "owner": "@ShahidCS",
+      "review_by": "2027-02-09"
+    },
+    {
+      "id": "GHSA-3PPC-4F35-3M26",
+      "package": "minimatch",
+      "severity": "high",
+      "title": "minimatch has a ReDoS via repeated wildcards with non-matching literal in pattern",
+      "vulnerable_range": ">=10.0.0 <10.2.1",
+      "reason": "Transitive dependency of Vercel's builders for other frameworks (Python, Express, Hono, Remix, Node functions) and of the CLI's HTTP client. This project builds a static Next.js site, so those builders do not run and the vulnerable code is not reachable with our inputs; the class is denial of service or ReDoS. No patched release exists within the major version the CLI pins, and forcing a different major is untested and could break deployments. Assessed 2026-11-09.",
+      "owner": "@ShahidCS",
+      "review_by": "2027-02-09"
+    },
+    {
+      "id": "GHSA-7R86-CG39-JMMJ",
+      "package": "minimatch",
+      "severity": "high",
+      "title": "minimatch has ReDoS: matchOne() combinatorial backtracking via multiple non-adjacent GLOBSTAR segments",
+      "vulnerable_range": ">=10.0.0 <10.2.3",
+      "reason": "Transitive dependency of Vercel's builders for other frameworks (Python, Express, Hono, Remix, Node functions) and of the CLI's HTTP client. This project builds a static Next.js site, so those builders do not run and the vulnerable code is not reachable with our inputs; the class is denial of service or ReDoS. No patched release exists within the major version the CLI pins, and forcing a different major is untested and could break deployments. Assessed 2026-11-09.",
+      "owner": "@ShahidCS",
+      "review_by": "2027-02-09"
+    },
+    {
+      "id": "GHSA-23C5-XMQV-RM74",
+      "package": "minimatch",
+      "severity": "high",
+      "title": "minimatch ReDoS: nested *() extglobs generate catastrophically backtracking regular expressions",
+      "vulnerable_range": ">=10.0.0 <10.2.3",
+      "reason": "Transitive dependency of Vercel's builders for other frameworks (Python, Express, Hono, Remix, Node functions) and of the CLI's HTTP client. This project builds a static Next.js site, so those builders do not run and the vulnerable code is not reachable with our inputs; the class is denial of service or ReDoS. No patched release exists within the major version the CLI pins, and forcing a different major is untested and could break deployments. Assessed 2026-11-09.",
+      "owner": "@ShahidCS",
+      "review_by": "2027-02-09"
+    },
+    {
+      "id": "GHSA-VRM6-8VPV-QV8Q",
+      "package": "undici",
+      "severity": "high",
+      "title": "Undici has Unbounded Memory Consumption in WebSocket permessage-deflate Decompression",
+      "vulnerable_range": "<6.24.0",
+      "reason": "Transitive dependency of Vercel's builders for other frameworks (Python, Express, Hono, Remix, Node functions) and of the CLI's HTTP client. This project builds a static Next.js site, so those builders do not run and the vulnerable code is not reachable with our inputs; the class is denial of service or ReDoS. No patched release exists within the major version the CLI pins, and forcing a different major is untested and could break deployments. Assessed 2026-11-09.",
+      "owner": "@ShahidCS",
+      "review_by": "2027-02-09"
+    },
+    {
+      "id": "GHSA-V9P9-HFJ2-HCW8",
+      "package": "undici",
+      "severity": "high",
+      "title": "Undici has Unhandled Exception in WebSocket Client Due to Invalid server_max_window_bits Validation",
+      "vulnerable_range": "<6.24.0",
+      "reason": "Transitive dependency of Vercel's builders for other frameworks (Python, Express, Hono, Remix, Node functions) and of the CLI's HTTP client. This project builds a static Next.js site, so those builders do not run and the vulnerable code is not reachable with our inputs; the class is denial of service or ReDoS. No patched release exists within the major version the CLI pins, and forcing a different major is untested and could break deployments. Assessed 2026-11-09.",
+      "owner": "@ShahidCS",
+      "review_by": "2027-02-09"
+    },
+    {
+      "id": "GHSA-2M5V-PCH6-74HX",
+      "package": "undici",
+      "severity": "high",
+      "title": "undici vulnerable to TLS certificate validation bypass via dropped tls options in Agent",
+      "vulnerable_range": ">=4.0.0 <6.29.1",
+      "reason": "Transitive dependency of Vercel's builders for other frameworks (Python, Express, Hono, Remix, Node functions) and of the CLI's HTTP client. This project builds a static Next.js site, so those builders do not run and the vulnerable code is not reachable with our inputs; the class is denial of service or ReDoS. No patched release exists within the major version the CLI pins, and forcing a different major is untested and could break deployments. Assessed 2026-11-09.",
+      "owner": "@ShahidCS",
+      "review_by": "2027-02-09"
+    },
+    {
+      "id": "GHSA-QRXM-FQHP-JWVM",
+      "package": "undici",
+      "severity": "high",
+      "title": "undici vulnerable to Denial of Service via TLS 1.2 certificate-changing renegotiation",
+      "vulnerable_range": ">=4.2.1 <6.29.1",
+      "reason": "Transitive dependency of Vercel's builders for other frameworks (Python, Express, Hono, Remix, Node functions) and of the CLI's HTTP client. This project builds a static Next.js site, so those builders do not run and the vulnerable code is not reachable with our inputs; the class is denial of service or ReDoS. No patched release exists within the major version the CLI pins, and forcing a different major is untested and could break deployments. Assessed 2026-11-09.",
+      "owner": "@ShahidCS",
+      "review_by": "2027-02-09"
+    },
+    {
+      "id": "GHSA-VXPW-J846-P89Q",
+      "package": "undici",
+      "severity": "high",
+      "title": "undici WebSocket client vulnerable to denial of service via fragment count bypass",
+      "vulnerable_range": "<6.27.0",
+      "reason": "Transitive dependency of Vercel's builders for other frameworks (Python, Express, Hono, Remix, Node functions) and of the CLI's HTTP client. This project builds a static Next.js site, so those builders do not run and the vulnerable code is not reachable with our inputs; the class is denial of service or ReDoS. No patched release exists within the major version the CLI pins, and forcing a different major is untested and could break deployments. Assessed 2026-11-09.",
+      "owner": "@ShahidCS",
+      "review_by": "2027-02-09"
+    },
+    {
+      "id": "GHSA-MRHX-C7XC-M3W5",
+      "package": "zod",
+      "severity": "high",
+      "title": "Zod can exhaust memory while validating oversized constrained collections",
+      "vulnerable_range": "<4.6.6",
+      "reason": "Transitive dependency of Vercel's builders for other frameworks (Python, Express, Hono, Remix, Node functions) and of the CLI's HTTP client. This project builds a static Next.js site, so those builders do not run and the vulnerable code is not reachable with our inputs; the class is denial of service or ReDoS. No patched release exists within the major version the CLI pins, and forcing a different major is untested and could break deployments. Assessed 2026-11-09.",
+      "owner": "@ShahidCS",
+      "review_by": "2027-02-09"
+    }
+  ]
+}

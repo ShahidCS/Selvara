@@ -1,8 +1,8 @@
-/* Credential policy (OWASP ASVS v4 2.1, NIST SP 800-63B). Contract: docs/SOD_MATRIX.md section 6.
+/* Credential policy (OWASP ASVS v4 2.1, NIST SP 800-63B). Contract: docs/security/SOD_MATRIX.md section 6.
  * Rules: min 12 / max 128 characters, NO composition rules, all Unicode and spaces allowed, NFKC-normalised. Rejected: common/breached
  * passwords, values containing the account email local part / name / company (>= 4 chars), repeated characters and simple sequences.
  * The strength score is ADVISORY only (never a composition checklist). Pure functions: the password is never stored, logged or sent,
- * and its length is never logged. The server MUST re-enforce all of this (see docs/SECURITY.md "Credential policy"). */
+ * and its length is never logged. The server MUST re-enforce all of this (see docs/security/SECURITY.md "Credential policy"). */
 import common from "@/data/commonPasswords.json";
 
 export const POLICY = {

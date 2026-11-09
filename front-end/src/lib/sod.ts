@@ -1,4 +1,4 @@
-/* Segregation-of-duties (SoD) and privileged-role helpers. Contract: docs/SOD_MATRIX.md.
+/* Segregation-of-duties (SoD) and privileged-role helpers. Contract: docs/security/SOD_MATRIX.md.
  * UI gating is NOT a control: the same rules must be enforced by the API. Services call these helpers so the rule lives in one place. */
 import { appStore } from "./store";
 import { roleOf } from "./rbac";
@@ -39,7 +39,7 @@ export function sodReason(what: string, ...others: unknown[]): string | null {
 export function assertRole(what: string, ...bases: string[]): void {
   if (!hasRole(appStore.get().role, ...bases)) throw new SodError(`Not permitted: ${what} requires ${bases.join(" or ")}.`);
 }
-/** Thresholds that drive dual control (documented in docs/SOD_MATRIX.md). */
+/** Thresholds that drive dual control (documented in docs/security/SOD_MATRIX.md). */
 export const SOD = {
   RISK_BOARD_THRESHOLD: 15,        // residual score above this needs Board approval evidence
   RISK_MAX_ACCEPT_MONTHS: 12,
