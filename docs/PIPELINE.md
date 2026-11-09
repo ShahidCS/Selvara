@@ -44,13 +44,13 @@ Policy: **High and Critical findings block; Medium and below are reported.**
 | End-to-end suite (all routes, access matrix, gates, injection, vendor portal, headers) | merge and deploy | `ci.yml`, `front-end/e2e` |
 | `npm audit` production dependencies, High and above | merge and deploy | `ci.yml` |
 | Workflow policy (pinned actions, permissions, no `pull_request_target`, no script injection, timeouts, no persisted credentials) | merge and deploy | `.github/scripts/check-workflows.mjs` |
-| CodeQL static analysis | merge (ruleset: High or higher) | `security.yml`, `.github/rulesets/main.json` |
+| CodeQL static analysis (High or Critical fail the job; SARIF kept as an artefact) | merge and deploy | `security.yml`, `.github/scripts/check-sarif.mjs` |
 | Gitleaks secret scan (full history) | merge and deploy | `security.yml`, `.gitleaks.toml` |
-| Dependency review (High, runtime scope; copyleft licences) | merge | `security.yml` |
+| Dependency review: `npm audit` of runtime dependencies, High and above (copyleft licences are in the licence policy row) | merge and deploy | `security.yml` |
 | Licence policy over the whole product lockfile | merge and deploy | `.github/license-policy.json` |
 | Trivy filesystem scan (fixable High and Critical, misconfiguration, secrets) | merge and deploy | `security.yml` |
 | ZAP baseline against the production build (any High alert) | merge and deploy | `.github/scripts/zap-gate.mjs` |
-| OSV scan | reported only (it cannot filter by severity) | Security tab |
+| OSV scan | reported only (it cannot filter by severity); report kept as an artefact | `security.yml` |
 | Smoke test of security headers on the live deployment | the deployment is marked failed | `.github/scripts/smoke-headers.sh` |
 
 ## One-time setup
@@ -82,7 +82,7 @@ Policy: **High and Critical findings block; Medium and below are reported.**
 
 ## Branch and tag protection
 
-`.github/rulesets/main.json` requires, on `main`: pull requests only, one approving review from a code owner who did not push last, stale approvals dismissed on push, conversations resolved, squash merge only, linear history, **signed commits**, no force push and no deletion, ten required status checks that must be up to date, and no CodeQL alert of High or above.
+`.github/rulesets/main.json` requires, on `main`: pull requests only, one approving review from a code owner who did not push last, stale approvals dismissed on push, conversations resolved, squash merge only, linear history, **signed commits**, no force push and no deletion, ten required status checks that must be up to date, and the required checks below. There is no code-scanning rule, because that needs GitHub Advanced Security (see EX-07 in [EXCEPTIONS.md](EXCEPTIONS.md)): CodeQL is a required check that gates on its own results instead.
 
 `.github/rulesets/release-tags.json` makes `v*` tags creatable only by repository admins and immutable (no update, delete or move).
 

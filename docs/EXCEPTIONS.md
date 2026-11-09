@@ -12,6 +12,7 @@ Review the whole register at least quarterly and whenever a "Review when" trigge
 | EX-04 | Known advisories in the pinned Vercel CLI tree | @ShahidCS | 2027-02-09, and each CLI release |
 | EX-05 | CSP `script-src 'unsafe-inline'` | @ShahidCS | Before production traffic |
 | EX-06 | Public Sigstore signing disabled | @ShahidCS | Repository visibility decision |
+| EX-07 | No GitHub Advanced Security (private repository, current plan) | @ShahidCS | If the repository moves to an organisation with Advanced Security, or becomes public |
 
 ## EX-01 Sole-maintainer review and approval
 
@@ -95,3 +96,28 @@ bootstrap scripts.
 For a private repository that discloses its existence, so `COSIGN_ENABLED` is off (owner decision, 2026-11-09).
 **Compensating evidence.** GitHub artifact attestations (private to the repository where the plan supports them)
 and the SHA-256 checksum. **Exit.** Revisit if the repository becomes public or a customer requires a detached signature.
+
+## EX-07 No GitHub Advanced Security
+
+**What.** On a private repository, GitHub's code scanning, dependency review and the Security tab need Advanced Security,
+which this plan does not include (owner decision 2026-11-09: stay private, work without it). Three checks were
+reworked so they read the scanners' own output instead:
+
+| Check | Normal (Advanced Security) | Here |
+|---|---|---|
+| CodeQL | Uploads to the Security tab; ruleset blocks High alerts | Same analysis, results written to SARIF; `check-sarif.mjs` fails the job on any High or Critical (CodeQL security-severity 7.0 or higher); SARIF kept 30 days as an artefact |
+| Dependency review | Diffs the pull request against the dependency graph | `npm audit` of the runtime lockfile, High and above block; copyleft licences are blocked by the licence policy |
+| OSV scan | Uploads to the Security tab | Report kept 30 days as an artefact; informational |
+
+**What is lost.** The Security tab and alert history; automatic alert dismissal and triage; the diff view of newly
+introduced vulnerable dependencies (the audit now reports the whole tree rather than only what a pull request adds);
+the ruleset's code-scanning rule (replaced by CodeQL being a required status check); GitHub's native secret
+scanning of the repository and push protection, which are also Advanced Security features for private repositories
+(Gitleaks over the full history remains).
+
+**Compensating controls.** CodeQL, `npm audit`, Trivy, Gitleaks and ZAP all still block on High and Critical, in CI,
+before merge and again before every deployment. Findings can be read in the run summary and artefacts.
+
+**Exit.** Set the repository variable `CODE_SCANNING_ENABLED=true` once Advanced Security is available; CodeQL and OSV then
+also upload to the Security tab (no workflow change needed), and the code-scanning rule can be added back to
+`.github/rulesets/main.json`.

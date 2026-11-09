@@ -1,7 +1,9 @@
 name: Security
 
 # Security gates. Policy: HIGH and CRITICAL findings block (the job fails); MEDIUM and below are
-# reported in the run summary / Security tab. Runs on pull requests, weekly (new advisories appear
+# reported in the run summary and as downloadable reports. This repository is private WITHOUT GitHub Advanced
+# Security, so nothing here depends on the Security tab: gates read the scanners' own output. If Advanced Security
+# is ever available, set the repository variable CODE_SCANNING_ENABLED=true to also upload results to the Security tab. Runs on pull requests, weekly (new advisories appear
 # without code changes), and is reused (workflow_call) by the staging and release pipelines.
 
 on:
@@ -43,8 +45,9 @@ jobs:
         run: node .github/scripts/check-workflows.mjs
 
   # ---------------------------------------------------------------------------------------------
-  # Static analysis (SAST). Results appear under Security > Code scanning; the main-branch ruleset
-  # blocks merges on high-or-higher alerts.
+  # Static analysis (SAST). CodeQL results are written to a SARIF file and gated by check-sarif.mjs (High and
+  # Critical fail the job). The SARIF is kept as a downloadable artefact. Upload to the Security tab happens only
+  # when CODE_SCANNING_ENABLED=true (needs Advanced Security on a private repository).
   # ---------------------------------------------------------------------------------------------
   codeql:
     name: CodeQL (javascript-typescript)
@@ -52,13 +55,17 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
-      security-events: write
+      security-events: write # used only when CODE_SCANNING_ENABLED=true
       actions: read
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
       - name: Initialise CodeQL
         uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
@@ -69,8 +76,21 @@ jobs:
         uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: "/language:javascript-typescript"
+          output: codeql-sarif
+          upload: ${{ vars.CODE_SCANNING_ENABLED == 'true' && 'always' || 'never' }}
+          upload-database: false
+      - name: Gate on High and Critical findings
+        run: node .github/scripts/check-sarif.mjs codeql-sarif
+      - name: Keep the SARIF report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: codeql-sarif
+          path: codeql-sarif
+          retention-days: 30
+          if-no-files-found: ignore
 
-  # ---------------------------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------------------------
   # Secret scanning over the full history. (GitHub's native secret scanning with push protection
   # is the first line of defence and is enabled in repository settings; this is the second.)
   # A personal-account repository needs no Gitleaks licence. If the repo moves to an organisation,
@@ -99,12 +119,12 @@ jobs:
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
 
   # ---------------------------------------------------------------------------------------------
-  # New or changed dependencies in a pull request: block known high/critical advisories and
-  # copyleft licences that are incompatible with a proprietary product.
+  # Known High/Critical advisories in the dependencies that ship (runtime scope), read straight from the lockfile
+  # with npm audit. GitHub's own Dependency review needs the dependency graph and Advanced Security, which a private
+  # repository on this plan does not have. Copyleft licences are blocked separately by "Licence policy".
   # ---------------------------------------------------------------------------------------------
   dependency-review:
     name: Dependency review
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -114,13 +134,17 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Review dependency changes
-        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          fail-on-severity: high
-          fail-on-scopes: runtime
-          comment-summary-in-pr: never
-          deny-licenses: GPL-2.0-only, GPL-2.0-or-later, GPL-3.0-only, GPL-3.0-or-later, AGPL-3.0-only, AGPL-3.0-or-later, SSPL-1.0, BUSL-1.1, CC-BY-NC-4.0, CC-BY-NC-SA-4.0
+          node-version: 22
+      - name: Audit runtime dependencies (High and above block)
+        working-directory: front-end
+        run: npm audit --package-lock-only --omit=dev --audit-level=high
+      - name: Report the full tree (development tools included; informational)
+        working-directory: front-end
+        continue-on-error: true
+        run: npm audit --package-lock-only
 
   # ---------------------------------------------------------------------------------------------
   # Licence policy over the whole installed tree (see .github/license-policy.json).
@@ -145,8 +169,8 @@ jobs:
 
   # ---------------------------------------------------------------------------------------------
   # OSV: a second vulnerability database (informational). osv-scanner cannot filter by severity,
-  # so blocking is done by npm audit (CI), dependency review and Trivy; OSV findings are uploaded to
-  # the Security tab for triage.
+  # so blocking is done by npm audit (CI and Dependency review) and Trivy; the OSV report is kept as an artefact
+  # for triage.
   # ---------------------------------------------------------------------------------------------
   osv:
     name: OSV scan
@@ -154,7 +178,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      security-events: write
+      security-events: write # used only when CODE_SCANNING_ENABLED=true
       actions: read
     steps:
       - name: Check out
@@ -169,9 +193,17 @@ jobs:
             --lockfile=front-end/package-lock.json
             --lockfile=.github/vercel-cli/package-lock.json
             --format=sarif
-            --output=osv-results.sarif
+            --output-file=osv-results.sarif
+      - name: Keep the OSV report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: osv-results
+          path: osv-results.sarif
+          retention-days: 30
+          if-no-files-found: ignore
       - name: Upload OSV results to the Security tab
-        if: always() && hashFiles('osv-results.sarif') != ''
+        if: always() && vars.CODE_SCANNING_ENABLED == 'true' && hashFiles('osv-results.sarif') != ''
         uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: osv-results.sarif

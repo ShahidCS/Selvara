@@ -58,6 +58,6 @@ cat <<'EOT'
   1. Settings > Environments > staging / production > add secret VERCEL_TOKEN (a separate scoped token per environment)
      and variables VERCEL_ORG_ID, VERCEL_PROJECT_ID. Optional: secret VERCEL_AUTOMATION_BYPASS_SECRET, variable STAGING_ALIAS.
   2. In Vercel: set the project Root Directory to front-end, and confirm Git auto-deploy is off (front-end/vercel.json also disables it).
-  3. Enable GitHub Advanced Security features in Settings > Code security if the PATCH above reported them as unavailable.
+  3. Advanced Security features (code scanning, dependency review, secret scanning) are optional: this repository runs without them (docs/EXCEPTIONS.md EX-07). If the PATCH above reports them as unavailable, that is expected.
   4. Commit signing: every contributor needs a verified signing key (see docs/PIPELINE.md, "Commit signing").
 EOT
