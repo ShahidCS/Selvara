@@ -1,0 +1,10 @@
+# Normalise line endings so diffs and the pinned-hash checks behave the same on every machine.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
+
+# Lockfiles are generated: collapse them in diffs.
+package-lock.json -diff linguist-generated=true

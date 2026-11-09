@@ -21,7 +21,7 @@ We will acknowledge your report and keep you informed of progress. Please give u
 
 ## Scope
 
-In scope: the application code in this repository (`front-end/`), its build, CI/CD and release pipeline (`.github/`, see [`docs/PIPELINE.md`](docs/PIPELINE.md)), and its documented security controls. Reports about the pipeline itself (for example a way to deploy without the gates, or to leak a deployment token) are welcome.
+In scope: the application code in this repository (`front-end/`), its build, CI/CD and release pipeline (`.github/`, see [`docs/security/PIPELINE.md`](docs/security/PIPELINE.md)), and its documented security controls. Reports about the pipeline itself (for example a way to deploy without the gates, or to leak a deployment token) are welcome.
 
 Out of scope: social engineering, physical attacks, denial-of-service testing, testing against systems or data you do not own, and findings that only affect unsupported browsers.
 
@@ -31,4 +31,4 @@ Selvara has not had a stable release yet. Only the default branch (and the branc
 
 ## What to expect from this codebase
 
-The current front-end is a complete application running on synthetic in-memory data. There is no server, database or real authentication yet, so some classes of issue (session handling, server-side authorization, CSRF, rate limiting) cannot be exercised until the backend exists. Known limitations and backend requirements are documented in [`front-end/docs/SECURITY.md`](front-end/docs/SECURITY.md), and the access-control and segregation-of-duties rules in [`front-end/docs/SOD_MATRIX.md`](front-end/docs/SOD_MATRIX.md). Reports that go beyond what is already listed there are especially welcome.
+The current front-end is a complete application running on synthetic in-memory data. There is no server, database or real authentication yet, so some classes of issue (session handling, server-side authorization, CSRF, rate limiting) cannot be exercised until the backend exists. Known limitations and backend requirements are documented in [`docs/security/SECURITY.md`](docs/security/SECURITY.md), and the access-control and segregation-of-duties rules in [`docs/security/SOD_MATRIX.md`](docs/security/SOD_MATRIX.md). Reports that go beyond what is already listed there are especially welcome.

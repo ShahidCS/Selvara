@@ -36,7 +36,7 @@
         "LGPL-3.0-or-later",
         "LGPL-3.0-only"
       ],
-      "reason": "Optional prebuilt native libvips binaries pulled in by Next.js image optimisation. The application does not use next/image, they are dynamically linked native libraries (not statically combined with our code) and are never modified. Not part of the deployed output: CI check .github/scripts/check-shipped-artifact.mjs fails if sharp/libvips appear in what is shipped. Needs legal sign-off before shipping node_modules, enabling next/image or distributing the build for self-hosting. See docs/EXCEPTIONS.md EX-02.",
+      "reason": "Optional prebuilt native libvips binaries pulled in by Next.js image optimisation. The application does not use next/image, they are dynamically linked native libraries (not statically combined with our code) and are never modified. Not part of the deployed output: CI check .github/scripts/check-shipped-artifact.mjs fails if sharp/libvips appear in what is shipped. Needs legal sign-off before shipping node_modules, enabling next/image or distributing the build for self-hosting. See docs/security/EXCEPTIONS.md EX-02.",
       "owner": "@ShahidCS",
       "review_by": "2027-05-09"
     },
@@ -45,7 +45,7 @@
       "licenses": [
         "CC-BY-4.0"
       ],
-      "reason": "Browser-support data licensed CC-BY-4.0 (attribution). Data only, not executable code. Build-time only, not in the shipped output (same CI check). Attribution is in THIRD_PARTY_NOTICES.md, generated and checked in CI. See docs/EXCEPTIONS.md EX-03.",
+      "reason": "Browser-support data licensed CC-BY-4.0 (attribution). Data only, not executable code. Build-time only, not in the shipped output (same CI check). Attribution is in THIRD_PARTY_NOTICES.md, generated and checked in CI. See docs/security/EXCEPTIONS.md EX-03.",
       "owner": "@ShahidCS",
       "review_by": "2027-05-09"
     }

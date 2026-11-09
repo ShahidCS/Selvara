@@ -1,5 +1,5 @@
 /* Commitments API stubs (source lines 3479-3495). Caller does wsLog/toast/bumpData.
- * CONTRACT (docs/SOD_MATRIX.md section 3): starting and closing the incident clock needs admin/owner (assertRole -> SodError) and is audited in the workspace and
+ * CONTRACT (docs/security/SOD_MATRIX.md section 3): starting and closing the incident clock needs admin/owner (assertRole -> SodError) and is audited in the workspace and
  * admin logs by the caller (actor, summary, outcome). A real API must own the incident clock (server timestamps, notification duties, admin-log entry) and run real contract analysis. */
 import { DATA } from "@/lib/data";
 import { nowStamp } from "@/lib/format";

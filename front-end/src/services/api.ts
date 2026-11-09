@@ -1,5 +1,5 @@
 /* API / Webhooks / Custom tests stubs. Mock mode performs the in-memory mutations; the caller then does wsLog / toast / bumpData.
- * CONTRACT (docs/SOD_MATRIX.md section 3, API): everything here is admin-only (assertRole, deny by default). A key with the WRITE scope and every webhook need approval
+ * CONTRACT (docs/security/SOD_MATRIX.md section 3, API): everything here is admin-only (assertRole, deny by default). A key with the WRITE scope and every webhook need approval
  * from a SECOND admin (approvals engine): until then the key has no secret and no prefix, the webhook never delivers. After approval the key is generated and shown ONCE,
  * only to the requester (never to the approver). Read-only keys are issued by a single admin. Webhook URLs stay https-only (isSafeWebhookUrl). Violations throw SodError.
  * The real API MUST generate and hash keys server-side (plaintext once, store only a hash + prefix), keep webhook signing secrets server-side, enforce RBAC and the

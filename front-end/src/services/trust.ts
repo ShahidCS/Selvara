@@ -1,5 +1,5 @@
 /* Trust Center API stubs (source lines 3326-3442). Mock mode mutates the in-memory state; the caller does wsLog/toast/bumpData.
- * CONTRACT (docs/SOD_MATRIX.md section 3, Trust): every admin action needs admin/owner (assertRole); making a resource PUBLIC is a four-eyes approval
+ * CONTRACT (docs/security/SOD_MATRIX.md section 3, Trust): every admin action needs admin/owner (assertRole); making a resource PUBLIC is a four-eyes approval
  * (approver is not the editor/requester); BLOCKLISTED DOMAINS CANNOT BE APPROVED (enforced here, the source ignored the blocklist); approving an access request
  * needs an approver who is not the requester; the anonymous request-access form enqueues into the admin pending queue (rate limited, reason stored, clamped).
  * Violations throw SodError. The real API MUST enforce all of it plus tenant isolation, NDA before private documents are served, expiring links,
@@ -143,7 +143,7 @@ export function subscribeUpdates(email: string) {
   return viaApi(() => email, () => send<string>("POST", "/trust/subscriptions", { email }));
 }
 /* Anonymous request-access: rate limited (per email and overall), reason stored clamped to 300 chars, enqueued for admins. The reply never reveals whether the
- * address is blocked or already queued (no enumeration). Limits follow docs/SPEC_BOARDS.md 9.G2 (sign-up style: 3 per hour per email). The real API must
+ * address is blocked or already queued (no enumeration). Limits follow docs/architecture/SPEC_BOARDS.md 9.G2 (sign-up style: 3 per hour per email). The real API must
  * rate limit by IP/device too, add bot protection and verify the email address before notifying anyone. */
 export const REQUEST_RATE = { windowMs: 3600_000, perEmail: 3, overall: 30, maxQueue: 200 } as const;
 export const REQUEST_ACCESS_COPY = "You can send up to 3 requests per hour from one email address. Our security team reviews every request and will reply by email.";

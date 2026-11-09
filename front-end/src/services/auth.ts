@@ -1,4 +1,4 @@
-/* Auth service (credential checks). Contract: docs/SOD_MATRIX.md section 6.
+/* Auth service (credential checks). Contract: docs/security/SOD_MATRIX.md section 6.
  * checkBreached: mock mode = local common/breached blocklist. Real mode = k-anonymity range lookup against OUR backend, which proxies the breach API:
  * the browser SHA-1 hashes the NFKC password, sends ONLY the first 5 hex characters, and compares the returned suffixes locally.
  * The password and its full hash never leave the browser and are never sent to a third party. The server MUST ALSO run the breach check

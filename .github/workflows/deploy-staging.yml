@@ -33,7 +33,7 @@ jobs:
   deploy:
     name: Staging
     needs: [ci, security]
-    # Opt-in: stays off until the Vercel secrets exist. Set the repository variable DEPLOY_ENABLED=true (docs/PIPELINE.md).
+    # Opt-in: stays off until the Vercel secrets exist. Set the repository variable DEPLOY_ENABLED=true (docs/security/PIPELINE.md).
     if: vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30

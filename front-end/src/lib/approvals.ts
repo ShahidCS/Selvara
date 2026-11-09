@@ -1,4 +1,4 @@
-/* Generic four-eyes approval engine (contract: docs/SOD_MATRIX.md). Modules create an approval request for a high-impact action,
+/* Generic four-eyes approval engine (contract: docs/security/SOD_MATRIX.md). Modules create an approval request for a high-impact action,
  * a DIFFERENT authorised person approves it, and only then does the module's service apply the change.
  * In-memory demo store; the real API must persist, authorise and audit this server-side. */
 import { createStore, bumpData } from "./store";

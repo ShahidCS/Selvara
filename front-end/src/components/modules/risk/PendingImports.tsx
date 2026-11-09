@@ -1,4 +1,4 @@
-/* "Pending imports" panel (Register tab): imports that would update existing risks wait here for a second admin (four-eyes, docs/SOD_MATRIX.md).
+/* "Pending imports" panel (Register tab): imports that would update existing risks wait here for a second admin (four-eyes, docs/security/SOD_MATRIX.md).
  * Everyone who can edit risks sees the list; only an eligible approver (admin, not the importer) can use Approve / Reject. */
 import { useState } from "react";
 import { Chip } from "@/components/ui";

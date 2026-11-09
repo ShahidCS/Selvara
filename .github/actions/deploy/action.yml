@@ -82,7 +82,7 @@ runs:
           echo "- VERCEL_PROJECT_ID (variable): $PROJECT_SET"
         } | tee -a "$GITHUB_STEP_SUMMARY"
         if [[ $TOKEN_SET != true ]]; then
-          echo "::error title=VERCEL_TOKEN is not available::The deploy job for environment '$TARGET_ENV' received no VERCEL_TOKEN. Add it as an ENVIRONMENT secret named exactly VERCEL_TOKEN under Settings > Environments > $TARGET_ENV (docs/PIPELINE.md, Vercel setup)."
+          echo "::error title=VERCEL_TOKEN is not available::The deploy job for environment '$TARGET_ENV' received no VERCEL_TOKEN. Add it as an ENVIRONMENT secret named exactly VERCEL_TOKEN under Settings > Environments > $TARGET_ENV (docs/security/PIPELINE.md, Vercel setup)."
           exit 1
         fi
 

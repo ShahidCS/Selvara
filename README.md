@@ -172,11 +172,11 @@ Status below was researched on **2026-11-08**. Several items changed recently, s
 
 **Be aware of uneven depth.** The requirement count shows how much of a framework is modelled, not how much of it exists. DORA (289), UAE IA (188) and ISO/IEC 27001 (123) are modelled in depth, while ISO 22301 (6), ISO/IEC 27701 (8) and SOC 2 (11) are summaries. Requirement titles are paraphrased (licensed standard text is not reproduced) and control mappings are draft content that needs review by qualified compliance staff.
 
-Per-framework detail, official issuers, status notes, sources, naming accuracy and frameworks not yet covered are in [`front-end/docs/FRAMEWORKS.md`](front-end/docs/FRAMEWORKS.md). Most sources there are secondary (law-firm and certification-body pages), so it marks what is not verified.
+Per-framework detail, official issuers, status notes, sources, naming accuracy and frameworks not yet covered are in [`docs/architecture/FRAMEWORKS.md`](docs/architecture/FRAMEWORKS.md). Most sources there are secondary (law-firm and certification-body pages), so it marks what is not verified.
 
 ## Security and segregation of duties
 
-Selvara is built on the assumption that the people who operate a control must not be the people who approve it. The full contract is in [`front-end/docs/SOD_MATRIX.md`](front-end/docs/SOD_MATRIX.md). Highlights:
+Selvara is built on the assumption that the people who operate a control must not be the people who approve it. The full contract is in [`docs/security/SOD_MATRIX.md`](docs/security/SOD_MATRIX.md). Highlights:
 
 - **Four-eyes approvals** for risk acceptance above threshold, policy publication, access grants (two approvers for privileged access), MFA resets, role changes, vendor onboarding, AI classification, public Trust Center publishing, API keys with write scope, finance adjustments and rate overrides.
 - **No standing privileged access.** Platform super admins have no workspace access, and every admin-console change needs an audited, time-boxed elevated session with a reason and ticket reference.
@@ -185,7 +185,7 @@ Selvara is built on the assumption that the people who operate a control must no
 - **Credential policy aligned to OWASP ASVS 2.1 and NIST SP 800-63B**: 12 to 128 characters, no composition rules, Unicode and passphrases accepted, breached and common-password rejection, no forced rotation or history rules, no SMS or voice MFA.
 - **Secure by construction**: no HTML built from strings, safe-link and upload helpers, CSV formula-injection guard, strict webhook URL validation (SSRF hygiene), strict response headers including a Content-Security-Policy, hash-chained audit logs.
 
-> **Important:** rules are enforced in the front-end service layer and mirrored in the UI so they can be demonstrated and tested, but a browser is never a trust boundary. A production deployment must enforce every rule again on the server. The remaining backend requirements and the test log are in [`front-end/docs/SECURITY.md`](front-end/docs/SECURITY.md).
+> **Important:** rules are enforced in the front-end service layer and mirrored in the UI so they can be demonstrated and tested, but a browser is never a trust boundary. A production deployment must enforce every rule again on the server. The remaining backend requirements and the test log are in [`docs/security/SECURITY.md`](docs/security/SECURITY.md).
 
 ## Roles and access model
 
@@ -272,7 +272,7 @@ Copy `front-end/.env.example` to `front-end/.env.local`. There are no secrets in
 - **End-to-end tests (Playwright)** cover every route, the full persona-by-route access matrix, privileged-access gating, read-only roles, the password policy, injection resistance and the vendor portal.
 - **CI** (GitHub Actions) runs type-check, unit tests, build, `npm audit` on production dependencies, and the end-to-end suite on every push and pull request. Dependabot proposes weekly grouped updates.
 
-Details, including what is not covered (backend, visual regression, load), are in [`front-end/docs/TESTING.md`](front-end/docs/TESTING.md).
+Details, including what is not covered (backend, visual regression, load), are in [`docs/guides/TESTING.md`](docs/guides/TESTING.md).
 
 ## CI/CD pipeline
 
@@ -281,10 +281,10 @@ Every change reaches production only through GitHub Actions, and every release l
 - **Pull requests** run type-check, unit and end-to-end tests, a dependency audit, CodeQL static analysis, secret scanning, a runtime dependency audit, licence policy, a Trivy scan and a ZAP baseline scan. High and Critical findings block the merge.
 - **Merges to `main`** re-run every gate, then deploy to **staging** (Vercel, deployed only from Actions; Vercel's own Git deploys are disabled).
 - **Production releases** come from a **signed version tag** on `main`. The tag is verified, the gates run again, and the deployment waits for approval in a protected environment before it ships.
-- **Evidence:** every build produces a CycloneDX SBOM and a build-provenance attestation (an optional keyless Sigstore signature is available, off by default), and the deployed bytes are extracted from that exact attested archive.
+- **Evidence:** every build produces a CycloneDX SBOM and a SHA-256 checksum, and the deployed bytes are extracted from that exact checksum-verified archive. Build-provenance attestations are supported and switch on automatically where the GitHub plan allows them (currently off for this private repository); an optional keyless Sigstore signature is off by default.
 - **The pipeline protects itself:** every action is pinned to a full commit SHA, workflow permissions are least-privilege, install scripts never run in CI, and a policy check fails the build if a workflow breaks these rules.
 
-Setup, release steps, how to verify an artefact, accepted risks and what is not yet proven are in [`docs/PIPELINE.md`](docs/PIPELINE.md).
+Setup, release steps, how to verify an artefact, accepted risks and what is not yet proven are in [`docs/security/PIPELINE.md`](docs/security/PIPELINE.md).
 
 ## Repository layout
 
@@ -294,7 +294,7 @@ Selvara/
 ├── LICENSE                   proprietary, all rights reserved
 ├── SECURITY.md               vulnerability reporting policy
 ├── .github/                  workflows, pipeline scripts, rulesets, CODEOWNERS, Dependabot configuration
-├── docs/                     pipeline documentation and README screenshots
+├── docs/                     architecture/, guides/, security/ documentation and README screenshots (see docs/ORGANIZATION.md)
 └── front-end/                Next.js application
     ├── src/
     │   ├── pages/            routes: /ws, /admin, /auth, /vendor-portal
@@ -304,7 +304,6 @@ Selvara/
     │   ├── data/             synthetic seed data
     │   ├── hooks/ styles/ assets/
     ├── tests/ e2e/           unit and end-to-end tests
-    ├── docs/                 inventory, checklists, security contract, frameworks, decisions
     └── scripts/              developer tools for preparing seed data
 ```
 
@@ -313,15 +312,15 @@ Selvara/
 | Document | Contents |
 |---|---|
 | [`front-end/README.md`](front-end/README.md) | Front-end setup and structure in detail |
-| [`front-end/docs/FRAMEWORKS.md`](front-end/docs/FRAMEWORKS.md) | Researched reference for every framework, regulation and standard covered |
-| [`front-end/docs/SOD_MATRIX.md`](front-end/docs/SOD_MATRIX.md) | Segregation-of-duties, privileged-access and credential-policy contract |
-| [`front-end/docs/SECURITY.md`](front-end/docs/SECURITY.md) | Controls in place, known limitations, backend requirements, test log |
-| [`docs/PIPELINE.md`](docs/PIPELINE.md) | CI/CD pipeline: gates, deployment, release, supply-chain controls, accepted risks |
-| [`front-end/docs/TESTING.md`](front-end/docs/TESTING.md) | Test strategy, how to run it, CI, gaps |
-| [`front-end/docs/DECISIONS.md`](front-end/docs/DECISIONS.md) | Decisions taken and decisions still open |
-| [`front-end/docs/CHECKLIST.md`](front-end/docs/CHECKLIST.md) | Feature-to-component map with a per-module checklist in `docs/checklist/` |
-| [`front-end/docs/SPEC_BOARDS.md`](front-end/docs/SPEC_BOARDS.md) | Comparison of the design boards with the implemented product |
-| [`front-end/docs/PORTING_GUIDE.md`](front-end/docs/PORTING_GUIDE.md) | Conventions used to build and secure each module |
+| [`docs/architecture/FRAMEWORKS.md`](docs/architecture/FRAMEWORKS.md) | Researched reference for every framework, regulation and standard covered |
+| [`docs/security/SOD_MATRIX.md`](docs/security/SOD_MATRIX.md) | Segregation-of-duties, privileged-access and credential-policy contract |
+| [`docs/security/SECURITY.md`](docs/security/SECURITY.md) | Controls in place, known limitations, backend requirements, test log |
+| [`docs/security/PIPELINE.md`](docs/security/PIPELINE.md) | CI/CD pipeline: gates, deployment, release, supply-chain controls, accepted risks |
+| [`docs/guides/TESTING.md`](docs/guides/TESTING.md) | Test strategy, how to run it, CI, gaps |
+| [`docs/architecture/DECISIONS.md`](docs/architecture/DECISIONS.md) | Decisions taken and decisions still open |
+| [`docs/guides/CHECKLIST.md`](docs/guides/CHECKLIST.md) | Feature-to-component map with a per-module checklist in `docs/guides/checklist/` |
+| [`docs/architecture/SPEC_BOARDS.md`](docs/architecture/SPEC_BOARDS.md) | Comparison of the design boards with the implemented product |
+| [`docs/architecture/PORTING_GUIDE.md`](docs/architecture/PORTING_GUIDE.md) | Conventions used to build and secure each module |
 
 ## Project status
 
@@ -333,7 +332,7 @@ Selvara/
 | Backend (API, database, authentication, sessions) | **Not built** |
 | Production readiness | **Not production-ready** |
 
-What a production deployment still needs (details in `front-end/docs/SECURITY.md`):
+What a production deployment still needs (details in `docs/security/SECURITY.md`):
 
 - Authentication, sessions, CSRF protection and server-side authorization with tenant isolation
 - Stable user identifiers for segregation-of-duties checks (the demo compares display names)
@@ -352,7 +351,7 @@ Planned work, in rough priority order. This is a direction, not a commitment, an
 1. **Backend foundation:** API, database, authentication (sessions, MFA and passkeys), server-side authorization and tenant isolation.
 2. **Server-side enforcement of the rules the front-end already models:** segregation of duties by stable user id, persisted approvals and elevation records, append-only signed audit storage.
 3. **Production hardening:** nonce-based CSP, rate limiting, upload scanning, signed expiring links, server-generated recovery codes.
-4. **Product depth:** deepen the shallow framework catalogues (for example ISO 22301, ISO/IEC 27701, SOC 2, SAMA CSF), resolve the open items in [`front-end/docs/DECISIONS.md`](front-end/docs/DECISIONS.md), and port the remaining policy-library and third-party-risk improvements described in [`front-end/docs/SPEC_BOARDS.md`](front-end/docs/SPEC_BOARDS.md).
+4. **Product depth:** deepen the shallow framework catalogues (for example ISO 22301, ISO/IEC 27701, SOC 2, SAMA CSF), resolve the open items in [`docs/architecture/DECISIONS.md`](docs/architecture/DECISIONS.md), and port the remaining policy-library and third-party-risk improvements described in [`docs/architecture/SPEC_BOARDS.md`](docs/architecture/SPEC_BOARDS.md).
 5. **Engineering quality:** TypeScript strict mode, lint configuration, automated accessibility checks, visual regression tests.
 
 ## Maintainers
@@ -363,7 +362,7 @@ Planned work, in rough priority order. This is a direction, not a commitment, an
 
 Selvara is proprietary software (see [Licence](#licence)). Contributions are accepted from contributors authorised by the owner, under the terms agreed with them. If you have been invited to contribute:
 
-1. Read [`front-end/docs/PORTING_GUIDE.md`](front-end/docs/PORTING_GUIDE.md) and [`front-end/docs/SOD_MATRIX.md`](front-end/docs/SOD_MATRIX.md) first. New mutations must call the service layer (deny by default), write an audit entry and follow the secure-coding rules.
+1. Read [`docs/architecture/PORTING_GUIDE.md`](docs/architecture/PORTING_GUIDE.md) and [`docs/security/SOD_MATRIX.md`](docs/security/SOD_MATRIX.md) first. New mutations must call the service layer (deny by default), write an audit entry and follow the secure-coding rules.
 2. Run `npm run ci` and `npm run test:e2e` in `front-end/` before opening a pull request.
 3. Never commit secrets, real personal data or customer information. Use synthetic data only.
 
