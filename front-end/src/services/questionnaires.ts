@@ -1,5 +1,5 @@
 /* Questionnaires API stubs (source lines 3443-3478). Caller does wsLog/toast/bumpData.
- * CONTRACT (docs/SOD_MATRIX.md section 3): SENDING a questionnaire externally ("Mark complete" in the source) is a four-eyes step: the author submits it for review and
+ * CONTRACT (docs/security/SOD_MATRIX.md section 3): SENDING a questionnaire externally ("Mark complete" in the source) is a four-eyes step: the author submits it for review and
  * a reviewer (admin/owner) who is not the author and has not edited it approves the send (approvals engine). VERIFYING an answer publishes it to the PUBLIC Trust Center
  * chatbot, so it needs admin/owner, a verifier who is not the answer's author/editor, and is audited. Violations throw SodError.
  * The real API MUST enforce this, vendor-portal isolation (a vendor sees only its own questionnaire), required-answer checks and progress arithmetic. */

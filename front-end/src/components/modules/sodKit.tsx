@@ -1,4 +1,4 @@
-/* Shared UI for four-eyes steps (contract: docs/SOD_MATRIX.md): service-error toasts and the pending-approvals card.
+/* Shared UI for four-eyes steps (contract: docs/security/SOD_MATRIX.md): service-error toasts and the pending-approvals card.
  * Disabled buttons always show the reason text (never a silent disable). The UI is not a control: services enforce the same rules. */
 import { useState } from "react";
 import { Chip, Icon } from "@/components/ui";

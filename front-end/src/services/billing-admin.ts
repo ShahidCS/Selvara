@@ -25,7 +25,7 @@ export const USAGE_KEYS: [string, string][] = [["screenings", "Per screening"], 
 /** Sane upper bounds for manual price entry (added: the source only clamped at 0). */
 export const MAX_PRICE = 1_000_000; export const MAX_UNIT_PRICE = 1000;
 
-/** Module access (support and super): browsing. Every MUTATION also needs an active elevation (docs/SOD_MATRIX.md section 2). */
+/** Module access (support and super): browsing. Every MUTATION also needs an active elevation (docs/security/SOD_MATRIX.md section 2). */
 export const billingCanManage = (roleId: string) => modAllowed(roleId, "admin", "billing");
 /** Deny by default for mutations: module access, role (super / super2 / support as the source allowed), then elevation. Support can never elevate. */
 function guard(what = "billing changes", ...roles: string[]) {
@@ -75,7 +75,7 @@ export function invoiceAction(cid: string, invId: string, action: InvoiceAction)
   }, () => post<{ id: string; name: string }>(`/billing/${encodeURIComponent(cid)}/invoices/${encodeURIComponent(invId)}/${action.toLowerCase()}`, {}));
 }
 
-/* ---------- finance dual control: credit, refund, write-off, manual mark paid (docs/SOD_MATRIX.md section 3) ---------- */
+/* ---------- finance dual control: credit, refund, write-off, manual mark paid (docs/security/SOD_MATRIX.md section 3) ---------- */
 export type FinanceKind = "credit" | "refund" | "writeoff" | "markpaid";
 export const FINANCE_LABEL: Record<FinanceKind, string> = { credit: "Credit", refund: "Refund", writeoff: "Write-off", markpaid: "Mark paid (manual override)" };
 export const FINANCE_KINDS = Object.keys(FINANCE_LABEL) as FinanceKind[];

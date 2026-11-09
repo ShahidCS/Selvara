@@ -1,6 +1,6 @@
 /* Platform-admin Exchange Rates & Tax stubs (Held/Applied workflow, manual edit, refresh). Mock mode mutates RATE_ROWS, the module's own deep copy of
  * the seed RATES (as the prototype's RATE.rows); the caller does toast / bumpData.
- * Owner decision (docs/SOD_MATRIX.md): every change needs an elevated super admin AND a second, different elevated super admin to approve it
+ * Owner decision (docs/security/SOD_MATRIX.md): every change needs an elevated super admin AND a second, different elevated super admin to approve it
  * (manual rate/tax override, and releasing or rejecting a feed-held rate). Every step is audited with the ticket. The prototype had no audit at all.
  * The real API MUST: authorize super/support server-side, keep feed ingestion and the Held thresholds server-side (the client never decides a rate
  * is "Applied"), store the previous applied rate so a rejection can restore it, lock the rate in force into each invoice at issue time, audit every

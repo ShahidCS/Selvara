@@ -1,0 +1,66 @@
+name: Deploy staging
+
+# Every push to main (a merged pull request) runs the full quality and security gates, then deploys to the
+# staging environment. Nothing here can reach production.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false # never interrupt a deployment half way; queue the next one
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  security:
+    name: Security
+    uses: ./.github/workflows/security.yml
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      pull-requests: read
+
+  deploy:
+    name: Staging
+    needs: [ci, security]
+    # Opt-in: stays off until the Vercel secrets exist. Set the repository variable DEPLOY_ENABLED=true (docs/security/PIPELINE.md).
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The environment is declared HERE (not in a reusable workflow) so that its secrets are available to this job.
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.url }}
+    permissions:
+      contents: read
+      id-token: write # keyless signing and build provenance, when enabled
+      attestations: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build, attest and deploy
+        id: deploy
+        uses: ./.github/actions/deploy
+        with:
+          environment: staging
+          vercel-environment: preview
+          label: staging-${{ github.sha }}
+          org-id: ${{ vars.VERCEL_ORG_ID }}
+          project-id: ${{ vars.VERCEL_PROJECT_ID }}
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          bypass-secret: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          staging-alias: ${{ vars.STAGING_ALIAS }}
+          attestations: ${{ vars.ATTESTATIONS_ENABLED }}
+          cosign: ${{ vars.COSIGN_ENABLED }}

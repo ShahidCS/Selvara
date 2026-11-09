@@ -1,8 +1,8 @@
-/* Policies API stubs. Contract: docs/SOD_MATRIX.md sections 3 and 5.
+/* Policies API stubs. Contract: docs/security/SOD_MATRIX.md sections 3 and 5.
  * Lifecycle: Draft -> In review (NAMED approver) -> Approved (immutable, effective date) -> Published (status "Active") -> Review due (derived).
  * Rules live here (deny by default, SodError) and are mirrored by the `whyCannot*` helpers the UI uses to disable buttons with the reason.
  * Mock mode mutates DATA; every transition writes wsLog with policy id + version. A real API must enforce all of this again,
- * own version numbers/timestamps, keep versions immutable and write an append-only trail (see docs/checklist/policies.md). */
+ * own version numbers/timestamps, keep versions immutable and write an append-only trail (see docs/guides/checklist/policies.md). */
 import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
 import { bumpData } from "@/lib/store";

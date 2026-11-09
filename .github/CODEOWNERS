@@ -1,0 +1,26 @@
+# Code owners are automatically requested for review, and the main-branch ruleset requires their approval.
+# Security-critical paths are listed explicitly so they are never changed without an owner's review.
+# (Add a second owner or a team here as soon as there is one: see docs/security/PIPELINE.md, "Sole-maintainer exception".)
+
+*                                   @ShahidCS
+
+# Pipeline, supply chain and repository policy
+/.github/                           @ShahidCS
+/.zap/                              @ShahidCS
+/.gitleaks.toml                     @ShahidCS
+/SECURITY.md                        @ShahidCS
+/docs/security/                     @ShahidCS
+/LICENSE                            @ShahidCS
+
+# Security controls, segregation of duties, response headers
+/front-end/next.config.js           @ShahidCS
+/front-end/vercel.json              @ShahidCS
+/front-end/src/lib/security.ts      @ShahidCS
+/front-end/src/lib/sod.ts           @ShahidCS
+/front-end/src/lib/approvals.ts     @ShahidCS
+/front-end/src/lib/elevation.ts     @ShahidCS
+/front-end/src/lib/credentials.ts   @ShahidCS
+/front-end/src/lib/rbac.ts          @ShahidCS
+/front-end/src/data/roles.json      @ShahidCS
+/docs/security/SOD_MATRIX.md      @ShahidCS
+/docs/security/SECURITY.md        @ShahidCS

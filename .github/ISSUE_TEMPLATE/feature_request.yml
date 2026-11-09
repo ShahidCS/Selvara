@@ -1,0 +1,17 @@
+name: Feature request
+description: Propose a change or addition
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+      description: Say who can do it, and whether it needs a second approver (see docs/security/SOD_MATRIX.md).
+    validations:
+      required: true

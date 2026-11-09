@@ -1,0 +1,16 @@
+# Dependencies and build output (the application has its own front-end/.gitignore too)
+node_modules/
+.next/
+out/
+
+# Deploy tooling must never commit a local Vercel link, pulled environment files or build output
+.vercel/
+.env
+.env.*
+!.env.example
+
+# Release artefacts are produced by CI, never committed
+*.tar.gz
+*.tar.gz.sha256
+*.cosign.bundle
+sbom*.json
