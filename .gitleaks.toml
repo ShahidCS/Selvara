@@ -1,0 +1,17 @@
+# Gitleaks configuration: the default ruleset plus a narrow allowlist for synthetic demo values.
+title = "Selvara secret scanning"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic documentation values only. Real secrets must never be allow-listed."
+regexes = [
+  '''ak_demo_[A-Za-z0-9]+''',            # clearly synthetic demo API-key prefix shown in the UI
+  '''demo-invite-token''',               # fixed placeholder token of the vendor-portal demo
+  '''(example|vendor|northwind|contoso|tailspin|liffey|najmpay)\.(example|test|invalid)''',
+]
+paths = [
+  '''package-lock\.json$''',
+  '''docs/screenshots/.*''',
+]

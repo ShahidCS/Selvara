@@ -1,0 +1,8 @@
+{
+  "name": "selvara-deploy-tooling",
+  "private": true,
+  "description": "Isolated, lockfile-pinned install of the Vercel CLI used only by the deploy workflows. Kept apart from the app's dependencies so the deploy token never meets application code.",
+  "dependencies": {
+    "vercel": "65.12.1"
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "_comment": "Licence policy for a PROPRIETARY product. Anything not allowed, denied or covered by an unexpired exception fails the build. Evaluated over package-lock.json (production and development, direct and transitive).",
+  "allow": [
+    "MIT",
+    "MIT-0",
+    "ISC",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "Apache-2.0",
+    "0BSD",
+    "BlueOak-1.0.0",
+    "CC0-1.0",
+    "Unlicense",
+    "Apache-2.0 WITH LLVM-exception"
+  ],
+  "allowDevOnly": [
+    "MPL-2.0",
+    "Python-2.0"
+  ],
+  "deny": [
+    "GPL-*",
+    "AGPL-*",
+    "SSPL-*",
+    "BUSL-*",
+    "CC-BY-NC*",
+    "CC-BY-ND*",
+    "EUPL-*",
+    "OSL-*",
+    "UNLICENSED",
+    "UNKNOWN"
+  ],
+  "exceptions": [
+    {
+      "package": "@img/sharp-*",
+      "licenses": [
+        "LGPL-3.0-or-later",
+        "LGPL-3.0-only"
+      ],
+      "reason": "Optional prebuilt native libvips binaries pulled in by Next.js image optimisation. The application does not use next/image, they are dynamically linked native libraries (not statically combined with our code) and are never modified. Needs a legal sign-off before any distribution of the built artefact.",
+      "owner": "@ShahidCS",
+      "review_by": "2027-05-09"
+    },
+    {
+      "package": "caniuse-lite",
+      "licenses": [
+        "CC-BY-4.0"
+      ],
+      "reason": "Browser-support data licensed CC-BY-4.0 (attribution). Data only, not executable code. Attribution is satisfied by the licence file shipped in node_modules and the SBOM.",
+      "owner": "@ShahidCS",
+      "review_by": "2027-05-09"
+    }
+  ],
+  "_scope": "Applies to the PRODUCT (front-end/package-lock.json) only. The deploy tooling in .github/vercel-cli is build-time tooling that is never distributed."
+}
