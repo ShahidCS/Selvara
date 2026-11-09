@@ -1,0 +1,45 @@
+{
+  "_note": "Synthetic demo data for /ws/me. No real people, devices, places or IP addresses.",
+  "ackWindowDays": 14,
+  "approved": {
+    "P-001": "15 Mar 2026",
+    "P-004": "10 May 2026",
+    "P-009": "22 Oct 2026",
+    "P-003": "20 Nov 2025",
+    "P-007": "12 Nov 2025",
+    "P-014": "18 Sep 2026"
+  },
+  "acks": {
+    "Priya Nair": { "P-001": { "at": "02 Apr 2026", "ver": "4.2" } }
+  },
+  "tasks": {
+    "employee": [
+      { "id": "t1", "kind": "Review", "title": "Third-Party Risk Management Policy v1.8", "policyId": "P-011", "detail": "Invited as reviewer by Alex Rivera · 2 open remarks", "due": "Due 30 Oct 2026", "late": false, "btn": "Open review", "doneMsg": "Opening review — you can add remarks; editing stays with the owner" },
+      { "id": "t2", "kind": "Reply", "title": "Owner response on your remark §4.2", "detail": "Access Control & Identity Policy · remark was due 24 Oct", "due": "Overdue", "late": true, "btn": "View reply", "doneMsg": "Reply viewed" },
+      { "id": "t3", "kind": "Review", "title": "Acceptable Use & Awareness v2.0", "policyId": "P-006", "detail": "Invited as reviewer by Owen Hart", "due": "Due 28 Oct 2026", "late": false, "btn": "Open review", "doneMsg": "Opening review" },
+      { "id": "t4", "kind": "Acknowledge", "title": "Cryptography & Key Management Policy", "policyId": "P-014", "detail": "Published 18 Sep · acknowledge within 14 days", "due": "Due 05 Nov 2026", "late": false, "ack": "P-014", "btn": "Acknowledge", "doneMsg": "" },
+      { "id": "t5", "kind": "Training", "title": "Annual security & privacy awareness", "detail": "35 minutes · includes phishing module", "due": "Due 15 Nov 2026", "late": false, "btn": "Start", "doneMsg": "Training launched" }
+    ],
+    "owner": [],
+    "analyst": []
+  },
+  "remarks": {
+    "employee": [
+      { "id": "r1", "policy": "Access Control", "section": "§4.2", "text": "Quarterly recertification should name the system owner as accountable.", "due": "24 Oct 2026", "status": "Overdue" },
+      { "id": "r2", "policy": "AML/CFT & Sanctions", "section": "§7", "text": "State the 24-hour SLA for sanctions list updates.", "due": "28 Oct 2026", "status": "Open" },
+      { "id": "r3", "policy": "Logging & Monitoring", "section": "§4", "text": "Retain logs for at least 12 months (PCI DSS 10.5.1).", "due": "31 Oct 2026", "status": "Open" }
+    ],
+    "owner": [],
+    "analyst": []
+  },
+  "security": {
+    "passwordChanged": "14 Aug 2026",
+    "mfaMethod": "Authenticator app",
+    "codesUnused": 8,
+    "codesTotal": 10
+  },
+  "sessions": [
+    { "id": "s1", "device": "Firefox on Windows (this device)", "where": "Sample City, Exampleland · active now", "current": true },
+    { "id": "s2", "device": "Safari on iPhone", "where": "Sample City, Exampleland · 2 days ago", "current": false }
+  ]
+}

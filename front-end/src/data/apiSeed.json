@@ -1,0 +1,116 @@
+{
+ "WH_EVENTS": [
+  "control.failed",
+  "audit.completed",
+  "risk.updated",
+  "evidence.overdue",
+  "policy.published",
+  "access.revoked"
+ ],
+ "API_KEYS": [
+  {
+   "id": "K1",
+   "label": "Production read",
+   "prefix": "ak_live_8f3c…",
+   "created": "12 Jan 2026",
+   "lastUsed": "2m ago",
+   "scope": "Read",
+   "status": "Active"
+  },
+  {
+   "id": "K2",
+   "label": "CI pipeline",
+   "prefix": "ak_live_2b9a…",
+   "created": "03 Mar 2026",
+   "lastUsed": "1h ago",
+   "scope": "Read/Write",
+   "status": "Active"
+  },
+  {
+   "id": "K3",
+   "label": "Legacy export",
+   "prefix": "ak_live_x1d2…",
+   "created": "2024",
+   "lastUsed": "6mo ago",
+   "scope": "Read",
+   "status": "Revoked"
+  }
+ ],
+ "WEBHOOKS": [
+  {
+   "id": "W1",
+   "url": "https://hooks.acme.example/grc",
+   "events": [
+    "control.failed",
+    "audit.completed"
+   ],
+   "status": "Active",
+   "lastDelivery": "200 · 2m ago"
+  },
+  {
+   "id": "W2",
+   "url": "https://siem.acme.example/in",
+   "events": [
+    "risk.updated"
+   ],
+   "status": "Active",
+   "lastDelivery": "200 · 14m ago"
+  }
+ ],
+ "CUSTOM_TESTS": [
+  {
+   "id": "T1",
+   "name": "Object storage buckets are private",
+   "target": "Meridian",
+   "schedule": "Every 2h",
+   "last": "2h ago",
+   "result": "Pass"
+  },
+  {
+   "id": "T2",
+   "name": "Root account MFA enabled",
+   "target": "Meridian",
+   "schedule": "Daily",
+   "last": "2h ago",
+   "result": "Pass"
+  },
+  {
+   "id": "T3",
+   "name": "TLS ≥ 1.2 on edge",
+   "target": "Edge",
+   "schedule": "Every 2h",
+   "last": "2h ago",
+   "result": "Fail"
+  }
+ ],
+ "API_EVENTS": [
+  {
+   "ev": "resource.pushed",
+   "res": "s3://logs-prod",
+   "http": "200",
+   "lat": "84ms",
+   "when": "12s ago"
+  },
+  {
+   "ev": "test.evaluated",
+   "res": "edge-01",
+   "http": "200",
+   "lat": "120ms",
+   "when": "1m ago"
+  },
+  {
+   "ev": "resource.pushed",
+   "res": "db/primary",
+   "http": "200",
+   "lat": "73ms",
+   "when": "3m ago"
+  },
+  {
+   "ev": "test.evaluated",
+   "res": "iam/root",
+   "http": "200",
+   "lat": "95ms",
+   "when": "5m ago"
+  }
+ ]
+}

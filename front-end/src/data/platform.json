@@ -1,0 +1,822 @@
+{
+ "CUSTOMERS": {
+  "cust-101": {
+   "id": "cust-101",
+   "name": "Northwind Payments",
+   "plan": "Enterprise",
+   "cycle": "Annual",
+   "region": "UAE",
+   "currency": "AED",
+   "contact": {
+    "name": "Rashid Al Maktoum",
+    "email": "billing@northwind.example"
+   },
+   "address": "DIFC, Gate District 3, Dubai, UAE",
+   "seats": "92 / 100",
+   "status": "Active",
+   "balance": 0,
+   "next": "01 Jan 2027",
+   "mrr": 9800,
+   "usage": {
+    "apiCalls": [
+     320,
+     340,
+     380,
+     410,
+     460,
+     520,
+     540
+    ],
+    "screenings": 124500,
+    "idv": 38200,
+    "storageGB": 412,
+    "seatsUsed": 92
+   },
+   "invoices": [
+    {
+     "id": "INV-2026-114",
+     "date": "01 Oct 2026",
+     "amount": 117600,
+     "cur": "AED",
+     "tax": 5880,
+     "status": "Paid"
+    },
+    {
+     "id": "INV-2026-078",
+     "date": "01 Jul 2026",
+     "amount": 117600,
+     "cur": "AED",
+     "tax": 5880,
+     "status": "Paid"
+    },
+    {
+     "id": "INV-2026-041",
+     "date": "01 Apr 2026",
+     "amount": 117600,
+     "cur": "AED",
+     "tax": 5880,
+     "status": "Paid"
+    }
+   ]
+  },
+  "cust-102": {
+   "id": "cust-102",
+   "name": "Contoso Exchange",
+   "plan": "Professional",
+   "cycle": "Quarterly",
+   "region": "Pakistan",
+   "currency": "PKR",
+   "contact": {
+    "name": "Ayesha Khan",
+    "email": "accounts@contoso.example"
+   },
+   "address": "Shahrah-e-Faisal, Karachi, Pakistan",
+   "seats": "18 / 25",
+   "status": "Past due",
+   "balance": 184500,
+   "next": "01 Dec 2026",
+   "mrr": 1650,
+   "usage": {
+    "apiCalls": [
+     80,
+     95,
+     88,
+     102,
+     120,
+     118,
+     130
+    ],
+    "screenings": 28400,
+    "idv": 9100,
+    "storageGB": 88,
+    "seatsUsed": 18
+   },
+   "invoices": [
+    {
+     "id": "INV-2026-120",
+     "date": "01 Oct 2026",
+     "amount": 462000,
+     "cur": "PKR",
+     "tax": 62370,
+     "status": "Past due"
+    },
+    {
+     "id": "INV-2026-083",
+     "date": "01 Jul 2026",
+     "amount": 462000,
+     "cur": "PKR",
+     "tax": 62370,
+     "status": "Paid"
+    },
+    {
+     "id": "INV-2026-046",
+     "date": "01 Apr 2026",
+     "amount": 462000,
+     "cur": "PKR",
+     "tax": 62370,
+     "status": "Paid"
+    }
+   ]
+  },
+  "cust-103": {
+   "id": "cust-103",
+   "name": "Najm Pay",
+   "plan": "Professional",
+   "cycle": "Annual",
+   "region": "Saudi Arabia",
+   "currency": "SAR",
+   "contact": {
+    "name": "Faisal Al-Harbi",
+    "email": "finance@najmpay.example"
+   },
+   "address": "King Fahd Rd, Riyadh, Saudi Arabia",
+   "seats": "14 / 25",
+   "status": "Active",
+   "balance": 0,
+   "next": "15 Feb 2027",
+   "mrr": 2100,
+   "usage": {
+    "apiCalls": [
+     60,
+     72,
+     70,
+     85,
+     90,
+     96,
+     101
+    ],
+    "screenings": 41200,
+    "idv": 15600,
+    "storageGB": 140,
+    "seatsUsed": 14
+   },
+   "invoices": [
+    {
+     "id": "INV-2026-131",
+     "date": "15 Feb 2026",
+     "amount": 94500,
+     "cur": "SAR",
+     "tax": 14175,
+     "status": "Paid"
+    },
+    {
+     "id": "INV-2025-131",
+     "date": "15 Feb 2025",
+     "amount": 88000,
+     "cur": "SAR",
+     "tax": 13200,
+     "status": "Paid"
+    }
+   ]
+  },
+  "cust-104": {
+   "id": "cust-104",
+   "name": "Tailspin Remit",
+   "plan": "Starter",
+   "cycle": "Monthly",
+   "region": "UK",
+   "currency": "USD",
+   "contact": {
+    "name": "Olivia Grant",
+    "email": "ops@tailspin.example"
+   },
+   "address": "Canary Wharf, London, UK",
+   "seats": "4 / 5",
+   "status": "Trial",
+   "balance": 0,
+   "next": "Trial ends 20 Nov 2026",
+   "mrr": 0,
+   "usage": {
+    "apiCalls": [
+     5,
+     8,
+     12,
+     14,
+     18,
+     22,
+     25
+    ],
+    "screenings": 1800,
+    "idv": 600,
+    "storageGB": 12,
+    "seatsUsed": 4
+   },
+   "invoices": []
+  },
+  "cust-105": {
+   "id": "cust-105",
+   "name": "Liffey Remit",
+   "plan": "Professional",
+   "cycle": "Annual",
+   "region": "Ireland",
+   "currency": "USD",
+   "contact": {
+    "name": "Sean O'Brien",
+    "email": "billing@liffey.example"
+   },
+   "address": "Grand Canal Dock, Dublin, Ireland",
+   "seats": "22 / 40",
+   "status": "Active",
+   "balance": 0,
+   "next": "10 Aug 2027",
+   "mrr": 3200,
+   "usage": {
+    "apiCalls": [
+     110,
+     120,
+     130,
+     128,
+     140,
+     150,
+     162
+    ],
+    "screenings": 52000,
+    "idv": 21000,
+    "storageGB": 201,
+    "seatsUsed": 22
+   },
+   "invoices": [
+    {
+     "id": "INV-2026-052",
+     "date": "10 Aug 2026",
+     "amount": 38400,
+     "cur": "USD",
+     "tax": 0,
+     "status": "Paid"
+    },
+    {
+     "id": "INV-2025-052",
+     "date": "10 Aug 2025",
+     "amount": 36000,
+     "cur": "USD",
+     "tax": 0,
+     "status": "Paid"
+    }
+   ]
+  }
+ },
+ "TENANT_ADMINS": [
+  {
+   "id": "TA-01",
+   "name": "Rashid Al Maktoum",
+   "email": "rashid@northwind.example",
+   "custId": "cust-101",
+   "role": "Company Admin",
+   "mfa": "Enrolled",
+   "last": "Today 07:12"
+  },
+  {
+   "id": "TA-02",
+   "name": "Maryam Noor",
+   "email": "maryam@northwind.example",
+   "custId": "cust-101",
+   "role": "Owner",
+   "mfa": "Enrolled",
+   "last": "Yesterday"
+  },
+  {
+   "id": "TA-03",
+   "name": "Ayesha Khan",
+   "email": "ayesha@contoso.example",
+   "custId": "cust-102",
+   "role": "Company Admin",
+   "mfa": "Reset pending",
+   "last": "18 Oct 2026"
+  },
+  {
+   "id": "TA-04",
+   "name": "Faisal Al-Harbi",
+   "email": "faisal@najmpay.example",
+   "custId": "cust-103",
+   "role": "Company Admin",
+   "mfa": "Enrolled",
+   "last": "Today 09:40"
+  },
+  {
+   "id": "TA-05",
+   "name": "Olivia Grant",
+   "email": "olivia@tailspin.example",
+   "custId": "cust-104",
+   "role": "Company Admin",
+   "mfa": "Not enrolled",
+   "last": "-"
+  },
+  {
+   "id": "TA-06",
+   "name": "Sean O'Brien",
+   "email": "sean@liffey.example",
+   "custId": "cust-105",
+   "role": "Company Admin",
+   "mfa": "Enrolled",
+   "last": "2 days ago"
+  }
+ ],
+ "MFA_REQUESTS": [
+  {
+   "id": "MR-108",
+   "subject": "Ayesha Khan",
+   "custId": "cust-102",
+   "kind": "Admin",
+   "reason": "Lost authenticator device",
+   "method": "Phone callback",
+   "by": "Support, T. Ahmed",
+   "at": "18 Oct 2026",
+   "status": "Pending approval"
+  },
+  {
+   "id": "MR-107",
+   "subject": "Rashid Al Maktoum",
+   "custId": "cust-101",
+   "kind": "Admin",
+   "reason": "New device enrolment",
+   "method": "Manager confirmation",
+   "by": "D. Whitfield",
+   "at": "05 Oct 2026",
+   "status": "Approved",
+   "decidedBy": "N. Hasan",
+   "decidedAt": "05 Oct 2026"
+  },
+  {
+   "id": "MR-106",
+   "subject": "Finance contractor",
+   "custId": "cust-104",
+   "kind": "Admin",
+   "reason": "Suspected compromise, rotate",
+   "method": "Video ID check",
+   "by": "Support, T. Ahmed",
+   "at": "28 Sep 2026",
+   "status": "Rejected",
+   "decidedBy": "D. Whitfield",
+   "decidedAt": "28 Sep 2026"
+  }
+ ],
+ "REGION_TREE": {
+  "United Arab Emirates": [
+   "Dubai",
+   "Abu Dhabi",
+   "Sharjah"
+  ],
+  "Pakistan": [
+   "Karachi",
+   "Lahore",
+   "Islamabad"
+  ],
+  "Saudi Arabia": [
+   "Riyadh",
+   "Jeddah",
+   "Dammam"
+  ],
+  "United Kingdom": [
+   "London",
+   "Manchester",
+   "Edinburgh"
+  ],
+  "Ireland": [
+   "Dublin",
+   "Cork"
+  ],
+  "United States": [
+   "New York",
+   "Austin",
+   "San Francisco"
+  ]
+ },
+ "ADMIN_SEED": [
+  {
+   "at": "2026-10-22 10:05",
+   "actor": "D. Whitfield",
+   "role": "Platform Super Admin",
+   "tenant": "cust-105",
+   "action": "customer.onboarded",
+   "object": "Liffey Remit",
+   "before": "",
+   "after": "Plan Professional, Annual",
+   "basis": "Contract",
+   "categories": [
+    "Account",
+    "Billing"
+   ],
+   "ip": "203.0.113.24"
+  },
+  {
+   "at": "2026-10-24 11:20",
+   "actor": "T. Ahmed",
+   "role": "Platform Support",
+   "tenant": "cust-102",
+   "action": "mfa.reset.requested",
+   "object": "Ayesha Khan, Contoso Exchange",
+   "before": "MFA Enrolled",
+   "after": "MFA Reset pending",
+   "basis": "Legitimate interest",
+   "categories": [
+    "Authentication",
+    "Identity"
+   ],
+   "ip": "198.51.100.7"
+  },
+  {
+   "at": "2026-10-25 16:02",
+   "actor": "system",
+   "role": "System",
+   "tenant": "",
+   "action": "feed.crosscheck.failed",
+   "object": "INR, 1.3% disagreement",
+   "before": "Applied",
+   "after": "Held for review",
+   "basis": "Legitimate interest",
+   "categories": [
+    "Billing",
+    "Rates"
+   ],
+   "ip": "10.0.0.5"
+  },
+  {
+   "at": "2026-10-26 09:14",
+   "actor": "D. Whitfield",
+   "role": "Platform Super Admin",
+   "tenant": "",
+   "action": "rates.held.flagged",
+   "object": "GBP, 3.4% move",
+   "before": "Applied",
+   "after": "Held for review",
+   "basis": "Legitimate interest",
+   "categories": [
+    "Billing",
+    "Rates"
+   ],
+   "ip": "203.0.113.24"
+  }
+ ],
+ "ROPA": [
+  {
+   "id": "PA-01",
+   "scope": "both",
+   "name": "Platform access and authentication",
+   "purpose": "Authenticate users, enforce MFA and protect accounts against takeover",
+   "basis": "Art. 6(1)(b) contract; Art. 6(1)(f) legitimate interest in security",
+   "subjects": "Customer staff, auditors, vendor contacts, Trust Center visitors",
+   "data": "Name, work email, role, MFA method, sign-in time, IP address and device",
+   "recipients": "Hosting provider (sub-processor)",
+   "transfers": "None outside the pinned data region",
+   "retention": "Account life plus 12 months; security logs 7 years",
+   "tom": "MFA, passkeys, rate limiting, session timeouts, hash-chained log"
+  },
+  {
+   "id": "PA-02",
+   "scope": "tenant",
+   "name": "User, role and access administration",
+   "purpose": "Manage who can use the workspace and with which permissions; access requests and reviews",
+   "basis": "Art. 6(1)(b) contract; Art. 6(1)(c) legal obligation (access control duties)",
+   "subjects": "Customer staff, contractors",
+   "data": "Name, email, job title, role, application accounts, access decisions",
+   "recipients": "Connected identity provider (customer-chosen)",
+   "transfers": "None outside the pinned data region",
+   "retention": "Account life plus 12 months",
+   "tom": "Least privilege, four-eyes approvals, quarterly reviews"
+  },
+  {
+   "id": "PA-03",
+   "scope": "tenant",
+   "name": "Personnel security compliance",
+   "purpose": "Track onboarding tasks, training, background checks, devices and offboarding as control evidence",
+   "basis": "Art. 6(1)(c) legal obligation; Art. 6(1)(f) legitimate interest in information security",
+   "subjects": "Employees and contractors",
+   "data": "Name, department, start and end dates, training records, device posture, check outcome (not the report)",
+   "recipients": "HRIS and device monitor connectors (customer-chosen)",
+   "transfers": "Per connector contract; SCCs or IDTA where outside the region",
+   "retention": "Employment plus 6 years (sample, set per policy)",
+   "tom": "Role-based visibility, sensitive fields restricted to admins"
+  },
+  {
+   "id": "PA-04",
+   "scope": "tenant",
+   "name": "Compliance evidence and document management",
+   "purpose": "Collect, approve and retain evidence that controls operate",
+   "basis": "Art. 6(1)(c) legal obligation; Art. 6(1)(f) legitimate interest in demonstrating compliance",
+   "subjects": "Staff named in evidence, approvers",
+   "data": "Files that may contain names, signatures and business contact data (metadata removed on upload)",
+   "recipients": "External auditors during an audit window",
+   "transfers": "None outside the pinned data region",
+   "retention": "7 years after supersession (sample)",
+   "tom": "Content checks, metadata removal, AES-256-GCM encryption, SHA-256 integrity"
+  },
+  {
+   "id": "PA-05",
+   "scope": "tenant",
+   "name": "Policy management and acknowledgement",
+   "purpose": "Write, approve and publish policies and record staff acceptance",
+   "basis": "Art. 6(1)(c) legal obligation; Art. 6(1)(b) employment contract",
+   "subjects": "Employees, policy owners, approvers",
+   "data": "Name, acceptance date, remarks, approval decisions",
+   "recipients": "Auditors on request",
+   "transfers": "None",
+   "retention": "Policy life plus 7 years",
+   "tom": "Sequential approval, version history, owner-only editing"
+  },
+  {
+   "id": "PA-06",
+   "scope": "tenant",
+   "name": "Risk management and ISO/IEC 27005 register",
+   "purpose": "Identify, assess, treat and accept information security risks",
+   "basis": "Art. 6(1)(c) legal obligation; Art. 6(1)(f) legitimate interest",
+   "subjects": "Risk owners, approvers",
+   "data": "Names of owners and approvers, decisions, acceptance rationale",
+   "recipients": "Auditors via locked snapshots",
+   "transfers": "None",
+   "retention": "7 years (sample)",
+   "tom": "Four-eyes approval, locked hashed snapshots"
+  },
+  {
+   "id": "PA-07",
+   "scope": "tenant",
+   "name": "Third-party and vendor risk management",
+   "purpose": "Assess suppliers, collect questionnaires and evidence, monitor them",
+   "basis": "Art. 6(1)(c) legal obligation (outsourcing rules); Art. 6(1)(f) legitimate interest",
+   "subjects": "Vendor contacts, internal requesters and owners",
+   "data": "Vendor contact names and emails, questionnaire answers, certificates",
+   "recipients": "Vendor (own data only)",
+   "transfers": "Vendor locations vary; SCCs or IDTA required",
+   "retention": "Relationship plus 6 years",
+   "tom": "Vendor portal isolation, encrypted uploads, gated approvals"
+  },
+  {
+   "id": "PA-08",
+   "scope": "tenant",
+   "name": "Audit support and auditor collaboration",
+   "purpose": "Run internal and external audits, share evidence with auditors under time-bound access",
+   "basis": "Art. 6(1)(c) legal obligation; Art. 6(1)(f) legitimate interest",
+   "subjects": "Auditors, evidence owners, staff in sampled populations",
+   "data": "Auditor contact data, populations (names, dates), findings",
+   "recipients": "Audit firm (independent controller for its working papers)",
+   "transfers": "Depends on audit firm location",
+   "retention": "Audit plus 7 years",
+   "tom": "Audit-window access, controlled population views, auto-revocation"
+  },
+  {
+   "id": "PA-09",
+   "scope": "tenant",
+   "name": "Trust Center and customer assurance",
+   "purpose": "Share security documents with prospects and customers under NDA",
+   "basis": "Art. 6(1)(b) steps prior to contract; Art. 6(1)(f) legitimate interest",
+   "subjects": "Prospect and customer contacts",
+   "data": "Name, work email, company, NDA acceptance, document access log",
+   "recipients": "None beyond the requester",
+   "transfers": "Visitor location varies; access logged",
+   "retention": "24 months after last access; erasure on request",
+   "tom": "Email-link sign-in, NDA, watermarking, revocation"
+  },
+  {
+   "id": "PA-10",
+   "scope": "tenant",
+   "name": "Customer questionnaires and contract commitments",
+   "purpose": "Answer customer security questionnaires and track contractual obligations",
+   "basis": "Art. 6(1)(b) contract; Art. 6(1)(f) legitimate interest",
+   "subjects": "Customer contacts, internal answer owners",
+   "data": "Contact names, answers, contract clauses",
+   "recipients": "The requesting customer",
+   "transfers": "Customer location varies",
+   "retention": "Contract plus 6 years",
+   "tom": "Answer approval, library verification"
+  },
+  {
+   "id": "PA-11",
+   "scope": "tenant",
+   "name": "AI-assisted processing and AI governance",
+   "purpose": "Draft answers and suggestions with AI; govern AI systems under ISO/IEC 42001 and the EU AI Act",
+   "basis": "Art. 6(1)(f) legitimate interest; human approval before any effect (Art. 22 safeguards)",
+   "subjects": "Users whose prompts or records are processed",
+   "data": "Prompts, workspace records in scope of the request, outputs",
+   "recipients": "Named model provider (sub-processor), no training on customer data",
+   "transfers": "Inference in the pinned region",
+   "retention": "Prompts and outputs 90 days (sample)",
+   "tom": "Company AI switch, read-only agents, draft-only output, logging"
+  },
+  {
+   "id": "PA-12",
+   "scope": "tenant",
+   "name": "Incident and personal data breach management",
+   "purpose": "Record incidents, assess breaches and meet notification deadlines (GDPR Art. 33 and 34, contracts)",
+   "basis": "Art. 6(1)(c) legal obligation",
+   "subjects": "Affected data subjects, responders",
+   "data": "Incident facts, affected categories, notification records",
+   "recipients": "Supervisory authority, affected customers where required",
+   "transfers": "To the competent authority",
+   "retention": "7 years",
+   "tom": "Incident clock, notice records, access restriction"
+  },
+  {
+   "id": "PA-13",
+   "scope": "tenant",
+   "name": "Data subject rights handling",
+   "purpose": "Handle access, erasure and objection requests",
+   "basis": "Art. 6(1)(c) legal obligation (Art. 12 to 22)",
+   "subjects": "Requesters",
+   "data": "Identity verification result, request, outcome",
+   "recipients": "None",
+   "transfers": "None",
+   "retention": "3 years after closure (sample)",
+   "tom": "Verified requests, erasure log"
+  },
+  {
+   "id": "PA-14",
+   "scope": "tenant",
+   "name": "Continuous monitoring and integrations",
+   "purpose": "Sync cloud, identity, HR and code systems to test controls automatically",
+   "basis": "Art. 6(1)(f) legitimate interest in security assurance",
+   "subjects": "Employees with accounts in connected systems",
+   "data": "Account names, emails, MFA status, device and repository metadata",
+   "recipients": "Connected providers (read-only)",
+   "transfers": "Per connector; SCCs where outside the region",
+   "retention": "Latest state plus 13 months of results",
+   "tom": "Read-only scopes, per-tenant vault, hourly full-state sync"
+  },
+  {
+   "id": "PA-15",
+   "scope": "both",
+   "name": "Security logging and evidence preservation",
+   "purpose": "Keep a tamper-evident record of actions for security monitoring, audit and legal claims",
+   "basis": "Art. 6(1)(c) legal obligation; Art. 6(1)(f) legitimate interest",
+   "subjects": "All users and API clients",
+   "data": "User ID, name, role, action, result, time, IP and device placeholder, record references",
+   "recipients": "Auditors and authorities on lawful request",
+   "transfers": "None outside the pinned data region",
+   "retention": "7 years, then deleted",
+   "tom": "Append-only hash chain per tenant, verification, signed exports"
+  },
+  {
+   "id": "PA-16",
+   "scope": "platform",
+   "name": "Customer billing and account management",
+   "purpose": "Invoice subscriptions by module and usage, collect payment, keep accounting records",
+   "basis": "Art. 6(1)(b) contract; Art. 6(1)(c) legal obligation (tax and accounting)",
+   "subjects": "Customer billing contacts and signatories",
+   "data": "Name, billing email, company, tax ID, invoices, payment references (no card data)",
+   "recipients": "Payment processor (Clearwater Payments), email delivery provider, tax authorities",
+   "transfers": "Clearwater Payments (US) under SCCs or IDTA",
+   "retention": "6 years after the financial year (UK), longest local rule applies",
+   "tom": "Card data held only by the payment processor, invoice integrity hash"
+  },
+  {
+   "id": "PA-17",
+   "scope": "platform",
+   "name": "Tenant administration and support",
+   "purpose": "Onboard customers, manage entitlements and handle support such as MFA resets",
+   "basis": "Art. 6(1)(b) contract; Art. 6(1)(f) legitimate interest",
+   "subjects": "Customer admins, provider staff",
+   "data": "Admin name, email, ticket references, identity check results",
+   "recipients": "None",
+   "transfers": "None",
+   "retention": "Contract plus 6 years",
+   "tom": "Two super admins for MFA resets, no access to customer content"
+  }
+ ],
+ "RATES": [
+  {
+   "country": "United States",
+   "code": "US",
+   "currency": "USD",
+   "rate": 1,
+   "tax": {
+    "type": "Sales tax",
+    "rate": 0,
+    "eff": "01 Jan 2026"
+   },
+   "status": "Applied",
+   "reason": ""
+  },
+  {
+   "country": "Pakistan",
+   "code": "PK",
+   "currency": "PKR",
+   "rate": 278.4,
+   "tax": {
+    "type": "GST",
+    "rate": 18,
+    "eff": "01 Jul 2026"
+   },
+   "status": "Applied",
+   "reason": "",
+   "region": "APAC"
+  },
+  {
+   "country": "Saudi Arabia",
+   "code": "SA",
+   "currency": "SAR",
+   "rate": 3.75,
+   "tax": {
+    "type": "VAT",
+    "rate": 15,
+    "eff": "01 Jan 2026"
+   },
+   "status": "Applied",
+   "reason": "",
+   "region": "MENA"
+  },
+  {
+   "country": "United Arab Emirates",
+   "code": "AE",
+   "currency": "AED",
+   "rate": 3.6725,
+   "tax": {
+    "type": "VAT",
+    "rate": 5,
+    "eff": "01 Jan 2026"
+   },
+   "status": "Applied",
+   "reason": "",
+   "region": "MENA"
+  },
+  {
+   "country": "United Kingdom",
+   "code": "GB",
+   "currency": "GBP",
+   "rate": 0.784,
+   "tax": {
+    "type": "VAT",
+    "rate": 20,
+    "eff": "01 Apr 2026"
+   },
+   "status": "Held",
+   "reason": "Moved 3.4% from applied rate, exceeds 3% threshold",
+   "region": "Europe"
+  },
+  {
+   "country": "Eurozone",
+   "code": "EU",
+   "currency": "EUR",
+   "rate": 0.918,
+   "tax": {
+    "type": "VAT",
+    "rate": 21,
+    "eff": "01 Jan 2026"
+   },
+   "status": "Applied",
+   "reason": "",
+   "region": "Europe"
+  },
+  {
+   "country": "India",
+   "code": "IN",
+   "currency": "INR",
+   "rate": 83.1,
+   "tax": {
+    "type": "GST",
+    "rate": 18,
+    "eff": "01 Jul 2026"
+   },
+   "status": "Held",
+   "reason": "Feeds disagree by 1.3%, exceeds 1% tolerance",
+   "region": "APAC"
+  },
+  {
+   "country": "Nigeria",
+   "code": "NG",
+   "currency": "NGN",
+   "rate": 1580,
+   "tax": {
+    "type": "VAT",
+    "rate": 7.5,
+    "eff": "01 Jan 2026"
+   },
+   "status": "Held",
+   "reason": "Primary feed older than 48h, awaiting refresh",
+   "region": "Africa"
+  },
+  {
+   "country": "Singapore",
+   "code": "SG",
+   "currency": "SGD",
+   "rate": 1.345,
+   "tax": {
+    "type": "GST",
+    "rate": 9,
+    "eff": "01 Jan 2026"
+   },
+   "status": "Applied",
+   "reason": "",
+   "region": "APAC"
+  },
+  {
+   "country": "Canada",
+   "code": "CA",
+   "currency": "CAD",
+   "rate": 1.372,
+   "tax": {
+    "type": "GST/HST",
+    "rate": 13,
+    "eff": "01 Jan 2026"
+   },
+   "status": "Applied",
+   "reason": "",
+   "region": "Americas"
+  }
+ ],
+ "LAWFUL_BASIS": [
+  "Legal obligation",
+  "Legitimate interest",
+  "Contract",
+  "Consent",
+  "Public task",
+  "Vital interest"
+ ]
+}

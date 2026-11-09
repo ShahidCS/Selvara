@@ -1,0 +1,14 @@
+{
+ "VENDOR_REQS": [
+  {
+   "id": "VR-03",
+   "name": "Solstice AI",
+   "cat": "AI / LLM",
+   "reason": "LLM-assisted support triage",
+   "requester": "P. Nair, Support",
+   "data": true,
+   "crit": "Critical",
+   "at": "24 Oct 2026"
+  }
+ ]
+}

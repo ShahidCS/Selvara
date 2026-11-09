@@ -1,0 +1,4 @@
+/* Original design tokens + component CSS from the prototype, kept verbatim (see portal.css).
+   Tailwind provides utilities only (preflight is disabled in tailwind.config.js). */
+@import "./portal.css";
+@tailwind utilities;

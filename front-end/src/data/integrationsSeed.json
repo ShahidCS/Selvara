@@ -1,0 +1,81 @@
+{
+ "INTEGRATIONS": [
+  {
+   "name": "Arbor Identity",
+   "type": "Identity provider",
+   "cat": "Identity",
+   "status": "Connected",
+   "order": 1,
+   "scope": "Read users, groups, MFA status",
+   "lastSync": "4m ago",
+   "records": "1,284 users",
+   "health": "Healthy"
+  },
+  {
+   "name": "Meridian Cloud Logs",
+   "type": "Cloud logs",
+   "cat": "Cloud",
+   "status": "Connected",
+   "order": 2,
+   "scope": "Read audit logs, configuration",
+   "lastSync": "6m ago",
+   "records": "38 resources",
+   "health": "Healthy"
+  },
+  {
+   "name": "Northlight",
+   "type": "Monitoring",
+   "cat": "Cloud",
+   "status": "Connected",
+   "order": 3,
+   "scope": "Read monitors, alerts",
+   "lastSync": "11m ago",
+   "records": "72 monitors",
+   "health": "Healthy"
+  },
+  {
+   "name": "Ironwood",
+   "type": "Source control",
+   "cat": "Engineering",
+   "status": "Connected",
+   "order": 4,
+   "scope": "Read repos, branch protection",
+   "lastSync": "26m ago",
+   "records": "46 repos",
+   "health": "Degraded"
+  },
+  {
+   "name": "Quartz",
+   "type": "Vulnerability scanner",
+   "cat": "Engineering",
+   "status": "Not connected",
+   "order": 5,
+   "scope": "Read findings, severities",
+   "lastSync": "—",
+   "records": "—",
+   "health": "—"
+  },
+  {
+   "name": "SecureAware",
+   "type": "Security training",
+   "cat": "People",
+   "status": "Connected",
+   "order": 6,
+   "scope": "Read course completion",
+   "lastSync": "1h ago",
+   "records": "1,180 enrolments",
+   "health": "Healthy"
+  },
+  {
+   "name": "Tasklane",
+   "type": "Ticketing",
+   "cat": "Engineering",
+   "status": "Not connected",
+   "order": 7,
+   "scope": "Read/write remediation issues",
+   "lastSync": "—",
+   "records": "—",
+   "health": "—"
+  }
+ ]
+}

@@ -1,0 +1,17 @@
+{
+ "MODULE_PRICING": {
+  "Compliance": 0,
+  "Risk Management": 0,
+  "Third-Party Risk": 400,
+  "Trust Center": 300,
+  "Questionnaires": 250,
+  "Audits": 500,
+  "AI Governance": 600,
+  "Personnel & Access": 350
+ },
+ "USAGE_PRICING": {
+  "screenings": 0.02,
+  "idv": 0.15,
+  "storageGB": 0.5
+ }
+}

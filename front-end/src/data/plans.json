@@ -1,0 +1,62 @@
+{
+ "PLAN_MODULES": [
+  "Compliance",
+  "Risk Management",
+  "Third-Party Risk",
+  "Trust Center",
+  "Questionnaires",
+  "Audits",
+  "AI Governance",
+  "Personnel & Access"
+ ],
+ "PLANS": {
+  "Starter": {
+   "seats": 5,
+   "price": 490,
+   "modules": [
+    "Compliance",
+    "Risk Management"
+   ],
+   "limits": {
+    "screenings": 10000,
+    "idv": 2000,
+    "storageGB": 50
+   }
+  },
+  "Professional": {
+   "seats": 25,
+   "price": 1650,
+   "modules": [
+    "Compliance",
+    "Risk Management",
+    "Third-Party Risk",
+    "Trust Center",
+    "Questionnaires"
+   ],
+   "limits": {
+    "screenings": 150000,
+    "idv": 50000,
+    "storageGB": 500
+   }
+  },
+  "Enterprise": {
+   "seats": 100,
+   "price": 9800,
+   "modules": [
+    "Compliance",
+    "Risk Management",
+    "Third-Party Risk",
+    "Trust Center",
+    "Questionnaires",
+    "Audits",
+    "AI Governance",
+    "Personnel & Access"
+   ],
+   "limits": {
+    "screenings": 1000000,
+    "idv": 500000,
+    "storageGB": 2000
+   }
+  }
+ }
+}

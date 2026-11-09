@@ -1,0 +1,10 @@
+{
+ "USER_ROLES": [
+  "Company Admin",
+  "Control, Policy and Risk Owner",
+  "Risk Analyst",
+  "Employee",
+  "External Auditor",
+  "Vendor Contact"
+ ]
+}

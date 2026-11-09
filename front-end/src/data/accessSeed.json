@@ -1,0 +1,54 @@
+{
+ "ACCESS_REQUESTS": [
+  {
+   "id": "AR-01",
+   "user": "Priya Nair",
+   "system": "Analytics warehouse",
+   "level": "Read",
+   "reason": "Q4 reporting",
+   "status": "Pending"
+  },
+  {
+   "id": "AR-02",
+   "user": "Sam Lee",
+   "system": "GRC Platform",
+   "level": "Admin",
+   "reason": "Risk register ownership",
+   "status": "Pending"
+  }
+ ],
+ "ACCESS_REVIEWS": [
+  {
+   "id": "REV-24Q4",
+   "name": "Q4 2026 access recertification",
+   "scope": "All privileged accounts",
+   "status": "Open",
+   "accounts": [
+    {
+     "user": "O. Hart",
+     "system": "Meridian",
+     "level": "Admin",
+     "decision": ""
+    },
+    {
+     "user": "N. Kim",
+     "system": "Northlight",
+     "level": "Admin",
+     "decision": ""
+    },
+    {
+     "user": "J. Avery",
+     "system": "GRC Platform",
+     "level": "Admin",
+     "decision": ""
+    },
+    {
+     "user": "Grace Lin",
+     "system": "GRC Platform",
+     "level": "Read",
+     "decision": ""
+    }
+   ]
+  }
+ ]
+}
