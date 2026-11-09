@@ -65,6 +65,25 @@ jobs:
           [[ $LABEL =~ ^[A-Za-z0-9._-]{1,64}$ ]]        || { echo "invalid label" >&2; exit 1; }
           [[ -n $VERCEL_ORG_ID && -n $VERCEL_PROJECT_ID ]] || { echo "VERCEL_ORG_ID / VERCEL_PROJECT_ID are not set for environment $TARGET_ENV" >&2; exit 1; }
 
+      # Fails in seconds, with a clear message, instead of after a full build. It prints whether each credential is
+      # present (true/false) and NEVER a value: only the boolean result of the comparison reaches this step.
+      - name: Check deploy credentials are present
+        env:
+          TOKEN_SET: ${{ secrets.VERCEL_TOKEN != '' }}
+          BYPASS_SET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET != '' }}
+        run: |
+          {
+            echo "### Deploy credentials for environment \`$TARGET_ENV\` (presence only)"
+            echo "- VERCEL_TOKEN (secret): $TOKEN_SET"
+            echo "- VERCEL_AUTOMATION_BYPASS_SECRET (secret, optional): $BYPASS_SET"
+            echo "- VERCEL_ORG_ID (variable): $([[ -n $VERCEL_ORG_ID ]] && echo true || echo false)"
+            echo "- VERCEL_PROJECT_ID (variable): $([[ -n $VERCEL_PROJECT_ID ]] && echo true || echo false)"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          if [[ $TOKEN_SET != true ]]; then
+            echo "::error title=VERCEL_TOKEN is not available::The deploy job for environment '$TARGET_ENV' received no VERCEL_TOKEN. Add it as an ENVIRONMENT secret named exactly VERCEL_TOKEN under Settings > Environments > $TARGET_ENV (docs/PIPELINE.md, Vercel setup)."
+            exit 1
+          fi
+
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
