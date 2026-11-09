@@ -32,7 +32,7 @@ DEMO gallery: no backend, no session. Nothing typed here is sent, stored, logged
 ## Security notes
 **Handling:** no password/OTP/phone/email value leaves component state (no network, no `localStorage`, no `console`, no URL, no `wsLog`). Passwords use `type=password` (toggle to `text` is per-field state, reset on unmount), `autoComplete` `current-password` / `new-password`, `one-time-code` for OTP, paste allowed, `spellCheck=false`, `autoCapitalize/autoCorrect=off`. Panels are keyed per view, so credentials are discarded on tab switch and unmount. MFA QR is a static decorative pattern, no secret is generated or displayed.
 
-**Credential policy (OWASP ASVS v4 2.1, NIST SP 800-63B; contract `docs/SOD_MATRIX.md` section 6). Old vs new:**
+**Credential policy (OWASP ASVS v4 2.1, NIST SP 800-63B; contract `docs/security/SOD_MATRIX.md` section 6). Old vs new:**
 
 | Topic | Old (ported from source) | New |
 |---|---|---|

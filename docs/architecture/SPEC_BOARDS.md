@@ -4,7 +4,7 @@ Status: analysis only (Phase 5 input). No source code was changed. Generated con
 
 Decision recorded by the owner: **keep the portal's visual design; port only what the portal lacks; list every rule where a board and the portal disagree so the owner can decide.** Visual differences (Geist font, 24px rounded cards, pill buttons, teal accent) are therefore out of scope and not listed as conflicts.
 
-Scope of evidence: the 10 boards (`template.html` copy and `script1.js` logic, read in full) against `src/`, `docs/CHECKLIST.md`, `docs/checklist/*.md`, `docs/SECURITY.md`. Board content is untrusted sample data. Where a board is silent or ambiguous this is stated; nothing is invented. People in the boards are real-looking names and are deliberately **not** reproduced here; roles are used instead, and portal personas use the repo's synthetic names.
+Scope of evidence: the 10 boards (`template.html` copy and `script1.js` logic, read in full) against `src/`, `docs/guides/CHECKLIST.md`, `docs/guides/checklist/*.md`, `docs/security/SECURITY.md`. Board content is untrusted sample data. Where a board is silent or ambiguous this is stated; nothing is invented. People in the boards are real-looking names and are deliberately **not** reproduced here; roles are used instead, and portal personas use the repo's synthetic names.
 
 Effort key (front-end only, mock services as elsewhere in this repo): **S** = up to 1 day, **M** = 2-5 days, **L** = more than 1 week.
 
@@ -20,8 +20,8 @@ Effort key (front-end only, mock services as elsewhere in this repo): **S** = up
 
 Findings that matter for the whole project and are not obvious from the boards:
 
-* `/auth` is described in `docs/checklist/auth.md` as a "standalone screen", but `src/pages/_app.tsx` wraps **every** page in `AppShell`, so `/auth` currently renders inside the sidebar/topbar frame (`AppShell.tsx` only skips the RBAC redirect for `space === "auth"`). A truly standalone screen (vendor portal, sign-in) needs a shell bypass in `_app.tsx`. This is the single enabling change for two of the four "new" screens.
-* The portal has **no authentication, session, lockout, CSRF or server-side RBAC** (see `docs/SECURITY.md` "Known limitations"). Every board rule about sessions, rate limits and enumeration can only be ported as UI states and copy; enforcement is a backend requirement.
+* `/auth` is described in `docs/guides/checklist/auth.md` as a "standalone screen", but `src/pages/_app.tsx` wraps **every** page in `AppShell`, so `/auth` currently renders inside the sidebar/topbar frame (`AppShell.tsx` only skips the RBAC redirect for `space === "auth"`). A truly standalone screen (vendor portal, sign-in) needs a shell bypass in `_app.tsx`. This is the single enabling change for two of the four "new" screens.
+* The portal has **no authentication, session, lockout, CSRF or server-side RBAC** (see `docs/security/SECURITY.md` "Known limitations"). Every board rule about sessions, rate limits and enumeration can only be ported as UI states and copy; enforcement is a backend requirement.
 * Several boards contradict each other (listed in section 11). The "board rule" is therefore not always a single rule.
 
 ---
@@ -34,10 +34,10 @@ Executive overview for a company admin: compliance score trend with forecast, "b
 
 | Board area | Portal coverage |
 |---|---|
-| Overview page, KPI tiles, board pack export | `/ws/overview`, `src/components/modules/OverviewModule.tsx`, `src/lib/boardPack.ts`; `docs/checklist/overview.md` |
+| Overview page, KPI tiles, board pack export | `/ws/overview`, `src/components/modules/OverviewModule.tsx`, `src/lib/boardPack.ts`; `docs/guides/checklist/overview.md` |
 | Framework x category heat map | `OverviewModule.tsx` `CoverageHeatmap`, `src/lib/boardPack.ts` (`COV_CATS`, `covCell`) |
-| Readiness trend | `/ws/reports` (`ReportsModule.tsx`, `docs/checklist/reports.md`); Overview shows an open-risks trend instead |
-| Add regulation wizard (templates, keyword mapping, confidence) | `/ws/frameworks`: `frameworks/FwAdd.tsx`, `src/lib/fwTemplates.ts`; `docs/checklist/frameworks.md` ("Add a framework", keyword matcher preview) |
+| Readiness trend | `/ws/reports` (`ReportsModule.tsx`, `docs/guides/checklist/reports.md`); Overview shows an open-risks trend instead |
+| Add regulation wizard (templates, keyword mapping, confidence) | `/ws/frameworks`: `frameworks/FwAdd.tsx`, `src/lib/fwTemplates.ts`; `docs/guides/checklist/frameworks.md` ("Add a framework", keyword matcher preview) |
 | In-scope toggle, owner per framework | `FrameworksModule.tsx` (In scope toggle, admin only) |
 | Risks above appetite | count only: `OverviewModule.tsx` "N above appetite"; list in `/ws/risk` |
 | Third-party / policy summaries | no cards; data in `/ws/vendors`, `/ws/policies` |
@@ -87,7 +87,7 @@ Security-relevant conflicts: none in this board.
 
 Full policy lifecycle: register with outstanding-action filters, detail with 5-step progress, remarks with review-by dates, collaborators (per policy and organisation-wide), versioned change log, append-only audit trail, mandatory-policy guidance library (25 policies), upload, review settings, owner reassignment, and a role preview (company admin / policy owner / member).
 
-Existing coverage: `/ws/policies`, `PoliciesModule.tsx`, `policies/PolicyLayers.tsx`, `src/services/policies.ts`, `docs/checklist/policies.md`. The portal implements the prototype's simple drawer: statuses Draft / In review / Active, "Approvers & reviewers" list (never enforced), acceptance ring with random demo numbers, mapped controls, version history, no role gates.
+Existing coverage: `/ws/policies`, `PoliciesModule.tsx`, `policies/PolicyLayers.tsx`, `src/services/policies.ts`, `docs/guides/checklist/policies.md`. The portal implements the prototype's simple drawer: statuses Draft / In review / Active, "Approvers & reviewers" list (never enforced), acceptance ring with random demo numbers, mapped controls, version history, no role gates.
 
 ### 2.2 Gaps
 
@@ -110,7 +110,7 @@ Existing coverage: `/ws/policies`, `PoliciesModule.tsx`, `policies/PolicyLayers.
 
 | Topic | Board says | Portal does | Security impact | Recommendation |
 |---|---|---|---|---|
-| Who may edit a policy | creator only; company admin cannot edit | any role that can open the module (no gate; `docs/checklist/policies.md` OQ 1) | **segregation of duties** | See security-relevant table. |
+| Who may edit a policy | creator only; company admin cannot edit | any role that can open the module (no gate; `docs/guides/checklist/policies.md` OQ 1) | **segregation of duties** | See security-relevant table. |
 | Who may approve | named approver only; self-approval impossible only if approver differs from owner (board does not forbid owner = approver; sample data always differs) | any user, including the submitter (OQ 2) | SoD | Adopt named-approver rule; add owner != approver check (board silent, **ambiguous**). |
 | Status vocabulary | Draft / In review / Awaiting approval / Approved / Review due / Overdue | Draft / In review / Active | none | Owner decides; mapping "Active" = "Approved" needs a data migration of `seed.json`. |
 | Version numbering | `bumpMinor` ("2.1" to "2.2") when editing an approved policy; "0.1" on upload | "N.0" on publish, "+0.1 draft" strings (`parseFloat`, OQ 3) | none | Adopt board's explicit minor-bump; fixes the `NaN draft` open question. |
@@ -134,7 +134,7 @@ Existing coverage: `/ws/policies`, `PoliciesModule.tsx`, `policies/PolicyLayers.
 
 **Fold into `/ws/policies` (rework), no new route.** This is the largest fold-in (L overall).
 
-Minimal files: `src/components/modules/PoliciesModule.tsx` (filter cards, columns), `policies/PolicyLayers.tsx` (split into `PolicyDrawer.tsx`, `RemarksTab.tsx`, `CollaboratorsTab.tsx`, `ChangeLogTab.tsx`, `PolicyAudit.tsx`, `UploadPolicy.tsx`, `ReviewSettings.tsx`, `ReassignOwner.tsx`), `src/services/policies.ts` (state machine and role checks, deny by default), `src/data/seed.json` (policy fields: `approver`, `comments`, `collabs`, `changes`, `audit`, `lib`), new `src/data/policyLibrary.json` (the 25-policy catalogue; reference strings are generic standards citations, safe to reuse), `src/lib/rbac.ts` (`policyCanEdit(role, policy)`), `docs/checklist/policies.md` (update). Role model dependency: the board needs "policy owner" per policy, which the portal does not model per user (see 11.1).
+Minimal files: `src/components/modules/PoliciesModule.tsx` (filter cards, columns), `policies/PolicyLayers.tsx` (split into `PolicyDrawer.tsx`, `RemarksTab.tsx`, `CollaboratorsTab.tsx`, `ChangeLogTab.tsx`, `PolicyAudit.tsx`, `UploadPolicy.tsx`, `ReviewSettings.tsx`, `ReassignOwner.tsx`), `src/services/policies.ts` (state machine and role checks, deny by default), `src/data/seed.json` (policy fields: `approver`, `comments`, `collabs`, `changes`, `audit`, `lib`), new `src/data/policyLibrary.json` (the 25-policy catalogue; reference strings are generic standards citations, safe to reuse), `src/lib/rbac.ts` (`policyCanEdit(role, policy)`), `docs/guides/checklist/policies.md` (update). Role model dependency: the board needs "policy owner" per policy, which the portal does not model per user (see 11.1).
 
 ---
 
@@ -144,7 +144,7 @@ Minimal files: `src/components/modules/PoliciesModule.tsx` (filter cards, column
 
 Company admin console with three tabs: Team management (invite, role change, reset link, reset MFA, offboard with ownership transfer), Company settings (policy workflow, sign-in security, invitations and SSO), Company audit log (category filter, CSV export). Header shows "MFA: passkey - session expires in 28 min".
 
-Existing coverage: `/ws/team` (`TeamModule.tsx`, `team/SettingsTab.tsx`, `team/TeamForms.tsx`; `docs/checklist/team.md`), `/ws/auditlog` (`AuditLogModule.tsx`; `docs/checklist/auditlog.md`), `/ws/people` offboarding and MFA reset (`people/PersonDrawer.tsx`; `docs/checklist/people.md`), `/ws/billingws`.
+Existing coverage: `/ws/team` (`TeamModule.tsx`, `team/SettingsTab.tsx`, `team/TeamForms.tsx`; `docs/guides/checklist/team.md`), `/ws/auditlog` (`AuditLogModule.tsx`; `docs/guides/checklist/auditlog.md`), `/ws/people` offboarding and MFA reset (`people/PersonDrawer.tsx`; `docs/guides/checklist/people.md`), `/ws/billingws`.
 
 ### 3.2 Gaps
 
@@ -249,7 +249,7 @@ Build plan:
 
 Sign-up (company email only), set password (live rules, strength meter), MFA enrolment (passkey or TOTP, recovery codes), sign-in (bot check, lockout, MFA step, passkey), forgot password, plus a "what DevTools shows" panel with generated request/response pairs for every step.
 
-Existing coverage: `/auth`, `AuthModule.tsx`, `auth/AuthPanels.tsx`, `auth/authLogic.ts`, `auth/AuthFields.tsx`; `docs/checklist/auth.md`; `docs/SECURITY.md` ("Auth gallery").
+Existing coverage: `/auth`, `AuthModule.tsx`, `auth/AuthPanels.tsx`, `auth/authLogic.ts`, `auth/AuthFields.tsx`; `docs/guides/checklist/auth.md`; `docs/security/SECURITY.md` ("Auth gallery").
 
 ### 5.2 Gaps
 
@@ -300,7 +300,7 @@ Existing coverage: `/auth`, `AuthModule.tsx`, `auth/AuthPanels.tsx`, `auth/authL
 
 **Fold into `/auth`, and make `/auth` truly standalone.** Not a new route.
 
-Minimal files: `src/components/modules/auth/authLogic.ts` (replace `AUTH_ALLOWED`, add `pwRules(pw, ctx)` with NFKC, common list moved to `src/data/passwordBlocklist.json`), `auth/AuthPanels.tsx` (`SignUp` panel using `emailDomainClass` from `lib/security.ts`, recovery codes step, failure ladder state, remove SMS from `METHODS`), `auth/AuthFields.tsx`, `src/pages/_app.tsx` + `AppShell.tsx` (bypass shell for `/auth`), `docs/checklist/auth.md`, `docs/SECURITY.md`. Skip 5.G6 unless the backend team wants it as a contract appendix.
+Minimal files: `src/components/modules/auth/authLogic.ts` (replace `AUTH_ALLOWED`, add `pwRules(pw, ctx)` with NFKC, common list moved to `src/data/passwordBlocklist.json`), `auth/AuthPanels.tsx` (`SignUp` panel using `emailDomainClass` from `lib/security.ts`, recovery codes step, failure ladder state, remove SMS from `METHODS`), `auth/AuthFields.tsx`, `src/pages/_app.tsx` + `AppShell.tsx` (bypass shell for `/auth`), `docs/guides/checklist/auth.md`, `docs/security/SECURITY.md`. Skip 5.G6 unless the backend team wants it as a contract appendix.
 
 ---
 
@@ -310,7 +310,7 @@ Minimal files: `src/components/modules/auth/authLogic.ts` (replace `AUTH_ALLOWED
 
 Vendor register with tiering, questionnaire-based assessment (41 weighted questions, 9 critical, CAIQ v4 and SIG mapping), document and certificate tracking with auto dates, vendor-portal response review (locked snapshot, accept / accept with finding / reject / clarify), recommendation engine, and an expiry-and-review tracker covering own and vendor documents.
 
-Existing coverage: `/ws/vendors` (`VendorsModule.tsx`, `vendors/VendorDrawer.tsx`, `vendors/VendorModals.tsx`, `src/lib/vendors.ts`, `src/services/vendors.ts`; `docs/checklist/vendors.md`), `/ws/questionnaires` (`QuestionnairesModule.tsx`, `questionnaires/VendorPortal.tsx`; `docs/checklist/questionnaires.md`), vendor request form in `work/RequestModals.tsx`.
+Existing coverage: `/ws/vendors` (`VendorsModule.tsx`, `vendors/VendorDrawer.tsx`, `vendors/VendorModals.tsx`, `src/lib/vendors.ts`, `src/services/vendors.ts`; `docs/guides/checklist/vendors.md`), `/ws/questionnaires` (`QuestionnairesModule.tsx`, `questionnaires/VendorPortal.tsx`; `docs/guides/checklist/questionnaires.md`), vendor request form in `work/RequestModals.tsx`.
 
 The portal vendor drawer has tier, score 0-100 (typed in by hand), procurement gate Approve/Block, free-text certificates ("expiry free text, default TBD"), findings, monitoring, reassess and change-tier modals.
 
@@ -361,7 +361,7 @@ The portal vendor drawer has tier, score 0-100 (typed in by hand), procurement g
 
 **Fold into `/ws/vendors` (rework, L) and `/ws/questionnaires`.** No new top-level route for the internal side; the external side is section 10.
 
-Minimal files: `src/lib/vendors.ts` (tiers, cycles, `docState`, `survState`, `score`, `residual`, `recommend`), `src/data/vendorQuestions.json` (the 41-question catalogue incl. CAIQ/SIG mapping; generic control wording, safe to reuse), `src/services/vendors.ts`, `VendorsModule.tsx` (register columns, KPIs, tracker tab), `vendors/VendorDrawer.tsx` (tabs Overview, Vendor response, Questionnaire, Policies and certificates, Activity), `vendors/VendorModals.tsx` (pre-screening, document upload via `validateUpload`, settings), new `vendors/ResponseReview.tsx`, `vendors/DocTracker.tsx`, `src/lib/vendorSubmission.ts` (shared with section 10). Update `docs/checklist/vendors.md`.
+Minimal files: `src/lib/vendors.ts` (tiers, cycles, `docState`, `survState`, `score`, `residual`, `recommend`), `src/data/vendorQuestions.json` (the 41-question catalogue incl. CAIQ/SIG mapping; generic control wording, safe to reuse), `src/services/vendors.ts`, `VendorsModule.tsx` (register columns, KPIs, tracker tab), `vendors/VendorDrawer.tsx` (tabs Overview, Vendor response, Questionnaire, Policies and certificates, Activity), `vendors/VendorModals.tsx` (pre-screening, document upload via `validateUpload`, settings), new `vendors/ResponseReview.tsx`, `vendors/DocTracker.tsx`, `src/lib/vendorSubmission.ts` (shared with section 10). Update `docs/guides/checklist/vendors.md`.
 
 ---
 
@@ -371,7 +371,7 @@ Minimal files: `src/lib/vendors.ts` (tiers, cycles, `docState`, `survState`, `sc
 
 Active-register view with residual/inherent heat map, treatment progress bars, overdue treatment actions, register table with filters and sort, detail drawer (inherent and residual scoring, existing controls, treatment actions, acceptance authority, history, close), add-risk dialog, and a 3-step Excel/CSV import.
 
-Existing coverage: `/ws/risk` fully (`RiskModule.tsx`, `risk/RiskDash.tsx`, `RiskRegister.tsx`, `RiskDetail.tsx`, `RiskForms.tsx`, `RiskCrit.tsx`, `RiskGov.tsx`, `RiskParties.tsx`, `risk/import/*`, `src/lib/risk.ts`, `src/services/risks.ts`, `riskImport.ts`; `docs/checklist/risk.md`, `risk-import.md`). The portal version is **more complete** than the board (3-point scoring, approval workflow, snapshots, interested parties, criteria, hardened import with 5,000-row cap).
+Existing coverage: `/ws/risk` fully (`RiskModule.tsx`, `risk/RiskDash.tsx`, `RiskRegister.tsx`, `RiskDetail.tsx`, `RiskForms.tsx`, `RiskCrit.tsx`, `RiskGov.tsx`, `RiskParties.tsx`, `risk/import/*`, `src/lib/risk.ts`, `src/services/risks.ts`, `riskImport.ts`; `docs/guides/checklist/risk.md`, `risk-import.md`). The portal version is **more complete** than the board (3-point scoring, approval workflow, snapshots, interested parties, criteria, hardened import with 5,000-row cap).
 
 ### 7.2 Gaps
 
@@ -414,11 +414,11 @@ Existing coverage: `/ws/risk` fully (`RiskModule.tsx`, `risk/RiskDash.tsx`, `Ris
 | Acceptance must have a future end date, at most 12 months | yes | optional, defaults to 12 months |
 | Changing treatment away from Accept clears the acceptance | yes | no |
 
-Neither board nor portal enforces that the actor holds the authority they select (the board checks only the selected label); both depend on the API (`docs/checklist/risk.md` Security notes).
+Neither board nor portal enforces that the actor holds the authority they select (the board checks only the selected label); both depend on the API (`docs/guides/checklist/risk.md` Security notes).
 
 ### 7.4 Recommendation
 
-**Skip as a screen; fold the S-sized rules into `/ws/risk`.** Files: `src/lib/risk.ts` (appetite source of truth, optionally read from Team settings), `src/services/risks.ts` (`closeRisk` open-action check, `createRisk` validations, `acceptRisk` future-date check, treatment-change handler), `risk/RiskForms.tsx` (live note), `risk/RiskDetail.tsx` (hint "N treatment action(s) still open..."), `risk/RiskDash.tsx` (overdue card), `docs/checklist/risk.md`.
+**Skip as a screen; fold the S-sized rules into `/ws/risk`.** Files: `src/lib/risk.ts` (appetite source of truth, optionally read from Team settings), `src/services/risks.ts` (`closeRisk` open-action check, `createRisk` validations, `acceptRisk` future-date check, treatment-change handler), `risk/RiskForms.tsx` (live note), `risk/RiskDetail.tsx` (hint "N treatment action(s) still open..."), `risk/RiskDash.tsx` (overdue card), `docs/guides/checklist/risk.md`.
 
 ---
 
@@ -428,7 +428,7 @@ Neither board nor portal enforces that the actor holds the authority they select
 
 Provider console for the SaaS operator with five sections: Customers (table, search, reset admin MFA, send admin reset link, suspend/reactivate), Onboard customer (5-step wizard), Billing and payments (provider adapters, signed webhook events, dunning timeline), Platform audit log, Platform security (password baseline, authentication and session rules, privileged-access rules). Header: "Elevated session: Hardware key - allow-listed network - just-in-time role expires in 52 min." Banner: "Super admins manage tenants and billing; they cannot read customer policy content without a time-boxed support grant approved by the customer."
 
-Existing coverage: `/admin/customers` (`CustomersModule.tsx`, `customers/*`; `docs/checklist/customers.md`), `/admin/billing[/id]` (`billing/*`; `billing.md`), `/admin/rates`, `/admin/mfa` (`MfaModule.tsx`, `mfa/ResetRequestForm.tsx`, `src/services/mfa.ts`; `mfa.md`), `/admin/adminlog` (`AdminLogModule.tsx`, `adminlog/AdminViews.tsx`; `adminlog.md`), `src/lib/adminAudit.ts`, `src/lib/platform.ts`.
+Existing coverage: `/admin/customers` (`CustomersModule.tsx`, `customers/*`; `docs/guides/checklist/customers.md`), `/admin/billing[/id]` (`billing/*`; `billing.md`), `/admin/rates`, `/admin/mfa` (`MfaModule.tsx`, `mfa/ResetRequestForm.tsx`, `src/services/mfa.ts`; `mfa.md`), `/admin/adminlog` (`AdminLogModule.tsx`, `adminlog/AdminViews.tsx`; `adminlog.md`), `src/lib/adminAudit.ts`, `src/lib/platform.ts`.
 
 ### 8.2 Gaps
 
@@ -493,7 +493,7 @@ Build plan:
 
 A read-only engineering specification mapped to OWASP ASVS 4.0.3 Level 2 and the OWASP API Security Top 10 (2023): "Core rule: the browser is untrusted", a bad vs good login response, nine control groups, rate-limit table, server-side permission matrix, and an 8-item release gate.
 
-Existing coverage: none as a page. Closest: `docs/SECURITY.md` (front-end controls and known limitations), per-module "Security notes" in `docs/checklist/*.md`.
+Existing coverage: none as a page. Closest: `docs/security/SECURITY.md` (front-end controls and known limitations), per-module "Security notes" in `docs/guides/checklist/*.md`.
 
 ### 9.2 Gaps (what the board contains that the portal lacks)
 
@@ -527,7 +527,7 @@ Existing coverage: none as a page. Closest: `docs/SECURITY.md` (front-end contro
 
 ### 9.4 Recommendation
 
-**New screen: yes, as a read-only reference page** (no logic): `/ws/security-spec` (or `/admin/security-spec`, see questions). Also **reuse as source of truth** for the backend ticket list and for `docs/SECURITY.md`.
+**New screen: yes, as a read-only reference page** (no logic): `/ws/security-spec` (or `/admin/security-spec`, see questions). Also **reuse as source of truth** for the backend ticket list and for `docs/security/SECURITY.md`.
 
 Build plan:
 
@@ -535,7 +535,7 @@ Build plan:
 * Components under `src/components/modules/appsec/`: `AppSecModule.tsx`, `ControlGroup.tsx` (collapsible card: threat, bullets, "Maps to", "Test"), `ResponseCompare.tsx` (two `<pre>` blocks, text only), `RateLimitTable.tsx`, `PermissionMatrix.tsx` (uses `Table` and `Chip`), `ReleaseGate.tsx` (checklist; **display-only**, do not persist ticks as evidence without an owner decision).
 * Data: `src/data/appsecSpec.json` (the groups, limits, matrix, gate arrays copied as generic specification text; they contain no customer data; remove the example response's sample identities and keep neutral values).
 * Role gates: `admin`, `owner`, `super`, `auditor` read; hidden for `employee`, `vendor`, `viewer`.
-* Cross-link: from `/auth`, `/admin/customers` security panel and `docs/SECURITY.md`.
+* Cross-link: from `/auth`, `/admin/customers` security panel and `docs/security/SECURITY.md`.
 
 ---
 
@@ -545,7 +545,7 @@ Build plan:
 
 Standalone page for an **external vendor contact** who received a security questionnaire request: confirm invited work email, email one-time code, enrol a second factor, answer a 12-question questionnaire with evidence upload and CAIQ/SIG prefill, submit (locked, versioned), and later answer **only** the questions the reviewer reopened. Header: "Signed in as g•••@... - session ends after 15 min idle".
 
-Existing coverage: `QuestionnairesModule.tsx` renders `questionnaires/VendorPortal.tsx` when the active role is `vendor` ("Vendor Contact", `roles.json`; modules `questionnaires`, `trust`). It is a **free-text form inside the main shell**: 6 hard-coded questions (`VENDOR_Q` in `lib/trustData.ts`), no identity check, no upload, no per-question answer choice, no locking, no versions (`docs/checklist/questionnaires.md` OQ 4).
+Existing coverage: `QuestionnairesModule.tsx` renders `questionnaires/VendorPortal.tsx` when the active role is `vendor` ("Vendor Contact", `roles.json`; modules `questionnaires`, `trust`). It is a **free-text form inside the main shell**: 6 hard-coded questions (`VENDOR_Q` in `lib/trustData.ts`), no identity check, no upload, no per-question answer choice, no locking, no versions (`docs/guides/checklist/questionnaires.md` OQ 4).
 
 ### 10.2 Gaps
 
@@ -618,7 +618,7 @@ Build plan:
 | Platform roles | Super admin (+ support staff as approvers) | Platform Super Admin, Platform Support |
 | Ownership | per-record: creator is the only editor | per-module: role can use the whole module |
 
-Recommendation: keep portal role ids; add a **record-level owner check** (policy) and map board names to them in one table in `docs/checklist/shell.md`. Do not rename roles without owner approval.
+Recommendation: keep portal role ids; add a **record-level owner check** (policy) and map board names to them in one table in `docs/guides/checklist/shell.md`. Do not rename roles without owner approval.
 
 ### 11.2 Timeouts, windows and limits that the boards state (and where they disagree)
 

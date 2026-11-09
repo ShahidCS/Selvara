@@ -53,7 +53,7 @@ Exported hook for other modules: `useAiDrawer()` (from `AiModule`), opens the dr
 - Third-party / vendor data handling: AI inventory fields ("Data it can reach") are descriptive text only; no customer data is stored. Seed data is synthetic.
 - No uploads, external links or exports in this module (no `validateUpload`, `safeHref`, `csvCell` needed). Navigation uses `useGo`.
 
-## Hardening (docs/SOD_MATRIX.md, owner decision 2026-11)
+## Hardening (docs/security/SOD_MATRIX.md, owner decision 2026-11)
 Services throw `SodError`; `aiLog` / `wsLog` calls kept; four-eyes steps use `lib/approvals.ts` through `lib/approvalKit.ts` and the `ApprovalsPanel` ("AI governance approvals").
 
 **What changed vs the prototype**

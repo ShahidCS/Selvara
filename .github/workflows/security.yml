@@ -230,7 +230,7 @@ jobs:
           scan-type: fs
           scan-ref: .
           # .github/vercel-cli is the isolated deploy-tooling install. Its transitive findings are accepted with
-          # controls (see docs/PIPELINE.md, "Accepted risks") and tracked by the informational OSV scan instead.
+          # controls (see docs/security/PIPELINE.md, "Accepted risks") and tracked by the informational OSV scan instead.
           skip-dirs: .github/vercel-cli
           scanners: vuln,misconfig,secret
           severity: HIGH,CRITICAL

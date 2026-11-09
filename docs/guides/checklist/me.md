@@ -1,6 +1,6 @@
 # My Workspace (`/ws/me`, module key `me`) — board `member-workspace`
 
-Source: board `member-workspace` (template.html, script1.js) and `docs/SPEC_BOARDS.md` section 4. All data is synthetic.
+Source: board `member-workspace` (template.html, script1.js) and `docs/architecture/SPEC_BOARDS.md` section 4. All data is synthetic.
 
 | Board feature | Gap | React file | Status | Notes |
 |---|---|---|---|---|

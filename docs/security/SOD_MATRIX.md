@@ -71,4 +71,4 @@ Draft -> In review (named approver assigned, must differ from author) -> Approve
 * Session: idle timeout 15 min for privileged roles / 30 min otherwise, absolute 12 h, re-authentication (step-up) for sensitive actions.
 
 ## 7. Where this is enforced
-Service layer in `src/services/*.ts` (each mutation calls `assertRole` / `assertNotSelf` / threshold checks and writes the audit entry), UI via disabled buttons with `sodReason`, and documented per module under "Security notes" in `docs/checklist/*.md`. Anything the front-end cannot enforce is listed in `docs/SECURITY.md` as a backend requirement.
+Service layer in `src/services/*.ts` (each mutation calls `assertRole` / `assertNotSelf` / threshold checks and writes the audit entry), UI via disabled buttons with `sodReason`, and documented per module under "Security notes" in `docs/guides/checklist/*.md`. Anything the front-end cannot enforce is listed in `docs/security/SECURITY.md` as a backend requirement.

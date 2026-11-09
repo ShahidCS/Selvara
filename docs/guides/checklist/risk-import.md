@@ -27,7 +27,7 @@ React: `src/components/modules/risk/import/{openImportWizard.tsx, ImportWizard.t
 | Footer per step (Cancel / Choose another file + Check rows (disabled until title mapped) / Back to columns + Import n risk(s)) | 2976-2980 | ImportWizard `LayerFoot` | done | |
 | Local helpers `rband`, `riskNorm`, `riskLog`, `riskCanEdit` | 2414-2466, 2690 | riskLocal.ts | done | private copies (src/lib/risk.ts did not exist); switch to the shared ones once available |
 
-## Changed vs prototype (owner decision 2026-11, `docs/SOD_MATRIX.md`)
+## Changed vs prototype (owner decision 2026-11, `docs/security/SOD_MATRIX.md`)
 * An import that would **update existing risk ids** is no longer applied directly. `commitRiskImport` stages it as an approval request (`kind "risk.import"`, `needs 1`, `approverRoles ["admin"]`, `forbid [importer]`, 72 h expiry). Rows of the same file that are new ids are held with it. Imports of **only new ids** still apply at once.
 * Step 3 of the wizard shows a notice and the button reads "Submit n risks for approval" when updates are present; the toast names the request id and says nothing changed yet. Parsing, limits and preview are untouched.
 * **Pending imports** panel at the top of the Register tab (`risk/PendingImports.tsx`): list with importer, counts and ids; Approve / Reject (reason >= 10 chars) for an admin who is not the importer, otherwise disabled with the reason; the importer can Withdraw. Approving applies the staged rows once (`decideRiskImport` -> `applyImport`), rejecting changes nothing.

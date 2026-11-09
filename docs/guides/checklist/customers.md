@@ -33,7 +33,7 @@
 * Inputs: names clamped (100), e-mails validated (`isEmail`), plans/modules/regions/currencies/cycles/roles/countries checked against allow-lists in the service. Onboarding is not idempotent (needs a client request id on the API).
 * No HTML sinks; no card data handled.
 
-## Changes vs prototype (owner decision, docs/SOD_MATRIX.md sections 2 and 3)
+## Changes vs prototype (owner decision, docs/security/SOD_MATRIX.md sections 2 and 3)
 | Prototype | Now | Where |
 |---|---|---|
 | Any Support/Super could change plans, modules, onboard and manage tenant users at any time | Every mutation needs an active elevated session (`assertElevated`, `SodError("Elevation required")`) plus `assertRole(super, support)`. Support can browse but can never elevate, so it cannot change anything | `services/customers.ts` `guard()` |

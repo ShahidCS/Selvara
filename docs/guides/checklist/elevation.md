@@ -1,6 +1,6 @@
 # Elevated Access (`/admin/elevation`, key `elevation`)
 
-Source: board `super-admin-console` (header "Elevated session", banner copy, audit rows) and `docs/SPEC_BOARDS.md` section 8 (8.G1, 8.G2). New screen; the prototype has no elevation.
+Source: board `super-admin-console` (header "Elevated session", banner copy, audit rows) and `docs/architecture/SPEC_BOARDS.md` section 8 (8.G1, 8.G2). New screen; the prototype has no elevation.
 
 | Source feature | Board ref | React file | Status | Notes |
 |---|---|---|---|---|
@@ -38,7 +38,7 @@ Source: board `super-admin-console` (header "Elevated session", banner copy, aud
 * Expiry uses absolute timestamps, so a throttled tab cannot extend a session; the timers only trigger the check.
 * Nothing is written to localStorage.
 
-## Changes vs prototype (owner decision, docs/SOD_MATRIX.md section 2)
+## Changes vs prototype (owner decision, docs/security/SOD_MATRIX.md section 2)
 * `canElevate` accepts `super` and `super2`. The elevation records the roleId: switching persona (super to super2) ends the session, so a second person never inherits it (needed for dual control).
 * Request needs a reason of at least 15 characters AND a ticket reference matching `[A-Z]{2,6}-\d{1,6}` (`TICKET_RE`, `validTicket`); max 60 minutes unchanged. The ticket is stored on the elevation and written to the `admin.elevated` / `ended` / `expired` entries and to every audit entry made by services during the session (`ticketNote()`).
 * New API in `lib/elevation.ts`: `elevationActive()` (checks expiry and actor, may end the session), `elevationLive()` (pure, for render), `assertElevated()` (throws `SodError("Elevation required")`), `elevationTicket()`, `ELEVATE_TEXT`, `sodMessage(e, fallback)` (toast text: SodError message only).

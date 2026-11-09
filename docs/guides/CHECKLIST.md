@@ -1,8 +1,8 @@
 # Source feature -> React component checklist
 
-Security contract applied to all modules: [SOD_MATRIX.md](SOD_MATRIX.md). Owner decisions: [DECISIONS.md](DECISIONS.md).
+Security contract applied to all modules: [SOD_MATRIX.md](../security/SOD_MATRIX.md). Owner decisions: [DECISIONS.md](../architecture/DECISIONS.md).
 
-Per-module tables live in `docs/checklist/<module>.md` (feature, source lines in `Assurance-GRC-Portal.html`, React file, status, open questions).
+Per-module tables live in `docs/guides/checklist/<module>.md` (feature, source lines in `Assurance-GRC-Portal.html`, React file, status, open questions).
 Status below is the migration state of each route. "Pending" screens render an explicit "Not migrated yet" notice (`components/ui/NotMigrated.tsx`).
 
 | Route | Module | React component | Phase | Status | Detail |
@@ -42,5 +42,5 @@ Status below is the migration state of each route. "Pending" screens render an e
 | `/admin/security` | Platform security rules (spec board) | `PlatformSecurityModule` | 5 | Done | [platform-security](checklist/platform-security.md) |
 | `/ws/appsec` | Application security controls reference (spec board) | `AppSecModule` | 5 | Done | [appsec](checklist/appsec.md) |
 | `/vendor-portal` | External vendor assessment portal (standalone, no shell) | `VendorPortalPage` | 5 | Done | [vendorportal](checklist/vendorportal.md) |
-| spec boards (rest) | Policy library, Third-party risk, Risk register, Company admin x2, Sign-in/MFA | n/a | n/a | Not ported: they restyle or extend modules the portal already has. Gaps and conflicts: [SPEC_BOARDS.md](SPEC_BOARDS.md); decisions: [DECISIONS.md](DECISIONS.md) | |
+| spec boards (rest) | Policy library, Third-party risk, Risk register, Company admin x2, Sign-in/MFA | n/a | n/a | Not ported: they restyle or extend modules the portal already has. Gaps and conflicts: [SPEC_BOARDS.md](SPEC_BOARDS.md); decisions: [DECISIONS.md](../architecture/DECISIONS.md) | |
 | 26 "Screen:" boards | Second visual style of existing modules | n/a | n/a | Not ported by decision (portal design kept) | |

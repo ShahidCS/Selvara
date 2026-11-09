@@ -1,4 +1,4 @@
-/* Board approval evidence for risk acceptance above the Board threshold (contract: docs/SOD_MATRIX.md section 3, owner decision 2026-11).
+/* Board approval evidence for risk acceptance above the Board threshold (contract: docs/security/SOD_MATRIX.md section 3, owner decision 2026-11).
  * Pure functions (no store access) so the boundary and the evidence rules can be tested on their own. UI validation is NOT a control:
  * the API must repeat every check with a trusted clock. File content is never read: only the file NAME is validated and stored. */
 import { SOD } from "./sod";

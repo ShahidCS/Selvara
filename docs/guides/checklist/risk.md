@@ -25,7 +25,7 @@ Source: `Assurance-GRC-Portal.html` lines 2411-2811. The import wizard (2813-298
 | API stubs | - | `src/services/risks.ts` | Done | `viaApi` per mutation; mock mode mutates `DATA`. |
 | Helper for other modules | - | `RiskModule.tsx` exports `useRiskDrawer`, `riskOpenDetail`, `riskGoReg`; `src/lib/risk.ts` | Done | |
 
-## Changed vs prototype (owner decision 2026-11, contract `docs/SOD_MATRIX.md`)
+## Changed vs prototype (owner decision 2026-11, contract `docs/security/SOD_MATRIX.md`)
 | Area | Prototype | Now | Where |
 |---|---|---|---|
 | Acceptance threshold | any authority could be chosen, incl. Board / CEO | `SOD.RISK_BOARD_THRESHOLD = 15`. Residual <= 15: ladder (`ACCEPT_AUTH/RANK`), Board / CEO rung not selectable, effective at once. Residual > 15: Board approval evidence form (decision ref `BRD-YYYY-NN`, date not future and <= 90 days old, approving body, minutes reference or file name, expiry <= 12 months, reason >= 20 chars); cannot be saved without all fields | `lib/riskBoard.ts`, `services/risks.ts acceptRisk`, `RiskDetail.tsx AcceptForm` |

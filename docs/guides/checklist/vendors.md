@@ -46,7 +46,7 @@ Exported hook for other modules: `useVendorDrawer()` (from `VendorsModule`), ope
 - Every mutation goes through `src/services/vendors.ts` (`viaApi`) inside try/catch with a generic toast. Every source `wsLog` call is kept (actor from `getMe()`).
 - Finding ids are demo values (`Math.random`), not tokens.
 
-## Hardening (docs/SOD_MATRIX.md, owner decision 2026-11)
+## Hardening (docs/security/SOD_MATRIX.md, owner decision 2026-11)
 Services throw `SodError` (the UI shows only its message); every step still calls `wsLog`; the four-eyes steps go through `lib/approvals.ts` via `lib/approvalKit.ts` (handler applies the change only after the last approver) and the `ApprovalsPanel` card ("Vendor approvals").
 
 **What changed vs the prototype**

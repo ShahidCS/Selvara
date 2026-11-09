@@ -37,7 +37,7 @@ Source: `Assurance-GRC-Portal.html` lines 2370-2432 (`REND.issues`, `issDrawer` 
 - No uploads, links or exports in this module (so no `validateUpload`/`safeHref`/`csvCell` needed).
 
 ---
-## Hardening update (docs/SOD_MATRIX.md section 3, Issue)
+## Hardening update (docs/security/SOD_MATRIX.md section 3, Issue)
 Files: `services/issues.ts`, `issues/IssueLayers.tsx`, `IssuesModule.tsx`, `src/lib/grcSod.ts`, approvals engine.
 
 ### What changed vs the prototype

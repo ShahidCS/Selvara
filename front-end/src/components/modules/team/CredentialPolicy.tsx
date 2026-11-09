@@ -3,7 +3,7 @@ import { useLayer } from "@/hooks/useLayer";
 import { POLICY } from "@/lib/credentials";
 import * as auth from "@/services/auth";
 
-/** Sign-in security / password policy (docs/SOD_MATRIX.md section 6). The policy is fixed (OWASP ASVS 2.1 / NIST SP 800-63B), shown read-only.
+/** Sign-in security / password policy (docs/security/SOD_MATRIX.md section 6). The policy is fixed (OWASP ASVS 2.1 / NIST SP 800-63B), shown read-only.
  *  Only the minimum length is adjustable (12-128); breach check and MFA are locked on. No rotation, history or complexity settings exist. The server re-enforces all of it. */
 const FIXED: [string, string][] = [
   ["Length", "At least 12, up to 128 characters; never truncated"],

@@ -48,7 +48,7 @@ Must be enforced by the real API (UI only in the prototype):
 * Version history immutability; history is editable in memory here.
 
 ---
-## Hardening update (docs/SOD_MATRIX.md section 3, Evidence)
+## Hardening update (docs/security/SOD_MATRIX.md section 3, Evidence)
 Files: `services/evidence.ts`, `evidence/EvidenceForms.tsx`, `evidence/EvidencePreview.tsx`, `EvidenceModule.tsx`, `src/lib/grcSod.ts`, approvals engine.
 
 ### What changed vs the prototype

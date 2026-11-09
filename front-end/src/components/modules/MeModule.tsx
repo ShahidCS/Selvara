@@ -8,7 +8,7 @@ import MyRemarks from "./me/MyRemarks";
 import MyTasks, { useTasks } from "./me/MyTasks";
 import PublishedPolicies from "./me/PublishedPolicies";
 
-/** Member workspace (board: member-workspace; docs/SPEC_BOARDS.md section 4). Deny by default: only roles with `me` in ROLE_MODS. */
+/** Member workspace (board: member-workspace; docs/architecture/SPEC_BOARDS.md section 4). Deny by default: only roles with `me` in ROLE_MODS. */
 export default function MeModule() {
   const role = useApp((s) => s.role);
   if (!modAllowed(role, "ws", "me")) {

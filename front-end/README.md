@@ -49,16 +49,13 @@ src/
   data/         synthetic seed JSON
   styles/       portal.css (original CSS), globals.css
   assets/       static assets (the prototype is icon-only; icons are in data/icons.json, coolicons MIT)
-docs/
-  INVENTORY.md       what the sources contain + decisions
-  CHECKLIST.md       source feature -> React component map (index) and docs/checklist/*.md per module
-  PORTING_GUIDE.md   conventions used to port each module
+../docs/ (repository root; was front-end/docs/)   architecture/, guides/, security/ (see ../docs/ORGANIZATION.md)
 scripts/             dev tools to extract/anonymise seed data from the prototype (the prototype HTML is not in this repo)
 ```
 
 ## Status
 
-All 29 portal routes plus the five screens the spec boards added are migrated (`docs/CHECKLIST.md`). Security contract (segregation of duties, privileged access, credential policy): `docs/SOD_MATRIX.md`. Open owner decisions: `docs/DECISIONS.md`. Security notes and test log: `docs/SECURITY.md`.
+All 29 portal routes plus the five screens the spec boards added are migrated (`../docs/guides/CHECKLIST.md`). Security contract (segregation of duties, privileged access, credential policy): `../docs/security/SOD_MATRIX.md`. Open owner decisions: `../docs/architecture/DECISIONS.md`. Security notes and test log: `../docs/security/SECURITY.md`.
 
 ## Review note
 

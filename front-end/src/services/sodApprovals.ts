@@ -1,4 +1,4 @@
-/* Four-eyes decision API stub shared by Vendors, AI, Trust, Questionnaires, Assistant, API and Reports (contract: docs/SOD_MATRIX.md).
+/* Four-eyes decision API stub shared by Vendors, AI, Trust, Questionnaires, Assistant, API and Reports (contract: docs/security/SOD_MATRIX.md).
  * Mock mode records the decision in the in-memory approvals engine and applies the approved change. The real API MUST re-check role,
  * "approver is not the requester/subject" and the second-approver count server-side, and write its own audit entry. */
 import type { Approval } from "@/lib/approvals";

@@ -1,5 +1,5 @@
 /* Integrations API stubs. Mock mode performs the prototype's in-memory mutation; the caller then does wsLog / toast / bumpData.
- * CONTRACT (docs/SOD_MATRIX.md): connecting, disconnecting and syncing a connector need the admin role (assertRole -> SodError); disconnecting is audited in the
+ * CONTRACT (docs/security/SOD_MATRIX.md): connecting, disconnecting and syncing a connector need the admin role (assertRole -> SodError); disconnecting is audited in the
  * workspace log and the admin log by the caller. The real API MUST enforce authorization, hold connector credentials/OAuth tokens server-side only, and request
  * least-privilege (read-only) scopes. */
 import { assertRole, hasRole } from "@/lib/sod";

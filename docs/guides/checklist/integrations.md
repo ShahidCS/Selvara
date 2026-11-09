@@ -22,7 +22,7 @@
 ## Security notes
 UI gate only: `intCanManage` hides actions. The real API must authorize connect/disconnect/sync per tenant, keep OAuth tokens/credentials server-side (never in the browser), request read-only least-privilege scopes, and write the audit entry itself. Connector names come from a fixed list; all text is rendered as React text. No secrets or hostnames in the seed.
 
-## Hardening (docs/SOD_MATRIX.md, owner decision 2026-11)
+## Hardening (docs/security/SOD_MATRIX.md, owner decision 2026-11)
 **What changed vs the prototype:** `intCanManage` listed super, admin, owner, analyst; it is now admin only (none of the others can open the module). Connect, disconnect and sync call `assertRole("admin")` in the service (`SodError` toast). Disconnecting is audited in the workspace log (`integration.disconnected`, as before) and now also in the admin log (`adminLog`, category Integration). Non-admins see the read-only table with no action buttons.
 
 **Open question added:** connect/disconnect has no second approver or confirmation (matrix asks for admin only). Disconnecting an identity source weakens monitoring; consider a confirmation step.

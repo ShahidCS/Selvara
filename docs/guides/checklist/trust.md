@@ -50,7 +50,7 @@ Enforced by the UI only (the API must enforce all of these):
 * **Chatbot:** this port is keyword matching over verified answers + FAQ, not an LLM. If replaced by an LLM: answer only from the published corpus (verified entries), never from internal/unverified/tenant-private data; treat the visitor question as untrusted (prompt injection: no tool access, no system-prompt disclosure, no instructions from retrieved text), filter output, rate limit, log and review. Verifying an answer (Questionnaires) publishes it to the external chatbot: gate that action.
 * Free text (reason, note, question, emails, domains) is clamped (`clampText` + `maxLength`), emails use `isEmail`, and every value (including chatbot answers and chat logs written by external visitors) renders as React text only. No HTML/markdown rendering, no `dangerouslySetInnerHTML`. Source inline `onclick` handlers with interpolated ids/domains were removed.
 
-## Hardening (docs/SOD_MATRIX.md, owner decision 2026-11)
+## Hardening (docs/security/SOD_MATRIX.md, owner decision 2026-11)
 Services throw `SodError`; `wsLog` calls kept; publishing uses `lib/approvals.ts` (`ApprovalsPanel` on the Resources tab). Verify of answers: see `questionnaires.md`.
 
 **What changed vs the prototype**

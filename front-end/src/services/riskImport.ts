@@ -1,4 +1,4 @@
-/* Risk import API stub. Contract (docs/SOD_MATRIX.md): an import that would UPDATE existing risk ids is never applied directly. It is staged as an
+/* Risk import API stub. Contract (docs/security/SOD_MATRIX.md): an import that would UPDATE existing risk ids is never applied directly. It is staged as an
  * approval request (kind "risk.import", one admin approver who is not the importer); approving applies the staged rows. Imports of only NEW ids apply at once.
  * In http mode the already-validated rows are POSTed; the server must re-validate (ids, ranges, lengths, RBAC) and enforce the same four-eyes rule. */
 import { wsLog } from "@/lib/audit";

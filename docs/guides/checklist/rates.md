@@ -28,7 +28,7 @@
 * Money precision: rates are JS floats as in the source (display only here); the API should use fixed-precision decimals.
 * No HTML sinks; the Held reason and all values render as React text.
 
-## Changes vs prototype (owner decision, docs/SOD_MATRIX.md sections 2 and 3)
+## Changes vs prototype (owner decision, docs/security/SOD_MATRIX.md sections 2 and 3)
 | Prototype | Now | Where |
 |---|---|---|
 | Edit saved a rate immediately; no audit | Manual rate/tax override is a REQUEST (reason >= 15, ticket). The row keeps its current values until a DIFFERENT elevated super admin approves in the "Pending approvals" panel; then the values apply and `rate.override.applied` is logged with before/after, initiator, approver, approval id, ticket | `requestRateOverride`, `decideRates`, `rates/RateEdit.tsx` |

@@ -47,7 +47,7 @@ Source: `Assurance-GRC-Portal.html` lines 1599-1702. React: `src/components/modu
 6. Control/test drawers are snapshots taken at open (as in source); they do not live-update while open.
 
 ---
-## Hardening update (docs/SOD_MATRIX.md section 3, Control)
+## Hardening update (docs/security/SOD_MATRIX.md section 3, Control)
 Files: `services/controls.ts`, `controls/useControlDrawer.tsx`, `controls/exceptionModals.tsx` (new), `controls/createModals.tsx`, `ControlsModule.tsx`, `src/lib/grcSod.ts`, approvals engine.
 
 ### What changed vs the prototype

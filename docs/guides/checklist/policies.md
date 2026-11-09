@@ -48,7 +48,7 @@ Must be enforced by the real API:
 * Policy text/titles must continue to be rendered as text; if rich-text policy bodies are added, sanitise server-side and render through a vetted sanitiser.
 
 ---
-## Hardening update (docs/SOD_MATRIX.md sections 3 and 5)
+## Hardening update (docs/security/SOD_MATRIX.md sections 3 and 5)
 Files: `services/policies.ts` (rules + audit), `policies/PolicyLayers.tsx`, `PoliciesModule.tsx`, shared `src/lib/grcSod.ts` (new, add-only helpers), approvals engine `src/lib/approvals.ts`.
 
 ### What changed vs the prototype
@@ -82,4 +82,4 @@ Enforced in the service layer (mock) and mirrored in the UI; the real API must e
 1. Seed "In review" policies have no named approver (owner is a non-manager persona, e.g. P. Nair); an admin must reassign ownership to progress them. Acceptable?
 2. Persona "Jordan A." (admin) is the seed's "J. Avery"; matched by `samePerson`. Fix the persona name in `roles.json` or keep the alias rule?
 3. Acceptance counts remain random demo values (the Policies drawer ring); the Me workspace holds real per-user acknowledgements.
-4. Remarks/collaborators/policy library from `docs/SPEC_BOARDS.md` section 2 are not part of this change.
+4. Remarks/collaborators/policy library from `docs/architecture/SPEC_BOARDS.md` section 2 are not part of this change.

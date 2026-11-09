@@ -76,7 +76,7 @@ The workflow has `permissions: contents: read`, no secrets, third-party actions 
 
 ## Not covered
 
-- Backend and API behaviour: the app runs on in-memory mock data, so server-side authorization, persistence and audit integrity are untested. UI gating is not a control; the API must enforce every rule (see `docs/SECURITY.md` and `docs/SOD_MATRIX.md`).
+- Backend and API behaviour: the app runs on in-memory mock data, so server-side authorization, persistence and audit integrity are untested. UI gating is not a control; the API must enforce every rule (see `docs/security/SECURITY.md` and `docs/security/SOD_MATRIX.md`).
 - Real authentication: sign-in, MFA, passkeys and sessions are simulated. The vendor code `123456` and the "key touch" are demo stand-ins.
 - Visual regression: no screenshot comparison, and no responsive or dark-theme checks.
 - Cross-browser: Chromium only (Firefox and WebKit are not run).

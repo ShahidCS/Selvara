@@ -25,7 +25,7 @@ Source: lines 3496-3525 (`REPORT_FREQ`, `SCHED_PACKS`, `REND.reports`, generate/
 * Generated file is plain text containing only the report name and a timestamp; no user HTML is embedded. Any future HTML report must escape all values with `esc()` and open via blob URL as the board pack does.
 * Download file name is sanitised; recipients/detail are clamped and render as React text.
 
-## Hardening (docs/SOD_MATRIX.md, owner decision 2026-11)
+## Hardening (docs/security/SOD_MATRIX.md, owner decision 2026-11)
 Services throw `SodError`; `wsLog` kept; external distribution uses `lib/approvals.ts` (`ApprovalsPanel` "External distribution awaiting a different admin").
 
 **What changed vs the prototype**

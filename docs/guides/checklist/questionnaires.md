@@ -34,7 +34,7 @@ Source: lines 3443-3478 (`REND.questionnaires`, `qRender`, `vendorPortal`, `qDra
 * All questionnaire names, answers, due text render as React text; inputs clamped (`clampText`, `maxLength`), numbers range-checked. No uploads exist in the source (none added).
 * Vendor answers are held in memory only (no client storage). A real API must validate, size-limit and persist submissions and prevent edits after submit.
 
-## Hardening (docs/SOD_MATRIX.md, owner decision 2026-11)
+## Hardening (docs/security/SOD_MATRIX.md, owner decision 2026-11)
 Services throw `SodError`; `wsLog` calls kept; sending uses `lib/approvals.ts` (`ApprovalsPanel` above the "In flight" table).
 
 **What changed vs the prototype**

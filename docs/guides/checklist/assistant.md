@@ -25,7 +25,7 @@
 ## Security notes
 UI gate only: `asstCanManage`; the API must authorize agent create/run/delete, run approvals (ideally separate approver) and MCP grants, and log them itself. Prompts and replies are React text only (no HTML, no markdown rendering). Replies are labelled draft / review required and never act. In a real integration treat prompts and any retrieved data as untrusted (prompt injection), keep model credentials server-side, gate every tool call by the MCP grant, and avoid writing prompt contents to the audit log.
 
-## Hardening (docs/SOD_MATRIX.md, owner decision 2026-11)
+## Hardening (docs/security/SOD_MATRIX.md, owner decision 2026-11)
 Services throw `SodError`; `wsLog` calls kept; enabling uses `lib/approvals.ts` (`ApprovalsPanel` on the Agents and MCP tabs).
 
 **What changed vs the prototype**

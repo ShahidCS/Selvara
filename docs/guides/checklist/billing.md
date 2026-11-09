@@ -29,7 +29,7 @@
 * No card numbers are collected or shown anywhere in this module. Exports are toasts (no files); if made real, use `csvCell` + `safeFileName`.
 * Customer id from the URL is looked up as an own property of `CUSTOMERS`; unknown ids render "Page not found".
 
-## Changes vs prototype (owner decision, docs/SOD_MATRIX.md sections 2 and 3)
+## Changes vs prototype (owner decision, docs/security/SOD_MATRIX.md sections 2 and 3)
 | Prototype | Now | Where |
 |---|---|---|
 | Any Support/Super could mark paid, retry, void, resend, issue invoices, edit pricing | Every mutation needs an elevated session; support cannot elevate. Buttons disabled "Elevate to make changes"; banner links to `/admin/elevation` | `guard()` in `services/billing-admin.ts`, `useGate` |

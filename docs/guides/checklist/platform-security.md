@@ -1,6 +1,6 @@
 # Platform Security (`/admin/security`, key `security`)
 
-Source: board `super-admin-console`, Platform security tab; `docs/SPEC_BOARDS.md` 8.G7.
+Source: board `super-admin-console`, Platform security tab; `docs/architecture/SPEC_BOARDS.md` 8.G7.
 
 | Source feature | Board ref | React file | Status | Notes |
 |---|---|---|---|---|
@@ -17,14 +17,14 @@ Source: board `super-admin-console`, Platform security tab; `docs/SPEC_BOARDS.md
 2. Check marks mean "policy states this", not "verified live"; no compliance status is computed.
 
 ## Conflicts to decide
-See `docs/checklist/elevation.md` (standing access vs elevation, support grants, MFA-reset strictness). The "Privileged access" list states rules the portal does not yet enforce: hardware key, allow-listed networks, SIEM streaming, MFA reset checks, no standing access to customer content.
+See `docs/guides/checklist/elevation.md` (standing access vs elevation, support grants, MFA-reset strictness). The "Privileged access" list states rules the portal does not yet enforce: hardware key, allow-listed networks, SIEM streaming, MFA reset checks, no standing access to customer content.
 
 ## Security notes
 * Read-only page: no setting can be changed from the UI; nothing is stored.
 * The lists describe server-enforced policy; the portal front end enforces none of them. Do not read this page as evidence of control.
 * All text is static React text; no HTML from strings, internal links only via `useGo`.
 
-## Changes vs prototype (owner decision, docs/SOD_MATRIX.md sections 2 and 3)
+## Changes vs prototype (owner decision, docs/security/SOD_MATRIX.md sections 2 and 3)
 * "Privileged access (this console)" list now states the enforced model: elevation for every change (reason 15+ characters, ticket, 60 minutes), super admins admin-space only, support never elevates or approves, dual control for finance above USD 1,000, all write-offs and rate overrides, and customer-approved support grants as the only route to customer content.
 * The page remains read-only and informational; the elevation banner above it is the same component as on Elevated Access.
 

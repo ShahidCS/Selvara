@@ -1,6 +1,6 @@
 /* Risk detail / lifecycle panel (source renderRiskDetail + riskSetScore..riskClose, lines 2606-2707).
  * Authority actions (submit / approve / accept) are gated by riskCanEdit / riskCanApprove exactly as in the source; the services re-check
- * the role, but the real API must enforce it and must also enforce segregation of duties (see docs/checklist/risk.md). */
+ * the role, but the real API must enforce it and must also enforce segregation of duties (see docs/guides/checklist/risk.md). */
 import { useState } from "react";
 import { Chip, Icon, StatusChip } from "@/components/ui";
 import { useLayer } from "@/components/shell/LayerProvider";

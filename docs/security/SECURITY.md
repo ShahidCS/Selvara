@@ -21,7 +21,7 @@ Status: living document. Generated code needs technical, security and management
 4. **Audit log hash is FNV-1a**, a demo of chaining, not a cryptographic control. Use server-side HMAC/append-only storage in production.
 5. **`Math.random` ids** appear in demo flows (ported from the prototype); they are not security tokens.
 
-Per-module "Security notes" live in `docs/checklist/<module>.md`.
+Per-module "Security notes" live in `docs/guides/checklist/<module>.md`.
 
 ## Test log
 ### Phase 2 review (local build, owner-authorized)
@@ -31,7 +31,7 @@ Per-module "Security notes" live in `docs/checklist/<module>.md`.
 * **Config:** dotfiles, `package.json`, `src/*`, `next.config.js` and source maps return 404/absent; TRACE/PUT/DELETE/OPTIONS return 405; CSP, nosniff, frame-ancestors none, HSTS, Permissions-Policy present on pages and static assets; no server banner.
 * **Fixed during review:** board-pack export opened a tab *and* downloaded (a `noopener` feature makes `window.open` return null); MFA reset had no audit entry (source gap), now logs `person.mfa.reset`; real staff names removed from docs and from `scripts/anonymize.js` (map now supplied locally via `ANON_MAP`).
 * **Not covered (needs a real backend):** authentication, session, CSRF, server-side authorization/IDOR, rate limiting, upload scanning. See "Known limitations".
-* **History note:** commits before this one contain real staff names in `docs/INVENTORY.md`. Rewriting git history is a user decision (not done).
+* **History note:** commits before this one contain real staff names in `docs/architecture/INVENTORY.md`. Rewriting git history is a user decision (not done).
 
 ### Phase 3 review (local build, owner-authorized)
 * **Static:** no HTML/script sinks, no unsafe links, no client storage beyond UI preferences, no `console.*`; secure random (`crypto.getRandomValues`) for demo keys/secrets; remaining `Math.random` uses are demo ids/sizes only.
@@ -56,7 +56,7 @@ Per-module "Security notes" live in `docs/checklist/<module>.md`.
 * **Final regression:** 35 routes render with no console errors or dialogs; `npm audit --omit=dev`: 0 vulnerabilities; name scan: 0 matches.
 
 ## Credential policy
-Follows OWASP ASVS v4 section 2.1 and NIST SP 800-63B (contract: `docs/SOD_MATRIX.md` section 6; code: `src/lib/credentials.ts`, `src/services/auth.ts`, `src/data/commonPasswords.json`; sign-in gallery `/auth`; read-only policy in Team settings).
+Follows OWASP ASVS v4 section 2.1 and NIST SP 800-63B (contract: `docs/security/SOD_MATRIX.md` section 6; code: `src/lib/credentials.ts`, `src/services/auth.ts`, `src/data/commonPasswords.json`; sign-in gallery `/auth`; read-only policy in Team settings).
 - Length 12 to 128 characters (no truncation). No composition rules; all Unicode, spaces and passphrases allowed; NFKC normalisation. Paste and password managers allowed, show/hide toggle, no hints or security questions.
 - Rejected: common/breached passwords (`checkBreached`: mock = local blocklist, real = k-anonymity range lookup through our backend; the browser never sends the password or its full hash to a third party), values containing the email local part, name or company (>= 4 chars), repeated characters and simple sequences.
 - No periodic expiry and no history rule; change only on evidence of compromise. Strength feedback is advisory.
@@ -64,10 +64,10 @@ Follows OWASP ASVS v4 section 2.1 and NIST SP 800-63B (contract: `docs/SOD_MATRI
 - 5 failed sign-ins trigger throttling with a generic message. Reset: generic response, single-use token <= 15 minutes, MFA before the new password, all sessions revoked, user notified. Sessions: idle 15 min (privileged) / 30 min, absolute 12 h, step-up for sensitive actions.
 - Passwords are held only in component state, cleared on completion and unmount, never logged (nor their length), stored or put in URLs.
 
-Server requirements (the UI is not the control): re-enforce every rule server-side; hash with Argon2id/bcrypt/scrypt (salt, pepper); server-side breach API; rate limits with identical responses for known and unknown accounts; hashed single-use reset tokens; server-side MFA enrolment and recovery-code generation; session revocation on reset. Details: `docs/checklist/auth.md`.
+Server requirements (the UI is not the control): re-enforce every rule server-side; hash with Argon2id/bcrypt/scrypt (salt, pepper); server-side breach API; rate limits with identical responses for known and unknown accounts; hashed single-use reset tokens; server-side MFA enrolment and recovery-code generation; session revocation on reset. Details: `docs/guides/checklist/auth.md`.
 
 ### Hardening review (segregation of duties, privileged access, credentials)
-* **Contract:** `docs/SOD_MATRIX.md`. Shared helpers `lib/sod.ts`, `lib/approvals.ts`, services throw `SodError` (deny by default) and the UI shows the reason on disabled controls.
+* **Contract:** `docs/security/SOD_MATRIX.md`. Shared helpers `lib/sod.ts`, `lib/approvals.ts`, services throw `SodError` (deny by default) and the UI shows the reason on disabled controls.
 * **Access matrix test:** 12 personas x 32 routes (384 checks): 0 mismatches against `roles.json`.
 * **Privileged access test:** super admin lands on `/admin/customers`, is redirected from every `/ws/*` route; admin mutation controls are locked until an elevated session (short reason / missing or malformed ticket rejected; valid reason + ticket starts the session); controls unlock after elevation; the second super admin is not elevated by the first; support cannot approve MFA resets; the seeded request can be approved by an elevated super admin who is not the requester.
 * **Workspace checks:** employee has no enabled approve/publish/decide controls on Policies and Access; auditor is read-only on Audits and Policies; employee cannot open Risk.
@@ -77,7 +77,7 @@ Server requirements (the UI is not the control): re-enforce every rule server-si
 * **Limits:** SoD compares display names in the demo; the API must compare stable user ids, persist approvals/elevation/audit server-side, and use a trusted clock.
 * **History:** git history rewritten to replace real names with synthetic ones (old commit ids may remain cached on the hosting service until it garbage-collects; request a purge from the host if required).
 
-## Supply chain and pipeline (see ../../docs/PIPELINE.md)
+## Supply chain and pipeline (see PIPELINE.md)
 * All GitHub Actions are pinned to full commit SHAs and checked against upstream tags; dependency install scripts never run in CI; the deploy token is environment-scoped and visible only to the steps that use it.
 * Gates on every pull request: CodeQL, Gitleaks, dependency review, licence policy, Trivy, ZAP baseline, `npm audit`; High and Critical block. Releases require a signed tag, produce an SBOM, build-provenance attestation and signature, and deploy the attested archive.
-* Accepted risks (Vercel CLI transitive advisories, CSP `unsafe-inline`, LGPL optional binaries, public Sigstore log) are recorded with owners and review triggers in `docs/PIPELINE.md`.
+* Accepted risks (Vercel CLI transitive advisories, CSP `unsafe-inline`, LGPL optional binaries, public Sigstore log) are recorded with owners and review triggers in `docs/security/PIPELINE.md`.

@@ -30,7 +30,7 @@
 **Webhook URL (SSRF):** `isSafeWebhookUrl` (`lib/security.ts`) accepts only `https:` URLs without credentials, rejects IPv6 literals, `localhost`, `*.local/.internal/.intranet/.lan/.home/.corp`, single-label hosts, non-dotted numeric hosts (decimal/hex/octal forms are normalised by `URL` and then range-checked) and IPv4 in 0/8, 10/8, 100.64/10, 127/8, 169.254/16, 172.16/12, 192.168/16, 198.18/15, multicast and reserved. This is a client-side convenience only: the server must resolve DNS at delivery time, pin and re-check the address (DNS rebinding), refuse redirects, and cap response size/time.
 **Secrets in the UI:** the demo key comes from `crypto.getRandomValues` (`secureHex`), lives only in the modal's props and is dropped on close; it is never logged (`wsLog` has label + scope only), stored, or put in a URL. All user text renders as React text; no `eval`/`new Function`; ids are demo ids (`Date.now`).
 
-## Hardening (docs/SOD_MATRIX.md, owner decision 2026-11)
+## Hardening (docs/security/SOD_MATRIX.md, owner decision 2026-11)
 Services throw `SodError`; `wsLog` calls kept (never the key); approvals use `lib/approvals.ts` (`ApprovalsPanel` on the Keys and Webhooks tabs).
 
 **What changed vs the prototype**

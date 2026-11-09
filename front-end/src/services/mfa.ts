@@ -1,4 +1,4 @@
-/* MFA reset service (contract: docs/SOD_MATRIX.md sections 3 and 4). MFA reset is an account-takeover vector, so the rules live HERE, not only in the UI:
+/* MFA reset service (contract: docs/security/SOD_MATRIX.md sections 3 and 4). MFA reset is an account-takeover vector, so the rules live HERE, not only in the UI:
  * deny by default (requester support/super, elevated), three explicit identity checks, ticket reference, reason enum + text, a NAMED second approver
  * (not the requester, not the subject), four-eyes through the approvals engine, 24 h expiry with audited expiry, requester may only WITHDRAW,
  * and the effects (factors removed, sessions revoked, forced re-enrolment, recovery codes invalidated, notification) are applied only on final approval.

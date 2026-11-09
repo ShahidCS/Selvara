@@ -71,7 +71,7 @@ The prototype has no network calls. Each module that mutates data should call th
 * Every feature, copy string, validation message, empty state, filter, sort, pagination, drawer, modal, export, and keyboard path in the source function(s) exists.
 * `npx tsc --noEmit` and `npx next build` pass with no errors.
 * Visually compared with the prototype (light + dark, desktop + <=760px).
-* `docs/checklist/<module>.md` written: table of `source feature | source lines | React component/file | status | notes`, plus "Open questions".
+* `docs/guides/checklist/<module>.md` written: table of `source feature | source lines | React component/file | status | notes`, plus "Open questions".
 
 ## Secure coding rules (mandatory; OWASP ASVS v4)
 

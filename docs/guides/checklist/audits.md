@@ -51,7 +51,7 @@ Source: `Assurance-GRC-Portal.html` lines 2286-2368 (`REND.audits`, `auditDetail
 - No file/evidence upload exists in this source module (PBC items are text requests only), so `validateUpload` is not used; if evidence attach is added it must use `validateUpload` + `safeFileName`.
 
 ---
-## Hardening update (docs/SOD_MATRIX.md section 3, Audit)
+## Hardening update (docs/security/SOD_MATRIX.md section 3, Audit)
 Files: `services/audits.ts`, `audits/AuditDetail.tsx`, `audits/AuditModals.tsx`, `audits/util.ts`, `AuditsModule.tsx`, `src/lib/grcSod.ts`.
 
 ### What changed vs the prototype (gate gaps from Open question 2 and 8 fixed)
