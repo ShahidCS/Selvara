@@ -82,6 +82,8 @@ Policy: **High and Critical findings block; Medium and below are reported.**
 
 ## Branch and tag protection
 
+> **Plan note.** Rulesets and environment approvals need a paid GitHub plan on private repositories. On the free plan `apply-settings.sh` skips them and says so; the working rules until you upgrade are in [EXCEPTIONS.md](EXCEPTIONS.md) EX-08.
+
 `.github/rulesets/main.json` requires, on `main`: pull requests only, one approving review from a code owner who did not push last, stale approvals dismissed on push, conversations resolved, squash merge only, linear history, **signed commits**, no force push and no deletion, ten required status checks that must be up to date, and the required checks below. There is no code-scanning rule, because that needs GitHub Advanced Security (see EX-07 in [EXCEPTIONS.md](EXCEPTIONS.md)): CodeQL is a required check that gates on its own results instead.
 
 `.github/rulesets/release-tags.json` makes `v*` tags creatable only by repository admins and immutable (no update, delete or move).

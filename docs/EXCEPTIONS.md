@@ -13,6 +13,7 @@ Review the whole register at least quarterly and whenever a "Review when" trigge
 | EX-05 | CSP `script-src 'unsafe-inline'` | @ShahidCS | Before production traffic |
 | EX-06 | Public Sigstore signing disabled | @ShahidCS | Repository visibility decision |
 | EX-07 | No GitHub Advanced Security (private repository, current plan) | @ShahidCS | If the repository moves to an organisation with Advanced Security, or becomes public |
+| EX-08 | No environment approval gate and no rulesets (private repository, free plan) | @ShahidCS | When the account is upgraded (GitHub Pro or Team), or the repository becomes public |
 
 ## EX-01 Sole-maintainer review and approval
 
@@ -121,3 +122,31 @@ before merge and again before every deployment. Findings can be read in the run 
 **Exit.** Set the repository variable `CODE_SCANNING_ENABLED=true` once Advanced Security is available; CodeQL and OSV then
 also upload to the Security tab (no workflow change needed), and the code-scanning rule can be added back to
 `.github/rulesets/main.json`.
+
+## EX-08 No environment approval gate and no rulesets on the free plan
+
+**What.** On a private repository on the free plan, GitHub refuses (a) required reviewers, wait timers and
+deployment-branch rules on environments (HTTP 422) and (b) repository rulesets, and classic branch protection is
+also unavailable. `apply-settings.sh` therefore creates the `staging` and `production` environments **without**
+those rules and prints what was not applied. Environments still scope the secrets and variables per environment.
+
+**What is lost.**
+- No second look before a production deploy: the pause-and-approve step does not exist.
+- `main` is not protected by GitHub: nothing technical stops a direct push, a force push, an unsigned commit or
+  a merge without review. The required status checks are not enforced as merge conditions either.
+- Release tags (`v*`) are not immutable.
+
+**Compensating controls (still in place).**
+- Production deploys run only from a `v*.*.*` tag push, and `verify-tag.sh` fails unless the tag is annotated,
+  carries a signature GitHub verifies, points at a commit on `main` and matches `package.json`.
+- Both deploy workflows run the full CI and security gates first and cannot deploy if any fails.
+- Only the owner has write access (sole maintainer); the Vercel token is scoped per environment, used in one step.
+- Provenance and SBOM attestations tie every deploy to the commit and the run.
+- Working practice until the plan changes: open a pull request for every change, wait for all 11 checks to be green,
+  merge with Squash and merge in the web UI, never push to `main` directly, and check the Actions tab before tagging.
+
+**Exit.** GitHub Pro (personal account) or Team (organisation) enables rulesets and environment protection rules on
+private repositories (confirm on GitHub's pricing page; Advanced Security from EX-07 is a separate product). Then
+re-run `.github/scripts/apply-settings.sh --apply`, which is safe to repeat. Making the repository public also enables
+all of them. **Do not onboard regulated customers on this configuration**: it cannot show an auditor enforced
+branch protection or a production approval.
