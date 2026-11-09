@@ -43,7 +43,7 @@ api PUT "repos/$REPO/automated-security-fixes"
 echo; echo "== 2. Actions: read-only default token, only allow-listed actions, SHA pinning required"
 api PUT "repos/$REPO/actions/permissions/workflow" '{"default_workflow_permissions":"read","can_approve_pull_request_reviews":false}'
 api PUT "repos/$REPO/actions/permissions" '{"enabled":true,"allowed_actions":"selected","sha_pinning_required":true}'
-api PUT "repos/$REPO/actions/permissions/selected-actions" '{"github_owned_allowed":true,"verified_allowed":false,"patterns_allowed":["aquasecurity/trivy-action@*","gitleaks/gitleaks-action@*","zaproxy/action-baseline@*","google/osv-scanner-action/*@*","anchore/sbom-action@*","sigstore/cosign-installer@*"]}'
+api PUT "repos/$REPO/actions/permissions/selected-actions" '{"github_owned_allowed":true,"verified_allowed":false,"patterns_allowed":["aquasecurity/trivy-action@*","aquasecurity/setup-trivy@*","gitleaks/gitleaks-action@*","zaproxy/action-baseline@*","google/osv-scanner-action/*@*","anchore/sbom-action@*","sigstore/cosign-installer@*"]}'
 
 echo; echo "== 3. Environments"
 # Required reviewers, wait timers and deployment-branch rules on environments need a paid plan for a PRIVATE repository.
