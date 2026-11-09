@@ -50,21 +50,24 @@ echo; echo "== 3. Environments"
 # If GitHub refuses, the environment is created WITHOUT them (it still scopes secrets and variables) and the gap is reported.
 env_with_fallback() { # name full-body
   local name=$1 body=$2
-  api PUT "repos/$REPO/environments/$name" "$body" || {
-    echo "refused  protection rules for environment $name (plan); creating it without them"
-    SKIPPED+=("environment $name: required reviewers / wait timer / branch rules (docs/EXCEPTIONS.md EX-08)")
-    api PUT "repos/$REPO/environments/$name"
-  }
+  api PUT "repos/$REPO/environments/$name" "$body" && return 0
+  echo "refused  protection rules for environment $name (plan); creating it without them"
+  SKIPPED+=("environment $name: required reviewers / wait timer / branch rules (docs/EXCEPTIONS.md EX-08)")
+  api PUT "repos/$REPO/environments/$name"
+  return 1
 }
-env_with_fallback staging '{"wait_timer":0,"prevent_self_review":false,"reviewers":[],"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}'
-api_optional POST "repos/$REPO/environments/staging/deployment-branch-policies" '{"name":"main","type":"branch"}'
-env_with_fallback production "{\"wait_timer\":$WAIT_MINUTES,\"prevent_self_review\":false,\"reviewers\":[{\"type\":\"User\",\"id\":$PROD_REVIEWER_ID}],\"deployment_branch_policy\":{\"protected_branches\":false,\"custom_branch_policies\":true}}"
-api_optional POST "repos/$REPO/environments/production/deployment-branch-policies" '{"name":"v*.*.*","type":"tag"}'
+if env_with_fallback staging '{"wait_timer":0,"prevent_self_review":false,"reviewers":[],"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}'; then
+  api_optional POST "repos/$REPO/environments/staging/deployment-branch-policies" '{"name":"main","type":"branch"}'
+fi
+if env_with_fallback production "{\"wait_timer\":$WAIT_MINUTES,\"prevent_self_review\":false,\"reviewers\":[{\"type\":\"User\",\"id\":$PROD_REVIEWER_ID}],\"deployment_branch_policy\":{\"protected_branches\":false,\"custom_branch_policies\":true}}"; then
+  api_optional POST "repos/$REPO/environments/production/deployment-branch-policies" '{"name":"v*.*.*","type":"tag"}'
+fi
 
 echo; echo "== 4. Rulesets (main protection, release tags)"
 # Rulesets on a PRIVATE repository also need a paid plan. If refused, the branch is NOT protected: this is reported loudly below.
 for f in .github/rulesets/main.json .github/rulesets/release-tags.json; do
-  name=$(node -p "require('./$f').name")
+  name=$(sed -n 's/^  "name": *"\(.*\)",\{0,1\}$/\1/p' "$f" | head -1)   # no node/jq needed
+  [[ -n $name ]] || { echo "cannot read ruleset name from $f" >&2; exit 1; }
   id=""
   if [[ $APPLY == 1 ]]; then id=$(gh api "repos/$REPO/rulesets" --jq ".[] | select(.name==\"$name\") | .id" 2>/dev/null || true); fi
   if [[ -n $id ]]; then api_optional PUT "repos/$REPO/rulesets/$id" "$(cat "$f")"; else api_optional POST "repos/$REPO/rulesets" "$(cat "$f")"; fi
