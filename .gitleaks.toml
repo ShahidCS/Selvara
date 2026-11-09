@@ -14,4 +14,8 @@ regexes = [
 paths = [
   '''package-lock\.json$''',
   '''docs/screenshots/.*''',
+  # Lists of well-known WEAK passwords, used to REJECT them (ASVS 2.1.7). They are not credentials. Keep this to
+  # exactly these two files: a real secret must never be allow-listed.
+  '''front-end/src/data/commonPasswords\.json$''',
+  '''front-end/tests/unit/credentials\.test\.ts$''',
 ]
