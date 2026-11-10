@@ -17,7 +17,7 @@ updates:
       minor-and-patch:
         update-types: [minor, patch]
     # Major bumps that need a planned migration, not a dependency update. Each is tracked as its own task:
-    #  - typescript 7: removes `baseUrl` (tsconfig must change) and typescript-eslint does not support it yet
+    #  - typescript 7: typescript-eslint does not support it yet (ESLint refuses to load); tsconfig.json is already compatible (no baseUrl)
     #  - @types/node 26: describes Node 26 APIs while CI and the toolchain run Node 22; bump with the Node version
     # Minor and patch updates of these packages still arrive normally. Remove an entry when its migration is done.
     ignore:
