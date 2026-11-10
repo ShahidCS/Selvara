@@ -48,6 +48,7 @@ Unit tests import the real modules through the `@/` alias (see `vitest.config.ts
 | `approvals.test.ts` | Four-eyes engine: requester cannot approve, role gate, forbid list, `needs=2` with two different approvers, withdraw only by the requester, rejection, expiry with a fake clock |
 | `riskBoard.test.ts` | Board evidence validators (reference format, date not in the future, at most 90 days old, approving body, minutes file gate), acceptance expiry (at most 12 months), and `acceptRisk` at the threshold: residual 15 accepted through the authority ladder, residual 16 needs Board evidence and a second verifier |
 | `frameworks.test.ts` | `reqStatus` derivation (Met, Partially met, Not met, Not assessed, Not applicable), `fwScore`, `fwReadiness`, `fwBand` |
+| `elevation.test.ts` | Elevated session: only `super` can start, reason / ticket / duration limits, live up to the last millisecond and not at the deadline, `expireIfDue` drops an elapsed session once and logs once, `assertElevated` refuses after expiry with no timer, an expired session is replaced by one counted from the new start, ending early is idempotent, a role switch or the other super admin never inherits it (fake timers) |
 | `format.test.ts` | `csvCell` formula-injection guard, `esc`, money and number formatting |
 
 ## What the e2e tests cover
@@ -81,6 +82,7 @@ The workflow has `permissions: contents: read`, no secrets, third-party actions 
 - Visual regression: no screenshot comparison, and no responsive or dark-theme checks.
 - Cross-browser: Chromium only (Firefox and WebKit are not run).
 - Accessibility audits (axe or similar) and load or performance testing.
+- The `useElevation` React hook (its on-screen clock and countdown): unit tests run in plain Node with no component renderer, so only the module behind it is tested. The e2e test checks the "expires in" banner appears.
 - Upload content scanning: only name, extension and size gates are exercised.
 
 ## Known gaps found while writing the tests
