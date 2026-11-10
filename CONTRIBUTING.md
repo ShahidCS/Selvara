@@ -23,6 +23,13 @@ npm run test:e2e    # Playwright
 ```
 CI runs the same gates plus security scanning. Any new GitHub Action must be pinned to a full commit SHA (`.github/scripts/verify-pins.sh`).
 
+## Keeping the stack doc current
+`docs/architecture/STACK.md` (every package and version) is generated. After changing dependencies, `tsconfig.json`, the CI Node version or `dependabot.yml`, run this from the repository root and commit the result:
+```bash
+node .github/scripts/generate-stack.mjs
+```
+`node .github/scripts/generate-stack.mjs --check` fails if the file is out of date or a package has no description (add it to `ROLES` in the script).
+
 ## Where things go
 See [docs/ORGANIZATION.md](docs/ORGANIZATION.md).
 
