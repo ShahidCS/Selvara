@@ -26,6 +26,8 @@ export const TRUST: {
 export interface AnswerLibEntry { q: string; a: string; verified: boolean; uses: number; author?: string; editedBy?: string; verifiedBy?: string }
 export const ANSWER_LIB: AnswerLibEntry[] = clone(seed.ANSWER_LIB);
 export const KB_DOCS: { name: string; type: string }[] = clone(seed.KB_DOCS);
+/** Records a vendor's answer to question `i` (the source mutated VENDOR_Q on every input event). */
+export function setVendorAnswer(i: number, answer: string) { VENDOR_Q[i].a = answer; }
 export const VENDOR_Q: { q: string; a: string; required: boolean }[] = clone(seed.VENDOR_Q);
 
 export const INCIDENT: { active: boolean; started: string | null; startedBy?: string; closedBy?: string } = { active: false, started: null };

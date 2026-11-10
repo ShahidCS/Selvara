@@ -2,12 +2,10 @@
 import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 import nextTypescript from "eslint-config-next/typescript";
 
-// Two React rules the code migrated from the prototype still breaks in places. Both need real refactoring, not tidying:
-//  - react-hooks/immutability: forms mutate a shared state object in place (controls modals, framework detail/add, vendor portal)
-//  - react-hooks/set-state-in-effect: effects that set state synchronously (sidebar, auth panels, support grants, elevation)
-// They are warnings, and `npm run lint` caps the warning count (see package.json) so the number can only go down.
-// Fix a violation, lower the cap. Every other rule is an error.
-const LEGACY = ["react-hooks/immutability", "react-hooks/set-state-in-effect"];
+// react-hooks/set-state-in-effect still has one known violation, in src/lib/elevation.ts (a protected file: the elevated-session
+// clock sets state when the session starts). It is a warning, and `npm run lint` caps the warning count (see package.json) so a
+// second one fails. Fix it and drop this entry. Every other rule, including react-hooks/immutability, is an error.
+const LEGACY = ["react-hooks/set-state-in-effect"];
 
 const config = [
   ...nextCoreWebVitals,

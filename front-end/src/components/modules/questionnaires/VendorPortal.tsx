@@ -3,7 +3,7 @@ import { Icon, Page } from "@/components/ui";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { wsLog } from "@/lib/audit";
 import { clampText } from "@/lib/security";
-import { VENDOR_Q } from "@/lib/trustData";
+import { VENDOR_Q, setVendorAnswer } from "@/lib/trustData";
 import * as svc from "@/services/questionnaires";
 
 const FAIL = "Something went wrong. Please try again.";
@@ -15,7 +15,7 @@ export default function VendorPortal({ L }: { L: LayerApi }) {
   const answered = ans.filter((a) => a.trim()).length;
   const total = VENDOR_Q.length;
   // source mutated VENDOR_Q[i].a on every input event
-  const set = (i: number, v: string) => { const n = v.slice(0, MAXLEN); VENDOR_Q[i].a = n; setAns((p) => p.map((x, j) => (j === i ? n : x))); };
+  const set = (i: number, v: string) => { const n = v.slice(0, MAXLEN); setVendorAnswer(i, n); setAns((p) => p.map((x, j) => (j === i ? n : x))); };
   const clean = () => ans.map((a) => clampText(a, MAXLEN));
   const saveDraft = async () => { try { await svc.saveVendorAnswers(clean()); L.toast("Draft saved"); } catch { L.toast(FAIL, false); } };
   const submit = async () => {

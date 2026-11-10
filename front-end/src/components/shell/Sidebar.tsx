@@ -52,7 +52,11 @@ export function Sidebar() {
   const s = useApp((x) => x);
   const space = route.space === "admin" ? "admin" : "ws";
   const spaces = allowedSpaces(s.role);
-  const [tip, setTip] = useState<{ anchor: HTMLElement; label: string; parent?: string } | null>(null);
+  type Tip = { anchor: HTMLElement; label: string; parent?: string };
+  const tipKey = `${s.collapsed}|${route.mod}`;
+  const [tipState, setTipState] = useState<{ tip: Tip; key: string } | null>(null);
+  const tip = tipState && tipState.key === tipKey ? tipState.tip : null;
+  const setTip = (t: Tip | null) => setTipState(t ? { tip: t, key: tipKey } : null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const lastMod = useRef<string | null>(null);
   const navRef = useRef<HTMLElement>(null);
@@ -67,7 +71,7 @@ export function Sidebar() {
     }
   }, [route.mod]);
   useEffect(() => { if (navRef.current) navRef.current.scrollTop = scrollTop.current; });
-  useEffect(() => { hide(); }, [s.collapsed, route.mod]);
+  useEffect(() => { clearTimeout(timer.current); }, [s.collapsed, route.mod]); // cancel a pending flyout; a shown one is dropped by tipKey
 
   const groups = (NAV[space] || []).map((g) => ({ g: g.g, items: g.items.filter((it) => modAllowed(s.role, space, it[0])) })).filter((g) => g.items.length);
   // like the prototype, a group's open state is fixed the first time it is rendered (the active group opens, others stay closed)

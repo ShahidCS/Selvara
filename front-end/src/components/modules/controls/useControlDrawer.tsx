@@ -110,7 +110,7 @@ function AttestBody({ h, c }: { h: FormHandle; c: any }) {
     <>
       <p style={{ margin: "0 0 8px" }}>The control owner confirms this control is designed appropriately and operating as intended for the current period.</p>
       <div className="field"><label htmlFor="ca-by">Attested by</label><input className="input" id="ca-by" value={getActor().name} readOnly /><p className="field help">Only the control owner ({c.owner}) can attest; the name is set from your sign-in.</p></div>
-      <div className="field"><label htmlFor="ca-note">Statement {REQ}</label><textarea className="input" id="ca-note" rows={2} style={{ resize: "vertical" }} placeholder="e.g. Reviewed configuration and evidence; control operating effectively" ref={(e) => { h.els.note = e; }} /></div>
+      <div className="field"><label htmlFor="ca-note">Statement {REQ}</label><textarea className="input" id="ca-note" rows={2} style={{ resize: "vertical" }} placeholder="e.g. Reviewed configuration and evidence; control operating effectively" ref={h.ref("note")} /></div>
       <p className="field help" id="ca-err" role={err ? "alert" : undefined} style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>A statement is required.</p>
     </>
   );
@@ -136,8 +136,8 @@ function MappingBody({ h }: { h: FormHandle }) {
   return (
     <>
       <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <div className="field"><label htmlFor="cm-fw">Framework</label><select className="select" id="cm-fw" ref={(e) => { h.els.fw = e; }}>{DATA.frameworks.map((f) => <option key={f.id} value={f.id}>{FW_SHORT[f.id] || f.id}</option>)}</select></div>
-        <div className="field"><label htmlFor="cm-ref">Requirement code {REQ}</label><input className="input" id="cm-ref" placeholder="e.g. A.8.9" ref={(e) => { h.els.ref = e; }} /></div>
+        <div className="field"><label htmlFor="cm-fw">Framework</label><select className="select" id="cm-fw" ref={h.ref("fw")}>{DATA.frameworks.map((f) => <option key={f.id} value={f.id}>{FW_SHORT[f.id] || f.id}</option>)}</select></div>
+        <div className="field"><label htmlFor="cm-ref">Requirement code {REQ}</label><input className="input" id="cm-ref" placeholder="e.g. A.8.9" ref={h.ref("ref")} /></div>
       </div>
       <p className="field help" id="cm-err" role={err ? "alert" : undefined} style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>Requirement code is required.</p>
     </>

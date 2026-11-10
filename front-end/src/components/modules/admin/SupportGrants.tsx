@@ -1,13 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Chip, Table } from "@/components/ui";
 import { fmtUtc, getSupportGrants } from "@/lib/elevation";
 import { CUSTOMERS } from "@/lib/platform";
 
+const noopSubscribe = () => () => {};
+
 /** Customer-approved, time-boxed, read-only support grants (board: no standing access to customer content). Status is computed from the expiry timestamp. */
 export function SupportGrants() {
-  const [now, setNow] = useState<number | null>(null);
-  useEffect(() => { setNow(Date.now()); const iv = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(iv); }, []);
-  const rows = now === null ? [] : getSupportGrants();
+  // false on the server and during hydration, true afterwards: the table renders empty first, so server and client markup match
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const iv = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(iv); }, []);
+  const rows = mounted ? getSupportGrants() : [];
   return (
     <div className="card">
       <div className="c-head"><h3>Customer-approved support grants</h3></div>
@@ -15,7 +19,7 @@ export function SupportGrants() {
       <div className="c-body flush" style={{ padding: 0 }}>
         <Table cols={[{ t: "Grant" }, { t: "Customer" }, { t: "Approved by" }, { t: "Approved" }, { t: "Access" }, { t: "Expires" }, { t: "Status" }]}>
           {rows.map((g) => {
-            const live = (now as number) < g.expiresAt;
+            const live = now < g.expiresAt;
             return (
               <tr key={g.id}>
                 <td className="strong num">{g.id}</td><td>{CUSTOMERS[g.custId] ? CUSTOMERS[g.custId].name : "Unknown customer"}</td>

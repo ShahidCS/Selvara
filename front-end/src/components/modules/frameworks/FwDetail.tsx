@@ -3,7 +3,7 @@ import { Chip, Icon, ReqStatusPill, Table, StatusChip, Empty } from "@/component
 import { ANNEXA, DATA, FRAMEWORK_REQS, annexCovered, controlsForFw } from "@/lib/data";
 import { useModState, setModState } from "@/lib/store";
 import {
-  REQ_PAGE, REQ_ST, REQ_ST_COL, fwBand, fwCanAdmin, fwEdits, fwGroupMap, fwGroupStat, fwReqControls, fwScore, fwSnoozed, reqCtrl, reqStatus, touchFw,
+  REQ_PAGE, REQ_ST, REQ_ST_COL, fwBand, fwCanAdmin, fwEdits, fwGroupMap, fwGroupStat, fwReqControls, fwScore, fwSnoozed, clearReqNA, reqStatus, setReqNA, toggleReqControl, touchFw,
 } from "@/lib/frameworks";
 import { csvCell, downloadText, nowStamp } from "@/lib/format";
 import { getMe, wsLog } from "@/lib/audit";
@@ -172,21 +172,18 @@ function ReqRow({ fwId, r }: { fwId: string; r: string[] }) {
   const mapCtrl = (ctrlId: string) => {
     if (!fwCanAdmin()) return;
     const c = DATA.controls.find((x) => x.id === ctrlId); if (!c) return;
-    const RC = reqCtrl(); RC[fwId] = RC[fwId] || {};
-    const arr = (RC[fwId][id] = RC[fwId][id] || []); const i = arr.indexOf(ctrlId);
-    if (i >= 0) { arr.splice(i, 1); wsLog("framework.req.unmap", fwId + " " + id + " ✕ " + ctrlId, "Control"); L.toast(ctrlId + " unmapped from " + id); }
-    else { arr.push(ctrlId); wsLog("framework.req.map", fwId + " " + id + " ← " + ctrlId, "Control"); L.toast(ctrlId + " mapped to " + id); }
-    E.MOD[fwId] = E.MOD[fwId] || {}; E.MOD[fwId][id] = { by: getMe().name, date: nowStamp().slice(0, 10) };
+    const res = toggleReqControl(fwId, id, ctrlId, getMe().name, nowStamp().slice(0, 10));
+    if (res === "unmapped") { wsLog("framework.req.unmap", fwId + " " + id + " ✕ " + ctrlId, "Control"); L.toast(ctrlId + " unmapped from " + id); }
+    else { wsLog("framework.req.map", fwId + " " + id + " ← " + ctrlId, "Control"); L.toast(ctrlId + " mapped to " + id); }
     setPick((p) => { const n = { ...p }; delete n[id]; return n; }); setE(id, null); touchFw();
   };
   const doMap = () => { const cid = pick[id]; if (!cid) { setE(id, "Choose a control first."); return; } mapCtrl(cid); };
   const toggleNA = () => {
     if (!fwCanAdmin()) return;
-    E.NA[fwId] = E.NA[fwId] || {};
-    if (E.NA[fwId][id]) { delete E.NA[fwId][id]; wsLog("framework.req.applicable", fwId + " " + id, "Control"); L.toast(id + " back in scope"); setE(id, null); touchFw(); return; }
+    if (clearReqNA(fwId, id)) { wsLog("framework.req.applicable", fwId + " " + id, "Control"); L.toast(id + " back in scope"); setE(id, null); touchFw(); return; }
     const why = String(nat[id] || "").trim();
     if (why.length < 15) { setE(id, "Justify why it does not apply (at least 15 characters); auditors review this."); return; }
-    E.NA[fwId][id] = { reason: why, by: getMe().name, date: nowStamp().slice(0, 10) };
+    setReqNA(fwId, id, why, getMe().name, nowStamp().slice(0, 10));
     setNat((p) => { const n = { ...p }; delete n[id]; return n; }); setE(id, null);
     wsLog("framework.req.na", fwId + " " + id, "Control"); L.toast(id + " marked not applicable"); touchFw();
   };

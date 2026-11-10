@@ -99,3 +99,28 @@ import { useSyncExternalStore } from "react";
 export function useFwEdits() { return useSyncExternalStore(fwEdits.subscribe, fwEdits.get, fwEdits.get); }
 /** Call after mutating fwEdits in place so subscribers re-render. */
 export const touchFw = () => fwEdits.set({});
+
+/** Registers the requirement catalogue of a newly added framework. */
+export function registerFrameworkReqs(fwId: string, reqs: string[][]) { FRAMEWORK_REQS[fwId] = { g: [["", "General"]], r: reqs }; }
+
+/** Maps or unmaps a control on a requirement and records who edited it. Returns what happened. */
+export function toggleReqControl(fwId: string, reqId: string, ctrlId: string, by: string, date: string): "mapped" | "unmapped" {
+  const RC = reqCtrl(); RC[fwId] = RC[fwId] || {};
+  const arr = (RC[fwId][reqId] = RC[fwId][reqId] || []); const i = arr.indexOf(ctrlId);
+  let res: "mapped" | "unmapped";
+  if (i >= 0) { arr.splice(i, 1); res = "unmapped"; } else { arr.push(ctrlId); res = "mapped"; }
+  const E = fwEdits.get(); E.MOD[fwId] = E.MOD[fwId] || {}; E.MOD[fwId][reqId] = { by, date };
+  return res;
+}
+
+/** Puts a requirement back in scope. Returns true if it was marked not applicable. */
+export function clearReqNA(fwId: string, reqId: string): boolean {
+  const E = fwEdits.get(); E.NA[fwId] = E.NA[fwId] || {};
+  if (!E.NA[fwId][reqId]) return false;
+  delete E.NA[fwId][reqId]; return true;
+}
+
+/** Marks a requirement not applicable, with the justification and who recorded it. */
+export function setReqNA(fwId: string, reqId: string, reason: string, by: string, date: string) {
+  const E = fwEdits.get(); E.NA[fwId] = E.NA[fwId] || {}; E.NA[fwId][reqId] = { reason, by, date };
+}

@@ -99,9 +99,11 @@ export function SetPassword({ api, pfx }: { api: PanelApi; pfx: "ap" | "rp" }) {
   const r1 = useRef<HTMLInputElement>(null); const r2 = useRef<HTMLInputElement>(null); const rc = useRef<HTMLInputElement>(null);
   const req = useRef(0);
   const ctx: PwContext = pfx === "ap" ? { email: INVITED_EMAIL } : {};
+  const [prevPw, setPrevPw] = useState(pw);
+  if (prevPw !== pw) { setPrevPw(pw); if (!pw) setBreached(false); } // clearing the field clears the flag
   useEffect(() => {
     const id = ++req.current;
-    if (!pw) { setBreached(false); return; }
+    if (!pw) return;
     const t = setTimeout(() => { svc.checkBreached(pw).then((r) => { if (id === req.current) setBreached(r.breached); }, () => undefined); }, 400);
     return () => clearTimeout(t);
   }, [pw]);
