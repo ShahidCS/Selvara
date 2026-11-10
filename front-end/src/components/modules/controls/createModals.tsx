@@ -11,10 +11,10 @@ function ControlBody({ h }: { h: FormHandle }) {
   const err = useErrFlag(h);
   return (
     <>
-      <div className="field"><label htmlFor="cc-title">Control title {REQ}</label><input className="input" id="cc-title" placeholder="e.g. Secrets rotated every 90 days" ref={(e) => { h.els.title = e; }} /></div>
+      <div className="field"><label htmlFor="cc-title">Control title {REQ}</label><input className="input" id="cc-title" placeholder="e.g. Secrets rotated every 90 days" ref={h.ref("title")} /></div>
       <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <div className="field"><label htmlFor="cc-dom">Domain</label><select className="select" id="cc-dom" ref={(e) => { h.els.dom = e; }}>{svc.CONTROL_DOMAINS.map((d) => <option key={d}>{d}</option>)}</select></div>
-        <div className="field"><label htmlFor="cc-owner">Owner</label><input className="input" id="cc-owner" defaultValue={getActor().name} ref={(e) => { h.els.owner = e; }} /></div>
+        <div className="field"><label htmlFor="cc-dom">Domain</label><select className="select" id="cc-dom" ref={h.ref("dom")}>{svc.CONTROL_DOMAINS.map((d) => <option key={d}>{d}</option>)}</select></div>
+        <div className="field"><label htmlFor="cc-owner">Owner</label><input className="input" id="cc-owner" defaultValue={getActor().name} ref={h.ref("owner")} /></div>
       </div>
       <p className="field help" id="cc-err" role={err ? "alert" : undefined} style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>Control title is required.</p>
     </>
@@ -39,11 +39,11 @@ function TestBody({ h, ctrlOpts }: { h: FormHandle; ctrlOpts: string[] }) {
   const err = useErrFlag(h);
   return (
     <>
-      <div className="field"><label htmlFor="tc-name">Test name {REQ}</label><input className="input" id="tc-name" placeholder="e.g. Object storage buckets are private" ref={(e) => { h.els.name = e; }} /></div>
-      <div className="field"><label htmlFor="tc-logic">Condition each resource must meet</label><textarea className="input" id="tc-logic" rows={2} style={{ resize: "vertical" }} placeholder="e.g. bucket.public = false" ref={(e) => { h.els.logic = e; }} /></div>
+      <div className="field"><label htmlFor="tc-name">Test name {REQ}</label><input className="input" id="tc-name" placeholder="e.g. Object storage buckets are private" ref={h.ref("name")} /></div>
+      <div className="field"><label htmlFor="tc-logic">Condition each resource must meet</label><textarea className="input" id="tc-logic" rows={2} style={{ resize: "vertical" }} placeholder="e.g. bucket.public = false" ref={h.ref("logic")} /></div>
       <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <div className="field"><label htmlFor="tc-src">Source</label><input className="input" id="tc-src" defaultValue="Custom" ref={(e) => { h.els.src = e; }} /></div>
-        <div className="field"><label htmlFor="tc-ctrl">Supports control</label><select className="select" id="tc-ctrl" ref={(e) => { h.els.ctrl = e; }}>{ctrlOpts.map((c) => <option key={c}>{c}</option>)}</select></div>
+        <div className="field"><label htmlFor="tc-src">Source</label><input className="input" id="tc-src" defaultValue="Custom" ref={h.ref("src")} /></div>
+        <div className="field"><label htmlFor="tc-ctrl">Supports control</label><select className="select" id="tc-ctrl" ref={h.ref("ctrl")}>{ctrlOpts.map((c) => <option key={c}>{c}</option>)}</select></div>
       </div>
       <p className="field help" id="tc-err" role={err ? "alert" : undefined} style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>Test name is required.</p>
     </>

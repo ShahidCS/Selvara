@@ -1,7 +1,7 @@
 import { Chip, Icon, Table } from "@/components/ui";
-import { DATA, FRAMEWORK_REQS, controlsForFw, refreshFrameworkCounts } from "@/lib/data";
+import { DATA, controlsForFw, refreshFrameworkCounts } from "@/lib/data";
 import { useModState } from "@/lib/store";
-import { REQ_PAGE, fwCanAdmin, fwEdits, seedReqCtrlFw, seedReqCtrl, touchFw } from "@/lib/frameworks";
+import { REQ_PAGE, fwCanAdmin, fwEdits, seedReqCtrlFw, seedReqCtrl, registerFrameworkReqs, touchFw } from "@/lib/frameworks";
 import { FW_DOM, FW_TPL } from "@/lib/fwTemplates";
 import { wsLog } from "@/lib/audit";
 import { useLayer } from "@/hooks/useLayer";
@@ -31,7 +31,7 @@ export function FwAdd({ onAdded }: { onAdded: (id: string) => void }) {
     const id = A.tpl || "custom-" + sh.toLowerCase().replace(/[^a-z0-9]+/g, "-");
     if (DATA.frameworks.some((f) => f.id === id)) { set({ err: "That framework is already in the library." }); return; }
     const reqs = lines.map((l, i) => { const m = FW_DOM.find((x) => x[1].test(l)); return ["R" + (i + 1), l.slice(0, 200), "", m ? "Maps to " + m[0] + " control domain." : "No existing control domain matched; a new control is needed."]; });
-    FRAMEWORK_REQS[id] = { g: [["", "General"]], r: reqs };
+    registerFrameworkReqs(id, reqs);
     const mapped = reqs.filter((r) => /Maps to/.test(r[3])).length; const pct = reqs.length ? Math.round((mapped / reqs.length) * 100) : 0;
     DATA.frameworks.push({ id, name: fn, kind: A.kind, region: (A.region || "Global").trim(), pct, controls: 0, gaps: reqs.length - mapped, audit: "New, mapping draft", mapped: 0 });
     refreshFrameworkCounts(); void controlsForFw;
