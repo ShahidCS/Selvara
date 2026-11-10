@@ -10,6 +10,7 @@ Selvara is a GRC portal: Next.js 16 (Pages Router), React 19, TypeScript, Tailwi
 - All three: `npm run ci`
 - End to end: `npm run test:e2e`
 - Pipeline policy checks (from the repo root): `node .github/scripts/check-workflows.mjs`, `bash .github/scripts/verify-pins.sh`
+- After changing dependencies, `tsconfig.json`, the Node version or `dependabot.yml`, regenerate the stack doc from the repo root: `node .github/scripts/generate-stack.mjs` (and `node .github/scripts/generate-notices.mjs` for production dependencies). `--check` verifies it.
 - Lint: `npm run lint` (ESLint flat config in `front-end/eslint.config.mjs`). It is clean and `--max-warnings=0` in `package.json` keeps it that way: fix a new warning, do not downgrade the rule or raise the cap.
 
 ## Layout

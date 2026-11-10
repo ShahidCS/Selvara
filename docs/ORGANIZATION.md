@@ -4,7 +4,7 @@
 | Path | Purpose |
 |---|---|
 | `front-end/` | The Next.js application, with its own `package.json`. Kept as one folder because Vercel, the workflows and Dependabot point at it. |
-| `docs/architecture/` | What the product is and why: inventory, decisions, frameworks, porting guide, spec-board comparison |
+| `docs/architecture/` | What the product is and why: inventory, decisions, frameworks, porting guide, spec-board comparison, and `STACK.md` (every package and version, generated) |
 | `docs/guides/` | How to work with it: testing, and `CHECKLIST.md` (source feature to React component map) with per-module notes in `checklist/` |
 | `docs/security/` | Security contract and posture: SoD matrix, controls and limitations, pipeline, accepted risks |
 | `docs/screenshots/` | Images used by the README |
