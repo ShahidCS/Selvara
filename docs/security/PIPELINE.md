@@ -10,7 +10,7 @@ Every change reaches production only through GitHub Actions. Pull requests run q
 
 ```mermaid
 flowchart LR
-  PR[Pull request] --> CI[CI: typecheck, unit, build, audit, e2e]
+  PR[Pull request] --> CI[CI: typecheck, lint, unit, build, audit, e2e]
   PR --> SEC[Security gates]
   SEC --> RS{{Ruleset: required checks, signed commits, review}}
   CI --> RS
@@ -28,7 +28,7 @@ flowchart LR
 
 | File | Trigger | What it does |
 |---|---|---|
-| `.github/workflows/ci.yml` | pull request; reused by staging and release | Typecheck, unit tests, build, `npm audit`, Playwright end-to-end suite. Installs with `--ignore-scripts`. |
+| `.github/workflows/ci.yml` | pull request; reused by staging and release | Typecheck, lint, unit tests, build, `npm audit`, Playwright end-to-end suite. Installs with `--ignore-scripts`. |
 | `.github/workflows/security.yml` | pull request, weekly, reused by staging and release | Workflow policy, CodeQL, Gitleaks, dependency review, licence policy, OSV, Trivy, ZAP baseline. |
 | `.github/workflows/deploy-staging.yml` | push to `main` | CI + Security, then deploys to the `staging` environment. |
 | `.github/workflows/release.yml` | push of a `vX.Y.Z` tag | Verifies the signed tag, CI + Security, deploys to `production` after approval, publishes a GitHub Release. |
@@ -40,7 +40,7 @@ Policy: **High and Critical findings block; Medium and below are reported.**
 
 | Gate | Blocks | Source of truth |
 |---|---|---|
-| Typecheck, unit tests, build | merge and deploy | `ci.yml` |
+| Typecheck, lint, unit tests, build | merge and deploy | `ci.yml` |
 | End-to-end suite (all routes, access matrix, gates, injection, vendor portal, headers) | merge and deploy | `ci.yml`, `front-end/e2e` |
 | `npm audit` production dependencies, High and above | merge and deploy | `ci.yml` |
 | Workflow policy (pinned actions, permissions, no `pull_request_target`, no script injection, timeouts, no persisted credentials) | merge and deploy | `.github/scripts/check-workflows.mjs` |
@@ -228,7 +228,7 @@ The full register, with owners, compensating controls, expiry dates and exit cri
 ## What has and has not been proven
 
 **Proven on GitHub and Vercel (2026-11-09, pull requests 11 to 16 and Deploy staging run 10):**
-- Every gate runs and passes on a pull request and on `main`: typecheck, unit tests, build, the shipped-output check, the third-party notices check, the runtime dependency audit, Playwright, workflow policy, CodeQL (gated on its own SARIF), Gitleaks (including a full-history scan), licence policy, deploy-tooling audit, Trivy and the ZAP baseline.
+- Every gate runs and passes on a pull request and on `main`: typecheck, lint, unit tests, build, the shipped-output check, the third-party notices check, the runtime dependency audit, Playwright, workflow policy, CodeQL (gated on its own SARIF), Gitleaks (including a full-history scan), licence policy, deploy-tooling audit, Trivy and the ZAP baseline.
 - Staging deployment end to end: the Vercel build with no secrets, the shipped-output check, the deterministic archive and SBOM, then deploying exactly that checksum-verified archive to Vercel and a smoke test of the live security headers. The token reaches only the deploy step (it shows as `***`).
 - The credential presence check (true/false per credential, never a value) and its fail-fast message.
 - `apply-settings.sh` against the live API, including its fallbacks on a plan without environment protection or rulesets.

@@ -8,6 +8,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 - Documentation moved into `docs/architecture/`, `docs/guides/` and `docs/security/`; `front-end/docs/` no longer exists.
 
 ### Added
+- Lint step in CI (`ci.yml`, inside the existing `verify` job, so required check names are unchanged).
 - ESLint flat config (`front-end/eslint.config.mjs`); `npm run lint` works again (`next lint` was removed in Next 16). Existing violations are warnings under a ratcheting cap.
 - `CONTRIBUTING.md`, `AGENTS.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, `.editorconfig`, `.gitattributes`, `.git-blame-ignore-revs`, issue templates and `docs/ORGANIZATION.md`.
 - Secure CI/CD pipeline: static analysis, secret and dependency scanning, licence policy, SBOM, container and dynamic scanning, staging deploy and tag-driven production release.
