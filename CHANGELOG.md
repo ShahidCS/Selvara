@@ -6,7 +6,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ### Changed
 - CI: the Chromium install step refreshes the package index and retries up to 3 times. One run failed because the Ubuntu archive index did not load on a runner image (every font package "unable to locate"); tests themselves are never retried.
-- Lint warnings cut from 63 to 1: unused imports and variables, unused disable directives, `any` replaced with real types, in-app links use `next/link`, and the in-place state mutations and set-state-in-effect patterns removed (form handles own their mutation, store edits live in `lib/`, derived state replaces effects). The last warning is in the protected `src/lib/elevation.ts`; the cap is 1.
+- Lint is clean: 63 warnings cleared (unused imports and variables, unused disable directives, `any` replaced with real types, in-app links use `next/link`, in-place state mutations and set-state-in-effect patterns removed). No rule is downgraded and `npm run lint` fails on any warning (`--max-warnings=0`). The elevated-session clock in `src/lib/elevation.ts` no longer sets state in an effect: its clock is floored at the session's `startedAt`.
 - Documentation moved into `docs/architecture/`, `docs/guides/` and `docs/security/`; `front-end/docs/` no longer exists.
 
 ### Added
