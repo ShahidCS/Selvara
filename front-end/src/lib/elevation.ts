@@ -126,15 +126,17 @@ export function useElevation(): ElevationView {
   useEffect(() => {
     expireIfDue();
     if (!e) return;
-    setNow(Date.now());
     const iv = setInterval(() => { setNow(Date.now()); expireIfDue(); }, 1000);
     const to = setTimeout(expireIfDue, Math.max(0, e.until - Date.now()) + 50);
     return () => { clearInterval(iv); clearTimeout(to); };
   }, [e]);
   useEffect(() => { if (e && (!canElevate(role) || e.roleId !== role)) endElevation("ended", "Role changed; session dropped to non-privileged"); }, [e, role]);
-  const live = !!e && canElevate(role) && e.roleId === role && e.until > now;
+  // `now` only ticks while a session is active, so it can be stale when a new one starts. A session never starts in the future, so the
+  // clock is never read earlier than its start: the first frame is accurate without setting state in the effect.
+  const clock = e ? Math.max(now, e.startedAt) : now;
+  const live = !!e && canElevate(role) && e.roleId === role && e.until > clock;
   return {
-    active: live, until: e ? e.until : null, reason: e ? e.reason : "", remainingMs: e ? Math.max(0, e.until - now) : 0, ticket: e ? e.ticket : "",
+    active: live, until: e ? e.until : null, reason: e ? e.reason : "", remainingMs: e ? Math.max(0, e.until - clock) : 0, ticket: e ? e.ticket : "",
     canElevate: canElevate(role), last, request: (r, m, t) => startElevation(appStore.get().role, r, m, t), end: () => endElevation("ended"),
   };
 }
