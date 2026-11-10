@@ -5,6 +5,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ## [Unreleased]
 
 ### Changed
+- `front-end/tsconfig.json`: removed `baseUrl` and made the `@/*` path mapping relative (`./src/*`). Behaviour is identical on TypeScript 5.5.3; it removes the config error that TypeScript 6 deprecates and TypeScript 7 rejects (prepares the TypeScript upgrade).
 - Tailwind CSS 3.4.6 → 4.3.4 (with `@tailwindcss/postcss`; `autoprefixer` removed, Tailwind 4's optimiser adds the prefixes). CSS-first setup: `tailwind.config.js` is replaced by `@theme` and explicit cascade layers in `src/styles/globals.css`. The legacy donut chart class `ring` is renamed `donut` because it collided with Tailwind's `ring` utility. Verified: computed styles of all 14,744 elements across 36 routes are identical before and after. Dependabot no longer ignores the Tailwind major.
 - CI: the Chromium install step refreshes the package index and retries up to 3 times. One run failed because the Ubuntu archive index did not load on a runner image (every font package "unable to locate"); tests themselves are never retried.
 - Lint is clean: 63 warnings cleared (unused imports and variables, unused disable directives, `any` replaced with real types, in-app links use `next/link`, in-place state mutations and set-state-in-effect patterns removed). No rule is downgraded and `npm run lint` fails on any warning (`--max-warnings=0`). The elevated-session clock in `src/lib/elevation.ts` no longer sets state in an effect: its clock is floored at the session's `startedAt`.
