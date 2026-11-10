@@ -19,6 +19,7 @@ Selvara is a GRC portal: Next.js 16 (Pages Router), React 19, TypeScript, Tailwi
 - `.github/` workflows, local composite action, pipeline scripts, rulesets, CODEOWNERS.
 
 ## Conventions
+- Feature boundaries: code used by one feature lives in `src/features/<name>/` (components, `services/`, `lib/`, `data/`). Another feature or a page imports it only through `@/features/<name>` (its `index.ts`). Shared code (`lib`, `services`, `hooks`, `components`, `data`) never imports a feature. ESLint enforces this (`eslint.config.mjs`). Code used by two or more features goes in shared code, for example `src/components/kit/`.
 - Business rules live in `src/services` and `src/lib`, deny by default, throw `SodError`, write an audit entry. UI gating is never the control.
 - Never self-approve: follow `docs/security/SOD_MATRIX.md`.
 - Synthetic data only. No secrets, tokens or real personal data anywhere.

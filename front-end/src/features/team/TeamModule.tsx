@@ -6,11 +6,11 @@ import { useEffect } from "react";
 import { sodMessage, settle } from "@/lib/approvalFlow";
 import { memberRole } from "@/lib/teamRoles";
 import { sodReason } from "@/lib/sod";
-import { PendingApprovals } from "../mfa/PendingApprovals";
+import { PendingApprovals } from "@/features/mfa";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
 import * as svc from "@/services/team";
-import { openPersonDrawer } from "../people/PersonDrawer";
+import { openPersonDrawer } from "@/features/people";
 import { ApproverForm, ChangeRoleForm, InviteForm } from "./TeamForms";
 import { SettingsTab } from "./SettingsTab";
 

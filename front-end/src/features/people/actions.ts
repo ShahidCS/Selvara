@@ -1,6 +1,6 @@
 import { createElement, useCallback } from "react";
 import { useLayer } from "@/hooks/useLayer";
-import { MemberResetForm } from "../mfa/ResetRequestForm";
+import { MemberResetForm } from "@/features/mfa";
 
 /** Reset MFA for a member: opens the request form (3 identity checks, ticket, reason, named approver). The reset is applied only after approval (services/people.ts). */
 export function useResetMfa() {

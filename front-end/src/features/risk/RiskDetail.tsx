@@ -14,7 +14,7 @@ import { bumpData, setModState, useApp, useData } from "@/lib/store";
 import { SOD, hasRole, isMe, sodReason } from "@/lib/sod";
 import { BOARD_BODIES, riskNeedsBoard } from "@/lib/riskBoard";
 import { safeFileName } from "@/lib/security";
-import { useControlDrawer } from "../controls/useControlDrawer";
+import { useControlDrawer } from "@/features/controls";
 import { attemptR } from "./util";
 import * as svc from "@/features/risk/services/risks";
 import { riskOpenActions } from "@/lib/risk";

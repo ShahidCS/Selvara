@@ -12,8 +12,8 @@ and write the question into your module's checklist file under "Open questions".
 | Original CSS (verbatim) | `src/styles/portal.css`. Reuse the same class names. Add new CSS to `src/styles/modules.css` only when the source had inline `<style>` for it (and import it from `globals.css`). |
 | Shell, layers | `src/components/shell/*` (Sidebar, Topbar, AppShell, LayerProvider) |
 | UI primitives | `src/components/ui` : `Icon`, `Chip`, `StatusChip`, `ReqStatusPill`, `Kpi`, `Delta`, `Table`, `Page`, `Empty`, `Ring`, `Spark`, `TrendChart` |
-| One module = one file | `src/features/<name>/<Name>Module.tsx` (default export). Registry already imports every file: `registry.ts` |
-| Module-private subcomponents | `src/features/<name>/*.tsx`; shared pieces live in `src/components/kit/` |
+| One module = one file | `src/features/<name>/<Name>Module.tsx` (default export). Export it from the feature's `index.ts`; `features/registry.ts` imports from there |
+| Module-private subcomponents, services, lib and seed data | `src/features/<name>/` (subfolders `services/`, `lib/`, `data/`); shared pieces live in `src/components/kit/`; other features use the `index.ts` only |
 | Demo data (synthetic) | `src/lib/data.ts` -> `DATA` (mutable), `src/lib/platform.ts` (customers, MFA requests, ...), `src/data/*.json` |
 | State | `src/lib/store.ts` : `appStore/useApp` (role, theme, collapsed), `useData()` + `bumpData()`, `useModState(key, init)` |
 | RBAC | `src/lib/rbac.ts` (`ROLES`, `ROLE_MODS`, `roleOf`, `modAllowed`, `fwCanAdmin`) |

@@ -4,7 +4,7 @@ import { sodMessage } from "@/lib/approvalFlow";
 import { bumpData } from "@/lib/store";
 import { ACCESS_REQUESTS } from "@/lib/requests";
 import * as svc from "@/services/access";
-import { DecisionForm } from "../mfa/PendingApprovals";
+import { DecisionForm } from "@/features/mfa";
 
 export function AccessRequests({ canAct }: { canAct: boolean }) {
   const L = useLayer();

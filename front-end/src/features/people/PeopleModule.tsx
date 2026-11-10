@@ -3,11 +3,11 @@ import { DATA } from "@/lib/data";
 import { useApp, useData, useModState } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
 import { canManagePeople } from "@/services/people";
-import { GrantsTable } from "../access/GrantsTable";
+import { GrantsTable } from "@/features/access";
 import { ContractorForm } from "./ContractorForm";
 import { openPersonDrawer } from "./PersonDrawer";
 import { useResetMfa } from "./actions";
-import { PendingApprovals } from "../mfa/PendingApprovals";
+import { PendingApprovals } from "@/features/mfa";
 import { KINDS } from "@/services/people";
 import { sodReason } from "@/lib/sod";
 

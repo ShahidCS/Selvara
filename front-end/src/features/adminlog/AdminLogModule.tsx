@@ -5,10 +5,10 @@ import { ropaById, ropaFor } from "@/lib/ropa";
 import { useApp, useData, useModState } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
 import * as svc from "@/features/adminlog/services/adminlog";
-import { openConfirmReset } from "../team/ResetDemo";
+import { openConfirmReset } from "@/features/team";
 import { useGate } from "@/components/kit/admin/ElevateGate";
 import { AdminChainView, AdminExportsView } from "./AdminViews";
-import { RopaRegister } from "../auditlog/RopaRegister";
+import { RopaRegister } from "@/features/auditlog";
 
 const VIEWS: [string, string][] = [["log", "Audit log"], ["chain", "Chain integrity"], ["ropa", "RoPA register"], ["exp", "Evidence export"]];
 const FAIL = "Could not complete that action";

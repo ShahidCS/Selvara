@@ -9,7 +9,7 @@ import { csvCell, downloadText, nowStamp } from "@/lib/format";
 import { getMe, wsLog } from "@/lib/audit";
 import { useLayer } from "@/hooks/useLayer";
 import { useGo } from "@/lib/route";
-import { useControlDrawer } from "../controls/useControlDrawer";
+import { useControlDrawer } from "@/features/controls";
 import { FwSegsBar } from "./FwSegsBar";
 
 export function FwDetail({ fwId, onClose }: { fwId: string; onClose: () => void }) {

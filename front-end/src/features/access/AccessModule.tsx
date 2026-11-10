@@ -4,7 +4,7 @@ import { useApp, useData, useModState } from "@/lib/store";
 import { ACCESS_REQUESTS, ACCESS_REVIEWS } from "@/lib/requests";
 import { useLayer } from "@/hooks/useLayer";
 import { ACCESS_VIEWS, canActOnAccess } from "@/services/access";
-import { AccessRequestForm } from "../work/RequestModals";
+import { AccessRequestForm } from "@/features/work";
 import { GrantsTable } from "./GrantsTable";
 import { AccessRequests } from "./AccessRequests";
 import { AccessReviews } from "./AccessReviews";
