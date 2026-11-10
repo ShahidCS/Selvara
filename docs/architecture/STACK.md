@@ -43,7 +43,7 @@
 | `eslint-config-next` | Next.js, React and React Hooks lint rules | `^16.4.5` | `16.4.5` |
 | `postcss` | CSS processing engine that the Tailwind plugin runs on | `8.5.32` | `8.5.32` |
 | `tailwindcss` | Utility CSS (v4), mapped to the original design tokens; utilities only, no reset (preflight is not imported) | `4.3.4` | `4.3.4` |
-| `typescript` | Type checking (tsc --noEmit); the build does not emit with it | `5.5.3` | `5.5.3` |
+| `typescript` | Type checking (tsc --noEmit); the build does not emit with it | `5.9.3` | `5.9.3` |
 | `vitest` | Unit tests | `5.1.0` | `5.1.0` |
 
 ## Deploy tooling
