@@ -6,7 +6,7 @@ import { adminLog } from "@/lib/adminAudit";
 import { roleOf } from "@/lib/rbac";
 import { appStore } from "@/lib/store";
 import { attempt } from "@/components/kit/sodKit";
-import * as svc from "@/services/integrations";
+import * as svc from "@/features/integrations/services/integrations";
 
 export const HealthChip = ({ h }: { h: string }) =>
   h === "Healthy" ? <Chip cls="ok" icon="check">Healthy</Chip> : h === "Degraded" ? <Chip cls="warn" icon="alert">Degraded</Chip> : <span style={{ color: "var(--faint)" }}>—</span>;

@@ -2,14 +2,14 @@
 
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|
-| Seed (7 connectors) | 3528-3536 | `src/data/integrationsSeed.json`, `services/integrations.ts` | Done | Extracted with `scripts/extract-source.js` |
-| `intCanManage` role gate (super, admin, owner, analyst) | 3537 | `services/integrations.ts` | Done | Exact list; non-managers get no buttons, a chevron instead (read-only) |
+| Seed (7 connectors) | 3528-3536 | `src/features/integrations/data/integrationsSeed.json`, `features/integrations/services/integrations.ts` | Done | Extracted with `scripts/extract-source.js` |
+| `intCanManage` role gate (super, admin, owner, analyst) | 3537 | `features/integrations/services/integrations.ts` | Done | Exact list; non-managers get no buttons, a chevron instead (read-only) |
 | KPIs (Connected n / N, Sync health, Last sync, Access Read-only) | 3541, 3543 | `IntegrationsModule.tsx` | Done | "Last sync 4m ago" is a static literal in the source |
 | "Recommended connection order" card | 3544 | `IntegrationsModule.tsx` | Done | |
 | Connectors table (sorted by `order`, health chip / "Not connected", Sync, Disconnect, Connect read-only, chevron) | 3545, 3538 | `IntegrationsModule.tsx`, `integrations/IntegrationUI.tsx` | Done | Row opens drawer (keyboard via `activate`); action cell stops propagation; added `aria-label`s |
 | "Sync all" | 3545, 3556 | `IntegrationUI.tsx` (`useIntegrationActions`) | Done | wsLog `integrations.synced` |
 | Connector drawer (meta grid, Data use, Sync now, Disconnect / Connect read-only) | 3548-3553 | `IntegrationUI.tsx` (`ConnectorBody`, `openConnectorDrawer`) | Done | Body re-renders on DATA change, so "Sync now" refreshes it (source re-opened it). Unknown name: "Connector not found." |
-| `intToggle` (state resets, "syncing…", wsLog connected/disconnected, toasts) | 3554 | `services/integrations.ts`, `IntegrationUI.tsx` | Done | |
+| `intToggle` (state resets, "syncing…", wsLog connected/disconnected, toasts) | 3554 | `features/integrations/services/integrations.ts`, `IntegrationUI.tsx` | Done | |
 | `intSync` | 3555 | same | Done | wsLog `integration.synced`, toast "Synced X (demo)" |
 
 ## Open questions

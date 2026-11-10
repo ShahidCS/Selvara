@@ -6,7 +6,7 @@ import type { LayerApi } from "@/components/shell/LayerProvider";
 import { wsLog } from "@/lib/audit";
 import { bumpData } from "@/lib/store";
 import { clampText } from "@/lib/security";
-import * as svc from "@/services/commitments";
+import * as svc from "@/features/commitments/services/commitments";
 import { attempt } from "@/components/kit/sodKit";
 
 const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;

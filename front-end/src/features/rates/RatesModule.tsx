@@ -4,7 +4,7 @@ import { useLayer } from "@/hooks/useLayer";
 import { useApp, useData, useModState } from "@/lib/store";
 import { pendingAdminApprovals } from "@/lib/adminApprovals";
 import { sodMessage } from "@/lib/elevation";
-import * as svc from "@/services/rates";
+import * as svc from "@/features/rates/services/rates";
 import { HeldRequestForm, RateEditForm } from "./RateEdit";
 import { ElevateGateBanner, useGate } from "@/components/kit/admin/ElevateGate";
 import { PendingApprovals } from "@/components/kit/admin/PendingApprovals";

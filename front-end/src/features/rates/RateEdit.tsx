@@ -4,7 +4,7 @@ import { useLayer } from "@/hooks/useLayer";
 import { sodMessage } from "@/lib/elevation";
 import { ReasonTicket, reasonTicketOk } from "@/components/kit/admin/ReasonTicket";
 import { useGate } from "@/components/kit/admin/ElevateGate";
-import * as svc from "@/services/rates";
+import * as svc from "@/features/rates/services/rates";
 
 /** Prototype: rateEdit / rateSave (drawer). Blank, non-numeric or 0 numeric fields keep the old value (source); out-of-range values are rejected (added).
  *  Owner decision: saving only REQUESTS the override; a second elevated super admin must approve it before the rate changes. */

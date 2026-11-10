@@ -6,7 +6,7 @@ import { custList } from "@/lib/platform";
 import { useGo } from "@/lib/route";
 import { useModState } from "@/lib/store";
 import { findCustomer } from "@/services/customers";
-import * as svc from "@/services/billing-admin";
+import * as svc from "@/features/billing/services/billing-admin";
 
 const PER = 6;
 /** Prototype: billRows / billTable / billSelect / billDetail (side panel, 420 ms simulated load). */

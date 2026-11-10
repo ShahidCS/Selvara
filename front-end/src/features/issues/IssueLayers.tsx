@@ -9,7 +9,7 @@ import { clampText } from "@/lib/security";
 import { wsLog } from "@/lib/audit";
 import { getActor } from "@/lib/sod";
 import { iAm, uiMessage } from "@/lib/grcSod";
-import * as svc from "@/services/issues";
+import * as svc from "@/features/issues/services/issues";
 import { attempt as attempt0 } from "./util";
 /** Run a handler; policy (SodError) messages are shown, anything else becomes a generic toast. */
 const attempt = async (L: LayerApi, fn: () => Promise<void> | void) => { try { await fn(); } catch (e) { L.toast(uiMessage(e), false); } };

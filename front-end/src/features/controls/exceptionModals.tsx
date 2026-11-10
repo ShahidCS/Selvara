@@ -3,7 +3,7 @@ import { LayerFoot } from "@/components/shell/LayerProvider";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { clampText } from "@/lib/security";
 import { addMonths, isoDay, uiMessage } from "@/lib/grcSod";
-import * as svc from "@/services/controls";
+import * as svc from "@/features/controls/services/controls";
 import { DATA } from "@/lib/data";
 
 const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;

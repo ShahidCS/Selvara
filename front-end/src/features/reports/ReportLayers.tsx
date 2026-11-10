@@ -6,7 +6,7 @@ import { wsLog } from "@/lib/audit";
 import { bumpData } from "@/lib/store";
 import { clampText } from "@/lib/security";
 import { REPORT_FREQ } from "@/lib/trustData";
-import * as svc from "@/services/reports";
+import * as svc from "@/features/reports/services/reports";
 import { attempt } from "@/components/kit/sodKit";
 
 

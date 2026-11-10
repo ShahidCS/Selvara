@@ -1,6 +1,6 @@
 # Trust Center module checklist
 
-Source: `Assurance-GRC-Portal.html` lines 3326-3442. React: `src/features/trust/TrustModule.tsx`, `trust/TrustAdmin.tsx`, `trust/TrustPublic.tsx`, `trust/TrustModals.tsx`, `src/services/trust.ts`.
+Source: `Assurance-GRC-Portal.html` lines 3326-3442. React: `src/features/trust/TrustModule.tsx`, `trust/TrustAdmin.tsx`, `trust/TrustPublic.tsx`, `trust/TrustModals.tsx`, `src/features/trust/services/trust.ts`.
 State: `src/lib/trustData.ts` (mutable, seeded from `src/data/trustSeed.json`, extracted with `scripts/extract-source.js`; two staff names replaced by synthetic ones). `DATA.trust` already existed.
 
 | source feature | source lines | React file | status | notes |

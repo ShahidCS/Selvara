@@ -4,7 +4,7 @@ import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { ANSWER_LIB, KB_DOCS } from "@/lib/trustData";
-import * as svc from "@/services/questionnaires";
+import * as svc from "@/features/questionnaires/services/questionnaires";
 import { ApprovalsPanel, WhyNot, attempt } from "@/components/kit/sodKit";
 import { AddAnswerForm, ImportForm, openQuestionnaireDrawer } from "./QuestionnaireLayers";
 import VendorPortal from "./VendorPortal";

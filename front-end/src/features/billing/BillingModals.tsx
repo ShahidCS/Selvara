@@ -8,7 +8,7 @@ import { ReasonTicket, reasonTicketOk } from "@/components/kit/admin/ReasonTicke
 import { useGate } from "@/components/kit/admin/ElevateGate";
 import { PLANS } from "@/services/billing";
 import { PLAN_MODULES, findCustomer } from "@/services/customers";
-import * as svc from "@/services/billing-admin";
+import * as svc from "@/features/billing/services/billing-admin";
 
 /** Prototype: billingPricing / billingSavePricing. Inputs are numeric strings; parsePricing keeps the source's coercion and adds upper bounds. */
 export function PricingForm({ close }: { close: () => void }) {

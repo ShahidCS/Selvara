@@ -1,6 +1,6 @@
 import { Chip, Icon, Table } from "@/components/ui";
 import { WS_AUDIT, wsLastHash } from "@/lib/audit";
-import { DEMO_HASH_NOTE, linkOk } from "@/services/auditlog";
+import { DEMO_HASH_NOTE, linkOk } from "@/features/auditlog/services/auditlog";
 
 /** Prototype: wsChainView. The algorithm row says FNV-1a (the source said "SHA-256 (demo)", which was inaccurate; see checklist). */
 export function ChainView({ ok, onVerify, can }: { ok: boolean; onVerify: () => void; can: boolean }) {

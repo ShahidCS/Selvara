@@ -1,7 +1,7 @@
 import { Chip, Icon, Kpi, Page, Table, activate } from "@/components/ui";
 import { useApp, useData } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
-import { INTEGRATIONS, intCanManage } from "@/services/integrations";
+import { INTEGRATIONS, intCanManage } from "@/features/integrations/services/integrations";
 import { HealthChip, openConnectorDrawer, useIntegrationActions } from "./IntegrationUI";
 
 export default function IntegrationsModule() {

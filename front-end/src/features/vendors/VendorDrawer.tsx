@@ -7,8 +7,8 @@ import { wsLog } from "@/lib/audit";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { getApproval } from "@/lib/approvals";
 import { sodReason } from "@/lib/sod";
-import { TIER_CADENCE, personOnly, vFind, vInit, vendorCanManage } from "@/lib/vendors";
-import * as svc from "@/services/vendors";
+import { TIER_CADENCE, personOnly, vFind, vInit, vendorCanManage } from "@/features/vendors/lib/vendors";
+import * as svc from "@/features/vendors/services/vendors";
 import { WhyNot, attempt } from "@/components/kit/sodKit";
 import { openAddCert, openAddFinding, openChangeTier, openReassess, openWaiver } from "./VendorModals";
 

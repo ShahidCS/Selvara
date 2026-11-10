@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { validateUpload, type UploadRule } from "@/lib/security";
-import { blockReason, displayName, PREFILL_UPLOAD_RULE, QUESTIONS, SCAN_MS, VENDOR_UPLOAD_RULE, MAX_COMMENT, type Answer, type Answers, type Files } from "@/lib/vendorSubmission";
+import { blockReason, displayName, PREFILL_UPLOAD_RULE, QUESTIONS, SCAN_MS, VENDOR_UPLOAD_RULE, MAX_COMMENT, type Answer, type Answers, type Files } from "@/features/vendorportal/lib/vendorSubmission";
 
 /** In-memory vendor answers (never written to storage). Scan timers are cleared on unmount. */
 export function useAnswers() {

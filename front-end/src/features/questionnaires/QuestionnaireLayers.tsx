@@ -6,7 +6,7 @@ import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
 import { bumpData, setModState, useData } from "@/lib/store";
 import { clampText } from "@/lib/security";
-import * as svc from "@/services/questionnaires";
+import * as svc from "@/features/questionnaires/services/questionnaires";
 import { getApproval } from "@/lib/approvals";
 import { WhyNot, attempt } from "@/components/kit/sodKit";
 

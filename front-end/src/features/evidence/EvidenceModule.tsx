@@ -2,7 +2,7 @@ import { Icon, Page, activate } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData, useModState } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
-import { evInit, whyCannotWrite } from "@/services/evidence";
+import { evInit, whyCannotWrite } from "@/features/evidence/services/evidence";
 import EvidencePreview, { EmptyPreview } from "./EvidencePreview";
 import { EvidenceForm, SEL_KEY } from "./EvidenceForms";
 

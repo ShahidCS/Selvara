@@ -6,7 +6,7 @@ import { wsLog } from "@/lib/audit";
 import { RISK_ENT, RISK_SNAPSHOTS, expiresSoon, riskCanApprove, riskFindR, riskOpen, sCur, sRes, todayIso } from "@/lib/risk";
 import { bumpData, useApp } from "@/lib/store";
 import { attempt } from "../issues/util";
-import * as svc from "@/services/risks";
+import * as svc from "@/features/risk/services/risks";
 import { riskOpenDetail } from "./nav";
 import { ScoreChip } from "./RiskBits";
 

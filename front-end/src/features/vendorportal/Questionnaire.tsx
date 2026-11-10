@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { INVITE, QUESTIONS, readiness } from "@/lib/vendorSubmission";
+import { INVITE, QUESTIONS, readiness } from "@/features/vendorportal/lib/vendorSubmission";
 import type { AnswersApi } from "./useAnswers";
 import QuestionCard from "./QuestionCard";
 import { Section, H1 } from "./parts";

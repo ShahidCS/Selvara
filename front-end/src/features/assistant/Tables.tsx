@@ -3,7 +3,7 @@ import { Chip, Icon, Table } from "@/components/ui";
 import { LayerFoot, useLayer } from "@/components/shell/LayerProvider";
 import { wsLog } from "@/lib/audit";
 import { bumpData, setModState } from "@/lib/store";
-import * as svc from "@/services/assistant";
+import * as svc from "@/features/assistant/services/assistant";
 import { WhyNot, attempt } from "@/components/kit/sodKit";
 
 /** Prototype: "agents" view. */

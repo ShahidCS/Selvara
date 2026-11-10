@@ -34,10 +34,10 @@ Executive overview for a company admin: compliance score trend with forecast, "b
 
 | Board area | Portal coverage |
 |---|---|
-| Overview page, KPI tiles, board pack export | `/ws/overview`, `src/features/overview/OverviewModule.tsx`, `src/lib/boardPack.ts`; `docs/guides/checklist/overview.md` |
-| Framework x category heat map | `OverviewModule.tsx` `CoverageHeatmap`, `src/lib/boardPack.ts` (`COV_CATS`, `covCell`) |
+| Overview page, KPI tiles, board pack export | `/ws/overview`, `src/features/overview/OverviewModule.tsx`, `src/features/overview/lib/boardPack.ts`; `docs/guides/checklist/overview.md` |
+| Framework x category heat map | `OverviewModule.tsx` `CoverageHeatmap`, `src/features/overview/lib/boardPack.ts` (`COV_CATS`, `covCell`) |
 | Readiness trend | `/ws/reports` (`ReportsModule.tsx`, `docs/guides/checklist/reports.md`); Overview shows an open-risks trend instead |
-| Add regulation wizard (templates, keyword mapping, confidence) | `/ws/frameworks`: `frameworks/FwAdd.tsx`, `src/lib/fwTemplates.ts`; `docs/guides/checklist/frameworks.md` ("Add a framework", keyword matcher preview) |
+| Add regulation wizard (templates, keyword mapping, confidence) | `/ws/frameworks`: `frameworks/FwAdd.tsx`, `src/features/frameworks/lib/fwTemplates.ts`; `docs/guides/checklist/frameworks.md` ("Add a framework", keyword matcher preview) |
 | In-scope toggle, owner per framework | `FrameworksModule.tsx` (In scope toggle, admin only) |
 | Risks above appetite | count only: `OverviewModule.tsx` "N above appetite"; list in `/ws/risk` |
 | Third-party / policy summaries | no cards; data in `/ws/vendors`, `/ws/policies` |
@@ -76,7 +76,7 @@ Security-relevant conflicts: none in this board.
 
 * 1.G1, 1.G4, 1.G6, 1.G7: extend `src/features/overview/OverviewModule.tsx` (+ small `overview/` sub-folder if it grows). Reuse `TrendChart`, `Kpi`, `Chip`. Data: `src/lib/metrics.ts` (already exposes `aboveAppetite`), `DATA.risks`, `DATA.vendors`, `DATA.policies`.
 * 1.G2, 1.G3: new components `overview/BuiltVsProven.tsx`, `overview/ControlAreaMap.tsx`. Prerequisite decision: how "evidence current %" is computed from `/ws/evidence` (freshness) rather than the board's synthetic offset.
-* 1.G8, 1.G9: extend `frameworks/FwAdd.tsx` and `lib/fwTemplates.ts` (CSV/TXT upload through `validateUpload`, rows through `clampText`, confidence label per row).
+* 1.G8, 1.G9: extend `frameworks/FwAdd.tsx` and `features/frameworks/lib/fwTemplates.ts` (CSV/TXT upload through `validateUpload`, rows through `clampText`, confidence label per row).
 * 1.G5: skip until an obligations data model exists; or fold into `/ws/commitments` / `/ws/audits`. Ask owner.
 
 ---
@@ -87,7 +87,7 @@ Security-relevant conflicts: none in this board.
 
 Full policy lifecycle: register with outstanding-action filters, detail with 5-step progress, remarks with review-by dates, collaborators (per policy and organisation-wide), versioned change log, append-only audit trail, mandatory-policy guidance library (25 policies), upload, review settings, owner reassignment, and a role preview (company admin / policy owner / member).
 
-Existing coverage: `/ws/policies`, `PoliciesModule.tsx`, `policies/PolicyLayers.tsx`, `src/services/policies.ts`, `docs/guides/checklist/policies.md`. The portal implements the prototype's simple drawer: statuses Draft / In review / Active, "Approvers & reviewers" list (never enforced), acceptance ring with random demo numbers, mapped controls, version history, no role gates.
+Existing coverage: `/ws/policies`, `PoliciesModule.tsx`, `policies/PolicyLayers.tsx`, `src/features/policies/services/policies.ts`, `docs/guides/checklist/policies.md`. The portal implements the prototype's simple drawer: statuses Draft / In review / Active, "Approvers & reviewers" list (never enforced), acceptance ring with random demo numbers, mapped controls, version history, no role gates.
 
 ### 2.2 Gaps
 
@@ -134,7 +134,7 @@ Existing coverage: `/ws/policies`, `PoliciesModule.tsx`, `policies/PolicyLayers.
 
 **Fold into `/ws/policies` (rework), no new route.** This is the largest fold-in (L overall).
 
-Minimal files: `src/features/policies/PoliciesModule.tsx` (filter cards, columns), `policies/PolicyLayers.tsx` (split into `PolicyDrawer.tsx`, `RemarksTab.tsx`, `CollaboratorsTab.tsx`, `ChangeLogTab.tsx`, `PolicyAudit.tsx`, `UploadPolicy.tsx`, `ReviewSettings.tsx`, `ReassignOwner.tsx`), `src/services/policies.ts` (state machine and role checks, deny by default), `src/data/seed.json` (policy fields: `approver`, `comments`, `collabs`, `changes`, `audit`, `lib`), new `src/data/policyLibrary.json` (the 25-policy catalogue; reference strings are generic standards citations, safe to reuse), `src/lib/rbac.ts` (`policyCanEdit(role, policy)`), `docs/guides/checklist/policies.md` (update). Role model dependency: the board needs "policy owner" per policy, which the portal does not model per user (see 11.1).
+Minimal files: `src/features/policies/PoliciesModule.tsx` (filter cards, columns), `policies/PolicyLayers.tsx` (split into `PolicyDrawer.tsx`, `RemarksTab.tsx`, `CollaboratorsTab.tsx`, `ChangeLogTab.tsx`, `PolicyAudit.tsx`, `UploadPolicy.tsx`, `ReviewSettings.tsx`, `ReassignOwner.tsx`), `src/features/policies/services/policies.ts` (state machine and role checks, deny by default), `src/data/seed.json` (policy fields: `approver`, `comments`, `collabs`, `changes`, `audit`, `lib`), new `src/data/policyLibrary.json` (the 25-policy catalogue; reference strings are generic standards citations, safe to reuse), `src/lib/rbac.ts` (`policyCanEdit(role, policy)`), `docs/guides/checklist/policies.md` (update). Role model dependency: the board needs "policy owner" per policy, which the portal does not model per user (see 11.1).
 
 ---
 
@@ -189,7 +189,7 @@ Existing coverage: `/ws/team` (`TeamModule.tsx`, `team/SettingsTab.tsx`, `team/T
 **Fold into `/ws/team`, `/ws/auditlog`, `/ws/people`; no new route.**
 
 * Replace the Team "Members" tab with the board's table (3.G1) and add tabs "Sign-in and access" (3.G6, 3.G7). Files: `TeamModule.tsx`, `team/SettingsTab.tsx` (rename sections), `team/TeamForms.tsx` (`InviteForm`, new `OffboardForm`), `src/services/team.ts`, `src/data/teamSeed.json`, `src/data/tenantUsers.json` (extend with `status`), `src/lib/security.ts` (new `emailDomainClass(email)` with the free/disposable lists, shared with vendor portal and `/auth`).
-* Audit log: add `src` and `result` to `lib/audit.ts` `WsEntry`, columns in `AuditLogModule.tsx`, filter chips `AUDIT_CATS` in `services/auditlog.ts`.
+* Audit log: add `src` and `result` to `lib/audit.ts` `WsEntry`, columns in `AuditLogModule.tsx`, filter chips `AUDIT_CATS` in `features/auditlog/services/auditlog.ts`.
 * Skip: SSO configure (Enterprise stub only).
 
 ---
@@ -310,7 +310,7 @@ Minimal files: `src/features/auth/authLogic.ts` (replace `AUTH_ALLOWED`, add `pw
 
 Vendor register with tiering, questionnaire-based assessment (41 weighted questions, 9 critical, CAIQ v4 and SIG mapping), document and certificate tracking with auto dates, vendor-portal response review (locked snapshot, accept / accept with finding / reject / clarify), recommendation engine, and an expiry-and-review tracker covering own and vendor documents.
 
-Existing coverage: `/ws/vendors` (`VendorsModule.tsx`, `vendors/VendorDrawer.tsx`, `vendors/VendorModals.tsx`, `src/lib/vendors.ts`, `src/services/vendors.ts`; `docs/guides/checklist/vendors.md`), `/ws/questionnaires` (`QuestionnairesModule.tsx`, `questionnaires/VendorPortal.tsx`; `docs/guides/checklist/questionnaires.md`), vendor request form in `work/RequestModals.tsx`.
+Existing coverage: `/ws/vendors` (`VendorsModule.tsx`, `vendors/VendorDrawer.tsx`, `vendors/VendorModals.tsx`, `src/features/vendors/lib/vendors.ts`, `src/features/vendors/services/vendors.ts`; `docs/guides/checklist/vendors.md`), `/ws/questionnaires` (`QuestionnairesModule.tsx`, `questionnaires/VendorPortal.tsx`; `docs/guides/checklist/questionnaires.md`), vendor request form in `work/RequestModals.tsx`.
 
 The portal vendor drawer has tier, score 0-100 (typed in by hand), procurement gate Approve/Block, free-text certificates ("expiry free text, default TBD"), findings, monitoring, reassess and change-tier modals.
 
@@ -361,7 +361,7 @@ The portal vendor drawer has tier, score 0-100 (typed in by hand), procurement g
 
 **Fold into `/ws/vendors` (rework, L) and `/ws/questionnaires`.** No new top-level route for the internal side; the external side is section 10.
 
-Minimal files: `src/lib/vendors.ts` (tiers, cycles, `docState`, `survState`, `score`, `residual`, `recommend`), `src/data/vendorQuestions.json` (the 41-question catalogue incl. CAIQ/SIG mapping; generic control wording, safe to reuse), `src/services/vendors.ts`, `VendorsModule.tsx` (register columns, KPIs, tracker tab), `vendors/VendorDrawer.tsx` (tabs Overview, Vendor response, Questionnaire, Policies and certificates, Activity), `vendors/VendorModals.tsx` (pre-screening, document upload via `validateUpload`, settings), new `vendors/ResponseReview.tsx`, `vendors/DocTracker.tsx`, `src/lib/vendorSubmission.ts` (shared with section 10). Update `docs/guides/checklist/vendors.md`.
+Minimal files: `src/features/vendors/lib/vendors.ts` (tiers, cycles, `docState`, `survState`, `score`, `residual`, `recommend`), `src/features/vendorportal/data/vendorQuestions.json` (the 41-question catalogue incl. CAIQ/SIG mapping; generic control wording, safe to reuse), `src/features/vendors/services/vendors.ts`, `VendorsModule.tsx` (register columns, KPIs, tracker tab), `vendors/VendorDrawer.tsx` (tabs Overview, Vendor response, Questionnaire, Policies and certificates, Activity), `vendors/VendorModals.tsx` (pre-screening, document upload via `validateUpload`, settings), new `vendors/ResponseReview.tsx`, `vendors/DocTracker.tsx`, `src/features/vendorportal/lib/vendorSubmission.ts` (shared with section 10). Update `docs/guides/checklist/vendors.md`.
 
 ---
 
@@ -371,7 +371,7 @@ Minimal files: `src/lib/vendors.ts` (tiers, cycles, `docState`, `survState`, `sc
 
 Active-register view with residual/inherent heat map, treatment progress bars, overdue treatment actions, register table with filters and sort, detail drawer (inherent and residual scoring, existing controls, treatment actions, acceptance authority, history, close), add-risk dialog, and a 3-step Excel/CSV import.
 
-Existing coverage: `/ws/risk` fully (`RiskModule.tsx`, `risk/RiskDash.tsx`, `RiskRegister.tsx`, `RiskDetail.tsx`, `RiskForms.tsx`, `RiskCrit.tsx`, `RiskGov.tsx`, `RiskParties.tsx`, `risk/import/*`, `src/lib/risk.ts`, `src/services/risks.ts`, `riskImport.ts`; `docs/guides/checklist/risk.md`, `risk-import.md`). The portal version is **more complete** than the board (3-point scoring, approval workflow, snapshots, interested parties, criteria, hardened import with 5,000-row cap).
+Existing coverage: `/ws/risk` fully (`RiskModule.tsx`, `risk/RiskDash.tsx`, `RiskRegister.tsx`, `RiskDetail.tsx`, `RiskForms.tsx`, `RiskCrit.tsx`, `RiskGov.tsx`, `RiskParties.tsx`, `risk/import/*`, `src/lib/risk.ts`, `src/features/risk/services/risks.ts`, `riskImport.ts`; `docs/guides/checklist/risk.md`, `risk-import.md`). The portal version is **more complete** than the board (3-point scoring, approval workflow, snapshots, interested parties, criteria, hardened import with 5,000-row cap).
 
 ### 7.2 Gaps
 
@@ -418,7 +418,7 @@ Neither board nor portal enforces that the actor holds the authority they select
 
 ### 7.4 Recommendation
 
-**Skip as a screen; fold the S-sized rules into `/ws/risk`.** Files: `src/lib/risk.ts` (appetite source of truth, optionally read from Team settings), `src/services/risks.ts` (`closeRisk` open-action check, `createRisk` validations, `acceptRisk` future-date check, treatment-change handler), `risk/RiskForms.tsx` (live note), `risk/RiskDetail.tsx` (hint "N treatment action(s) still open..."), `risk/RiskDash.tsx` (overdue card), `docs/guides/checklist/risk.md`.
+**Skip as a screen; fold the S-sized rules into `/ws/risk`.** Files: `src/lib/risk.ts` (appetite source of truth, optionally read from Team settings), `src/features/risk/services/risks.ts` (`closeRisk` open-action check, `createRisk` validations, `acceptRisk` future-date check, treatment-change handler), `risk/RiskForms.tsx` (live note), `risk/RiskDetail.tsx` (hint "N treatment action(s) still open..."), `risk/RiskDash.tsx` (overdue card), `docs/guides/checklist/risk.md`.
 
 ---
 
@@ -533,7 +533,7 @@ Build plan:
 
 * Layout: inside the shell (reference content, benefits from search and theme); single scrolling page with anchored sections.
 * Components under `src/features/appsec/`: `AppSecModule.tsx`, `ControlGroup.tsx` (collapsible card: threat, bullets, "Maps to", "Test"), `ResponseCompare.tsx` (two `<pre>` blocks, text only), `RateLimitTable.tsx`, `PermissionMatrix.tsx` (uses `Table` and `Chip`), `ReleaseGate.tsx` (checklist; **display-only**, do not persist ticks as evidence without an owner decision).
-* Data: `src/data/appsecSpec.json` (the groups, limits, matrix, gate arrays copied as generic specification text; they contain no customer data; remove the example response's sample identities and keep neutral values).
+* Data: `src/features/appsec/data/appsecSpec.json` (the groups, limits, matrix, gate arrays copied as generic specification text; they contain no customer data; remove the example response's sample identities and keep neutral values).
 * Role gates: `admin`, `owner`, `super`, `auditor` read; hidden for `employee`, `vendor`, `viewer`.
 * Cross-link: from `/auth`, `/admin/customers` security panel and `docs/security/SECURITY.md`.
 
@@ -600,9 +600,9 @@ Build plan:
 
 * Route: `/vendor-portal` (page `src/pages/vendor-portal.tsx`). A real deployment needs a token route such as `/vendor-portal/<token>`; for the demo, a fixed mock token is enough. **Standalone layout**: bypass `AppShell` for this path (`_app.tsx` checks `router.pathname`), minimal header (product name, "requested by <customer>", masked email, Sign out), no sidebar, no role switcher, no palette. Keep `portal.css` tokens (design stays portal).
 * Components under `src/features/vendorportal/`: `VendorPortalPage.tsx` (step machine `verify | otp | mfa | portal | clarify | done | dead`), `VerifyEmail.tsx`, `OtpStep.tsx`, `MfaStep.tsx`, `Questionnaire.tsx` (grouped, progress), `QuestionCard.tsx` (choice, comment, evidence), `EvidenceUpload.tsx` (uses `validateUpload` with `{ maxBytes: 25*1024*1024, exts: ["pdf","docx","xlsx","png","jpg"] }` and `safeFileName`; states scanning/clean/blocked simulated), `ImportPrefill.tsx` (CAIQ/SIG file through the existing risk-import parsers in `risk/import/parse.ts`, 5 MB cap, rows as text), `ClarifyRound.tsx`, `SubmittedPanel.tsx`, `PortalControls.tsx`.
-* Data needed: `src/data/vendorQuestions.json` (same catalogue as 6.4, so internal and external sides share ids), mock invite `{ token, invitedEmail, customerName, expiresAt }` in `src/data/vendorInviteSeed.json` (synthetic domain such as `vendor.example`), submission model in `src/lib/vendorSubmission.ts` (`{ ref, ver, items{answer, comment, file{name, hash}}, status }`) shared with the internal review UI (6.G7).
+* Data needed: `src/features/vendorportal/data/vendorQuestions.json` (same catalogue as 6.4, so internal and external sides share ids), mock invite `{ token, invitedEmail, customerName, expiresAt }` in `src/features/vendorportal/data/vendorInviteSeed.json` (synthetic domain such as `vendor.example`), submission model in `src/features/vendorportal/lib/vendorSubmission.ts` (`{ ref, ver, items{answer, comment, file{name, hash}}, status }`) shared with the internal review UI (6.G7).
 * Role gates: no workspace role; access only by token + verification. Remove or redirect the `vendor` role's `questionnaires` module to the portal, and drop the in-shell `VendorPortal.tsx` after migration.
-* Services: `src/services/vendorPortal.ts` (`verifyEmail`, `verifyCode`, `enrolSecondFactor`, `saveDraft`, `submit`, `submitClarification`, `recordView`), each stubbed through `viaApi`; counters (3 email attempts, 5 code attempts) implemented client-side for demo state only.
+* Services: `src/features/vendorportal/services/vendorPortal.ts` (`verifyEmail`, `verifyCode`, `enrolSecondFactor`, `saveDraft`, `submit`, `submitClarification`, `recordView`), each stubbed through `viaApi`; counters (3 email attempts, 5 code attempts) implemented client-side for demo state only.
 * Security hygiene for the demo: never log the entered email or code (`wsLog` actions only with reference ids); mask email in the header; no tokens in query string beyond the demo path; `Cache-Control: no-store` must be set at the real server.
 * Open ambiguity: the board generates "prefill" answers deterministically from the file-name length; the real mapping (CAIQ/SIG to question ids) is **not defined** in the board (only an indicative domain map in the TPRM board). Treat prefill as a stub until a mapping table is supplied.
 

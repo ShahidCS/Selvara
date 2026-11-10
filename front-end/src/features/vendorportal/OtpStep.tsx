@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Section, H1, Lead, Hint, ErrLine } from "./parts";
-import { MSG } from "@/lib/vendorSubmission";
+import { MSG } from "@/features/vendorportal/lib/vendorSubmission";
 import type { StepOutcome } from "./VerifyEmail";
 
 /** Step 2: 6-digit emailed code. The code lives only in this component's state. Paste allowed; non-digits are stripped. */

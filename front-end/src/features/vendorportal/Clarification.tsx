@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { CLARIFICATIONS, INVITE, MAX_COMMENT, QUESTIONS, clarReadiness, type ClarBase } from "@/lib/vendorSubmission";
+import { CLARIFICATIONS, INVITE, MAX_COMMENT, QUESTIONS, clarReadiness, type ClarBase } from "@/features/vendorportal/lib/vendorSubmission";
 import type { AnswersApi } from "./useAnswers";
 import { AnswerSelect } from "./QuestionCard";
 import EvidenceUpload from "./EvidenceUpload";

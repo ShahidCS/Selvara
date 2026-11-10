@@ -3,7 +3,7 @@ import { useApp, useData, useModState } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
 import { wsLog } from "@/lib/audit";
 import { logSafeUrl } from "@/lib/security";
-import * as svc from "@/services/api";
+import * as svc from "@/features/api/services/api";
 import { ApprovalsPanel, attempt } from "@/components/kit/sodKit";
 import { NewKeyForm, RevealKeyModal, RevokeKeyForm, TestForm, WebhookForm } from "./ApiModals";
 

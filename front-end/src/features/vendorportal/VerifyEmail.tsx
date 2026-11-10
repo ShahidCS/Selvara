@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Section, H1, Lead, Hint, ErrLine } from "./parts";
-import { INVITE, MSG } from "@/lib/vendorSubmission";
+import { INVITE, MSG } from "@/features/vendorportal/lib/vendorSubmission";
 
 export type StepOutcome = { kind: "ok" } | { kind: "error"; message: string } | { kind: "dead" };
 

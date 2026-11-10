@@ -2,8 +2,8 @@
 
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|
-| Seeds (keys, webhooks, tests, events, `WH_EVENTS`) | 3559-3563 | `src/data/apiSeed.json`, `services/api.ts` | Done | |
-| `apiCanManage` (super, admin, owner) | 3558 | `services/api.ts` | Done | Exact; read-only otherwise (no action buttons) |
+| Seeds (keys, webhooks, tests, events, `WH_EVENTS`) | 3559-3563 | `src/features/api/data/apiSeed.json`, `features/api/services/api.ts` | Done | |
+| `apiCanManage` (super, admin, owner) | 3558 | `features/api/services/api.ts` | Done | Exact; read-only otherwise (no action buttons) |
 | Tabs Keys / Hooks / Tests / Stream, header action per tab | 3565-3568 | `ApiModule.tsx` | Done | `useModState("api.tab")`, unknown value -> Keys |
 | API keys table (prefix, scope, status chip, Revoke) | 3571 | `ApiModule.tsx` | Done | |
 | New API key modal, "Label is required.", scope select | 3576-3577 | `api/ApiModals.tsx` (`NewKeyForm`) | Done | Label `clampText` 80, scope checked against allow-list |
@@ -11,9 +11,9 @@
 | Revoke confirm modal + revoke | 3580-3581 | `ApiModals.tsx` (`RevokeKeyForm`) | Done | wsLog `api.key.revoked` |
 | Webhooks table (events tags, HMAC-SHA256, last delivery, Pause/Resume, Test, Delete), empty state "No webhooks" | 3572 | `ApiModule.tsx` | Done | |
 | Add webhook modal (events checkboxes, first two ticked, "A valid https URL is required.") | 3582-3583 | `ApiModals.tsx` (`WebhookForm`) | Done | Validation stricter than source, see Security notes |
-| Test / toggle / delete webhook | 3584-3586 | `ApiModule.tsx`, `services/api.ts` | Done | Toasts and wsLog kept |
+| Test / toggle / delete webhook | 3584-3586 | `ApiModule.tsx`, `features/api/services/api.ts` | Done | Toasts and wsLog kept |
 | Custom tests table, New custom test modal, Run now (75% pass), Delete | 3573, 3587-3590 | `ApiModule.tsx`, `ApiModals.tsx` (`TestForm`) | Done | wsLog categories "Control" kept |
-| Event stream tab, "Push test event" | 3574, 3591 | `ApiModule.tsx`, `services/api.ts` | Done | |
+| Event stream tab, "Push test event" | 3574, 3591 | `ApiModule.tsx`, `features/api/services/api.ts` | Done | |
 
 ## Open questions
 1. The source has **no "reveal" / time-limited display** of keys: the full key is shown once, in the creation modal. Ported as that (no timer was invented). Clipboard is not auto-cleared.
@@ -44,4 +44,4 @@ Services throw `SodError`; `wsLog` calls kept (never the key); approvals use `li
 
 **Resolved open questions (owner decision):** OQ 1 (the "reveal" now exists, once, to the requester after approval). Still open: OQ 2-8.
 
-**Security notes (additions):** the one-time secret lives in an in-memory vault (`VAULT` in `services/api.ts`) until revealed; it is never in approval payloads, logs, props of other users or storage. The real API must generate and hash keys server-side, bind the reveal to the requester's session, and expire unrevealed keys.
+**Security notes (additions):** the one-time secret lives in an in-memory vault (`VAULT` in `features/api/services/api.ts`) until revealed; it is never in approval payloads, logs, props of other users or storage. The real API must generate and hash keys server-side, bind the reveal to the requester's session, and expire unrevealed keys.

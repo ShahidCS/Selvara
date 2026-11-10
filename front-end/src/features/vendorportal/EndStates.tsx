@@ -1,4 +1,4 @@
-import { INVITE } from "@/lib/vendorSubmission";
+import { INVITE } from "@/features/vendorportal/lib/vendorSubmission";
 import { Section, H1, Lead } from "./parts";
 
 export function DeadState({ onRestart }: { onRestart: () => void }) {

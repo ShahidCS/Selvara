@@ -4,7 +4,7 @@ import type { LayerApi } from "@/components/shell/LayerProvider";
 import { wsLog } from "@/lib/audit";
 import { clampText } from "@/lib/security";
 import { VENDOR_Q, setVendorAnswer } from "@/lib/trustData";
-import * as svc from "@/services/questionnaires";
+import * as svc from "@/features/questionnaires/services/questionnaires";
 
 const FAIL = "Something went wrong. Please try again.";
 const MAXLEN = 4000;

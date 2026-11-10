@@ -7,7 +7,7 @@ import { approvals, whyCannotApprove, withdraw } from "@/lib/approvals";
 import { riskCanEdit } from "@/lib/risk";
 import { bumpData, useApp, useData } from "@/lib/store";
 import { hasRole } from "@/lib/sod";
-import { IMPORT_KIND, decideRiskImport } from "@/services/riskImport";
+import { IMPORT_KIND, decideRiskImport } from "@/features/risk/services/riskImport";
 import { attemptR } from "./util";
 
 export default function PendingImports() {

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui";
 import { API_MODE } from "@/services/http";
-import * as svc from "@/services/vendorPortal";
-import invite from "@/data/vendorInviteSeed.json";
-import { CLARIFICATIONS, CONTROLS, IDLE_MS, INVITE, MSG, QUESTIONS, type ClarBase } from "@/lib/vendorSubmission";
+import * as svc from "@/features/vendorportal/services/vendorPortal";
+import invite from "@/features/vendorportal/data/vendorInviteSeed.json";
+import { CLARIFICATIONS, CONTROLS, IDLE_MS, INVITE, MSG, QUESTIONS, type ClarBase } from "@/features/vendorportal/lib/vendorSubmission";
 import { useAnswers } from "./useAnswers";
 import VerifyEmail, { type StepOutcome } from "./VerifyEmail";
 import OtpStep from "./OtpStep";

@@ -1,6 +1,6 @@
 # Controls module checklist
 
-Source: `Assurance-GRC-Portal.html` lines 1599-1702. React: `src/features/controls/ControlsModule.tsx`, `controls/{useControlDrawer,useTestDrawer,createModals,modalForm}.tsx`, `src/services/controls.ts`.
+Source: `Assurance-GRC-Portal.html` lines 1599-1702. React: `src/features/controls/ControlsModule.tsx`, `controls/{useControlDrawer,useTestDrawer,createModals,modalForm}.tsx`, `src/features/controls/services/controls.ts`.
 
 | source feature | source lines | React file/component | status | notes |
 |---|---|---|---|---|
@@ -48,7 +48,7 @@ Source: `Assurance-GRC-Portal.html` lines 1599-1702. React: `src/features/contro
 
 ---
 ## Hardening update (docs/security/SOD_MATRIX.md section 3, Control)
-Files: `services/controls.ts`, `controls/useControlDrawer.tsx`, `controls/exceptionModals.tsx` (new), `controls/createModals.tsx`, `ControlsModule.tsx`, `src/lib/grcSod.ts`, approvals engine.
+Files: `features/controls/services/controls.ts`, `controls/useControlDrawer.tsx`, `controls/exceptionModals.tsx` (new), `controls/createModals.tsx`, `ControlsModule.tsx`, `src/lib/grcSod.ts`, approvals engine.
 
 ### What changed vs the prototype
 * Attestation: only the control owner (admin/owner role AND named as the control owner); the "Attested by" name is set from the sign-in, not typed. Others see the button disabled with the reason.

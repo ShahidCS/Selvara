@@ -2,11 +2,11 @@
 
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|
-| Intro copy, held count, Details toggle, "Rate rules" panel | 4058-4062 | `RatesModule.tsx`, `services/rates.ts` (`RATE_THRESHOLDS`) | Done | Thresholds 3% / 1% / 48h rendered from constants (copy unchanged) |
+| Intro copy, held count, Details toggle, "Rate rules" panel | 4058-4062 | `RatesModule.tsx`, `features/rates/services/rates.ts` (`RATE_THRESHOLDS`) | Done | Thresholds 3% / 1% / 48h rendered from constants (copy unchanged) |
 | Refresh rates (spinner 950 ms, toast), Run sample feed (toast) | 4063, 4086 | `RatesModule.tsx`, `refreshRates` | Done | Refresh changes no data (source); timer cleared on unmount |
 | Search + region chips (`All, MENA, Europe, APAC, Americas, Africa`; US counts as Americas) | 4050-4051, 4065-4069 | `RatesModule.tsx` | Done | State persists (`rates.*`) |
 | Rates table (rate format 4 decimals under 10, tax, effective, Held chip with reason tooltip) | 4070-4074 | `RatesModule.tsx` | Done | Empty state "No countries match" |
-| Approve / Reject Held rates | 4075 | `RatesModule.tsx`, `services/rates.ts` (`decideRate`) | Done | Only Held rows; both set Applied (see Q1) |
+| Approve / Reject Held rates | 4075 | `RatesModule.tsx`, `features/rates/services/rates.ts` (`decideRate`) | Done | Only Held rows; both set Applied (see Q1) |
 | Edit drawer (currency, rate, tax type, tax rate, effective) and save | 4076-4085 | `rates/RateEdit.tsx`, `parseRateEdit` / `saveRate` | Done | Validation added (see below) |
 | `nowStamp` / `nowStampUTC` / `synthIP` helpers | 4124-4126 | `lib/format.ts`, `lib/adminAudit.ts` (already present) | Done | Not duplicated |
 

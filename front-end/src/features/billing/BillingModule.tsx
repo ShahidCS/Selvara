@@ -2,7 +2,7 @@ import { Empty, Icon, Page } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { useGo } from "@/lib/route";
 import { setModState, useApp, useData } from "@/lib/store";
-import * as svc from "@/services/billing-admin";
+import * as svc from "@/features/billing/services/billing-admin";
 import { findCustomer } from "@/services/customers";
 import { BillingDetail } from "./BillingDetail";
 import { BillingList } from "./BillingList";

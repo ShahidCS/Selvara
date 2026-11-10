@@ -4,7 +4,7 @@ import { LayerFoot } from "@/components/shell/LayerProvider";
 import { wsLog } from "@/lib/audit";
 import { bumpData, setModState } from "@/lib/store";
 import { clampText } from "@/lib/security";
-import * as svc from "@/services/assistant";
+import * as svc from "@/features/assistant/services/assistant";
 import { attempt } from "@/components/kit/sodKit";
 
 /** Prototype: asstNewAgent / asstDoNewAgent. Selects are checked against their allow-lists in the service. */

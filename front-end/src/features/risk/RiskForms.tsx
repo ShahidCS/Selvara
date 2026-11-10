@@ -5,7 +5,7 @@ import { wsLog } from "@/lib/audit";
 import { Lb, RISK_CATS, RISK_TREATS } from "@/lib/risk";
 import { bumpData, setModState } from "@/lib/store";
 import { attempt } from "../issues/util";
-import * as svc from "@/services/risks";
+import * as svc from "@/features/risk/services/risks";
 import { K_SEL, K_TAB } from "./nav";
 import { attemptR } from "./util";
 

@@ -5,8 +5,8 @@ import { LayerFoot, useLayer } from "@/components/shell/LayerProvider";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { bumpData } from "@/lib/store";
 import { getMe, wsLog } from "@/lib/audit";
-import { FINDING_SEVS, REASSESS_OUTCOMES, TIER_CADENCE, TIER_WINDOW, VENDOR_TIERS, vFind } from "@/lib/vendors";
-import * as svc from "@/services/vendors";
+import { FINDING_SEVS, REASSESS_OUTCOMES, TIER_CADENCE, TIER_WINDOW, VENDOR_TIERS, vFind } from "@/features/vendors/lib/vendors";
+import * as svc from "@/features/vendors/services/vendors";
 import { attempt } from "@/components/kit/sodKit";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

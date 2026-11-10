@@ -5,7 +5,7 @@ import { money } from "@/lib/format";
 import { useGo } from "@/lib/route";
 import { useModState } from "@/lib/store";
 import { findCustomer } from "@/services/customers";
-import * as svc from "@/services/billing-admin";
+import * as svc from "@/features/billing/services/billing-admin";
 import { useGate } from "@/components/kit/admin/ElevateGate";
 import { FinanceForm } from "./BillingModals";
 

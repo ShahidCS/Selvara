@@ -7,7 +7,7 @@ import { Chip, Icon } from "@/components/ui";
 import { bumpData } from "@/lib/store";
 import { safeFileName, validateUpload } from "@/lib/security";
 import { SodError } from "@/lib/sod";
-import { commitRiskImport } from "@/services/riskImport";
+import { commitRiskImport } from "@/features/risk/services/riskImport";
 import { type Counts, type Parsed, compute } from "./convert";
 import { IMP_FIELDS, ImportError, LIMITS, autoMap, buildGrid, importMessage, parseCSV, readXlsx, type Grid } from "./parse";
 import { rband, riskCanEdit } from "./riskLocal";

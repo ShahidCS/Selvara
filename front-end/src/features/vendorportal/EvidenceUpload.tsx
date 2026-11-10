@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import type { VendorFile } from "@/lib/vendorSubmission";
+import type { VendorFile } from "@/features/vendorportal/lib/vendorSubmission";
 
 /** Evidence picker + status pill. The File is handed to the parent's validateUpload gate; its content is never read or rendered. Name shown as React text. */
 export default function EvidenceUpload({ qid, file, onPick, hint }: { qid: string; file?: VendorFile; onPick: (f: File) => void; hint?: string }) {

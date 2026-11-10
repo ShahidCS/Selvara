@@ -11,7 +11,7 @@ import { getActor } from "@/lib/sod";
 import { clampText } from "@/lib/security";
 import { FAIL_MSG, isoDay, samePerson, uiMessage } from "@/lib/grcSod";
 import { acknowledge } from "@/services/me";
-import * as svc from "@/services/policies";
+import * as svc from "@/features/policies/services/policies";
 
 const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
 const Why = ({ t }: { t: string | null }) => (t ? <p className="field help" style={{ margin: "6px 0 0" }} role="note"><Icon name="alert" /> {t}</p> : null);

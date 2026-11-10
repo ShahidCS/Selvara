@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui";
 import { wsLog } from "@/lib/audit";
 import { bumpData } from "@/lib/store";
 import { clampText, isSafeWebhookUrl, logSafeUrl } from "@/lib/security";
-import * as svc from "@/services/api";
+import * as svc from "@/features/api/services/api";
 import { attempt } from "@/components/kit/sodKit";
 
 const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;

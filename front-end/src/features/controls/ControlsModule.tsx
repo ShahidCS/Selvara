@@ -6,7 +6,7 @@ import { downloadText } from "@/lib/format";
 import { useGo } from "@/lib/route";
 import { Empty, Icon, Page, StatusChip, Table } from "@/components/ui";
 import { useLayer } from "@/components/shell/LayerProvider";
-import * as svc from "@/services/controls";
+import * as svc from "@/features/controls/services/controls";
 import { openControlDrawer, openTestDrawer, testChip } from "./useControlDrawer";
 import { openCreateControl, openCreateTest } from "./createModals";
 

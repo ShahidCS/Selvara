@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Empty, Page } from "@/components/ui";
 import { modAllowed } from "@/lib/rbac";
 import { useApp } from "@/lib/store";
-import spec from "@/data/appsecSpec.json";
+import spec from "@/features/appsec/data/appsecSpec.json";
 import { ControlGroup, Group } from "./ControlGroup";
 import { ResponseCompare } from "./ResponseCompare";
 import { RateLimitTable } from "./RateLimitTable";

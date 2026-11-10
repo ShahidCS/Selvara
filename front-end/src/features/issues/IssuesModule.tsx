@@ -1,7 +1,7 @@
 import { Icon, Page, StatusChip, Table, activate } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData, useModState } from "@/lib/store";
-import { whyCannotWrite } from "@/services/issues";
+import { whyCannotWrite } from "@/features/issues/services/issues";
 import { useLayer } from "@/hooks/useLayer";
 import { DueText, openIssueDrawer, openIssueForm } from "./IssueLayers";
 

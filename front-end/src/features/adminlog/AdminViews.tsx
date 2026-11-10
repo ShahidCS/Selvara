@@ -1,6 +1,6 @@
 import { Chip, Empty, Icon, Table } from "@/components/ui";
 import { ADMIN_AUDIT, lastHash } from "@/lib/adminAudit";
-import { DEMO_HASH_NOTE, exportsRegister, linkOk } from "@/services/adminlog";
+import { DEMO_HASH_NOTE, exportsRegister, linkOk } from "@/features/adminlog/services/adminlog";
 
 /** Prototype: alogChain. Entry rows show a per-link Sealed/Broken chip (hash AND predecessor link). Text only. */
 export function AdminChainView({ ok, onVerify, can }: { ok: boolean; onVerify: () => void; can: boolean }) {

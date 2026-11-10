@@ -4,7 +4,7 @@ import { useLayer } from "@/hooks/useLayer";
 import { getMe, wsLog } from "@/lib/audit";
 import { bumpData } from "@/lib/store";
 import { clampText } from "@/lib/security";
-import * as svc from "@/services/assistant";
+import * as svc from "@/features/assistant/services/assistant";
 
 const SUGG = ["Summarise open risks", "Draft a board summary", "What is failing for SOC 2?", "Explain our MFA and access posture", "Draft a policy review update"];
 

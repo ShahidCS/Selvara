@@ -4,7 +4,7 @@ import { wsLog } from "@/lib/audit";
 import { getActor } from "@/lib/sod";
 import { uiMessage } from "@/lib/grcSod";
 import type { LayerApi } from "@/components/shell/LayerProvider";
-import * as svc from "@/services/controls";
+import * as svc from "@/features/controls/services/controls";
 import { FormHandle, newForm, val, useErrFlag, REQ } from "./modalForm";
 
 function ControlBody({ h }: { h: FormHandle }) {

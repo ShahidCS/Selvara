@@ -7,7 +7,7 @@ import { wsLog } from "@/lib/audit";
 import { RISK_PARTIES, riskCanEdit } from "@/lib/risk";
 import { bumpData, useApp } from "@/lib/store";
 import { attempt } from "../issues/util";
-import * as svc from "@/services/risks";
+import * as svc from "@/features/risk/services/risks";
 import { riskOpenDetail } from "./nav";
 
 export default function RiskParties() {

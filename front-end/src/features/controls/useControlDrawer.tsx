@@ -6,7 +6,7 @@ import { getActor } from "@/lib/sod";
 import { downloadText } from "@/lib/format";
 import { Icon, StatusChip, Table } from "@/components/ui";
 import { useLayer, type LayerApi } from "@/components/shell/LayerProvider";
-import * as svc from "@/services/controls";
+import * as svc from "@/features/controls/services/controls";
 import { roleReason, uiMessage } from "@/lib/grcSod";
 import { FormHandle, newForm, val, useErrFlag, REQ } from "./modalForm";
 import { openExceptionRequest, openReasonModal, openStatusModal } from "./exceptionModals";

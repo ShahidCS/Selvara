@@ -1,7 +1,7 @@
 # Issues module checklist
 
 Source: `Assurance-GRC-Portal.html` lines 2370-2432 (`REND.issues`, `issDrawer` and helpers). React: `src/features/issues/IssuesModule.tsx`,
-`issues/{IssueLayers,util}.tsx`, `src/services/issues.ts`.
+`issues/{IssueLayers,util}.tsx`, `src/features/issues/services/issues.ts`.
 
 | source feature | source lines | React file | status | notes |
 |---|---|---|---|---|
@@ -33,12 +33,12 @@ Source: `Assurance-GRC-Portal.html` lines 2370-2432 (`REND.issues`, `issDrawer` 
 - Source built `onclick="issDrawer('${id}')"` strings and inserted titles into `innerHTML` via `esc`; React renders all fields as text and uses closures, so ids/titles with quotes cannot inject.
 - Free text clamped (`clampText`: title 200, owner 80, due 40, task 300, RCA/corrective 2000); severity checked against the allow-list; link target checked against the offered control/risk ids.
 - New issue ids bump past existing ones (source `R-(60+len)` could collide after a delete, making `issFind` return the wrong record). Ids are demo values only.
-- All mutations go through `src/services/issues.ts` (`viaApi`), wrapped in try/catch with a generic toast. Every source `wsLog` call is kept; actor from `getMe()`.
+- All mutations go through `src/features/issues/services/issues.ts` (`viaApi`), wrapped in try/catch with a generic toast. Every source `wsLog` call is kept; actor from `getMe()`.
 - No uploads, links or exports in this module (so no `validateUpload`/`safeHref`/`csvCell` needed).
 
 ---
 ## Hardening update (docs/security/SOD_MATRIX.md section 3, Issue)
-Files: `services/issues.ts`, `issues/IssueLayers.tsx`, `IssuesModule.tsx`, `src/lib/grcSod.ts`, approvals engine.
+Files: `features/issues/services/issues.ts`, `issues/IssueLayers.tsx`, `IssuesModule.tsx`, `src/lib/grcSod.ts`, approvals engine.
 
 ### What changed vs the prototype
 * Severity list now includes Critical. Closing a High/Critical issue is refused by `setIssueStatus`; instead "Propose closure" (note >= 10 chars) creates an approvals-engine request (`issue.close`, 14 days). The verifier (admin/owner/analyst) must NOT be the assignee, the issue owner or the proposer, and records a verification note (>= 10 chars); only then does the issue close, with the verification (who/when/note/proposer) shown on the issue. Reject and Withdraw exist. Medium/Low close directly (closer = creator is logged, not blocked).

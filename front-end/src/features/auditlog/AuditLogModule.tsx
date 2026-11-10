@@ -4,7 +4,7 @@ import { ropaById, ropaFor } from "@/lib/ropa";
 import { useApp, useData, useModState } from "@/lib/store";
 import { SUBNAV } from "@/lib/subnav";
 import { useLayer } from "@/hooks/useLayer";
-import * as svc from "@/services/auditlog";
+import * as svc from "@/features/auditlog/services/auditlog";
 import { ChainView } from "./ChainView";
 import { EvidenceView } from "./EvidenceView";
 import { RopaRegister } from "./RopaRegister";

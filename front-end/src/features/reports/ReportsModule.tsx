@@ -8,7 +8,7 @@ import { safeFileName } from "@/lib/security";
 import { bumpData, useApp, useData } from "@/lib/store";
 import { hasRole } from "@/lib/sod";
 import { SCHED_PACKS } from "@/lib/trustData";
-import * as svc from "@/services/reports";
+import * as svc from "@/features/reports/services/reports";
 import { ApprovalsPanel, attempt } from "@/components/kit/sodKit";
 import { ScheduleForm } from "./ReportLayers";
 

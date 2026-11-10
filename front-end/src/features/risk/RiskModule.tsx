@@ -9,7 +9,7 @@ import { riskCanEdit, riskNormAll } from "@/lib/risk";
 import { safeFileName } from "@/lib/security";
 import { useGo } from "@/lib/route";
 import { bumpData, setModState, useApp, useData, useModState } from "@/lib/store";
-import * as svc from "@/services/risks";
+import * as svc from "@/features/risk/services/risks";
 import { openImportWizard } from "./import/openImportWizard";
 import { K_SEL, K_TAB, riskOpenDetail, riskSetTab } from "./nav";
 import { AddRiskForm } from "./RiskForms";

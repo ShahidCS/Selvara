@@ -2,7 +2,7 @@ import { Chip, Icon, Table } from "@/components/ui";
 import { DATA, controlsForFw, refreshFrameworkCounts } from "@/lib/data";
 import { useModState } from "@/lib/store";
 import { REQ_PAGE, fwCanAdmin, fwEdits, seedReqCtrlFw, seedReqCtrl, registerFrameworkReqs, touchFw } from "@/lib/frameworks";
-import { FW_DOM, FW_TPL } from "@/lib/fwTemplates";
+import { FW_DOM, FW_TPL } from "@/features/frameworks/lib/fwTemplates";
 import { wsLog } from "@/lib/audit";
 import { useLayer } from "@/hooks/useLayer";
 import { bumpData } from "@/lib/store";

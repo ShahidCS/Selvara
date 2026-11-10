@@ -1,5 +1,5 @@
 import { Empty, Icon, Table } from "@/components/ui";
-import { wsExports } from "@/services/auditlog";
+import { wsExports } from "@/features/auditlog/services/auditlog";
 
 /** Prototype: wsEvidenceView. Column "Package SHA-256" relabelled: the value is an FNV-1a demo digest (see checklist). */
 export function EvidenceView({ onGenerate, can }: { onGenerate: () => void; can: boolean }) {

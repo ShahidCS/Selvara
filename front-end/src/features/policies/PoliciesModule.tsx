@@ -3,7 +3,7 @@ import { DATA } from "@/lib/data";
 import { useApp, useData } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
 import { hasRole } from "@/lib/sod";
-import { polInit, policyState, openExceptions, workVersion, exceptionState } from "@/services/policies";
+import { polInit, policyState, openExceptions, workVersion, exceptionState } from "@/features/policies/services/policies";
 import { openPolicyDrawer, openPolicyForm } from "./PolicyLayers";
 
 /** Policies: register, versioning and the named-approver workflow (contract: docs/security/SOD_MATRIX.md sections 3 and 5). */

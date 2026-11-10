@@ -6,12 +6,12 @@
 | Chain status line in header | 3739 | `AuditLogModule.tsx` | Done | `role="status"` |
 | Category filter chips with counts (`AUDF`) | 3744 | `AuditLogModule.tsx` | Done | `useModState("auditlog.filter")`, validated against the category list |
 | Log table (#, time, category chip, actor, action, target, RoPA tag -> RoPA tab, hash), newest first | 3745-3746 | `AuditLogModule.tsx` | Done | RoPA tag is `role=button` + keyboard; all values React text. No empty state in the source for a filter with 0 rows (ported as-is) |
-| JSON/CSV export (`wsLogExport`), wsLog `auditlog.exported`, toast | 3760-3763 | `services/auditlog.ts` `exportLog` | Done | CSV through `csvCell` (source had a looser escape, no formula guard); includes hash and prev |
+| JSON/CSV export (`wsLogExport`), wsLog `auditlog.exported`, toast | 3760-3763 | `features/auditlog/services/auditlog.ts` `exportLog` | Done | CSV through `csvCell` (source had a looser escape, no formula guard); includes hash and prev |
 | Chain integrity view (banner, explainer, summary, link table, Verify) | 3748-3758 | `auditlog/ChainView.tsx` | Done | Link chip also checks the predecessor link (source checked own hash only). Demo disclaimer added; "Algorithm" row now says FNV-1a (source said "SHA-256 (demo)") |
-| `wsVerify` (wsLog `auditlog.chain.verified`, toast, "FAILED" copy) | 3759 | `services/auditlog.ts` `verifyChain` | Done | Verification itself appends a log entry (source behaviour) |
-| RoPA register view + JSON/CSV export | 3727-3731, 4186-4189 | `auditlog/RopaRegister.tsx`, `lib/ropa.ts`, `services/auditlog.ts` `exportRopa` | Done | `ropaFor`/`ropaById` ported to `src/lib/ropa.ts` |
+| `wsVerify` (wsLog `auditlog.chain.verified`, toast, "FAILED" copy) | 3759 | `features/auditlog/services/auditlog.ts` `verifyChain` | Done | Verification itself appends a log entry (source behaviour) |
+| RoPA register view + JSON/CSV export | 3727-3731, 4186-4189 | `auditlog/RopaRegister.tsx`, `lib/ropa.ts`, `features/auditlog/services/auditlog.ts` `exportRopa` | Done | `ropaFor`/`ropaById` ported to `src/lib/ropa.ts` |
 | Evidence export view, exports register, empty state "No packages yet" | 3765-3768 | `auditlog/EvidenceView.tsx` | Done | Copy now says "hash manifest"/"Package hash (demo)" instead of SHA-256 (value is FNV-1a) |
-| `wsEvidencePackage` (WEXP-nnn, manifest download, wsLog `evidence.package.generated`) | 3769-3774 | `services/auditlog.ts` `generatePackage` | Done | Manifest key `sha256` renamed `hash` + `algorithm` field |
+| `wsEvidencePackage` (WEXP-nnn, manifest download, wsLog `evidence.package.generated`) | 3769-3774 | `features/auditlog/services/auditlog.ts` `generatePackage` | Done | Manifest key `sha256` renamed `hash` + `algorithm` field |
 | Helpers `wsChainBody`, `wsHashStr`, `verifyWsChain` | 1049-1050 | `lib/audit.ts` (existing; ADD: `wsChainBody` export) | Done | |
 
 ## Open questions

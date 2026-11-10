@@ -6,7 +6,7 @@ import { metrics } from "@/lib/metrics";
 import { getMe, wsLog } from "@/lib/audit";
 import { useGo } from "@/lib/route";
 import { useLayer } from "@/hooks/useLayer";
-import { COV_CATS, COV_FW, covCell, boardPackHTML } from "@/lib/boardPack";
+import { COV_CATS, COV_FW, covCell, boardPackHTML } from "@/features/overview/lib/boardPack";
 import { downloadText } from "@/lib/format";
 import { useRoute } from "@/lib/route";
 import { useApp } from "@/lib/store";

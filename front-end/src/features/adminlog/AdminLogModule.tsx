@@ -4,7 +4,7 @@ import { LAWFUL_BASIS, custList } from "@/lib/platform";
 import { ropaById, ropaFor } from "@/lib/ropa";
 import { useApp, useData, useModState } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
-import * as svc from "@/services/adminlog";
+import * as svc from "@/features/adminlog/services/adminlog";
 import { openConfirmReset } from "../team/ResetDemo";
 import { useGate } from "@/components/kit/admin/ElevateGate";
 import { AdminChainView, AdminExportsView } from "./AdminViews";

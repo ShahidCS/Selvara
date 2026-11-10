@@ -3,7 +3,7 @@ import { Icon, Page } from "@/components/ui";
 import { useApp, useData, useModState } from "@/lib/store";
 import { SUBNAV } from "@/lib/subnav";
 import { useLayer } from "@/hooks/useLayer";
-import { asstCanManage } from "@/services/assistant";
+import { asstCanManage } from "@/features/assistant/services/assistant";
 import { ApprovalsPanel } from "@/components/kit/sodKit";
 import { AgentForm } from "./AgentForm";
 import { AskTab } from "./AskTab";

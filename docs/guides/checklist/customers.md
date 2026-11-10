@@ -2,7 +2,7 @@
 
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|
-| Plan catalogue, module list, module/usage pricing seeds | 3779-3788 | `services/billing` (`PLANS`), `data/plans.json`, `data/billingAdminSeed.json`, `services/customers.ts` | Done | `PLANS` is shared with the workspace Billing view, as in the source |
+| Plan catalogue, module list, module/usage pricing seeds | 3779-3788 | `services/billing` (`PLANS`), `data/plans.json`, `features/billing/data/billingAdminSeed.json`, `services/customers.ts` | Done | `PLANS` is shared with the workspace Billing view, as in the source |
 | `custInit` lazy defaults (modules, limits, seatLimit) | 3789-3793 | `services/customers.ts` | Done | |
 | Search-first lookup, suggestions (name / id / email), keyboard (Up/Down/Enter/Esc), outside click, "No customer matches" | 3828-3860 | `customers/CustomerSearch.tsx` | Done | Combobox ARIA added; suggestions are React text. Enter only picks while the list is open (source also picked from the hidden list) |
 | Recently viewed chips (max 4), Clear, Onboard customer header actions | 3823-3827, 3860-3861 | `CustomersModule.tsx` | Done | State via `useModState("customers.*")` |

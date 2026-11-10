@@ -1,5 +1,5 @@
 import { Chip } from "@/components/ui";
-import { AI_GUARDRAIL_TONE } from "@/lib/ai";
+import { AI_GUARDRAIL_TONE } from "@/features/ai/lib/ai";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export function AiEuChip({ c }: { c?: string }) {

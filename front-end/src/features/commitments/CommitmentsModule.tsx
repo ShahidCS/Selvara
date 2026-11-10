@@ -6,7 +6,7 @@ import { adminLog } from "@/lib/adminAudit";
 import { hasRole } from "@/lib/sod";
 import { bumpData, useApp, useData } from "@/lib/store";
 import { INCIDENT, STANDARD_TERMS } from "@/lib/trustData";
-import * as svc from "@/services/commitments";
+import * as svc from "@/features/commitments/services/commitments";
 import { attempt } from "@/components/kit/sodKit";
 import { ImportContractForm, StartIncidentForm, openAnalysis } from "./CommitmentLayers";
 

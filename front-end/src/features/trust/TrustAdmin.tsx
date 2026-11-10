@@ -5,7 +5,7 @@ import { wsLog } from "@/lib/audit";
 import { hasRole } from "@/lib/sod";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { TRUST } from "@/lib/trustData";
-import * as svc from "@/services/trust";
+import * as svc from "@/features/trust/services/trust";
 import { ApprovalsPanel, WhyNot, attempt } from "@/components/kit/sodKit";
 import { BlockDomainForm, DenyForm, PublishForm } from "./TrustModals";
 

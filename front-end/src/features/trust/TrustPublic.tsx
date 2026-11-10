@@ -6,7 +6,7 @@ import { getMe, wsLog } from "@/lib/audit";
 import { bumpData, useData } from "@/lib/store";
 import { clampText } from "@/lib/security";
 import { TRUST, TRUST_FAQ, TRUST_SUBPROC, TRUST_UPDATES } from "@/lib/trustData";
-import * as svc from "@/services/trust";
+import * as svc from "@/features/trust/services/trust";
 import { RequestAccessForm, SubscribeForm } from "./TrustModals";
 
 const FAIL = "Something went wrong. Please try again.";

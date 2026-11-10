@@ -1,14 +1,14 @@
 # AI Governance module checklist
 
 Source: `Assurance-GRC-Portal.html` lines 3012-3245 (`REND.ai`, `ai*` helpers). React: `src/features/ai/AiModule.tsx`,
-`ai/{AiChips,AiDrawer,AiModals}.tsx`, `src/lib/ai.ts`, `src/services/ai.ts`, seed `src/data/aiSeed.json` (extracted with `scripts/extract-source.js`; `DATA.ai` is in `seed.json`).
+`ai/{AiChips,AiDrawer,AiModals}.tsx`, `src/features/ai/lib/ai.ts`, `src/features/ai/services/ai.ts`, seed `src/features/ai/data/aiSeed.json` (extracted with `scripts/extract-source.js`; `DATA.ai` is in `seed.json`).
 Exported hook for other modules: `useAiDrawer()` (from `AiModule`), opens the drawer by id (`"AI-01"`); an unknown id opens a "not found" drawer.
 
 | source feature | source lines | React file | status | notes |
 |---|---|---|---|---|
 | KPIs (Registered systems, EU AI Act high-risk, Classifications to confirm, Shadow AI found), tones | 3013-3019, 3033 | AiModule | done | |
 | Info banner (draft content, two-person rule, owner-or-admin) | 3033 | AiModule | done | copy verbatim |
-| Discovery sources card | 3020 | AiModule, `AI_DISCOVERY` in lib/ai | done | |
+| Discovery sources card | 3020 | AiModule, `AI_DISCOVERY` in features/ai/lib/ai | done | |
 | Discovered AI awaiting registration (count tag, Register / Dismiss, empty "Nothing unregistered") | 3021, 3028-3030 | AiModule, `svc.dismissShadow`, `openRegister` | done | wsLog `ai.shadow.dismissed`; `AI_SHADOW` is a mutable array (splice) |
 | ISO/IEC 42001 readiness (ring via `fwReadiness('iso42001')`, 3 counters, Open framework) | 3022-3023 | AiModule | done | |
 | AI inventory table (9 cols, archived rows dimmed and not clickable, draft tag, Open button) | 3034-3035 | AiModule | done | rows keyboard operable; the Open button still opens archived systems (source) |
@@ -26,8 +26,8 @@ Exported hook for other modules: `useAiDrawer()` (from `AiModule`), opens the dr
 | Bias tab + Log test modal + oversight list + Edit oversight measures | 3134-3141, 3192-3202 | AiDrawer, AiModals | done | one measure per line; empty lines dropped |
 | Signals tab (severity chip, status chip, Recommended, Raise risk / Raise issue / Dismiss, `-> ref`) | 3142-3151 | AiDrawer | done | |
 | Signal -> risk (draft risk, category AI) / issue / dismiss | 3203-3212 | `svc.signalRaiseRisk` (uses `riskNorm` from lib/risk), `signalRaiseIssue`, `signalDismiss` | done | ids bump past existing; issue via `nextId("R-", 60, ...)` |
-| `aiInit` lazy defaults, `AI_DETAIL`, `aiCanManage`, chips, `aiEuRationale` | 3054-3092 | lib/ai.ts, AiChips | done | |
-| `aiLog` (admin audit chain) | 3213 | lib/ai.ts `aiLog` | changed | see Open questions 1 |
+| `aiInit` lazy defaults, `AI_DETAIL`, `aiCanManage`, chips, `aiEuRationale` | 3054-3092 | features/ai/lib/ai.ts, AiChips | done | |
+| `aiLog` (admin audit chain) | 3213 | features/ai/lib/ai.ts `aiLog` | changed | see Open questions 1 |
 
 ## Open questions
 1. **`adminLog` does not exist in the React app yet.** The source wrote every system decision (`ai.registered`, `ai.guardrail.set`, `ai.euact.confirmed`, `ai.impact_assessment.approved`, ...) only to the admin chain (`adminLog`, tagged tenant and category "AI governance") and only the shadow dismissal also to `wsLog`. I log all of them to the workspace chain via `aiLog` (`wsLog(action, name, "AI governance")`) so the trail is not lost; re-point `aiLog` to the admin chain when it is ported. The `tenant` field is not carried.
@@ -49,7 +49,7 @@ Exported hook for other modules: `useAiDrawer()` (from `AiModule`), opens the dr
 - All text (names, purposes, summaries, notes, signal text, oversight lines) renders as React text; the source used `esc()` + `innerHTML` with `onclick="aiDrawer(${i})"` index strings. Systems are addressed by id (not array index, which shifted after changes); unknown ids render "AI system not found".
 - Free text clamped with `clampText` (name 120, purpose/basis/data 200, summary/notes 2000, measure 300 x 30, users 40) plus `maxLength`; tier, autonomy, FRIA/bias status, guardrail, Annex III area, role and owner are checked against allow-lists in the service.
 - Classification and assessment text keeps the "draft content, human review required" wording; no output is presented as a compliance determination.
-- Every mutation goes through `src/services/ai.ts` (`viaApi`) inside try/catch with a generic toast. Refusals use the source toasts.
+- Every mutation goes through `src/features/ai/services/ai.ts` (`viaApi`) inside try/catch with a generic toast. Refusals use the source toasts.
 - Third-party / vendor data handling: AI inventory fields ("Data it can reach") are descriptive text only; no customer data is stored. Seed data is synthetic.
 - No uploads, external links or exports in this module (no `validateUpload`, `safeHref`, `csvCell` needed). Navigation uses `useGo`.
 
@@ -73,6 +73,6 @@ Services throw `SodError`; `aiLog` / `wsLog` calls kept; four-eyes steps use `li
 **Resolved open questions (owner decision):** OQ 2 and 3 (surname hacks replaced by role gates and `isSamePerson`), OQ 4 (services re-check, registration gated). Still open: OQ 1, 5-12.
 
 **Security notes (additions)**
-* Role gates, "confirmer != drafter", "approver != submitter" and the second approver for guardrail/archive are enforced in `src/services/ai.ts`; the real API must enforce them from user ids (names are compared with `isSamePerson`, seed owners are initials like "A. Rivera").
+* Role gates, "confirmer != drafter", "approver != submitter" and the second approver for guardrail/archive are enforced in `src/features/ai/services/ai.ts`; the real API must enforce them from user ids (names are compared with `isSamePerson`, seed owners are initials like "A. Rivera").
 * Two analysts can still register; `analyst` cannot open the module under ROLE_MODS, so the analyst rule is only reachable through the API.
 * Every decision is audited: approval engine entries (`approval.<kind>.requested/approved`), `ai.guardrail.approved`, `ai.archive.approved` with approvers and requester, plus the existing `aiLog` calls.

@@ -3,7 +3,7 @@ import { useLayer } from "@/hooks/useLayer";
 import { bumpData, useApp, useData } from "@/lib/store";
 import { safeFileName } from "@/lib/security";
 import { iAm, uiMessage } from "@/lib/grcSod";
-import * as svc from "@/services/evidence";
+import * as svc from "@/features/evidence/services/evidence";
 import { AttachFile, DeleteEvidence, EvidenceForm, NewVersion, ReasonModal } from "./EvidenceForms";
 
 /** Right-hand preview card (source evShow). All values render as React text. */

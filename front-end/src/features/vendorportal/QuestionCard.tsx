@@ -1,4 +1,4 @@
-import { ANSWERS, MAX_COMMENT, type VendorFile, type VendorQuestion } from "@/lib/vendorSubmission";
+import { ANSWERS, MAX_COMMENT, type VendorFile, type VendorQuestion } from "@/features/vendorportal/lib/vendorSubmission";
 import EvidenceUpload from "./EvidenceUpload";
 
 export function AnswerSelect({ qid, value, onChange }: { qid: string; value: string; onChange: (v: string) => void }) {

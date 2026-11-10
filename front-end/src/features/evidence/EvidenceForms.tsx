@@ -4,7 +4,7 @@ import { getMe } from "@/lib/audit";
 import { bumpData, setModState } from "@/lib/store";
 import { clampText, safeFileName, validateUpload } from "@/lib/security";
 import { uiMessage } from "@/lib/grcSod";
-import * as svc from "@/services/evidence";
+import * as svc from "@/features/evidence/services/evidence";
 
 const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
 export const SEL_KEY = "evidence.sel";

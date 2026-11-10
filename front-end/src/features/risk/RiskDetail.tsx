@@ -16,7 +16,7 @@ import { BOARD_BODIES, riskNeedsBoard } from "@/lib/riskBoard";
 import { safeFileName } from "@/lib/security";
 import { useControlDrawer } from "../controls/useControlDrawer";
 import { attemptR } from "./util";
-import * as svc from "@/services/risks";
+import * as svc from "@/features/risk/services/risks";
 import { riskOpenActions } from "@/lib/risk";
 import { BandPill } from "./RiskBits";
 import { AddActionForm, CancelActionForm } from "./RiskForms";

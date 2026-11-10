@@ -6,7 +6,7 @@ import { wsLog } from "@/lib/audit";
 import { bumpData } from "@/lib/store";
 import { clampText, isEmail } from "@/lib/security";
 import { TRUST } from "@/lib/trustData";
-import * as svc from "@/services/trust";
+import * as svc from "@/features/trust/services/trust";
 import { attempt } from "@/components/kit/sodKit";
 
 const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
