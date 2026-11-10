@@ -1,11 +1,11 @@
 # Policies module checklist
 
-Source: `Assurance-GRC-Portal.html` lines 2252-2284. React: `src/components/modules/PoliciesModule.tsx`, `policies/PolicyLayers.tsx` (drawer + modals), `src/services/policies.ts`.
+Source: `Assurance-GRC-Portal.html` lines 2252-2284. React: `src/features/policies/PoliciesModule.tsx`, `policies/PolicyLayers.tsx` (drawer + modals), `src/features/policies/services/policies.ts`.
 No seed data extraction was needed (`DATA.policies` already exists).
 
 | source feature | source lines | React file/component | status | notes |
 |---|---|---|---|---|
-| polInit defaults (history, reviewers, mappedControls, acceptance) | 2253 | `services/policies.polInit`, on render and drawer open | done | random acceptance count is demo-only |
+| polInit defaults (history, reviewers, mappedControls, acceptance) | 2253 | `features/policies/services/policies.polInit`, on render and drawer open | done | random acceptance count is demo-only |
 | Register table (ID, Policy, Version, Owner, Next review, Status, chevron), clickable rows | 2256 | `PoliciesModule` | done | rows keyboard-operable |
 | "New policy" page action | 2257 | `PoliciesModule` | done | |
 | Drawer "Policy <id>" header, name, status chip, meta grid | 2259-2262 | `openPolicyDrawer`, `DrawerBody` | done | |
@@ -49,7 +49,7 @@ Must be enforced by the real API:
 
 ---
 ## Hardening update (docs/security/SOD_MATRIX.md sections 3 and 5)
-Files: `services/policies.ts` (rules + audit), `policies/PolicyLayers.tsx`, `PoliciesModule.tsx`, shared `src/lib/grcSod.ts` (new, add-only helpers), approvals engine `src/lib/approvals.ts`.
+Files: `features/policies/services/policies.ts` (rules + audit), `policies/PolicyLayers.tsx`, `PoliciesModule.tsx`, shared `src/lib/grcSod.ts` (new, add-only helpers), approvals engine `src/lib/approvals.ts`.
 
 ### What changed vs the prototype
 | Prototype | Now |

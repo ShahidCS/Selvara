@@ -4,7 +4,7 @@ Read-only reference specification ported from the `appsec-controls-spec` board (
 
 | Board feature | React component / file | Status | Notes |
 |---|---|---|---|
-| Intro, "Core rule: the browser is untrusted" | `AppSecModule.tsx`, `data/appsecSpec.json` | Done | Copy verbatim |
+| Intro, "Core rule: the browser is untrusted" | `AppSecModule.tsx`, `features/appsec/data/appsecSpec.json` | Done | Copy verbatim |
 | "What a response may contain": 8 never-send items | `appsec/ResponseCompare.tsx` | Done | Copy verbatim |
 | Bad vs good login response, side by side | `appsec/ResponseCompare.tsx` | Done | Two `<pre>` blocks, text only. Board's sample identity (name/email, ids, tenant) replaced by bracketed placeholders; good response unchanged (`Cache-Control: no-store`, `__Host-mfa_pending`) |
 | 9 control groups: threat, controls, "Maps to" (ASVS / API Top 10), "Test" | `appsec/ControlGroup.tsx` | Done | Collapsible (`aria-expanded`, `aria-controls`), Expand/Collapse all; all copy and mappings verbatim |
@@ -46,7 +46,7 @@ The board is stricter than the portal in the places below. Portal behaviour was 
 7. Rate-limit numbers are labelled "starting values" by the board; confirm who owns tuning after launch.
 
 ## Security notes
-* Static content from `src/data/appsecSpec.json`; rendered as React text only (no `dangerouslySetInnerHTML`, no links from data, no `fetch`, no storage). Example responses are `<pre>` text with placeholders; they contain no secrets, tokens or identities.
+* Static content from `src/features/appsec/data/appsecSpec.json`; rendered as React text only (no `dangerouslySetInnerHTML`, no links from data, no `fetch`, no storage). Example responses are `<pre>` text with placeholders; they contain no secrets, tokens or identities.
 * The page is informational. Nothing here is a control: the role gate is UI-only and must be mirrored by the API (ASVS 4.1.1). Role gate denies by default.
 * Release-gate ticks are in-memory component state, not persisted, not logged to `wsLog`, not exported, and the page says they are not evidence.
 * Search input is capped (80 chars) and only used for case-insensitive substring matching on static strings.

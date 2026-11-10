@@ -1,6 +1,6 @@
 # Reports module checklist
 
-Source: lines 3496-3525 (`REPORT_FREQ`, `SCHED_PACKS`, `REND.reports`, generate/schedule functions). React: `ReportsModule.tsx`, `reports/ReportLayers.tsx`, `src/services/reports.ts`. State: `src/lib/trustData.ts` (`SCHED_PACKS`, `REPORT_FREQ`). `DATA.reports` already existed.
+Source: lines 3496-3525 (`REPORT_FREQ`, `SCHED_PACKS`, `REND.reports`, generate/schedule functions). React: `ReportsModule.tsx`, `reports/ReportLayers.tsx`, `src/features/reports/services/reports.ts`. State: `src/lib/trustData.ts` (`SCHED_PACKS`, `REPORT_FREQ`). `DATA.reports` already existed.
 
 | source feature | source lines | React file | status | notes |
 |---|---|---|---|---|
@@ -17,7 +17,7 @@ Source: lines 3496-3525 (`REPORT_FREQ`, `SCHED_PACKS`, `REND.reports`, generate/
 1. The "Send on" field is hidden when frequency is "On demand", but `REPORT_FREQ` has no "On demand" option, so that branch (and `next:"—"`) is unreachable from the UI. Ported as-is.
 2. Seed `SCHED_PACKS` names ("Board security pack", ...) do not match `DATA.reports` names, so scheduling a stored report adds a new row rather than updating a seeded one; "Audit evidence pack" (frequency "On demand") cannot be recreated.
 3. Recipients are free text (names, groups, emails) with no validation; "Next" never shows a real date.
-4. "Generate now" produces a placeholder text file, not the real report. Board pack (Overview) is the only generated HTML document (`lib/boardPack.ts`, esc()).
+4. "Generate now" produces a placeholder text file, not the real report. Board pack (Overview) is the only generated HTML document (`features/overview/lib/boardPack.ts`, esc()).
 5. The trend baseline numbers are hard-coded.
 
 ## Security notes
@@ -37,6 +37,6 @@ Services throw `SodError`; `wsLog` kept; external distribution uses `lib/approva
 
 **Resolved open questions (owner decision):** OQ 1. Still open: OQ 2-5.
 
-**Open question added:** the internal-group list and the "own email domain" test are a heuristic for free-text recipients (see `externalRecipients` in `services/reports.ts`); the real API must validate recipient addresses against the tenant's directory and block external ones without approval.
+**Open question added:** the internal-group list and the "own email domain" test are a heuristic for free-text recipients (see `externalRecipients` in `features/reports/services/reports.ts`); the real API must validate recipient addresses against the tenant's directory and block external ones without approval.
 
 **Security notes (additions):** changing an existing external schedule creates a new pending request; the previous approved schedule stays active until the new one is approved (the pending one is not applied in place).

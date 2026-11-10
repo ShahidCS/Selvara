@@ -2,14 +2,14 @@
 
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|
-| Seeds (agents, runs, MCP grants) | 3593-3608 | `src/data/assistantSeed.json`, `services/assistant.ts` | Done | |
+| Seeds (agents, runs, MCP grants) | 3593-3608 | `src/features/assistant/data/assistantSeed.json`, `features/assistant/services/assistant.ts` | Done | |
 | Tabs ask / agents / log / mcp (shared with the sidebar sub-nav) | 3592, 3624-3627 | `AssistantModule.tsx` | Done | `useModState("assistant.view","ask")` via `SUBNAV.assistant`; unknown value -> ask |
-| `asstCanManage` (super, admin, owner) | 3609 | `services/assistant.ts` | Done | Others see "View only" and no action buttons |
-| `asstMetrics`, `asstDraft` (all canned templates, draft footer) | 3610-3623 | `services/assistant.ts` | Done | Copy verbatim; no model call |
+| `asstCanManage` (super, admin, owner) | 3609 | `features/assistant/services/assistant.ts` | Done | Others see "View only" and no action buttons |
+| `asstMetrics`, `asstDraft` (all canned templates, draft footer) | 3610-3623 | `features/assistant/services/assistant.ts` | Done | Copy verbatim; no model call |
 | Ask view: welcome card, thread, suggestion chips, textarea (Cmd/Ctrl+Enter), Draft answer, Clear, "Draft only" note | 3629-3640 | `assistant/AskTab.tsx` | Done | Thread kept in memory only (survives navigation like source); scrolls to bottom on new message |
 | Message rendering (user bubble / assistant card with "Draft · review required", Copy, Mark reviewed) | 3658-3661, 3662-3664 | `AskTab.tsx` | Done | React text, `white-space: pre-wrap`. wsLog `assistant.draft.generated` (first 60 chars) and `.reviewed` |
 | Custom agents table + Create agent modal | 3641-3644, 3668-3669 | `assistant/Tables.tsx` (`AgentsTab`), `assistant/AgentForm.tsx` | Done | "Agent name is required."; selects checked against allow-lists |
-| Run now (switches to Run log; "Suggests only" -> Waiting), Pause/Resume, Delete | 3665-3667 | `Tables.tsx`, `services/assistant.ts` | Done | |
+| Run now (switches to Run log; "Suggests only" -> Waiting), Pause/Resume, Delete | 3665-3667 | `Tables.tsx`, `features/assistant/services/assistant.ts` | Done | |
 | Run log: waiting banner, Approve / Reject | 3646-3651, 3670 | `Tables.tsx` (`RunLogTab`) | Done | Decision allowed only while "Waiting" |
 | MCP access: Grant / Revoke | 3652-3656, 3671 | `Tables.tsx` (`McpTab`) | Done | |
 

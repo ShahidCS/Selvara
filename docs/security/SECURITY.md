@@ -5,7 +5,7 @@ Status: living document. Generated code needs technical, security and management
 ## Controls in place (ASVS v4 mapping)
 | Area | Control | Where |
 |---|---|---|
-| V5.3 output encoding / XSS | React text rendering only; no `dangerouslySetInnerHTML`/`eval`; generated documents escape values with `esc()` | all modules, `lib/boardPack.ts` |
+| V5.3 output encoding / XSS | React text rendering only; no `dangerouslySetInnerHTML`/`eval`; generated documents escape values with `esc()` | all modules, `features/overview/lib/boardPack.ts` |
 | V5.1.5 / 5.3.6 | `safeHref` allows only http(s)/mailto/in-app paths | `lib/security.ts` |
 | V12 files | `validateUpload` (ext allow-list, size), `safeFileName` | `lib/security.ts` |
 | CSV injection | `csvCell` prefixes `= + - @ tab CR` | `lib/format.ts` |

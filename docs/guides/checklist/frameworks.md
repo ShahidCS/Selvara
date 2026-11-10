@@ -2,7 +2,7 @@
 
 | Source feature | Source lines | React file | Status |
 |---|---|---|---|
-| Library header, draft banner, kind cards (All/Standards/Frameworks/Regulations) with in-scope + average readiness | 1805-1829 | `components/modules/FrameworksModule.tsx` | Done |
+| Library header, draft banner, kind cards (All/Standards/Frameworks/Regulations) with in-scope + average readiness | 1805-1829 | `features/frameworks/FrameworksModule.tsx` | Done |
 | Region filter, text search, "n of N shown" | 1830-1840 | `FrameworksModule.tsx` | Done |
 | Library table: name+kind chip+counts, region, segmented readiness bar + legend, Active/Snoozed toggle, In scope toggle (admin only, read-only chips otherwise), Details/Open | 1809-1860 | `FrameworksModule.tsx`, `frameworks/FwSegsBar.tsx` | Done |
 | Empty state "Nothing matches these filters" | 1860 | `FrameworksModule.tsx` | Done |
@@ -13,7 +13,7 @@
 | Requirement row: expand, guidance, mapped control chips (open control drawer), remove mapping, "mapping edited" note, N/A record | 1987-2025 | `FwDetail.tsx` (`ReqRow`) | Done |
 | Admin: map/unmap control, mark N/A (min 15 chars validation), make applicable again, audit log + toasts | 2027-2062 | `FwDetail.tsx` | Done |
 | ISO 27001/27002 Annex A catalogue (93 controls, theme counts, coverage chips) | 1907-1923 | `FwDetail.tsx` (`AnnexCard`) | Done |
-| Add a framework: 4 templates, fields, keyword matcher preview, coverage chip, validation, save to library | 2065-2127 | `frameworks/FwAdd.tsx`, `lib/fwTemplates.ts` | Done |
+| Add a framework: 4 templates, fields, keyword matcher preview, coverage chip, validation, save to library | 2065-2127 | `frameworks/FwAdd.tsx`, `features/frameworks/lib/fwTemplates.ts` | Done |
 | Scoring model: requirement status from mapped controls, seeded mappings, readiness bands | 1746-1792 | `lib/frameworks.ts` | Done |
 | Read-only message for non-admins | 1957 | `FwDetail.tsx` | Done |
 

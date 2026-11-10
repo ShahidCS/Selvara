@@ -2,7 +2,7 @@
 
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|
-| Segmented tabs Account inventory / Access requests / Access reviews (`ACCV`) | 2990, 2993-2994 | `components/modules/AccessModule.tsx` | Done | `useModState("access.view", "inventory")`; unknown stored values fall back to inventory |
+| Segmented tabs Account inventory / Access requests / Access reviews (`ACCV`) | 2990, 2993-2994 | `features/access/AccessModule.tsx` | Done | `useModState("access.view", "inventory")`; unknown stored values fall back to inventory |
 | Header count tag (`n grants` / `n pending` / `n open`) | 3000-3002 | `AccessModule.tsx` | Done | |
 | Account inventory table (status chip mapping Active / Review / Needs evidence + raw status) | 3000 | `access/GrantsTable.tsx` | Done | Shared with People > Access grants |
 | Requests table (id, user, system, level, reason, status pill Approved / Rejected / Pending) | 3001 | `access/AccessRequests.tsx` | Done | |

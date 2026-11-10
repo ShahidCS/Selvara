@@ -1,11 +1,11 @@
 # Evidence module checklist
 
-Source: `Assurance-GRC-Portal.html` lines 2217-2251. React: `src/components/modules/EvidenceModule.tsx`, `evidence/{EvidencePreview,EvidenceForms}.tsx`, `src/services/evidence.ts`.
+Source: `Assurance-GRC-Portal.html` lines 2217-2251. React: `src/features/evidence/EvidenceModule.tsx`, `evidence/{EvidencePreview,EvidenceForms}.tsx`, `src/features/evidence/services/evidence.ts`.
 No seed data extraction was needed (`DATA.evidence` already exists).
 
 | source feature | source lines | React file/component | status | notes |
 |---|---|---|---|---|
-| evInit defaults (ver, attachments from name+type ext, history) | 2218 | `services/evidence.evInit`, called on render | done | random attachment size is demo-only |
+| evInit defaults (ver, attachments from name+type ext, history) | 2218 | `features/evidence/services/evidence.evInit`, called on render | done | random attachment size is demo-only |
 | Selected id state EVSEL | 2219 | `useModState("evidence.sel")` | done | persists across navigation; ignored when the record no longer exists |
 | Split layout: list card + preview card, count tag | 2221 | `EvidenceModule` | done | |
 | "Add evidence" page action | 2222 | `EvidenceModule` | done | |
@@ -49,7 +49,7 @@ Must be enforced by the real API (UI only in the prototype):
 
 ---
 ## Hardening update (docs/security/SOD_MATRIX.md section 3, Evidence)
-Files: `services/evidence.ts`, `evidence/EvidenceForms.tsx`, `evidence/EvidencePreview.tsx`, `EvidenceModule.tsx`, `src/lib/grcSod.ts`, approvals engine.
+Files: `features/evidence/services/evidence.ts`, `evidence/EvidenceForms.tsx`, `evidence/EvidencePreview.tsx`, `EvidenceModule.tsx`, `src/lib/grcSod.ts`, approvals engine.
 
 ### What changed vs the prototype
 * New review state per record (Pending review / Accepted / Rejected, with reviewer, date, note). Accept/Reject by owner/analyst/admin; the reviewer must differ from the collector and from every contributor (collector, each version author, each attachment adder). Reject needs a note of >= 10 chars.

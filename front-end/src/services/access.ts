@@ -1,7 +1,7 @@
 /* Access API stubs (requests + recertification reviews). Mock mode mutates the in-memory queues the prototype used and returns what the
  * caller needs for wsLog / toast; the caller then does wsLog / toast / bumpData.
  * The real API MUST enforce who may approve/deny (not the requester), who may review, and write the audit entry itself.
- * Creating a request lives in components/modules/work/RequestModals.tsx (AccessRequestForm, shared with My Work). */
+ * Creating a request lives in features/work/RequestModals.tsx (AccessRequestForm, shared with My Work). */
 import { DATA } from "@/lib/data";
 import { decideApproval, registerKind, settle } from "@/lib/approvalFlow";
 import { requestApproval } from "@/lib/approvals";

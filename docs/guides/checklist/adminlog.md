@@ -3,17 +3,17 @@
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|
 | Tabs log / chain / ropa / exp (`ALOG.view`) | 4116-4118 | `AdminLogModule.tsx` | Done | `useModState("adminlog.view")` |
-| Filters: search (actor/action/object/IP/role), tenant (All / Platform / each customer), lawful basis | 4119-4122, 4132-4139 | `AdminLogModule.tsx`, `services/adminlog.ts` `alogRows` | Done | State `adminlog.q/tenant/basis`; search capped at 100 chars; stale tenant/basis values fall back to All |
+| Filters: search (actor/action/object/IP/role), tenant (All / Platform / each customer), lawful basis | 4119-4122, 4132-4139 | `AdminLogModule.tsx`, `features/adminlog/services/adminlog.ts` `alogRows` | Done | State `adminlog.q/tenant/basis`; search capped at 100 chars; stale tenant/basis values fall back to All |
 | Chain status in header | 4143 | `AdminLogModule.tsx` | Done | |
 | Log table (11 columns, categories as tag chips, synthetic IPs, hash), newest first | 4149-4163 | `AdminLogModule.tsx` | Done | No edit/delete/row actions |
 | Empty state "No matching events" | 4148 | `AdminLogModule.tsx` | Done | |
-| Chain integrity view, Verify (adminLog `adminlog.chain.verified`) | 4166-4179 | `adminlog/AdminViews.tsx`, `services/adminlog.ts` `verify` | Done | Per-link chip also checks predecessor link; FNV-1a demo disclaimer added |
-| RoPA register view + JSON/CSV export (adminLog `ropa.exported`) | 4181-4189 | `auditlog/RopaRegister.tsx` (shared), `lib/ropa.ts`, `services/adminlog.ts` `exportRopa` | Done | |
+| Chain integrity view, Verify (adminLog `adminlog.chain.verified`) | 4166-4179 | `adminlog/AdminViews.tsx`, `features/adminlog/services/adminlog.ts` `verify` | Done | Per-link chip also checks predecessor link; FNV-1a demo disclaimer added |
+| RoPA register view + JSON/CSV export (adminLog `ropa.exported`) | 4181-4189 | `auditlog/RopaRegister.tsx` (shared), `lib/ropa.ts`, `features/adminlog/services/adminlog.ts` `exportRopa` | Done | |
 | Evidence export view, register, empty state | 4191-4198 | `adminlog/AdminViews.tsx` | Done | "SHA-256" copy replaced by "hash (demo)" |
-| `evidencePackage` (EXP-nnn, manifest, adminLog `evidence.package.generated`) | 4199-4204 | `services/adminlog.ts` `generatePackage` | Done | Manifest `sha256` key -> `hash` + `algorithm` |
-| `alogExport` JSON/CSV of the filtered rows (oldest first), adminLog `adminlog.exported` | 4205-4211 | `services/adminlog.ts` `exportLog` | Done | `csvCell` on every cell; includes `hash`, `prev`, `before`, `after`; logs total entry count `cn` (source) |
+| `evidencePackage` (EXP-nnn, manifest, adminLog `evidence.package.generated`) | 4199-4204 | `features/adminlog/services/adminlog.ts` `generatePackage` | Done | Manifest `sha256` key -> `hash` + `algorithm` |
+| `alogExport` JSON/CSV of the filtered rows (oldest first), adminLog `adminlog.exported` | 4205-4211 | `features/adminlog/services/adminlog.ts` `exportLog` | Done | `csvCell` on every cell; includes `hash`, `prev`, `before`, `after`; logs total entry count `cn` (source) |
 | "Reset demo data" button -> confirm modal | 4125 | `AdminLogModule.tsx` + `team/ResetDemo.tsx` `openConfirmReset` | Done | Only in log/chain views, as in the source |
-| `ropaFor`, `ropaById`, `tenantName`, `blobDownload` | 1089-1105, 4140, 4212 | `lib/ropa.ts`, `services/adminlog.ts`, `lib/format.ts` | Done | |
+| `ropaFor`, `ropaById`, `tenantName`, `blobDownload` | 1089-1105, 4140, 4212 | `lib/ropa.ts`, `features/adminlog/services/adminlog.ts`, `lib/format.ts` | Done | |
 
 ## Open questions
 1. Export uses the current filters but logs `ADMIN_AUDIT.length` (all entries) as the exported count (source).

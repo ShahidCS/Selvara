@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { BOARD_BODIES, isoShift, riskNeedsBoard, validateAcceptExpiry, validateBoardEvidence } from "@/lib/riskBoard";
-import { acceptRisk } from "@/services/risks";
+import { acceptRisk } from "@/features/risk/services/risks";
 import { approvals, approve } from "@/lib/approvals";
 import { DATA } from "@/lib/data";
 import { appStore } from "@/lib/store";

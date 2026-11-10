@@ -2,7 +2,7 @@
 
 Board: `vendor-assessment-portal` (template.html + script1.js), SPEC_BOARDS section 10. Route `/vendor-portal` (standalone, no AppShell chrome, `noindex`). DRAFT, needs security and product review before any real use.
 
-Files: `src/components/modules/vendorportal/*` (VendorPortalPage, VerifyEmail, OtpStep, MfaStep, Questionnaire, QuestionCard, EvidenceUpload, Clarification, EndStates, parts, useAnswers), `src/lib/vendorSubmission.ts`, `src/services/vendorPortal.ts`, `src/data/vendorQuestions.json`, `src/data/vendorInviteSeed.json`. The in-shell `questionnaires/VendorPortal.tsx` is untouched.
+Files: `src/features/vendorportal/*` (VendorPortalPage, VerifyEmail, OtpStep, MfaStep, Questionnaire, QuestionCard, EvidenceUpload, Clarification, EndStates, parts, useAnswers), `src/features/vendorportal/lib/vendorSubmission.ts`, `src/features/vendorportal/services/vendorPortal.ts`, `src/features/vendorportal/data/vendorQuestions.json`, `src/features/vendorportal/data/vendorInviteSeed.json`. The in-shell `questionnaires/VendorPortal.tsx` is untouched.
 
 ## Feature table
 
@@ -11,7 +11,7 @@ Files: `src/components/modules/vendorportal/*` (VendorPortalPage, VerifyEmail, O
 | Step machine verify/otp/mfa/portal/clarify/done/dead | script1 5, 77-117 | VendorPortalPage.tsx | Done | State in memory only |
 | Header: product name, "requested by <customer>", masked email, "session ends after 15 min idle", Sign out | tpl 136-153 | VendorPortalPage.tsx | Done | Customer parameterised ("Example Co"); "Back to TPRM (prototype)" link dropped (internal navigation must not reach an external user) |
 | Entry gate copy, expiry date | tpl 168-179 | VerifyEmail.tsx | Done | |
-| Email validation, personal/temporary rejection, mismatch message, 3 strikes void | 13-20, 84-91 | VerifyEmail.tsx, services/vendorPortal.ts, vendorSubmission.ts | Done | Mismatch/unknown share one message; counters client demo only |
+| Email validation, personal/temporary rejection, mismatch message, 3 strikes void | 13-20, 84-91 | VerifyEmail.tsx, features/vendorportal/services/vendorPortal.ts, vendorSubmission.ts | Done | Mismatch/unknown share one message; counters client demo only |
 | Email code step (6 digits, 10 min copy, 5 strikes void, `000000` demo wrong code) | 92-97, tpl 182-191 | OtpStep.tsx | Done | `autoComplete="one-time-code"`, numeric pattern, paste allowed |
 | MFA enrolment (passkey recommended / authenticator) | 98, tpl 194-207 | MfaStep.tsx | Done (stub) | Both options just continue |
 | Dead-link state + Restart demo | tpl 210-216 | EndStates.tsx | Done | |

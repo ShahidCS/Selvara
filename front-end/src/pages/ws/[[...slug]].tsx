@@ -1,5 +1,5 @@
 import { useRoute } from "@/lib/route";
-import { MODULES } from "@/components/modules/registry";
+import { MODULES } from "@/features/registry";
 
 /** /ws/<module>[/<param>] */
 export default function WsPage() {

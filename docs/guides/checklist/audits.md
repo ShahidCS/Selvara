@@ -1,6 +1,6 @@
 # Audits module checklist
 
-Source: `Assurance-GRC-Portal.html` lines 2286-2368 (`REND.audits`, `auditDetail` and helpers). React: `src/components/modules/AuditsModule.tsx`,
+Source: `Assurance-GRC-Portal.html` lines 2286-2368 (`REND.audits`, `auditDetail` and helpers). React: `src/features/audits/AuditsModule.tsx`,
 `audits/{AuditDetail,AuditModals,util}.tsx`, `src/services/audits.ts`. Route: `/ws/audits` and `/ws/audits/<id>` (`param`).
 
 | source feature | source lines | React file | status | notes |

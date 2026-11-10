@@ -6,10 +6,10 @@
 | Customers table: search (name/id/plan), 6 per page, pager, empty state, row opens detail | 3984, 4004-4010 | `BillingList.tsx` | Done | Rows keyboard-operable (`activate`) |
 | Billing details side panel: select customer, 420 ms skeleton, contact, tax line, invoices, "Open full billing" | 3985, 4011-4021 | `BillingList.tsx` | Done | Timer cleared on unmount |
 | Header actions: Onboard customer (goes to Customers and opens the modal), Pricing & plans, Export (toast), Issue invoices | 3986 | `BillingModule.tsx` | Done | Export is a toast only, as in the source |
-| Pricing & plans modal + save, adminLog `pricing.updated` | 3989-4003 | `billing/BillingModals.tsx` (`PricingForm`), `services/billing-admin.ts` | Done | Source coercion kept (ints, `||0`, >= 0); upper bounds and an error line added |
+| Pricing & plans modal + save, adminLog `pricing.updated` | 3989-4003 | `billing/BillingModals.tsx` (`PricingForm`), `features/billing/services/billing-admin.ts` | Done | Source coercion kept (ints, `||0`, >= 0); upper bounds and an error line added |
 | Issue invoices modal + `invoices.issued` adminLog | 4029-4032 | `BillingModals.tsx` (`IssueInvoicesBody`) | Done | Demo only, first 8 customers listed |
 | Detail route `/admin/billing/<id>`, Current / History tabs, balance banner, Print | 4033-4047 | `billing/BillingDetail.tsx`, `BillingModule.tsx` | Done | Unknown id: "Page not found" state |
-| Invoice actions Mark paid / Retry / Void, adminLog `invoice.marked_paid/payment_retried/voided` | 4024-4028, 4045 | `BillingDetail.tsx`, `services/billing-admin.ts` (`invoiceAction`) | Done | Looked up by invoice id (source: array index); service enforces the UI preconditions |
+| Invoice actions Mark paid / Retry / Void, adminLog `invoice.marked_paid/payment_retried/voided` | 4024-4028, 4045 | `BillingDetail.tsx`, `features/billing/services/billing-admin.ts` (`invoiceAction`) | Done | Looked up by invoice id (source: array index); service enforces the UI preconditions |
 | Resend invoice (adminLog `invoice.resent`), PDF (toast) | 4023, 4045 | `BillingDetail.tsx` | Done | |
 
 ## Open questions
@@ -32,7 +32,7 @@
 ## Changes vs prototype (owner decision, docs/security/SOD_MATRIX.md sections 2 and 3)
 | Prototype | Now | Where |
 |---|---|---|
-| Any Support/Super could mark paid, retry, void, resend, issue invoices, edit pricing | Every mutation needs an elevated session; support cannot elevate. Buttons disabled "Elevate to make changes"; banner links to `/admin/elevation` | `guard()` in `services/billing-admin.ts`, `useGate` |
+| Any Support/Super could mark paid, retry, void, resend, issue invoices, edit pricing | Every mutation needs an elevated session; support cannot elevate. Buttons disabled "Elevate to make changes"; banner links to `/admin/elevation` | `guard()` in `features/billing/services/billing-admin.ts`, `useGate` |
 | Mark paid single click | Manual override = finance action (reason >= 15, ticket `[A-Z]{2,6}-\d{1,6}`) | `financeRequest` |
 | No credit / refund / write-off | Added as invoice actions (Credit, Refund on Paid, Write off on Past due; Mark paid on Past due) via one form (`billing/BillingModals.tsx` `FinanceForm`) | `FinanceForm` |
 | - | Amount in USD (invoice currency divided by the applied rate in `RATES`, rate = units per 1 USD). At or below `SOD.FINANCE_DUAL_USD` (1,000) a single elevated super admin completes it, audited with ticket. Above, an unknown or Held rate, and ALL write-offs: `requestApproval` domain "admin", approverRoles ["super"], forbid [initiator], needs 1, 24 h expiry | `toUsd`, `needsSecondApprover`, `createAdminApproval` |

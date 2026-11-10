@@ -1,6 +1,6 @@
 # Questionnaires module checklist
 
-Source: lines 3443-3478 (`REND.questionnaires`, `qRender`, `vendorPortal`, `qDrawer`). React: `QuestionnairesModule.tsx`, `questionnaires/QuestionnaireLayers.tsx`, `questionnaires/VendorPortal.tsx`, `src/services/questionnaires.ts`. State (answer library, KB docs, vendor questions): `src/lib/trustData.ts` from `src/data/trustSeed.json`. `DATA.questionnaires` already existed.
+Source: lines 3443-3478 (`REND.questionnaires`, `qRender`, `vendorPortal`, `qDrawer`). React: `QuestionnairesModule.tsx`, `questionnaires/QuestionnaireLayers.tsx`, `questionnaires/VendorPortal.tsx`, `src/features/questionnaires/services/questionnaires.ts`. State (answer library, KB docs, vendor questions): `src/lib/trustData.ts` from `src/data/trustSeed.json`. `DATA.questionnaires` already existed.
 
 | source feature | source lines | React file | status | notes |
 |---|---|---|---|---|

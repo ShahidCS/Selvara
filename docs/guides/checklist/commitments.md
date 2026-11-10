@@ -1,6 +1,6 @@
 # Commitments module checklist
 
-Source: lines 3479-3495 (`INCIDENT`, `STANDARD_TERMS`, `REND.commitments`, incident and contract functions). React: `CommitmentsModule.tsx`, `commitments/CommitmentLayers.tsx`, `src/services/commitments.ts`. State: `src/lib/trustData.ts` (`INCIDENT`, `STANDARD_TERMS`, seeded from `src/data/trustSeed.json`). `DATA.commitments` already existed.
+Source: lines 3479-3495 (`INCIDENT`, `STANDARD_TERMS`, `REND.commitments`, incident and contract functions). React: `CommitmentsModule.tsx`, `commitments/CommitmentLayers.tsx`, `src/features/commitments/services/commitments.ts`. State: `src/lib/trustData.ts` (`INCIDENT`, `STANDARD_TERMS`, seeded from `src/data/trustSeed.json`). `DATA.commitments` already existed.
 
 | source feature | source lines | React file | status | notes |
 |---|---|---|---|---|

@@ -280,7 +280,7 @@ Each entry lists: official name, issuer, what it governs, who it applies to, sta
 - Selvara: 3 / 7 / 2.
 - Sources: https://www.fatf-gafi.org/en/publications/Fatfrecommendations/Fatf-recommendations.html ; https://www.fatf-gafi.org/en/publications/Fatfrecommendations/update-recommendation-6-june-2026.html
 
-### Add-a-framework templates (`src/lib/fwTemplates.ts`)
+### Add-a-framework templates (`src/features/frameworks/lib/fwTemplates.ts`)
 
 These are templates only, not catalogue entries. They have short requirement lists and no mapping.
 

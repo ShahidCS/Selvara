@@ -11,7 +11,7 @@ Source: `Assurance-GRC-Portal.html` lines 2411-2811. The import wizard (2813-298
 | Dashboard: current/residual distribution, heat map (inherent/current/residual), status stats, review stats, breakdowns, treatment plan | 2502-2555 | `risk/RiskDash.tsx` | Done | Heat cells got an `aria-label`. Rows are keyboard-operable. |
 | Register: search, 5 selects, Only mine, cell chip, clear filters, table, empty state | 2558-2603 | `risk/RiskRegister.tsx` | Done | Filters persist in `risk.rf`. Search capped at 100 chars. |
 | Risk detail: header chips, approval flow, data-quality + failing-control banners, workflow buttons | 2606-2688 | `risk/RiskDetail.tsx` | Done | Unknown id renders "Risk not found". |
-| Scoring editor (inherent / current / residual) | 2628-2633, 2691 | `RiskDetail.tsx` `ScoreCard`, `services/risks.ts setScore` | Done | Field allow-list, value 1-5 int clamp. Disabled for non-editors. |
+| Scoring editor (inherent / current / residual) | 2628-2633, 2691 | `RiskDetail.tsx` `ScoreCard`, `features/risk/services/risks.ts setScore` | Done | Field allow-list, value 1-5 int clamp. Disabled for non-editors. |
 | Map / unmap controls, open control drawer | 2616-2623, 2692-2693 | `RiskDetail.tsx`, `controls/useControlDrawer` | Done | Mapped id must be an existing, not-yet-mapped control. External control ids stay non-clickable. |
 | Treatment actions: toggle, add modal | 2625-2626, 2694, 2708-2709 | `RiskDetail.tsx`, `risk/RiskForms.tsx` | Done | Date through `isIsoDate`. |
 | Submit / Approve / Request changes | 2659-2660, 2695-2697 | `RiskDetail.tsx` | Done | Approve + request changes gated by `riskCanApprove`; others see "Awaiting a company admin." |
@@ -19,16 +19,16 @@ Source: `Assurance-GRC-Portal.html` lines 2411-2811. The import wizard (2813-298
 | Interested parties (parties list on detail + tab: link, unlink, add) | 2655-2656, 2729-2737 | `risk/RiskParties.tsx`, `RiskDetail.tsx` | Done | Edit gate `riskCanEdit`. |
 | Scoring criteria (scales, matrix, acceptance criteria) | 2712-2726 | `risk/RiskCrit.tsx` | Done | Static content. |
 | Governance (register details, enterprise roll-up, snapshots, acceptances) | 2740-2768 | `risk/RiskGov.tsx` | Done | Snapshot buttons only for `riskCanApprove`. Snapshots live in module memory (`RISK_SNAPSHOTS`) as in the source. |
-| Add risk modal + save (id, defaults, draft) | 2771-2783 | `risk/RiskForms.tsx`, `services/risks.ts createRisk` | Done | Edit mode of `riskFormBody(r)` was never called in the source and is not ported. |
-| CSV export | 2784-2791 | `services/risks.ts exportRegisterCsv`, `RiskModule.tsx` | Done | Same columns/headers/file name; cells via `csvCell` (always quoted). |
+| Add risk modal + save (id, defaults, draft) | 2771-2783 | `risk/RiskForms.tsx`, `features/risk/services/risks.ts createRisk` | Done | Edit mode of `riskFormBody(r)` was never called in the source and is not ported. |
+| CSV export | 2784-2791 | `features/risk/services/risks.ts exportRegisterCsv`, `RiskModule.tsx` | Done | Same columns/headers/file name; cells via `csvCell` (always quoted). |
 | Import entry point | 2808-2811 | `RiskModule.tsx` -> `openImportWizard(L,{onDone})` | Done | `onDone` switches to Register, clears selection, `bumpData()`. |
-| API stubs | - | `src/services/risks.ts` | Done | `viaApi` per mutation; mock mode mutates `DATA`. |
+| API stubs | - | `src/features/risk/services/risks.ts` | Done | `viaApi` per mutation; mock mode mutates `DATA`. |
 | Helper for other modules | - | `RiskModule.tsx` exports `useRiskDrawer`, `riskOpenDetail`, `riskGoReg`; `src/lib/risk.ts` | Done | |
 
 ## Changed vs prototype (owner decision 2026-11, contract `docs/security/SOD_MATRIX.md`)
 | Area | Prototype | Now | Where |
 |---|---|---|---|
-| Acceptance threshold | any authority could be chosen, incl. Board / CEO | `SOD.RISK_BOARD_THRESHOLD = 15`. Residual <= 15: ladder (`ACCEPT_AUTH/RANK`), Board / CEO rung not selectable, effective at once. Residual > 15: Board approval evidence form (decision ref `BRD-YYYY-NN`, date not future and <= 90 days old, approving body, minutes reference or file name, expiry <= 12 months, reason >= 20 chars); cannot be saved without all fields | `lib/riskBoard.ts`, `services/risks.ts acceptRisk`, `RiskDetail.tsx AcceptForm` |
+| Acceptance threshold | any authority could be chosen, incl. Board / CEO | `SOD.RISK_BOARD_THRESHOLD = 15`. Residual <= 15: ladder (`ACCEPT_AUTH/RANK`), Board / CEO rung not selectable, effective at once. Residual > 15: Board approval evidence form (decision ref `BRD-YYYY-NN`, date not future and <= 90 days old, approving body, minutes reference or file name, expiry <= 12 months, reason >= 20 chars); cannot be saved without all fields | `lib/riskBoard.ts`, `features/risk/services/risks.ts acceptRisk`, `RiskDetail.tsx AcceptForm` |
 | Evidence verification | none | Recorder (admin) creates approval `risk.board-evidence` (`approverRoles` admin/owner, forbid risk owner, last editor, submitter; recorder is the requester). Acceptance is effective only when Approved; until then "Awaiting evidence verification". Verify / Reject / Withdraw in the risk panel | `decideBoardEvidence`, `withdrawBoardEvidence`, `syncBoardEvidence`, `VerifyBox` |
 | Acceptor | anyone with edit | acceptor != owner, != last editor, != submitter (`assertNotSelf` in service + disabled form with the reason text) | `acceptRisk` |
 | Approve review (Submitted -> Approved) | submitter could approve | approver != last editor/submitter (service + disabled button) | `approveRisk` |
@@ -38,7 +38,7 @@ Source: `Assurance-GRC-Portal.html` lines 2411-2811. The import wizard (2813-298
 | Export | - | CSV columns Board decision ref, Board decision date, Acceptance state | `RISK_CSV_COLS`, `exportRegisterCsv` |
 | Import | updates applied directly | see `risk-import.md` (staged approval, Pending imports panel in Register tab) | `PendingImports.tsx` |
 | Errors | generic toast | `SodError` text is shown (`risk/util.ts attemptR`); any other exception stays generic | |
-| Last editor | not tracked | `lastEditedBy` / `submittedBy` on the risk (create, scores, controls, actions, submit, reopen, import) | `services/risks.ts touch` |
+| Last editor | not tracked | `lastEditedBy` / `submittedBy` on the risk (create, scores, controls, actions, submit, reopen, import) | `features/risk/services/risks.ts touch` |
 
 Audit (`wsLog`, reference ids only, no file content): `risk.accepted` (ref, approval id, recorder), `risk.board-evidence.recorded/verified/rejected/withdrawn/expired`, `risk.acceptance.invalidated/pending_cancelled`, `risk.action.cancelled`, `risk.closed`; approval engine adds `approval.risk.board-evidence.*`.
 
@@ -62,11 +62,11 @@ Audit (`wsLog`, reference ids only, no file content): `risk.accepted` (ref, appr
 11. Added (not in source): read-only hint lines where the source rendered nothing for non-editors (acceptance, submit, parties, snapshots), "Enter a valid date." for a malformed acceptance date, aria-labels on heat cells/unmap/link selects.
 
 ## Security notes
-* **Four-eyes is enforced in `services/risks.ts` (`assertNotSelf`, `assertRole`, approvals engine) and mirrored by disabled controls with the reason text. Names are compared with `isSamePerson`; the real API must compare authenticated user ids, derive the recorder/verifier from the session (never from a form field) and use a trusted clock for the 90-day / 12-month checks.**
+* **Four-eyes is enforced in `features/risk/services/risks.ts` (`assertNotSelf`, `assertRole`, approvals engine) and mirrored by disabled controls with the reason text. Names are compared with `isSamePerson`; the real API must compare authenticated user ids, derive the recorder/verifier from the session (never from a form field) and use a trusted clock for the 90-day / 12-month checks.**
 * **Board evidence:** only reference, date, body and file NAME are stored (`validateUpload` allow-list pdf/docx/png/jpg, 10 MB, `safeFileName`); the file content is never read or uploaded by this front-end, so nothing proves the minutes exist. A real API must store the attachment (malware scan, object-level authorization) and ideally link the decision to a board-records system. Evidence is not editable: a change means a new request.
 * **Approvals engine is an in-memory demo** (`lib/approvals.ts`); persistence, expiry (72 h here) and authorisation belong to the API. The risk store reconciles pending acceptances with their approvals on module load / data change (`syncBoardEvidence`).
 * **Import cannot bypass controls:** an import update never changes an Accepted risk's status, never closes a risk with open actions, and re-checks acceptance against the new scores; imported rows never record an acceptance.
-* **All role gates are UI-only.** `riskCanEdit` (super, admin, owner, analyst) and `riskCanApprove` (super, admin) hide/disable controls and are re-checked in `services/risks.ts` (mock), but a real API must enforce them per endpoint (ASVS 4.1.1) and check object ownership/tenant (IDOR).
+* **All role gates are UI-only.** `riskCanEdit` (super, admin, owner, analyst) and `riskCanApprove` (super, admin) hide/disable controls and are re-checked in `features/risk/services/risks.ts` (mock), but a real API must enforce them per endpoint (ASVS 4.1.1) and check object ownership/tenant (IDOR).
 * **Segregation of duties (acceptance and approval) is not enforced by the prototype and must be by the API:**
   * Anyone with `riskCanEdit` (including owner/analyst) can record an acceptance and *pick any accepting authority*, including "Board / CEO". Only the rank of the *selected* authority is compared with the residual rating's required authority; the actor's real authority is never checked. The API must derive the accepting authority from the authenticated principal, not from a form field.
   * The submitter can also approve their own risk if they are an admin (no submitter != approver rule). The API should reject self-approval and the risk owner accepting their own risk above their authority.

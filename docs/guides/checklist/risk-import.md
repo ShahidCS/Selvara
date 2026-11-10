@@ -1,7 +1,7 @@
 # Risk import wizard checklist
 
 Source: `Assurance-GRC-Portal.html` lines 2792-2980 (entry `riskImport()` 2808; Add/Export belong to the Risk module).
-React: `src/components/modules/risk/import/{openImportWizard.tsx, ImportWizard.tsx, parse.ts, convert.ts, riskLocal.ts}`, `src/services/riskImport.ts`.
+React: `src/features/risk/import/{openImportWizard.tsx, ImportWizard.tsx, parse.ts, convert.ts, riskLocal.ts}`, `src/features/risk/services/riskImport.ts`.
 
 | source feature | source lines | React file | status | notes |
 |---|---|---|---|---|
@@ -21,7 +21,7 @@ React: `src/components/modules/risk/import/{openImportWizard.tsx, ImportWizard.t
 | Treatment / status / date normalisation (Excel serials, ISO, free text) | 2891-2896 | convert.ts `treatOf`, `statusOf`, `dateOf` | done | date now positively validated (1900-2200, real calendar date) |
 | `impNeutral` apostrophe prefix on `= + - @ tab CR` | 2897 | convert.ts `neutral` | done | applied to every mapped cell as in source |
 | Compute preview: Skip "No risk title — row skipped", ID conflict update/new, warnings, residual defaults, category fallback, counts | 2899-2922 | convert.ts `compute` | done | + id format check (new warning, see below) |
-| Run import: update path (cl/ci recompute, status keep when Accepted, planned, controls appended to desc, reviewed, history), new path (Draft, imported, history), `wsLog('risk.register.imported')`, toast, close | 2924-2934 | convert.ts `applyImport`, services/riskImport.ts, ImportWizard `run` | done | after success: `bumpData()` + `opts.onDone?.()`; `RISKTAB='reg'; RISKSEL=null` is the Risk module's `onDone` job |
+| Run import: update path (cl/ci recompute, status keep when Accepted, planned, controls appended to desc, reviewed, history), new path (Draft, imported, history), `wsLog('risk.register.imported')`, toast, close | 2924-2934 | convert.ts `applyImport`, features/risk/services/riskImport.ts, ImportWizard `run` | done | after success: `bumpData()` + `opts.onDone?.()`; `RISKTAB='reg'; RISKSEL=null` is the Risk module's `onDone` job |
 | Step 2: field/column table, `*` on Risk title, sample (40 chars, "(empty)", "—"), "Map a column to Risk title" alert | 2953-2962 | ImportWizard | done | selects have `aria-label` |
 | Step 3: 5 stat tiles, conflict radios (recompute on change), preview table (first 150 rows, chips New/Update/Skip, score chips), "Showing the first n of m rows", footnote | 2963-2975 | ImportWizard | done | `th scope="col"`, radiogroup label |
 | Footer per step (Cancel / Choose another file + Check rows (disabled until title mapped) / Back to columns + Import n risk(s)) | 2976-2980 | ImportWizard `LayerFoot` | done | |
@@ -70,10 +70,10 @@ Limits chosen (`parse.ts` `LIMITS`, `convert.ts`):
 * **Numbers:** likelihood/impact (inherent, residual) are converted to integers and clamped 1..5, NaN guarded; dates must be real calendar dates 1900-2200 else dropped; statuses/treatments/categories are mapped onto fixed allow-lists.
 * **IDs:** imported ids must match `^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$` (else a new id is generated, with a warning); new rows never reuse an existing id (checked at preview and again at commit); generated ids avoid collisions.
 * **Authorization:** `riskCanEdit()` checked on open and again on import (UI-only, as in the source: the API must enforce it). Audit: `risk.register.imported` (counts and clamped file name) and a per-risk history entry, as in the source.
-* **No network/storage:** file content never leaves the browser and is not stored in localStorage; the `commitRiskImport` stub in `src/services/riskImport.ts` only forwards already-validated rows in http mode.
+* **No network/storage:** file content never leaves the browser and is not stored in localStorage; the `commitRiskImport` stub in `src/features/risk/services/riskImport.ts` only forwards already-validated rows in http mode.
 * **Not covered (needs backend):** malware scanning, server-side size/row limits, server-side re-validation, rate limiting, who may update which risk.
 
-* **Four-eyes on updates:** enforced in `services/riskImport.ts` (`assertRole admin`, approvals engine forbids the importer) and mirrored in the panel. Staged rows live in the in-memory approval payload; a real API must persist them server-side, re-validate at approval time and compare user ids, not names. A mixed file is staged as a whole (new + updates), which is stricter than the matrix requires.
+* **Four-eyes on updates:** enforced in `features/risk/services/riskImport.ts` (`assertRole admin`, approvals engine forbids the importer) and mirrored in the panel. Staged rows live in the in-memory approval payload; a real API must persist them server-side, re-validate at approval time and compare user ids, not names. A mixed file is staged as a whole (new + updates), which is stricter than the matrix requires.
 * **Not covered:** an approver sees the file name and ids only, not a field-level diff of the update; consider adding one before production.
 
 Tests (throwaway, not in repo): CSV with BOM/quotes/embedded newline, hand-made xlsx (shared strings with rich runs and entities, inline strings, sparse columns, empty rows, formula cell), 30 MB zip-bomb part (rejected, `limit-size`), column 100+ (rejected), garbage zip (generic error).
