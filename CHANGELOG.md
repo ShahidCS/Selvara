@@ -10,6 +10,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 - Documentation moved into `docs/architecture/`, `docs/guides/` and `docs/security/`; `front-end/docs/` no longer exists.
 
 ### Added
+- Unit tests for the elevated-session lifecycle (`tests/unit/elevation.test.ts`, 11 tests): expiry at the deadline, one-time expiry logging, role switches, re-elevation.
 - Lint step in CI (`ci.yml`, inside the existing `verify` job, so required check names are unchanged).
 - ESLint flat config (`front-end/eslint.config.mjs`); `npm run lint` works again (`next lint` was removed in Next 16). Existing violations are warnings under a ratcheting cap.
 - `CONTRIBUTING.md`, `AGENTS.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, `.editorconfig`, `.gitattributes`, `.git-blame-ignore-revs`, issue templates and `docs/ORGANIZATION.md`.
