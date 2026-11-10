@@ -248,7 +248,7 @@ npm run build       # production build
 npm start           # serve the production build
 npm test            # unit tests (Vitest)
 npm run test:e2e    # end-to-end tests (Playwright)
-npm run ci          # typecheck, unit tests, build
+npm run ci          # typecheck, unit tests, build (lint runs separately: npm run lint)
 ```
 
 ### Try the dual-control flows
@@ -270,7 +270,7 @@ Copy `front-end/.env.example` to `front-end/.env.local`. There are no secrets in
 
 - **Unit tests (Vitest)** cover the security helpers, the credential policy, segregation-of-duties and approvals engine, the risk Board-evidence rules (including the 15 / 16 boundary), framework scoring and output encoding.
 - **End-to-end tests (Playwright)** cover every route, the full persona-by-route access matrix, privileged-access gating, read-only roles, the password policy, injection resistance and the vendor portal.
-- **CI** (GitHub Actions) runs type-check, unit tests, build, `npm audit` on production dependencies, and the end-to-end suite on every push and pull request. Dependabot proposes weekly grouped updates.
+- **CI** (GitHub Actions) runs type-check, lint, unit tests, build, `npm audit` on production dependencies, and the end-to-end suite on every push and pull request. Dependabot proposes weekly grouped updates.
 
 Details, including what is not covered (backend, visual regression, load), are in [`docs/guides/TESTING.md`](docs/guides/TESTING.md).
 
@@ -278,7 +278,7 @@ Details, including what is not covered (backend, visual regression, load), are i
 
 Every change reaches production only through GitHub Actions, and every release leaves verifiable evidence.
 
-- **Pull requests** run type-check, unit and end-to-end tests, a dependency audit, CodeQL static analysis, secret scanning, a runtime dependency audit, licence policy, a Trivy scan and a ZAP baseline scan. High and Critical findings block the merge.
+- **Pull requests** run type-check, lint, unit and end-to-end tests, a dependency audit, CodeQL static analysis, secret scanning, a runtime dependency audit, licence policy, a Trivy scan and a ZAP baseline scan. High and Critical findings block the merge.
 - **Merges to `main`** re-run every gate, then deploy to **staging** (Vercel, deployed only from Actions; Vercel's own Git deploys are disabled).
 - **Production releases** come from a **signed version tag** on `main`. The tag is verified, the gates run again, and the deployment waits for approval in a protected environment before it ships.
 - **Evidence:** every build produces a CycloneDX SBOM and a SHA-256 checksum, and the deployed bytes are extracted from that exact checksum-verified archive. Build-provenance attestations are supported and switch on automatically where the GitHub plan allows them (currently off for this private repository); an optional keyless Sigstore signature is off by default.

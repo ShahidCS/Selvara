@@ -1,6 +1,6 @@
 name: CI
 
-# Quality gate: type-check, unit tests, build, dependency audit and the Playwright browser suite.
+# Quality gate: type-check, lint, unit tests, build, dependency audit and the Playwright browser suite.
 # Runs on pull requests, and is reused (workflow_call) by the staging and release pipelines so that
 # a deployment can never skip it. Branch pushes are covered by pull_request; pushes to main run
 # through deploy-staging.yml, which calls this workflow.
@@ -49,6 +49,10 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      # Errors fail the build; legacy warnings are capped by --max-warnings in package.json, so new violations fail too.
+      - name: Lint
+        run: npm run lint
 
       - name: Unit tests
         run: npm test
