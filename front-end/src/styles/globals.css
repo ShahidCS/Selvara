@@ -1,4 +1,48 @@
 /* Original design tokens + component CSS from the prototype, kept verbatim (see portal.css).
-   Tailwind provides utilities only (preflight is disabled in tailwind.config.js). */
-@import "./portal.css";
-@tailwind utilities;
+   Tailwind provides utilities only: its base reset (preflight) is deliberately not imported, so the original base styles are untouched.
+
+   Cascade layers: legacy CSS sits in `components`, below `utilities`, so a Tailwind utility on an element beats the legacy class rules, as it
+   did before Tailwind 4. Plain unlayered CSS would always beat every layer. `theme` is first so that the legacy `:root { --radius-control: ... }`
+   token definitions in portal.css override the same-named theme variables declared below (see the note on @theme). */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "./portal.css" layer(components);
+/* source(none) + @source: scan the application source only (src/**), as the old `content: ["./src/**"]` did, not tests, docs or config. */
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+@source "..";
+
+/* Maps the design tokens (CSS variables defined in portal.css) onto utilities such as bg-surface, text-ink, rounded-card, shadow-md2, font-display,
+   so utilities and the legacy classes always agree. No utility uses these yet.
+   Note: --radius-control/-chip/-card/-modal and --font-display have the same names as the portal.css variables they point at. That is only
+   safe because portal.css (layer `components`) is declared after `theme`, so its definitions win. Keep that layer order. */
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-accent: var(--accent);
+  --color-accent-weak: var(--accent-weak);
+  --color-accent-ink: var(--accent-ink);
+  --color-ok: var(--ok-ink);
+  --color-warn: var(--warn-ink);
+  --color-bad: var(--bad-ink);
+  --color-info: var(--info-ink);
+
+  --radius-control: var(--radius-control);
+  --radius-chip: var(--radius-chip);
+  --radius-card: var(--radius-card);
+  --radius-modal: var(--radius-modal);
+
+  --shadow-sm2: var(--shadow-sm);
+  --shadow-md2: var(--shadow);
+  --shadow-lg2: var(--shadow-lg);
+
+  --font-sans: var(--font);
+  --font-display: var(--font-display);
+}

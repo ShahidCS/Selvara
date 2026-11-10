@@ -221,7 +221,7 @@ Use the account menu (top right) to switch persona. Role switching is a demonstr
 
 - **Exact versions of everything:** [docs/architecture/STACK.md](docs/architecture/STACK.md), generated from `package.json`, the lockfile and the CI config
 - **Framework:** Next.js 16 (Pages Router) and React 19, TypeScript
-- **Styling:** the original design tokens and component CSS, with Tailwind CSS for layout utilities
+- **Styling:** the original design tokens and component CSS (kept verbatim), with Tailwind CSS 4 for utilities only (no reset; the legacy CSS sits in a lower cascade layer so a utility beats a legacy class)
 - **State:** small external stores (React `useSyncExternalStore`); no state-management dependency
 - **Data:** synthetic seed data in memory; service layer with API stubs ready for a real backend
 - **Testing:** Vitest (unit) and Playwright (end to end)

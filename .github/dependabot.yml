@@ -18,13 +18,10 @@ updates:
         update-types: [minor, patch]
     # Major bumps that need a planned migration, not a dependency update. Each is tracked as its own task:
     #  - typescript 7: removes `baseUrl` (tsconfig must change) and typescript-eslint does not support it yet
-    #  - tailwindcss 4: new PostCSS plugin package and CSS-based config replace tailwind.config.js
     #  - @types/node 26: describes Node 26 APIs while CI and the toolchain run Node 22; bump with the Node version
     # Minor and patch updates of these packages still arrive normally. Remove an entry when its migration is done.
     ignore:
       - dependency-name: typescript
-        update-types: ["version-update:semver-major"]
-      - dependency-name: tailwindcss
         update-types: ["version-update:semver-major"]
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]

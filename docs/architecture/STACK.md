@@ -35,14 +35,14 @@
 | Package | Used for | Declared | Installed |
 | --- | --- | --- | --- |
 | `@playwright/test` | End-to-end browser tests (Chromium) | `1.65.0` | `1.65.0` |
+| `@tailwindcss/postcss` | Runs Tailwind as a PostCSS plugin; its production optimiser also adds vendor prefixes, so autoprefixer is not used | `4.3.4` | `4.3.4` |
 | `@types/node` | Type definitions for Node.js APIs | `22.20.5` | `22.20.5` |
 | `@types/react` | Type definitions for React | `^19.3.0` | `19.3.0` |
 | `@types/react-dom` | Type definitions for React DOM | `^19.3.0` | `19.3.0` |
-| `autoprefixer` | Vendor prefixes, driven by the browserslist below | `10.6.2` | `10.6.2` |
 | `eslint` | Linting (flat config; see the lint script for the warning limit) | `^10.14.0` | `10.14.0` |
 | `eslint-config-next` | Next.js, React and React Hooks lint rules | `^16.4.5` | `16.4.5` |
-| `postcss` | CSS processing used by Tailwind and Next.js | `8.5.32` | `8.5.32` |
-| `tailwindcss` | Utility CSS for layout, mapped to the original design tokens (preflight disabled) | `3.4.6` | `3.4.6` |
+| `postcss` | CSS processing engine that the Tailwind plugin runs on | `8.5.32` | `8.5.32` |
+| `tailwindcss` | Utility CSS (v4), mapped to the original design tokens; utilities only, no reset (preflight is not imported) | `4.3.4` | `4.3.4` |
 | `typescript` | Type checking (tsc --noEmit); the build does not emit with it | `5.5.3` | `5.5.3` |
 | `vitest` | Unit tests | `5.1.0` | `5.1.0` |
 
@@ -58,4 +58,4 @@
 
 - Production dependencies with their licences: [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) (also generated).
 - CI/CD pipeline, scanners and pinned GitHub Actions: [docs/security/PIPELINE.md](../security/PIPELINE.md).
-- Major versions Dependabot is told to ignore (each needs a planned migration, so these stay on their current major): `@types/node`, `tailwindcss`, `typescript`. See `.github/dependabot.yml`.
+- Major versions Dependabot is told to ignore (each needs a planned migration, so these stay on their current major): `@types/node`, `typescript`. See `.github/dependabot.yml`.
