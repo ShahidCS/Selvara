@@ -6,7 +6,7 @@ import { useGo } from "@/lib/route";
 import { useModState } from "@/lib/store";
 import { findCustomer } from "@/services/customers";
 import * as svc from "@/services/billing-admin";
-import { useGate } from "../admin/ElevateGate";
+import { useGate } from "@/components/kit/admin/ElevateGate";
 import { FinanceForm } from "./BillingModals";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

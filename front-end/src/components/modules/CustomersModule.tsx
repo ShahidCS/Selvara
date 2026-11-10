@@ -5,7 +5,7 @@ import { useApp, useData, useModState, getModState, setModState } from "@/lib/st
 import { customersCanManage, findCustomer } from "@/services/customers";
 import { CustomerProfile } from "./customers/CustomerProfile";
 import { CustomerSearch } from "./customers/CustomerSearch";
-import { ElevateGateBanner, useGate } from "./admin/ElevateGate";
+import { ElevateGateBanner, useGate } from "../kit/admin/ElevateGate";
 import { OnboardForm } from "./customers/Onboard";
 
 /** Prototype: REND.customers + custBody/custPick/custClear. Also used by Billing's "Onboard customer" via the `customers.onboardPending` flag. */

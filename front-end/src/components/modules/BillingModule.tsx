@@ -7,8 +7,8 @@ import { findCustomer } from "@/services/customers";
 import { BillingDetail } from "./billing/BillingDetail";
 import { BillingList } from "./billing/BillingList";
 import { IssueInvoicesBody, PricingForm } from "./billing/BillingModals";
-import { ElevateGateBanner, useGate } from "./admin/ElevateGate";
-import { PendingApprovals } from "./admin/PendingApprovals";
+import { ElevateGateBanner, useGate } from "../kit/admin/ElevateGate";
+import { PendingApprovals } from "../kit/admin/PendingApprovals";
 
 /** Prototype: REND.billing(m, param). `/admin/billing` = list + side panel; `/admin/billing/<customerId>` = full billing for one customer. */
 export default function BillingModule({ param }: { param?: string | null }) {

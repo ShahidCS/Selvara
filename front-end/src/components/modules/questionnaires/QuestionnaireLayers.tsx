@@ -8,7 +8,7 @@ import { bumpData, setModState, useData } from "@/lib/store";
 import { clampText } from "@/lib/security";
 import * as svc from "@/services/questionnaires";
 import { getApproval } from "@/lib/approvals";
-import { WhyNot, attempt } from "../sodKit";
+import { WhyNot, attempt } from "@/components/kit/sodKit";
 
 const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
 

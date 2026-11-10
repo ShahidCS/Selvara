@@ -6,7 +6,7 @@ import { hasRole } from "@/lib/sod";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { TRUST } from "@/lib/trustData";
 import * as svc from "@/services/trust";
-import { ApprovalsPanel, WhyNot, attempt } from "../sodKit";
+import { ApprovalsPanel, WhyNot, attempt } from "@/components/kit/sodKit";
 import { BlockDomainForm, DenyForm, PublishForm } from "./TrustModals";
 
 const TABS: [string, string][] = [["resources", "Resources"], ["access", "Access & requests"], ["activity", "Activity & history"], ["chat", "Chatbot"]];

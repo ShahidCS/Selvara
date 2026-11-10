@@ -9,7 +9,7 @@ import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { useGo } from "@/lib/route";
 import { AI_GUARDRAILS, aiCanDecide, aiCanManage, aiEuRationale, aiFind, aiForbidden, aiInit, aiLog } from "@/lib/ai";
 import * as svc from "@/services/ai";
-import { WhyNot, attempt } from "../sodKit";
+import { WhyNot, attempt } from "@/components/kit/sodKit";
 import { AiBiasChip, AiEuChip, AiFriaChip, AiGuardChip } from "./AiChips";
 import { openAssign, openBias, openEdit, openEuClassify, openFria, openGuard, openOversight } from "./AiModals";
 

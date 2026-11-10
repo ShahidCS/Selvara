@@ -9,7 +9,7 @@ import { fwReadiness } from "@/lib/frameworks";
 import { AI_DISCOVERY, AI_SHADOW, aiInit } from "@/lib/ai";
 import { useLayer } from "@/hooks/useLayer";
 import * as svc from "@/services/ai";
-import { ApprovalsPanel, attempt } from "./sodKit";
+import { ApprovalsPanel, attempt } from "../kit/sodKit";
 import { openAiDrawer } from "./ai/AiDrawer";
 import { openRegister } from "./ai/AiModals";
 import { AiEuChip, AiFriaChip, AiGuardChip } from "./ai/AiChips";

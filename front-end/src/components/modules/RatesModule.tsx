@@ -6,8 +6,8 @@ import { pendingAdminApprovals } from "@/lib/adminApprovals";
 import { sodMessage } from "@/lib/elevation";
 import * as svc from "@/services/rates";
 import { HeldRequestForm, RateEditForm } from "./rates/RateEdit";
-import { ElevateGateBanner, useGate } from "./admin/ElevateGate";
-import { PendingApprovals } from "./admin/PendingApprovals";
+import { ElevateGateBanner, useGate } from "../kit/admin/ElevateGate";
+import { PendingApprovals } from "../kit/admin/PendingApprovals";
 
 /** Prototype: REND.rates (Exchange Rates & Tax, Held/Applied workflow). Module state (query, region, details) survives navigation like the prototype's RATE. */
 export default function RatesModule() {

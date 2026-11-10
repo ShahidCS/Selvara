@@ -1,7 +1,7 @@
 import { Empty, Page } from "@/components/ui";
 import { modAllowed } from "@/lib/rbac";
 import { useApp } from "@/lib/store";
-import { ElevationBanner } from "./admin/ElevationBanner";
+import { ElevationBanner } from "../kit/admin/ElevationBanner";
 import { PlatformSecurity } from "./admin/PlatformSecurity";
 
 /** Board 8.G7: read-only platform security rules. Deny by default for roles without the module. */

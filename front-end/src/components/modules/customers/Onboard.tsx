@@ -3,7 +3,7 @@ import { Icon } from "@/components/ui";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { useLayer } from "@/hooks/useLayer";
 import { ELEV_REASON_MIN, sodMessage } from "@/lib/elevation";
-import { useGate } from "../admin/ElevateGate";
+import { useGate } from "@/components/kit/admin/ElevateGate";
 import { setModState, getModState } from "@/lib/store";
 import { isEmail } from "@/lib/security";
 import { PLANS } from "@/services/billing";

@@ -9,7 +9,7 @@ import { getApproval } from "@/lib/approvals";
 import { sodReason } from "@/lib/sod";
 import { TIER_CADENCE, personOnly, vFind, vInit, vendorCanManage } from "@/lib/vendors";
 import * as svc from "@/services/vendors";
-import { WhyNot, attempt } from "../sodKit";
+import { WhyNot, attempt } from "@/components/kit/sodKit";
 import { openAddCert, openAddFinding, openChangeTier, openReassess, openWaiver } from "./VendorModals";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

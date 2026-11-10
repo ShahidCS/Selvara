@@ -8,7 +8,7 @@ import { DATA } from "@/lib/data";
 import { bumpData } from "@/lib/store";
 import { AI_ANNEX_AREAS, AI_AUTONOMY, AI_BIAS_STATUSES, AI_FRIA_STATUSES, AI_GUARDRAILS, AI_ROLES, AI_SHADOW, AI_TIERS, aiFind, aiInit, aiLog } from "@/lib/ai";
 import * as svc from "@/services/ai";
-import { attempt } from "../sodKit";
+import { attempt } from "@/components/kit/sodKit";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Reopen = (() => void) | undefined;

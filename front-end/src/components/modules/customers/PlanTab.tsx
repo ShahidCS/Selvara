@@ -3,7 +3,7 @@ import { Chip, Icon, StatusChip } from "@/components/ui";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { useLayer } from "@/hooks/useLayer";
 import { ELEV_REASON_MIN, sodMessage } from "@/lib/elevation";
-import { useGate } from "../admin/ElevateGate";
+import { useGate } from "@/components/kit/admin/ElevateGate";
 import { money, num } from "@/lib/format";
 import { PLANS } from "@/services/billing";
 import * as svc from "@/services/customers";

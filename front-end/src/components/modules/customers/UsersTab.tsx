@@ -4,7 +4,7 @@ import { ELEVATE_TEXT, elevationActive, sodMessage } from "@/lib/elevation";
 import { useGo } from "@/lib/route";
 import { useModState } from "@/lib/store";
 import * as svc from "@/services/customers";
-import { useGate } from "../admin/ElevateGate";
+import { useGate } from "@/components/kit/admin/ElevateGate";
 import { openActivity, openAddUser, openChangeRole, openEditUser, openRemoveUser } from "./UserForms";
 
 /** Prototype: usersTab, uToggle*, uBulk, uMenu, uAct (tenant user management, isolated by custId). */

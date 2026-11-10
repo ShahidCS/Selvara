@@ -5,7 +5,7 @@ import { wsLog } from "@/lib/audit";
 import { adminLog } from "@/lib/adminAudit";
 import { roleOf } from "@/lib/rbac";
 import { appStore } from "@/lib/store";
-import { attempt } from "../sodKit";
+import { attempt } from "@/components/kit/sodKit";
 import * as svc from "@/services/integrations";
 
 export const HealthChip = ({ h }: { h: string }) =>

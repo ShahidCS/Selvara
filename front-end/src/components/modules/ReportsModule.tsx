@@ -9,7 +9,7 @@ import { bumpData, useApp, useData } from "@/lib/store";
 import { hasRole } from "@/lib/sod";
 import { SCHED_PACKS } from "@/lib/trustData";
 import * as svc from "@/services/reports";
-import { ApprovalsPanel, attempt } from "./sodKit";
+import { ApprovalsPanel, attempt } from "../kit/sodKit";
 import { ScheduleForm } from "./reports/ReportLayers";
 
 const MONTHS = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];

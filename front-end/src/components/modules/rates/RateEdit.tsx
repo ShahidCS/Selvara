@@ -2,8 +2,8 @@ import { useState } from "react";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { useLayer } from "@/hooks/useLayer";
 import { sodMessage } from "@/lib/elevation";
-import { ReasonTicket, reasonTicketOk } from "../admin/ReasonTicket";
-import { useGate } from "../admin/ElevateGate";
+import { ReasonTicket, reasonTicketOk } from "@/components/kit/admin/ReasonTicket";
+import { useGate } from "@/components/kit/admin/ElevateGate";
 import * as svc from "@/services/rates";
 
 /** Prototype: rateEdit / rateSave (drawer). Blank, non-numeric or 0 numeric fields keep the old value (source); out-of-range values are rejected (added).

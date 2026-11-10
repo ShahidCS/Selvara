@@ -4,7 +4,7 @@ import { useLayer } from "@/hooks/useLayer";
 import { wsLog } from "@/lib/audit";
 import { logSafeUrl } from "@/lib/security";
 import * as svc from "@/services/api";
-import { ApprovalsPanel, attempt } from "./sodKit";
+import { ApprovalsPanel, attempt } from "../kit/sodKit";
 import { NewKeyForm, RevealKeyModal, RevokeKeyForm, TestForm, WebhookForm } from "./api/ApiModals";
 
 const TABS: [string, string][] = [["Keys", "API keys"], ["Hooks", "Webhooks"], ["Tests", "Custom tests"], ["Stream", "Event stream"]];

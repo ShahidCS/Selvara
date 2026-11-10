@@ -8,7 +8,7 @@ import { getApproval } from "@/lib/approvals";
 import { sodReason } from "@/lib/sod";
 import { useLayer } from "@/hooks/useLayer";
 import * as svc from "@/services/vendors";
-import { ApprovalsPanel, WhyNot, attempt } from "./sodKit";
+import { ApprovalsPanel, WhyNot, attempt } from "../kit/sodKit";
 import { openVendorDrawer, scoreColor } from "./vendors/VendorDrawer";
 import { openVendorCreate } from "./vendors/VendorModals";
 

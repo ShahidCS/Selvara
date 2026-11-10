@@ -6,7 +6,7 @@ import { useApp, useData, useModState } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
 import * as svc from "@/services/adminlog";
 import { openConfirmReset } from "./team/ResetDemo";
-import { useGate } from "./admin/ElevateGate";
+import { useGate } from "../kit/admin/ElevateGate";
 import { AdminChainView, AdminExportsView } from "./adminlog/AdminViews";
 import { RopaRegister } from "./auditlog/RopaRegister";
 

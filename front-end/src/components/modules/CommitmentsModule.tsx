@@ -7,7 +7,7 @@ import { hasRole } from "@/lib/sod";
 import { bumpData, useApp, useData } from "@/lib/store";
 import { INCIDENT, STANDARD_TERMS } from "@/lib/trustData";
 import * as svc from "@/services/commitments";
-import { attempt } from "./sodKit";
+import { attempt } from "../kit/sodKit";
 import { ImportContractForm, StartIncidentForm, openAnalysis } from "./commitments/CommitmentLayers";
 
 /** Commitments, standard terms and incident mode (source REND.commitments, lines 3479-3495). */

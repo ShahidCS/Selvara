@@ -5,7 +5,7 @@ import { wsLog } from "@/lib/audit";
 import { bumpData, setModState } from "@/lib/store";
 import { clampText } from "@/lib/security";
 import * as svc from "@/services/assistant";
-import { attempt } from "../sodKit";
+import { attempt } from "@/components/kit/sodKit";
 
 /** Prototype: asstNewAgent / asstDoNewAgent. Selects are checked against their allow-lists in the service. */
 export function AgentForm({ close }: { close: () => void }) {

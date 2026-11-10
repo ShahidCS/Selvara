@@ -7,7 +7,7 @@ import { bumpData } from "@/lib/store";
 import { clampText, isEmail } from "@/lib/security";
 import { TRUST } from "@/lib/trustData";
 import * as svc from "@/services/trust";
-import { attempt } from "../sodKit";
+import { attempt } from "@/components/kit/sodKit";
 
 const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
 const FAIL = "Something went wrong. Please try again.";

@@ -1,5 +1,5 @@
 import { Page } from "@/components/ui";
-import { ElevationBanner } from "./admin/ElevationBanner";
+import { ElevationBanner } from "../kit/admin/ElevationBanner";
 import { RequestElevation } from "./admin/RequestElevation";
 import { SupportGrants } from "./admin/SupportGrants";
 

@@ -7,7 +7,7 @@ import { bumpData } from "@/lib/store";
 import { getMe, wsLog } from "@/lib/audit";
 import { FINDING_SEVS, REASSESS_OUTCOMES, TIER_CADENCE, TIER_WINDOW, VENDOR_TIERS, vFind } from "@/lib/vendors";
 import * as svc from "@/services/vendors";
-import { attempt } from "../sodKit";
+import { attempt } from "@/components/kit/sodKit";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;

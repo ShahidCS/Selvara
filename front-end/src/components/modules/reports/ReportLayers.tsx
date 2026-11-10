@@ -7,7 +7,7 @@ import { bumpData } from "@/lib/store";
 import { clampText } from "@/lib/security";
 import { REPORT_FREQ } from "@/lib/trustData";
 import * as svc from "@/services/reports";
-import { attempt } from "../sodKit";
+import { attempt } from "@/components/kit/sodKit";
 
 
 /* ---- schedule a report (source reportSchedule / reportDoSchedule) ---- */

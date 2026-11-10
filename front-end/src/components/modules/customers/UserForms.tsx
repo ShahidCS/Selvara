@@ -3,7 +3,7 @@ import { LayerFoot } from "@/components/shell/LayerProvider";
 import { useLayer } from "@/hooks/useLayer";
 import { ADMIN_AUDIT } from "@/lib/adminAudit";
 import { sodMessage } from "@/lib/elevation";
-import { useGate } from "../admin/ElevateGate";
+import { useGate } from "@/components/kit/admin/ElevateGate";
 import { REGION_TREE } from "@/lib/platform";
 import { isEmail } from "@/lib/security";
 import { getModState, setModState } from "@/lib/store";
