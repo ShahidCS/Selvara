@@ -1,7 +1,6 @@
 /* Risk register tab (source renderRiskReg, lines 2559-2603). */
 import { Empty, StatusChip, Table, activate } from "@/components/ui";
 import { DATA } from "@/lib/data";
-import { clampText } from "@/lib/security";
 import { Ib, Lb, RBANDS, RISK_STATUSES, riskOpen, riskPriority, riskRatingOf, sCur, sInh, sRes } from "@/lib/risk";
 import { useModState } from "@/lib/store";
 import { K_RF, K_SEL, RF_INIT, RiskFilter, riskClearFilters, riskOpenDetail } from "./nav";
@@ -23,7 +22,7 @@ export default function RiskRegister() {
   const [sel] = useModState<string | null>(K_SEL, null);
   const RF = rfRaw;
   const patch = (p: Partial<RiskFilter>) => setRf({ ...RF, ...p });
-  const uniq = (f: (r: any) => string) => [...new Set(DATA.risks.map(f))].sort();
+  const uniq = (f: (r: { cat: string; team: string; jur: string }) => string) => [...new Set(DATA.risks.map(f))].sort();
   const cats = uniq((r) => r.cat), teams = uniq((r) => r.team), jurs = uniq((r) => r.jur);
   const q = (RF.q || "").toLowerCase();
   const list = DATA.risks.filter((r) => {

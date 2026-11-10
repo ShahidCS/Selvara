@@ -16,7 +16,6 @@ import { appStore } from "@/lib/store";
 import { clampText } from "@/lib/security";
 import { ApiError, apiFetch, viaApi } from "./http";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export interface RateRow { country: string; code: string; currency: string; rate: number; tax: { type: string; rate: number; eff: string }; status: string; reason: string; region?: string }
 export const RATE_ROWS: RateRow[] = JSON.parse(JSON.stringify(RATES));
 export const REGIONS = ["All", "MENA", "Europe", "APAC", "Americas", "Africa"];

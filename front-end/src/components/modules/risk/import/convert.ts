@@ -125,7 +125,7 @@ export function applyImport(parsed: Parsed[], fileName: string, wsLog: (a: strin
     } else {
       if (found) return; // never overwrite or duplicate an id that appeared after the preview was computed
       const st = a.status === "Accepted" ? "Open" : a.status;
-      const r: any = { id: a.id, title: a.title, desc: a.controls ? "Existing controls: " + a.controls : "", cat: a.cat, owner: a.owner, l: a.l, i: a.i, cl: Math.max(a.rl, a.l - 1), ci: Math.max(a.ri, a.i - 1), rl: a.rl, ri: a.ri, treat: a.treat, status: st, review: "Draft", linked: [], imported: true, planned: a.due || "", identified: today(), reviewed: today() };
+      const r: Record<string, unknown> = { id: a.id, title: a.title, desc: a.controls ? "Existing controls: " + a.controls : "", cat: a.cat, owner: a.owner, l: a.l, i: a.i, cl: Math.max(a.rl, a.l - 1), ci: Math.max(a.ri, a.i - 1), rl: a.rl, ri: a.ri, treat: a.treat, status: st, review: "Draft", linked: [], imported: true, planned: a.due || "", identified: today(), reviewed: today() };
       if (editor) r.lastEditedBy = editor; riskNorm(r); r.review = "Draft"; r.status = st; riskLog(r, "Imported from " + fn); DATA.risks.push(r); nNew++;
     }
   });

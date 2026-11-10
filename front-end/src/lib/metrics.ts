@@ -1,10 +1,12 @@
 import { DATA } from "./data";
 import { fwReadiness } from "./frameworks";
 
-export const riskOpen = (r: any) => r.status !== "Accepted" && r.status !== "Closed";
-export const sInh = (r: any) => r.l * r.i;
-export const sCur = (r: any) => (r.cl || r.l) * (r.ci || r.i);
-export const sRes = (r: any) => r.rl * r.ri;
+/** The fields the scoring helpers read (the risk register rows themselves are untyped seed data). */
+type RiskRow = { status?: string; l: number; i: number; cl?: number; ci?: number; rl: number; ri: number };
+export const riskOpen = (r: RiskRow) => r.status !== "Accepted" && r.status !== "Closed";
+export const sInh = (r: RiskRow) => r.l * r.i;
+export const sCur = (r: RiskRow) => (r.cl || r.l) * (r.ci || r.i);
+export const sRes = (r: RiskRow) => r.rl * r.ri;
 
 /** Computed metrics (single source of truth for Overview / Reports). */
 export function metrics() {

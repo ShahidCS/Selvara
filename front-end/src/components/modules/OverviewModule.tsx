@@ -54,7 +54,7 @@ export default function OverviewModule() {
   const sevMax = Math.max(1, ...Object.values(sev));
   const openTrend = [20, 19, 18, 17, 16, 15, M.openRisks];
   const attn = DATA.issues.filter((i) => /Overdue/.test(i.due)).concat(
-    DATA.vendors.filter((v) => /Overdue/.test(v.due)).map((v) => ({ id: v.name, title: v.cat + " vendor review overdue", sev: v.tier === "Critical" ? "High" : "Medium", owner: "Vendor" } as any)));
+    DATA.vendors.filter((v) => /Overdue/.test(v.due)).map((v) => ({ id: v.name, title: v.cat + " vendor review overdue", sev: v.tier === "Critical" ? "High" : "Medium", owner: "Vendor" })));
   const audits = DATA.audits.filter((a) => a.stage !== "Complete");
   const period = new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 
@@ -84,7 +84,7 @@ export default function OverviewModule() {
         </div>
       </div>
       <div className="kpis" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
-        {kpis.map((x) => <Kpi key={x.k} icon={x.ic} label={x.k} value={x.v} tone={x.tone} sub={<Delta tone={x.d[0] as any} text={x.d[1]} dir={x.d[2] as any} />} />)}
+        {kpis.map((x) => <Kpi key={x.k} icon={x.ic} label={x.k} value={x.v} tone={x.tone} sub={<Delta tone={x.d[0] as "good" | "bad" | "flat"} text={x.d[1]} dir={x.d[2] as "up" | "down" | ""} />} />)}
       </div>
       <div className="panels" style={{ gridTemplateColumns: "1.6fr 1fr 1fr", gridAutoRows: "minmax(0,1fr)" }}>
         <div className="card">

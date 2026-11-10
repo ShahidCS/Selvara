@@ -15,18 +15,18 @@ export function startIncident(summary: string) {
     assertRole("starting the incident clock", "admin", "owner");
     if (INCIDENT.active) throw new SodError("An incident is already active.");
     INCIDENT.active = true; INCIDENT.started = nowStamp(); INCIDENT.startedBy = getActor().name; delete INCIDENT.closedBy; return INCIDENT;
-  }, () => send<any>("POST", "/incidents", { summary }));
+  }, () => send<unknown>("POST", "/incidents", { summary }));
 }
 export function closeIncident() {
   return viaApi(() => {
     assertRole("closing the incident", "admin", "owner");
     if (!INCIDENT.active) throw new SodError("There is no active incident.");
     INCIDENT.active = false; INCIDENT.closedBy = getActor().name; return INCIDENT;
-  }, () => send<any>("POST", "/incidents/close", {}));
+  }, () => send<unknown>("POST", "/incidents/close", {}));
 }
 export function importContract(name: string, detail: string) {
   return viaApi(() => { assertRole("importing a contract", "admin", "owner"); DATA.commitments.unshift({ name, detail: detail || "Imported contract", status: "Review" }); return { name }; },
-    () => send<any>("POST", "/commitments", { name, detail }));
+    () => send<unknown>("POST", "/commitments", { name, detail }));
 }
 export function runContractAnalysis() {
   return viaApi(() => true, () => send<boolean>("POST", "/commitments/analysis", {}));

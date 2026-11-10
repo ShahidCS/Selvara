@@ -5,7 +5,6 @@ import { roleOf } from "@/lib/rbac";
 import seed from "@/data/aiSeed.json";
 import { DATA } from "./data";
 import { appStore } from "./store";
-import { getMe } from "./audit";
 import { getActor, hasRole, isSamePerson } from "./sod";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

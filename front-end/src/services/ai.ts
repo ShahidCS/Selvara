@@ -4,7 +4,7 @@
  * registering a system is admin/owner/analyst and does not approve it (completing the review is a separate, different-person step). Violations throw SodError.
  * The real API MUST enforce all of it server-side from the session identity and write the audit entry itself. */
 import { DATA } from "@/lib/data";
-import { getMe, wsLog } from "@/lib/audit";
+import { wsLog } from "@/lib/audit";
 import { getApproval, requestApproval } from "@/lib/approvals";
 import { payloadStr, registerApprovalHandler } from "@/lib/approvalKit";
 import { assertNotSelf, assertRole, getActor, SodError } from "@/lib/sod";

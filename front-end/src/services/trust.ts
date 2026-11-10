@@ -76,7 +76,7 @@ export function approveRequest(id: string) {
     if (acc) { if (!acc.viewers.includes(r.who)) acc.viewers.push(r.who); acc.status = "Active"; }
     else TRUST.accounts.push({ company: r.company, domain: domainOf(r.who) || "—", nda: "Signed " + today(), viewers: [r.who], access: r.resource, status: "Active" });
     return r;
-  }, () => send<any>("POST", `/trust/requests/${enc(id)}/approve`, {}));
+  }, () => send<(typeof TRUST.requests)[number] | null>("POST", `/trust/requests/${enc(id)}/approve`, {}));
 }
 export function denyRequest(id: string, note: string) {
   return viaApi(() => {
@@ -86,7 +86,7 @@ export function denyRequest(id: string, note: string) {
     TRUST.requests = TRUST.requests.filter((x) => x.id !== id);
     TRUST.decisions.unshift({ at: today(), who: r.who, resource: r.resource, decision: "Denied", by: getActor().name, note });
     return r;
-  }, () => send<any>("POST", `/trust/requests/${enc(id)}/deny`, { note }));
+  }, () => send<(typeof TRUST.requests)[number] | null>("POST", `/trust/requests/${enc(id)}/deny`, { note }));
 }
 export function revokeAccount(i: number) {
   return viaApi(() => {
@@ -95,7 +95,7 @@ export function revokeAccount(i: number) {
     if (!a) return null;
     a.status = "Revoked"; a.viewers = [];
     return a;
-  }, () => send<any>("POST", `/trust/accounts/${i}/revoke`, {}));
+  }, () => send<(typeof TRUST.accounts)[number] | null>("POST", `/trust/accounts/${i}/revoke`, {}));
 }
 export function blockDomain(d: string) {
   return viaApi(() => { gate("blocking a domain"); if (!TRUST.blocked.includes(d)) TRUST.blocked.push(d); return d; }, () => send<string>("POST", "/trust/blocked-domains", { domain: d }));
@@ -115,7 +115,7 @@ export function toggleVisibility(i: number) {
     if (stillPending(t.publishPending)) throw new SodError("Publishing is already awaiting approval.");
     const ap = requestApproval({ kind: "trust.publish", title: `Make "${clampText(t.name, 100)}" public`, subject: t.name, payload: { name: t.name, mode: "toggle" }, needs: 1, approverRoles: APPROVERS, forbid: [t.editedBy].filter(Boolean) });
     t.publishPending = ap.id; return { name: t.name, access: t.access, pending: true };
-  }, () => send<any>("POST", `/trust/resources/${i}/visibility`, {}));
+  }, () => send<{ name: string; access: string; pending: boolean }>("POST", `/trust/resources/${i}/visibility`, {}));
 }
 /** Publishing as "On request, NDA" is immediate; publishing as Public is a four-eyes approval and the resource is not listed until approved. */
 export function publishResource(name: string, access: string) {

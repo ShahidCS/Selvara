@@ -25,7 +25,7 @@ export function boardPackHTML(): string {
  const fwRows=[...DATA.frameworks].map(f=>({f,r:fwReadiness(f.id)})).sort((a,b)=>b.r-a.r);
  const fwBars=fwRows.map(({f,r})=>`<div class="bp-bar"><span class="bp-bar-l">${esc(f.name)}</span><span class="bp-track"><span class="bp-fill" style="width:${r}%"></span></span><span class="bp-bar-v">${r}%</span></div>`).join("");
  const covHead=`<tr><th class="bp-rowh"></th>${COV_CATS.map(c=>`<th class="bp-covh">${esc(c[0])}</th>`).join("")}</tr>`;
- const covBody=COV_FW.map(([fid,fn])=>`<tr><th class="bp-rowh">${esc(fn)}</th>${COV_CATS.map(([cn,cats])=>{const r=covCell(fid,cats);return r?`<td class="bp-cov" style="background:${_covShade(r.pct)}">${r.pct}%</td>`:'<td class="bp-cov bp-na">—</td>';}).join("")}</tr>`).join("");
+ const covBody=COV_FW.map(([fid,fn])=>`<tr><th class="bp-rowh">${esc(fn)}</th>${COV_CATS.map(([,cats])=>{const r=covCell(fid,cats);return r?`<td class="bp-cov" style="background:${_covShade(r.pct)}">${r.pct}%</td>`:'<td class="bp-cov bp-na">—</td>';}).join("")}</tr>`).join("");
  const risks=DATA.risks.filter(r=>riskOpen(r)&&sCur(r)>=11).sort((a,b)=>sCur(b)-sCur(a)).slice(0,8);
  const riskRows=risks.length?risks.map(r=>`<tr><td class="bp-id">${esc(r.id)}</td><td>${esc(r.title)}</td><td>${esc(r.owner)}</td><td>${esc(r.treat)}</td><td class="bp-ctr"><span class="bp-score">${sCur(r)}</span></td></tr>`).join(""):`<tr><td colspan="5" class="bp-empty">No risks currently above appetite.</td></tr>`;
  const issues=DATA.issues.filter(i=>i.status!=='Closed').slice(0,8);
