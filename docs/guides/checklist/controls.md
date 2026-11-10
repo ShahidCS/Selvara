@@ -1,6 +1,6 @@
 # Controls module checklist
 
-Source: `Assurance-GRC-Portal.html` lines 1599-1702. React: `src/components/modules/ControlsModule.tsx`, `controls/{useControlDrawer,useTestDrawer,createModals,modalForm}.tsx`, `src/services/controls.ts`.
+Source: `Assurance-GRC-Portal.html` lines 1599-1702. React: `src/features/controls/ControlsModule.tsx`, `controls/{useControlDrawer,useTestDrawer,createModals,modalForm}.tsx`, `src/services/controls.ts`.
 
 | source feature | source lines | React file/component | status | notes |
 |---|---|---|---|---|

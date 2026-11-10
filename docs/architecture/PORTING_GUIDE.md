@@ -12,8 +12,8 @@ and write the question into your module's checklist file under "Open questions".
 | Original CSS (verbatim) | `src/styles/portal.css`. Reuse the same class names. Add new CSS to `src/styles/modules.css` only when the source had inline `<style>` for it (and import it from `globals.css`). |
 | Shell, layers | `src/components/shell/*` (Sidebar, Topbar, AppShell, LayerProvider) |
 | UI primitives | `src/components/ui` : `Icon`, `Chip`, `StatusChip`, `ReqStatusPill`, `Kpi`, `Delta`, `Table`, `Page`, `Empty`, `Ring`, `Spark`, `TrendChart` |
-| One module = one file | `src/components/modules/<Name>Module.tsx` (default export). Registry already imports every file: `registry.ts` |
-| Module-private subcomponents | `src/components/modules/<name>/*.tsx` |
+| One module = one file | `src/features/<name>/<Name>Module.tsx` (default export). Registry already imports every file: `registry.ts` |
+| Module-private subcomponents | `src/features/<name>/*.tsx`; shared pieces live in `src/components/kit/` |
 | Demo data (synthetic) | `src/lib/data.ts` -> `DATA` (mutable), `src/lib/platform.ts` (customers, MFA requests, ...), `src/data/*.json` |
 | State | `src/lib/store.ts` : `appStore/useApp` (role, theme, collapsed), `useData()` + `bumpData()`, `useModState(key, init)` |
 | RBAC | `src/lib/rbac.ts` (`ROLES`, `ROLE_MODS`, `roleOf`, `modAllowed`, `fwCanAdmin`) |
@@ -31,7 +31,7 @@ and write the question into your module's checklist file under "Open questions".
 3. The prototype mutates `DATA` then re-renders. Do the same: mutate `DATA` in an event handler, call `wsLog(...)` where the source did, then `bumpData()`.
    Components that read DATA call `useData()` at the top so they re-render.
 4. `openDrawer(title, subHTML, bodyHTML, footHTML)` -> `L.openDrawer(title, subNode, bodyNode, footNode)`; content may be a function `(close)=>node`.
-   For a form modal/drawer whose buttons need the form's state, render `<LayerFoot>…buttons…</LayerFoot>` (from `@/hooks/useLayer`) inside the body component: it portals the buttons into the fixed footer (see `components/modules/work/RequestModals.tsx`).
+   For a form modal/drawer whose buttons need the form's state, render `<LayerFoot>…buttons…</LayerFoot>` (from `@/hooks/useLayer`) inside the body component: it portals the buttons into the fixed footer (see `features/work/RequestModals.tsx`).
    Drawer/modal content that has to react to DATA changes must be its own component that calls `useData()` (the layer renders children, so hooks work).
    `closeLayer(); toast(...)` sequences stay as they are.
 5. `go('#/ws/x')` -> `go('/ws/x')`. `location.hash` reads -> `useRoute()`.

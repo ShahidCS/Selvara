@@ -6,7 +6,7 @@ import { approve as approveReq, getApproval, reject as rejectReq, requestApprova
 import { SodError, assertRole, getActor } from "@/lib/sod";
 import { riskCanEdit } from "@/lib/risk";
 import { clampText } from "@/lib/security";
-import { applyImport, type Parsed } from "@/components/modules/risk/import/convert";
+import { applyImport, type Parsed } from "@/features/risk/import/convert";
 import { viaApi, apiFetch } from "./http";
 
 export const IMPORT_KIND = "risk.import";

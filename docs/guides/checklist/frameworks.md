@@ -2,7 +2,7 @@
 
 | Source feature | Source lines | React file | Status |
 |---|---|---|---|
-| Library header, draft banner, kind cards (All/Standards/Frameworks/Regulations) with in-scope + average readiness | 1805-1829 | `components/modules/FrameworksModule.tsx` | Done |
+| Library header, draft banner, kind cards (All/Standards/Frameworks/Regulations) with in-scope + average readiness | 1805-1829 | `features/frameworks/FrameworksModule.tsx` | Done |
 | Region filter, text search, "n of N shown" | 1830-1840 | `FrameworksModule.tsx` | Done |
 | Library table: name+kind chip+counts, region, segmented readiness bar + legend, Active/Snoozed toggle, In scope toggle (admin only, read-only chips otherwise), Details/Open | 1809-1860 | `FrameworksModule.tsx`, `frameworks/FwSegsBar.tsx` | Done |
 | Empty state "Nothing matches these filters" | 1860 | `FrameworksModule.tsx` | Done |

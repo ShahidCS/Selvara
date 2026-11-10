@@ -1,6 +1,6 @@
 # Issues module checklist
 
-Source: `Assurance-GRC-Portal.html` lines 2370-2432 (`REND.issues`, `issDrawer` and helpers). React: `src/components/modules/IssuesModule.tsx`,
+Source: `Assurance-GRC-Portal.html` lines 2370-2432 (`REND.issues`, `issDrawer` and helpers). React: `src/features/issues/IssuesModule.tsx`,
 `issues/{IssueLayers,util}.tsx`, `src/services/issues.ts`.
 
 | source feature | source lines | React file | status | notes |

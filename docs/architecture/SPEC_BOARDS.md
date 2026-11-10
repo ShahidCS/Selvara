@@ -34,7 +34,7 @@ Executive overview for a company admin: compliance score trend with forecast, "b
 
 | Board area | Portal coverage |
 |---|---|
-| Overview page, KPI tiles, board pack export | `/ws/overview`, `src/components/modules/OverviewModule.tsx`, `src/lib/boardPack.ts`; `docs/guides/checklist/overview.md` |
+| Overview page, KPI tiles, board pack export | `/ws/overview`, `src/features/overview/OverviewModule.tsx`, `src/lib/boardPack.ts`; `docs/guides/checklist/overview.md` |
 | Framework x category heat map | `OverviewModule.tsx` `CoverageHeatmap`, `src/lib/boardPack.ts` (`COV_CATS`, `covCell`) |
 | Readiness trend | `/ws/reports` (`ReportsModule.tsx`, `docs/guides/checklist/reports.md`); Overview shows an open-risks trend instead |
 | Add regulation wizard (templates, keyword mapping, confidence) | `/ws/frameworks`: `frameworks/FwAdd.tsx`, `src/lib/fwTemplates.ts`; `docs/guides/checklist/frameworks.md` ("Add a framework", keyword matcher preview) |
@@ -74,7 +74,7 @@ Security-relevant conflicts: none in this board.
 
 **Fold into existing modules; do not add a route.**
 
-* 1.G1, 1.G4, 1.G6, 1.G7: extend `src/components/modules/OverviewModule.tsx` (+ small `overview/` sub-folder if it grows). Reuse `TrendChart`, `Kpi`, `Chip`. Data: `src/lib/metrics.ts` (already exposes `aboveAppetite`), `DATA.risks`, `DATA.vendors`, `DATA.policies`.
+* 1.G1, 1.G4, 1.G6, 1.G7: extend `src/features/overview/OverviewModule.tsx` (+ small `overview/` sub-folder if it grows). Reuse `TrendChart`, `Kpi`, `Chip`. Data: `src/lib/metrics.ts` (already exposes `aboveAppetite`), `DATA.risks`, `DATA.vendors`, `DATA.policies`.
 * 1.G2, 1.G3: new components `overview/BuiltVsProven.tsx`, `overview/ControlAreaMap.tsx`. Prerequisite decision: how "evidence current %" is computed from `/ws/evidence` (freshness) rather than the board's synthetic offset.
 * 1.G8, 1.G9: extend `frameworks/FwAdd.tsx` and `lib/fwTemplates.ts` (CSV/TXT upload through `validateUpload`, rows through `clampText`, confidence label per row).
 * 1.G5: skip until an obligations data model exists; or fold into `/ws/commitments` / `/ws/audits`. Ask owner.
@@ -134,7 +134,7 @@ Existing coverage: `/ws/policies`, `PoliciesModule.tsx`, `policies/PolicyLayers.
 
 **Fold into `/ws/policies` (rework), no new route.** This is the largest fold-in (L overall).
 
-Minimal files: `src/components/modules/PoliciesModule.tsx` (filter cards, columns), `policies/PolicyLayers.tsx` (split into `PolicyDrawer.tsx`, `RemarksTab.tsx`, `CollaboratorsTab.tsx`, `ChangeLogTab.tsx`, `PolicyAudit.tsx`, `UploadPolicy.tsx`, `ReviewSettings.tsx`, `ReassignOwner.tsx`), `src/services/policies.ts` (state machine and role checks, deny by default), `src/data/seed.json` (policy fields: `approver`, `comments`, `collabs`, `changes`, `audit`, `lib`), new `src/data/policyLibrary.json` (the 25-policy catalogue; reference strings are generic standards citations, safe to reuse), `src/lib/rbac.ts` (`policyCanEdit(role, policy)`), `docs/guides/checklist/policies.md` (update). Role model dependency: the board needs "policy owner" per policy, which the portal does not model per user (see 11.1).
+Minimal files: `src/features/policies/PoliciesModule.tsx` (filter cards, columns), `policies/PolicyLayers.tsx` (split into `PolicyDrawer.tsx`, `RemarksTab.tsx`, `CollaboratorsTab.tsx`, `ChangeLogTab.tsx`, `PolicyAudit.tsx`, `UploadPolicy.tsx`, `ReviewSettings.tsx`, `ReassignOwner.tsx`), `src/services/policies.ts` (state machine and role checks, deny by default), `src/data/seed.json` (policy fields: `approver`, `comments`, `collabs`, `changes`, `audit`, `lib`), new `src/data/policyLibrary.json` (the 25-policy catalogue; reference strings are generic standards citations, safe to reuse), `src/lib/rbac.ts` (`policyCanEdit(role, policy)`), `docs/guides/checklist/policies.md` (update). Role model dependency: the board needs "policy owner" per policy, which the portal does not model per user (see 11.1).
 
 ---
 
@@ -236,7 +236,7 @@ Existing coverage: none dedicated. The `employee` role (Priya Nair, `roles.json`
 Build plan:
 
 * Route: `/ws/me` (module key `me`), added to `src/data/nav.json`, `TITLE`, `ROLE_MODS.employee.ws = ["me", ...]`; make `me` the landing page for `employee` in `landingPath` (`src/lib/rbac.ts`). Layout: **inside the shell** (sidebar reduced to My workspace / Published policies / My account security via role-filtered nav), because members live in the product daily and need the global toast/theme/palette. Standalone is not needed.
-* Components under `src/components/modules/me/`: `MyTasks.tsx`, `MyRemarks.tsx`, `PublishedPolicies.tsx` (read-only list + acknowledge), `AccountSecurity.tsx` (password row, MFA row, recovery codes row, sessions list). Registry entry `MeModule.tsx`.
+* Components under `src/features/me/`: `MyTasks.tsx`, `MyRemarks.tsx`, `PublishedPolicies.tsx` (read-only list + acknowledge), `AccountSecurity.tsx` (password row, MFA row, recovery codes row, sessions list). Registry entry `MeModule.tsx`.
 * Data: tasks derived from policies (reviewer collaborators, acknowledgement due = approval date + attestation window), remarks, a new per-user `acks` array on policies, mock session list in `src/data/meSeed.json` (device and place strings, synthetic; **no IP addresses needed**). Services: `src/services/me.ts` (`acknowledge`, `signOutOthers`, `regenerateCodes` as stubs through `viaApi`).
 * Role gates: visible to `employee` (and optionally admin/owner as "My workspace"); acknowledgement writes `wsLog("policy.acknowledged", ...)`. Edit and approve controls must be hidden for `employee` in `/ws/policies` (depends on 2.G1).
 * Out of scope until backend: real recovery-code generation (show codes once, hashed storage), real session revocation.
@@ -300,7 +300,7 @@ Existing coverage: `/auth`, `AuthModule.tsx`, `auth/AuthPanels.tsx`, `auth/authL
 
 **Fold into `/auth`, and make `/auth` truly standalone.** Not a new route.
 
-Minimal files: `src/components/modules/auth/authLogic.ts` (replace `AUTH_ALLOWED`, add `pwRules(pw, ctx)` with NFKC, common list moved to `src/data/passwordBlocklist.json`), `auth/AuthPanels.tsx` (`SignUp` panel using `emailDomainClass` from `lib/security.ts`, recovery codes step, failure ladder state, remove SMS from `METHODS`), `auth/AuthFields.tsx`, `src/pages/_app.tsx` + `AppShell.tsx` (bypass shell for `/auth`), `docs/guides/checklist/auth.md`, `docs/security/SECURITY.md`. Skip 5.G6 unless the backend team wants it as a contract appendix.
+Minimal files: `src/features/auth/authLogic.ts` (replace `AUTH_ALLOWED`, add `pwRules(pw, ctx)` with NFKC, common list moved to `src/data/passwordBlocklist.json`), `auth/AuthPanels.tsx` (`SignUp` panel using `emailDomainClass` from `lib/security.ts`, recovery codes step, failure ladder state, remove SMS from `METHODS`), `auth/AuthFields.tsx`, `src/pages/_app.tsx` + `AppShell.tsx` (bypass shell for `/auth`), `docs/guides/checklist/auth.md`, `docs/security/SECURITY.md`. Skip 5.G6 unless the backend team wants it as a contract appendix.
 
 ---
 
@@ -479,7 +479,7 @@ Existing coverage: `/admin/customers` (`CustomersModule.tsx`, `customers/*`; `do
 Build plan:
 
 * Route: `/admin/elevation` (session banner and request flow) and `/admin/security` (read-only Platform security rules). Both in the **shell** (admin space), because they gate the rest of the admin space. Add to `nav.json` admin group, `ROLE_MODS.super.admin` (the wildcard already covers it) and `support` (read-only security page).
-* Components under `src/components/modules/admin/` (new folder): `ElevationBanner.tsx` (countdown from a store value, "Elevated session: hardware key - allow-listed network - just-in-time role expires in N min"), `RequestElevation.tsx` (reason required, 60 min max, simulated hardware-key prompt), `SupportGrants.tsx` (list of customer-approved grants with expiry), `PlatformSecurity.tsx` (three rule lists, copy from the board), `OnboardWizard.tsx` replacing `customers/Onboard.tsx` (reuse `isEmail`, add `emailDomainClass` from section 3).
+* Components under `src/components/kit/admin/` (new folder): `ElevationBanner.tsx` (countdown from a store value, "Elevated session: hardware key - allow-listed network - just-in-time role expires in N min"), `RequestElevation.tsx` (reason required, 60 min max, simulated hardware-key prompt), `SupportGrants.tsx` (list of customer-approved grants with expiry), `PlatformSecurity.tsx` (three rule lists, copy from the board), `OnboardWizard.tsx` replacing `customers/Onboard.tsx` (reuse `isEmail`, add `emailDomainClass` from section 3).
 * State: `elevation: { until, reason } | null` in `src/lib/store.ts`; write `adminLog("admin.elevated", ...)` at start and expiry; when not elevated, mutation buttons in `/admin/*` are disabled with the text "Elevate to make changes" (read-only browsing stays).
 * Role gates: elevation applies to `super` only; `support` limited to `customers`, `mfa` per `ROLE_MODS`; remove `ws: "*"` for `super` (or limit to a grant list). **This is a breaking change to the role demo** and needs owner sign-off.
 * Backend dependency: real hardware-key and network allow-list checks are server-side; the UI can only show the state.
@@ -532,7 +532,7 @@ Existing coverage: none as a page. Closest: `docs/security/SECURITY.md` (front-e
 Build plan:
 
 * Layout: inside the shell (reference content, benefits from search and theme); single scrolling page with anchored sections.
-* Components under `src/components/modules/appsec/`: `AppSecModule.tsx`, `ControlGroup.tsx` (collapsible card: threat, bullets, "Maps to", "Test"), `ResponseCompare.tsx` (two `<pre>` blocks, text only), `RateLimitTable.tsx`, `PermissionMatrix.tsx` (uses `Table` and `Chip`), `ReleaseGate.tsx` (checklist; **display-only**, do not persist ticks as evidence without an owner decision).
+* Components under `src/features/appsec/`: `AppSecModule.tsx`, `ControlGroup.tsx` (collapsible card: threat, bullets, "Maps to", "Test"), `ResponseCompare.tsx` (two `<pre>` blocks, text only), `RateLimitTable.tsx`, `PermissionMatrix.tsx` (uses `Table` and `Chip`), `ReleaseGate.tsx` (checklist; **display-only**, do not persist ticks as evidence without an owner decision).
 * Data: `src/data/appsecSpec.json` (the groups, limits, matrix, gate arrays copied as generic specification text; they contain no customer data; remove the example response's sample identities and keep neutral values).
 * Role gates: `admin`, `owner`, `super`, `auditor` read; hidden for `employee`, `vendor`, `viewer`.
 * Cross-link: from `/auth`, `/admin/customers` security panel and `docs/security/SECURITY.md`.
@@ -599,7 +599,7 @@ Existing coverage: `QuestionnairesModule.tsx` renders `questionnaires/VendorPort
 Build plan:
 
 * Route: `/vendor-portal` (page `src/pages/vendor-portal.tsx`). A real deployment needs a token route such as `/vendor-portal/<token>`; for the demo, a fixed mock token is enough. **Standalone layout**: bypass `AppShell` for this path (`_app.tsx` checks `router.pathname`), minimal header (product name, "requested by <customer>", masked email, Sign out), no sidebar, no role switcher, no palette. Keep `portal.css` tokens (design stays portal).
-* Components under `src/components/modules/vendorportal/`: `VendorPortalPage.tsx` (step machine `verify | otp | mfa | portal | clarify | done | dead`), `VerifyEmail.tsx`, `OtpStep.tsx`, `MfaStep.tsx`, `Questionnaire.tsx` (grouped, progress), `QuestionCard.tsx` (choice, comment, evidence), `EvidenceUpload.tsx` (uses `validateUpload` with `{ maxBytes: 25*1024*1024, exts: ["pdf","docx","xlsx","png","jpg"] }` and `safeFileName`; states scanning/clean/blocked simulated), `ImportPrefill.tsx` (CAIQ/SIG file through the existing risk-import parsers in `risk/import/parse.ts`, 5 MB cap, rows as text), `ClarifyRound.tsx`, `SubmittedPanel.tsx`, `PortalControls.tsx`.
+* Components under `src/features/vendorportal/`: `VendorPortalPage.tsx` (step machine `verify | otp | mfa | portal | clarify | done | dead`), `VerifyEmail.tsx`, `OtpStep.tsx`, `MfaStep.tsx`, `Questionnaire.tsx` (grouped, progress), `QuestionCard.tsx` (choice, comment, evidence), `EvidenceUpload.tsx` (uses `validateUpload` with `{ maxBytes: 25*1024*1024, exts: ["pdf","docx","xlsx","png","jpg"] }` and `safeFileName`; states scanning/clean/blocked simulated), `ImportPrefill.tsx` (CAIQ/SIG file through the existing risk-import parsers in `risk/import/parse.ts`, 5 MB cap, rows as text), `ClarifyRound.tsx`, `SubmittedPanel.tsx`, `PortalControls.tsx`.
 * Data needed: `src/data/vendorQuestions.json` (same catalogue as 6.4, so internal and external sides share ids), mock invite `{ token, invitedEmail, customerName, expiresAt }` in `src/data/vendorInviteSeed.json` (synthetic domain such as `vendor.example`), submission model in `src/lib/vendorSubmission.ts` (`{ ref, ver, items{answer, comment, file{name, hash}}, status }`) shared with the internal review UI (6.G7).
 * Role gates: no workspace role; access only by token + verification. Remove or redirect the `vendor` role's `questionnaires` module to the portal, and drop the in-shell `VendorPortal.tsx` after migration.
 * Services: `src/services/vendorPortal.ts` (`verifyEmail`, `verifyCode`, `enrolSecondFactor`, `saveDraft`, `submit`, `submitClarification`, `recordView`), each stubbed through `viaApi`; counters (3 email attempts, 5 code attempts) implemented client-side for demo state only.

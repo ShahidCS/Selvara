@@ -2,7 +2,7 @@
 
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|
-| 4 KPIs (Workforce, Device compliant n/N, MFA enrolled n/N, Unmanaged) | 2984-2985 | `components/modules/PeopleModule.tsx` | Done | |
+| 4 KPIs (Workforce, Device compliant n/N, MFA enrolled n/N, Unmanaged) | 2984-2985 | `features/people/PeopleModule.tsx` | Done | |
 | Tabs "People & devices" / "Access grants" (`PPL`) | 2983, 2986 | `PeopleModule.tsx` | Done | `useModState("people.view", "People")`; unknown values fall back to People |
 | People table (device chip mapping OK / Needs evidence / Open, MFA chip, clickable row) | 2987 | `PeopleModule.tsx` | Done | Row uses `activate()` (keyboard); action cell stops click/key propagation like `event.stopPropagation()` |
 | Per-row "Reset MFA" (disabled when not enrolled) | 2987, 4272-4273 | `PeopleModule.tsx`, `people/actions.ts`, `services/people.ts` | Done | Toast copy kept; view switches to People; added `aria-label` |

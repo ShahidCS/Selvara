@@ -14,7 +14,7 @@ Selvara is a GRC portal: Next.js 16 (Pages Router), React 19, TypeScript, Tailwi
 - Lint: `npm run lint` (ESLint flat config in `front-end/eslint.config.mjs`). It is clean and `--max-warnings=0` in `package.json` keeps it that way: fix a new warning, do not downgrade the rule or raise the cap.
 
 ## Layout
-- `front-end/src/` pages, components, lib, services, data, hooks, styles, assets. `front-end/tests/` unit, `front-end/e2e/` Playwright.
+- `front-end/src/` pages, features (one folder per module: components and its Module entry), components (shared ui, shell, kit), lib, services, data, hooks, styles, assets. `front-end/tests/` unit, `front-end/e2e/` Playwright.
 - `docs/architecture/`, `docs/guides/`, `docs/security/` all documentation. See `docs/ORGANIZATION.md`.
 - `.github/` workflows, local composite action, pipeline scripts, rulesets, CODEOWNERS.
 

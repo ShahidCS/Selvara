@@ -1,7 +1,7 @@
 # Risk import wizard checklist
 
 Source: `Assurance-GRC-Portal.html` lines 2792-2980 (entry `riskImport()` 2808; Add/Export belong to the Risk module).
-React: `src/components/modules/risk/import/{openImportWizard.tsx, ImportWizard.tsx, parse.ts, convert.ts, riskLocal.ts}`, `src/services/riskImport.ts`.
+React: `src/features/risk/import/{openImportWizard.tsx, ImportWizard.tsx, parse.ts, convert.ts, riskLocal.ts}`, `src/services/riskImport.ts`.
 
 | source feature | source lines | React file | status | notes |
 |---|---|---|---|---|

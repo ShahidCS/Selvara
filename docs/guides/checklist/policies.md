@@ -1,6 +1,6 @@
 # Policies module checklist
 
-Source: `Assurance-GRC-Portal.html` lines 2252-2284. React: `src/components/modules/PoliciesModule.tsx`, `policies/PolicyLayers.tsx` (drawer + modals), `src/services/policies.ts`.
+Source: `Assurance-GRC-Portal.html` lines 2252-2284. React: `src/features/policies/PoliciesModule.tsx`, `policies/PolicyLayers.tsx` (drawer + modals), `src/services/policies.ts`.
 No seed data extraction was needed (`DATA.policies` already exists).
 
 | source feature | source lines | React file/component | status | notes |

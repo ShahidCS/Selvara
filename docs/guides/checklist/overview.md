@@ -2,7 +2,7 @@
 
 | Source feature | Source lines | React file | Status |
 |---|---|---|---|
-| Header "Security posture · <Month Year>", subtitle with live counts | 1573 | `components/modules/OverviewModule.tsx` | Done |
+| Header "Security posture · <Month Year>", subtitle with live counts | 1573 | `features/overview/OverviewModule.tsx` | Done |
 | Actions: Export board pack, Reports, Open my work | 1573 | `OverviewModule.tsx` | Done |
 | 6 KPI tiles with delta indicators | 1548-1556 | `OverviewModule.tsx` (`Kpi`, `Delta`) | Done |
 | Risk Posture card: count, trend chip, 7-month trend chart with tooltips, issues-by-severity bars | 1565-1572 | `OverviewModule.tsx` (`TrendChart`) | Done |

@@ -1,6 +1,6 @@
 # AI Governance module checklist
 
-Source: `Assurance-GRC-Portal.html` lines 3012-3245 (`REND.ai`, `ai*` helpers). React: `src/components/modules/AiModule.tsx`,
+Source: `Assurance-GRC-Portal.html` lines 3012-3245 (`REND.ai`, `ai*` helpers). React: `src/features/ai/AiModule.tsx`,
 `ai/{AiChips,AiDrawer,AiModals}.tsx`, `src/lib/ai.ts`, `src/services/ai.ts`, seed `src/data/aiSeed.json` (extracted with `scripts/extract-source.js`; `DATA.ai` is in `seed.json`).
 Exported hook for other modules: `useAiDrawer()` (from `AiModule`), opens the drawer by id (`"AI-01"`); an unknown id opens a "not found" drawer.
 

@@ -1,6 +1,6 @@
 # Evidence module checklist
 
-Source: `Assurance-GRC-Portal.html` lines 2217-2251. React: `src/components/modules/EvidenceModule.tsx`, `evidence/{EvidencePreview,EvidenceForms}.tsx`, `src/services/evidence.ts`.
+Source: `Assurance-GRC-Portal.html` lines 2217-2251. React: `src/features/evidence/EvidenceModule.tsx`, `evidence/{EvidencePreview,EvidenceForms}.tsx`, `src/services/evidence.ts`.
 No seed data extraction was needed (`DATA.evidence` already exists).
 
 | source feature | source lines | React file/component | status | notes |

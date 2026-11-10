@@ -1,6 +1,6 @@
 # Third Parties (Vendors) module checklist
 
-Source: `Assurance-GRC-Portal.html` lines 3246-3325 (`REND.vendors`, `vInit`, `vendorDrawer`, `vReq*`, `vendor*` helpers). React: `src/components/modules/VendorsModule.tsx`,
+Source: `Assurance-GRC-Portal.html` lines 3246-3325 (`REND.vendors`, `vInit`, `vendorDrawer`, `vReq*`, `vendor*` helpers). React: `src/features/vendors/VendorsModule.tsx`,
 `vendors/{VendorDrawer,VendorModals}.tsx`, `src/lib/vendors.ts`, `src/services/vendors.ts`. Reused: `VENDOR_REQS` in `src/lib/requests.ts` and the "Request a new vendor" form in `work/RequestModals.tsx` (source lines 3260-3269, not duplicated).
 Exported hook for other modules: `useVendorDrawer()` (from `VendorsModule`), opens the vendor drawer by id (`"V-ARBO"`); unknown id opens a "not found" drawer.
 

@@ -2,7 +2,7 @@
 
 Board: `vendor-assessment-portal` (template.html + script1.js), SPEC_BOARDS section 10. Route `/vendor-portal` (standalone, no AppShell chrome, `noindex`). DRAFT, needs security and product review before any real use.
 
-Files: `src/components/modules/vendorportal/*` (VendorPortalPage, VerifyEmail, OtpStep, MfaStep, Questionnaire, QuestionCard, EvidenceUpload, Clarification, EndStates, parts, useAnswers), `src/lib/vendorSubmission.ts`, `src/services/vendorPortal.ts`, `src/data/vendorQuestions.json`, `src/data/vendorInviteSeed.json`. The in-shell `questionnaires/VendorPortal.tsx` is untouched.
+Files: `src/features/vendorportal/*` (VendorPortalPage, VerifyEmail, OtpStep, MfaStep, Questionnaire, QuestionCard, EvidenceUpload, Clarification, EndStates, parts, useAnswers), `src/lib/vendorSubmission.ts`, `src/services/vendorPortal.ts`, `src/data/vendorQuestions.json`, `src/data/vendorInviteSeed.json`. The in-shell `questionnaires/VendorPortal.tsx` is untouched.
 
 ## Feature table
 
