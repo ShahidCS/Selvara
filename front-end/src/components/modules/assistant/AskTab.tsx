@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Chip, Icon } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { getMe, wsLog } from "@/lib/audit";

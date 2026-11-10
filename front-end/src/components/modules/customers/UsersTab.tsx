@@ -39,7 +39,7 @@ export function UsersTab({ cid }: { cid: string }) {
   const menu = (ev: React.MouseEvent, uid: string) => {
     const u = svc.findUser(uid); if (!u) return; const susp = u.status === "Suspended"; const locked = !elevationActive();
     // Mutating items are disabled (with the exact reason) unless elevated; read-only items (activity, MFA module link) are always available.
-    const item = (fn: () => void, label: string, icon: string, mutates = true) => (close: () => void) => <button key={label} role="menuitem" disabled={mutates && locked} title={mutates && locked ? ELEVATE_TEXT : undefined} onClick={() => { close(); fn(); }}><Icon name={icon} />{label}</button>;
+    const item = (fn: () => void, label: string, icon: string, mutates = true) => function MenuItem(close: () => void) { return <button key={label} role="menuitem" disabled={mutates && locked} title={mutates && locked ? ELEVATE_TEXT : undefined} onClick={() => { close(); fn(); }}><Icon name={icon} />{label}</button>; };
     const items = [
       item(() => openEditUser(L, uid, cid), "Edit profile", "team"), item(() => openChangeRole(L, uid, cid), "Change role", "frameworks"),
       item(() => go("/admin/mfa"), "Request MFA reset (MFA Resets)", "access", false), item(() => act("resetpw", uid), "Reset password", "access"),

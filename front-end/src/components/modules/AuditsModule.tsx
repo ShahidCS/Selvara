@@ -8,7 +8,6 @@ import { useLayer } from "@/hooks/useLayer";
 import { AuditDetail, StageChip } from "./audits/AuditDetail";
 import { NewAuditForm } from "./audits/AuditModals";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export { StageChip };
 
 export default function AuditsModule({ param: propParam }: { param?: string | null }) {

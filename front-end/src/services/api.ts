@@ -13,7 +13,6 @@ import { assertRole, getActor, hasRole, isSamePerson, SodError } from "@/lib/sod
 import { wsLog } from "@/lib/audit";
 import { apiFetch, viaApi } from "./http";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
 /** status: Active | Revoked | "Pending approval" (write scope, no secret yet) | "Not approved" (rejected, withdrawn or expired). */
 export interface ApiKey { id: string; label: string; prefix: string; created: string; lastUsed: string; scope: string; status: string; approvalId?: string; requestedBy?: string }

@@ -6,6 +6,8 @@ import { resetPersisted } from "@/lib/store";
  *  (a reload also re-seeds the in-memory DATA). No user-controlled value reaches the URL. */
 export function resetDemo() {
   resetPersisted();
+  // Intentional full document load (re-seeds the in-memory DATA): client-side navigation would not.
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
   window.location.assign("/ws/overview");
 }
 function ResetBody({ close }: { close: () => void }) {

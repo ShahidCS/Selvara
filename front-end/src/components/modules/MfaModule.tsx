@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Chip, Icon, Page, StatusChip, Table } from "@/components/ui";
-import { CUSTOMERS, MFA_REQUESTS, TENANT_ADMINS } from "@/lib/platform";
+import { MFA_REQUESTS, TENANT_ADMINS } from "@/lib/platform";
 import { useApp, useData } from "@/lib/store";
 import { useGo } from "@/lib/route";
 import { useLayer } from "@/hooks/useLayer";

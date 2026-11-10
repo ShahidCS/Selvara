@@ -33,7 +33,7 @@ export function seedReqCtrlFw(fwId: string) {
   const base = fwId === "iso27002" ? "iso27001" : fwId;
   const f = DATA.frameworks.find((x) => x.id === fwId); const t = f ? f.pct : 70;
   const pool = fwPool(fwId); const pass = pool.filter((c) => c.status === "Pass"); const weak = pool.filter((c) => c.status !== "Pass");
-  const pick = (arr: any[], s: number) => (arr.length ? arr[s % arr.length].id : null);
+  const pick = (arr: { id: string }[], s: number) => (arr.length ? arr[s % arr.length].id : null);
   const m: Record<string, string[]> = {};
   cat.r.forEach((r) => {
     const reqId = r[0];
@@ -54,7 +54,7 @@ export function seedReqCtrl() {
 export function reqCtrl() { if (!fwEdits.get().REQ_CTRL) seedReqCtrl(); return fwEdits.get().REQ_CTRL as Record<string, Record<string, string[]>>; }
 export function fwReqControls(fwId: string, reqId: string) {
   const ids = (reqCtrl()[fwId] || {})[reqId] || [];
-  return ids.map((id) => DATA.controls.find((c) => c.id === id)).filter(Boolean) as any[];
+  return ids.map((id) => DATA.controls.find((c) => c.id === id)).filter(Boolean) as typeof DATA.controls;
 }
 export function reqStatus(fwId: string, reqId: string): ReqStatus {
   const NA = fwEdits.get().NA;
@@ -73,7 +73,7 @@ export function fwScore(fwId: string) {
   return { cnt, total, impl: cnt.Met, pct: total ? Math.round((cnt.Met / total) * 100) : 0 };
 }
 export function fwReadiness(fwId: string): number {
-  const sc = fwScore(fwId); return sc ? sc.pct : (DATA.frameworks.find((x) => x.id === fwId) || ({} as any)).pct || 0;
+  const sc = fwScore(fwId); return sc ? sc.pct : (DATA.frameworks.find((x) => x.id === fwId) || ({} as { pct?: number })).pct || 0;
 }
 export const fwBand = (p: number) => (p >= 80 ? "var(--ok-ink)" : p >= 65 ? "var(--warn-ink)" : p >= 50 ? "#D2690A" : "var(--bad-ink)");
 export function fwGroupMap(fwId: string): Record<string, string> {

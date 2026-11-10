@@ -70,8 +70,8 @@ export function advanceQuestionnaire(i: number) {
     const q = DATA.questionnaires[i]; if (!q) throw new SodError("Questionnaire not found.");
     if (q.status === "Complete") throw new SodError("This questionnaire has already been sent.");
     if (stillPending(q.pendingSend)) throw new SodError("This questionnaire is awaiting review and cannot be edited.");
-    let [a, b] = splitProg(q.prog);
-    a = Math.min(b, a + 10);
+    const [a0, b] = splitProg(q.prog);
+    const a = Math.min(b, a0 + 10);
     q.prog = a + " / " + b; q.status = a >= b ? "Complete" : "In progress";
     const me = getActor().name; q.editors = Array.from(new Set([...(q.editors || []), me])); qid(q);
     return { q, a, b };

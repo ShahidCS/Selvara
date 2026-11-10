@@ -71,7 +71,7 @@ export function Sidebar() {
 
   const groups = (NAV[space] || []).map((g) => ({ g: g.g, items: g.items.filter((it) => modAllowed(s.role, space, it[0])) })).filter((g) => g.items.length);
   // like the prototype, a group's open state is fixed the first time it is rendered (the active group opens, others stay closed)
-  const groupOpen = (g: { g: string; items: any[] }) => (g.g in s.groupsOpen ? s.groupsOpen[g.g] !== false : g.items.some((it) => it[0] === route.mod));
+  const groupOpen = (g: { g: string; items: readonly (readonly unknown[])[] }) => (g.g in s.groupsOpen ? s.groupsOpen[g.g] !== false : g.items.some((it) => it[0] === route.mod));
   useEffect(() => {
     if (!router.isReady) return; // asPath is a placeholder until hydrated
     const missing = groups.filter((g) => !(g.g in appStore.get().groupsOpen));

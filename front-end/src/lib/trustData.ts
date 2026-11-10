@@ -2,7 +2,6 @@
  * Seed extracted from the source with scripts/extract-source.js (src/data/trustSeed.json). Mutate in an event handler, wsLog, then bumpData(). */
 import seed from "@/data/trustSeed.json";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
 
 export const TRUST_FAQ: { q: string; a: string }[] = clone(seed.TRUST_FAQ);

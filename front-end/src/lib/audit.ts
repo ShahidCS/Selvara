@@ -17,7 +17,7 @@ const body = (e: { at: string; actor: string; action: string; target: string; ca
 export const WS_AUDIT: WsEntry[] = [];
 (function init() {
   let prev = ZERO;
-  (seed as any[]).forEach((e, i) => {
+  (seed as unknown as { at: string; actor: string; action: string; target: string; cat: string }[]).forEach((e, i) => {
     const seq = i + 1;
     const entry = { seq, prev, ...e, hash: hashStr(body(e, prev, seq)) } as WsEntry;
     prev = entry.hash; WS_AUDIT.push(entry);
