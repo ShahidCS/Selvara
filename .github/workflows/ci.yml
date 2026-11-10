@@ -94,8 +94,18 @@ jobs:
       - name: Install dependencies (no install scripts)
         run: npm ci --ignore-scripts --no-audit --no-fund
 
+      # Refresh the package index first, and retry the install a few times: on one runner image the Ubuntu archive index did not
+      # load and every font package was "unable to locate" (a transient environment fault, not a test failure). Only this install
+      # step retries; the tests themselves never do.
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: |
+          for attempt in 1 2 3; do
+            sudo apt-get update && npx playwright install --with-deps chromium && exit 0
+            echo "::warning title=Chromium install::attempt $attempt of 3 failed, retrying"
+            sleep $((attempt * 15))
+          done
+          echo "::error title=Chromium install::failed after 3 attempts"
+          exit 1
 
       - name: Run e2e tests (builds and starts the app on port 3100)
         run: npm run test:e2e

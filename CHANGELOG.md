@@ -5,6 +5,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ## [Unreleased]
 
 ### Changed
+- CI: the Chromium install step refreshes the package index and retries up to 3 times. One run failed because the Ubuntu archive index did not load on a runner image (every font package "unable to locate"); tests themselves are never retried.
 - Lint warnings cut from 63 to 20 (unused imports and variables, unused disable directives, `any` replaced with real types, in-app links use `next/link`). The remaining 20 are `react-hooks/immutability` and `react-hooks/set-state-in-effect`, capped at 20.
 - Documentation moved into `docs/architecture/`, `docs/guides/` and `docs/security/`; `front-end/docs/` no longer exists.
 
