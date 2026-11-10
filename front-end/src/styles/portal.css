@@ -364,9 +364,9 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 
 /* rings & viz */
 .ring-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
-.ring{position:relative;width:76px;height:76px}
-.ring svg{transform:rotate(-90deg)}
-.ring .rv{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600}
+.donut{position:relative;width:76px;height:76px}
+.donut svg{transform:rotate(-90deg)}
+.donut .rv{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:600}
 .spark{display:block}
 .bar-row{display:flex;align-items:center;gap:10px;font-size:13px;margin-bottom:10px}
 .bar-row .nm{width:120px;flex:0 0 auto;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

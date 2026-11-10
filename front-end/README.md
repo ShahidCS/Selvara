@@ -1,8 +1,10 @@
 # Selvara: front-end
 
 React / Next.js (Pages Router, TypeScript) migration of the original single-file HTML prototype (then called "Assurance GRC Portal").
-The original design tokens and component CSS are kept verbatim (`src/styles/portal.css`); Tailwind provides layout utilities mapped to the same tokens
-(preflight disabled so the original base styles are untouched). All data is synthetic and in memory.
+The original design tokens and component CSS are kept verbatim (`src/styles/portal.css`); Tailwind CSS 4 provides utilities mapped to the same tokens
+(`@theme` in `src/styles/globals.css`; no reset is imported, so the original base styles are untouched). The legacy CSS is in a lower cascade layer
+than Tailwind's utilities, so a utility on an element beats a legacy class. Keep legacy class names distinct from Tailwind utility names (the donut chart
+was renamed from `ring` for this reason). All data is synthetic and in memory.
 
 ## Run
 

@@ -4,7 +4,7 @@ export function Ring({ pct, size = 76, color }: { pct: number; size?: number; co
   const r = (size - 10) / 2, c = 2 * Math.PI * r, off = c * (1 - pct / 100);
   const col = color || (pct >= 80 ? "var(--ok-ink)" : pct >= 50 ? "var(--warn-ink)" : "var(--bad-ink)");
   return (
-    <div className="ring" style={{ width: size, height: size }}>
+    <div className="donut" style={{ width: size, height: size }}>
       <svg width={size} height={size} role="img" aria-label={`${pct} percent`}>
         <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--surface-3)" strokeWidth="7" fill="none" />
         <circle cx={size / 2} cy={size / 2} r={r} stroke={col} strokeWidth="7" fill="none" strokeLinecap="round" strokeDasharray={c.toFixed(1)} strokeDashoffset={off.toFixed(1)} />
