@@ -2,7 +2,7 @@
 # GitHub reads this file automatically.
 
 # chore: move docs into docs/architecture, docs/guides and docs/security (pure renames)
-09a0af7144e5ca70be0b68ad9d82771628218007
+5f321c6de2dfd2f0dd1d56be74e745eb4d47dcd4
 
 # refactor: organise front-end/src by feature (#33; moves files and rewrites imports, no behaviour change)
 0f87b1abefdbeed1892d2ae9b38b66ac4fa00a57
