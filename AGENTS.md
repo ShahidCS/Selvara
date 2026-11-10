@@ -10,7 +10,7 @@ Selvara is a GRC portal: Next.js 16 (Pages Router), React 19, TypeScript, Tailwi
 - All three: `npm run ci`
 - End to end: `npm run test:e2e`
 - Pipeline policy checks (from the repo root): `node .github/scripts/check-workflows.mjs`, `bash .github/scripts/verify-pins.sh`
-- `npm run lint` is currently broken (`next lint` was removed in Next 16, no ESLint config). Do not "fix" it as part of unrelated work.
+- Lint: `npm run lint` (ESLint flat config in `front-end/eslint.config.mjs`). Legacy rule violations are warnings capped by `--max-warnings` in `package.json`: fix some, lower the cap; never raise it.
 
 ## Layout
 - `front-end/src/` pages, components, lib, services, data, hooks, styles, assets. `front-end/tests/` unit, `front-end/e2e/` Playwright.

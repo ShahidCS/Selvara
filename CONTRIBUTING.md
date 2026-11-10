@@ -17,6 +17,7 @@ npm run dev
 ## Checks to pass before a pull request
 ```bash
 cd front-end
+npm run lint        # ESLint; warnings are capped, new violations fail
 npm run ci          # typecheck, unit tests, production build
 npm run test:e2e    # Playwright
 ```
