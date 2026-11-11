@@ -1,71 +1,46 @@
 /* Module registry: route key -> component. One file per module under features/<name>/. */
-import { ComponentType } from "react";
-import { OverviewModule } from "@/features/overview";
-import { WorkModule } from "@/features/work";
-import { ReportsModule } from "@/features/reports";
-import { FrameworksModule } from "@/features/frameworks";
-import { ControlsModule } from "@/features/controls";
-import { EvidenceModule } from "@/features/evidence";
-import { PoliciesModule } from "@/features/policies";
-import { AuditsModule } from "@/features/audits";
-import { IssuesModule } from "@/features/issues";
-import { PeopleModule } from "@/features/people";
-import { AccessModule } from "@/features/access";
-import { RiskModule } from "@/features/risk";
-import { AiModule } from "@/features/ai";
-import { VendorsModule } from "@/features/vendors";
-import { TrustModule } from "@/features/trust";
-import { QuestionnairesModule } from "@/features/questionnaires";
-import { CommitmentsModule } from "@/features/commitments";
-import { IntegrationsModule } from "@/features/integrations";
-import { ApiModule } from "@/features/api";
-import { AssistantModule } from "@/features/assistant";
-import { TeamModule } from "@/features/team";
-import { BillingWsModule } from "@/features/billingws";
-import { AuditLogModule } from "@/features/auditlog";
-import { CustomersModule } from "@/features/customers";
-import { BillingModule } from "@/features/billing";
-import { RatesModule } from "@/features/rates";
-import { MfaModule } from "@/features/mfa";
-import { AdminLogModule } from "@/features/adminlog";
-import { AuthModule } from "@/features/auth";
-import { MeModule } from "@/features/me";
-import { ElevationModule } from "@/features/elevation";
-import { PlatformSecurityModule } from "@/features/platformsecurity";
-import { AppSecModule } from "@/features/appsec";
+import dynamic from "next/dynamic";
+import type { ComponentType } from "react";
 
-export const MODULES: Record<string, ComponentType<{ param?: string | null }>> = {
-  overview: OverviewModule,
-  work: WorkModule,
-  reports: ReportsModule,
-  frameworks: FrameworksModule,
-  controls: ControlsModule,
-  evidence: EvidenceModule,
-  policies: PoliciesModule,
-  audits: AuditsModule,
-  issues: IssuesModule,
-  people: PeopleModule,
-  access: AccessModule,
-  risk: RiskModule,
-  ai: AiModule,
-  vendors: VendorsModule,
-  trust: TrustModule,
-  questionnaires: QuestionnairesModule,
-  commitments: CommitmentsModule,
-  integrations: IntegrationsModule,
-  api: ApiModule,
-  assistant: AssistantModule,
-  team: TeamModule,
-  billingws: BillingWsModule,
-  auditlog: AuditLogModule,
-  customers: CustomersModule,
-  billing: BillingModule,
-  rates: RatesModule,
-  mfa: MfaModule,
-  adminlog: AdminLogModule,
-  auth: AuthModule,
-  me: MeModule,
-  elevation: ElevationModule,
-  security: PlatformSecurityModule,
-  appsec: AppSecModule,
+type ModuleProps = { param?: string | null };
+
+/* Each module is its own chunk, fetched when its route is first opened, so a page no longer downloads all 29 modules.
+   Importing the feature's index (its public API) keeps the lint boundary intact. */
+const lazy = (load: () => Promise<ComponentType<ModuleProps>>): ComponentType<ModuleProps> =>
+  dynamic<ModuleProps>(load, { loading: () => null });
+
+export const MODULES: Record<string, ComponentType<ModuleProps>> = {
+  overview: lazy(() => import("@/features/overview").then((m) => m.OverviewModule)),
+  work: lazy(() => import("@/features/work").then((m) => m.WorkModule)),
+  reports: lazy(() => import("@/features/reports").then((m) => m.ReportsModule)),
+  frameworks: lazy(() => import("@/features/frameworks").then((m) => m.FrameworksModule)),
+  controls: lazy(() => import("@/features/controls").then((m) => m.ControlsModule)),
+  evidence: lazy(() => import("@/features/evidence").then((m) => m.EvidenceModule)),
+  policies: lazy(() => import("@/features/policies").then((m) => m.PoliciesModule)),
+  audits: lazy(() => import("@/features/audits").then((m) => m.AuditsModule)),
+  issues: lazy(() => import("@/features/issues").then((m) => m.IssuesModule)),
+  people: lazy(() => import("@/features/people").then((m) => m.PeopleModule)),
+  access: lazy(() => import("@/features/access").then((m) => m.AccessModule)),
+  risk: lazy(() => import("@/features/risk").then((m) => m.RiskModule)),
+  ai: lazy(() => import("@/features/ai").then((m) => m.AiModule)),
+  vendors: lazy(() => import("@/features/vendors").then((m) => m.VendorsModule)),
+  trust: lazy(() => import("@/features/trust").then((m) => m.TrustModule)),
+  questionnaires: lazy(() => import("@/features/questionnaires").then((m) => m.QuestionnairesModule)),
+  commitments: lazy(() => import("@/features/commitments").then((m) => m.CommitmentsModule)),
+  integrations: lazy(() => import("@/features/integrations").then((m) => m.IntegrationsModule)),
+  api: lazy(() => import("@/features/api").then((m) => m.ApiModule)),
+  assistant: lazy(() => import("@/features/assistant").then((m) => m.AssistantModule)),
+  team: lazy(() => import("@/features/team").then((m) => m.TeamModule)),
+  billingws: lazy(() => import("@/features/billingws").then((m) => m.BillingWsModule)),
+  auditlog: lazy(() => import("@/features/auditlog").then((m) => m.AuditLogModule)),
+  customers: lazy(() => import("@/features/customers").then((m) => m.CustomersModule)),
+  billing: lazy(() => import("@/features/billing").then((m) => m.BillingModule)),
+  rates: lazy(() => import("@/features/rates").then((m) => m.RatesModule)),
+  mfa: lazy(() => import("@/features/mfa").then((m) => m.MfaModule)),
+  adminlog: lazy(() => import("@/features/adminlog").then((m) => m.AdminLogModule)),
+  auth: lazy(() => import("@/features/auth").then((m) => m.AuthModule)),
+  me: lazy(() => import("@/features/me").then((m) => m.MeModule)),
+  elevation: lazy(() => import("@/features/elevation").then((m) => m.ElevationModule)),
+  security: lazy(() => import("@/features/platformsecurity").then((m) => m.PlatformSecurityModule)),
+  appsec: lazy(() => import("@/features/appsec").then((m) => m.AppSecModule)),
 };
