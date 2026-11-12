@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ALL, nextSort, pageInfo, pageWindow, queryRows, selectionState, toCsv, toggleAll, toggleOne } from "@/lib/dataTable";
+import { ALL, nextSort, norm, pageInfo, pageWindow, queryRows, selectionState, toCsv, toggleAll, toggleOne } from "@/lib/dataTable";
 
 type R = { id: string; sev: string; owner: string; n: number; due: string };
 const rows: R[] = [
@@ -82,5 +82,36 @@ describe("toCsv", () => {
     expect(lines[2].startsWith('"A-2","\'=')).toBe(true);
     expect(lines[3]).toBe('"A-3","\'+1"');
     expect(lines[4]).toBe('"A-4","7"');
+  });
+});
+
+describe("search and multi-value filters", () => {
+  type C = { id: string; title: string; map: Record<string, string[]> };
+  const cs: C[] = [
+    { id: "GOV-1", title: "Security policies are approved", map: { iso: ["A.5"], soc2: ["CC1"] } },
+    { id: "IAM-1", title: "MFA is enforced on admin accounts", map: { iso: ["A.8"] } },
+    { id: "CRY-1", title: "Café data is encrypted at rest", map: {} },
+  ];
+  const run = (qs: string, fw?: string) => queryRows(cs, {
+    search: { q: qs, text: (c) => `${c.id} ${c.title}` },
+    filters: [{ key: "fw", get: () => "", test: (c, want) => !!c.map[want] }],
+    state: { filters: fw ? { fw } : {}, sort: null }, value: () => undefined,
+  }).map((c) => c.id);
+
+  it("norm lower-cases and strips accents", () => { expect(norm("Café ÉCOLE")).toBe("cafe ecole"); expect(norm("")).toBe(""); });
+  it("every typed word must match, in any order, ignoring case and accents", () => {
+    expect(run("")).toEqual(["GOV-1", "IAM-1", "CRY-1"]);
+    expect(run("mfa admin")).toEqual(["IAM-1"]);
+    expect(run("ADMIN mfa")).toEqual(["IAM-1"]);
+    expect(run("cafe")).toEqual(["CRY-1"]);
+    expect(run("gov-1")).toEqual(["GOV-1"]);
+    expect(run("zzz")).toEqual([]);
+    expect(run("   ")).toEqual(["GOV-1", "IAM-1", "CRY-1"]);
+  });
+  it("a filter with a test function matches rows that have the option among several values", () => {
+    expect(run("", "iso")).toEqual(["GOV-1", "IAM-1"]);
+    expect(run("", "soc2")).toEqual(["GOV-1"]);
+    expect(run("policies", "iso")).toEqual(["GOV-1"]);
+    expect(run("mfa", "soc2")).toEqual([]);
   });
 });

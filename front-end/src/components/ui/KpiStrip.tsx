@@ -25,9 +25,9 @@ export function KpiTile({ label, value, delta, caption }: { label: string; value
 }
 
 /** Clickable summary card that drills into a filtered list. */
-export function KpiCard({ icon, label, value, sub, subTone = "flat", onClick }: { icon: string; label: string; value: string | number; sub?: string; subTone?: Desirability; onClick: () => void }) {
+export function KpiCard({ icon, label, value, sub, subTone = "flat", onClick, pressed, name }: { icon: string; label: string; value: string | number; sub?: string; subTone?: Desirability; onClick: () => void; /** For a card that toggles a filter: whether the filter is on. */ pressed?: boolean; /** Accessible name when the visible text is not enough. */ name?: string }) {
   return (
-    <button type="button" className="kpi-card" onClick={onClick}>
+    <button type="button" className="kpi-card" onClick={onClick} aria-pressed={pressed} aria-label={name}>
       <span className="kpi-card-top"><Icon name={icon} /><Icon name="ext" className="kpi-card-go" /></span>
       <span className="eyebrow">{label}</span>
       <span className="kpi-v num">{value}</span>

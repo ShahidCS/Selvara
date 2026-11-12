@@ -4,20 +4,18 @@ import { uiMessage } from "@/lib/grcSod";
 import { wsLog } from "@/lib/audit";
 import { downloadText } from "@/lib/format";
 import { useGo } from "@/lib/route";
-import { Empty, Icon, Page, StatusChip, Table } from "@/components/ui";
+import { DataTable, Icon, Page, StatusChip, type DTColumn } from "@/components/ui";
 import { useLayer } from "@/components/shell/LayerProvider";
 import * as svc from "@/features/controls/services/controls";
 import { openControlDrawer, openTestDrawer, testChip } from "./useControlDrawer";
 import { openCreateControl, openCreateTest } from "./createModals";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+type Control = any;
+type Test = any;
 type View = "controls" | "tests" | "matrix";
 const VIEWS: [View, string][] = [["controls", "Controls"], ["tests", "Tests"], ["matrix", "Matrix"]];
 const STATUSES = ["All", "Pass", "Needs evidence", "Fail"];
-const rowKey = (fn: () => void) => ({
-  tabIndex: 0,
-  onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); } },
-});
 
 function FwChips({ c, lim = 6 }: { c: any; lim?: number }) {
   const keys = Object.keys(c.map || {});
@@ -37,11 +35,6 @@ export default function ControlsModule() {
   useApp((s) => s.role);
   const manageWhy = svc.whyCannotManage(), runWhy = svc.whyCannotRunTests();
   const [view, setView] = useModState<View>("controls.view", "controls");
-  const [q, setQ] = useModState("controls.q", "");
-  const [status, setStatus] = useModState("controls.status", "All");
-  const [fw, setFw] = useModState("controls.fw", "All");
-  const [page0, setPage] = useModState("controls.page", 1);
-  const per = 10;
 
   const seg = (
     <div className="seg" role="tablist">
@@ -82,24 +75,32 @@ export default function ControlsModule() {
     <button className="btn btn-secondary" onClick={matrixExport}><Icon name="download" />Export matrix (CSV)</button>
   );
 
+  const cols: DTColumn<Control>[] = [
+    { key: "id", header: "Control", value: (c) => c.id, locked: true, render: (c) => <span className="strong num">{c.id}</span> },
+    { key: "title", header: "Title", value: (c) => c.title, render: (c) => c.title },
+    { key: "domain", header: "Domain", value: (c) => c.domain, render: (c) => c.domain },
+    { key: "map", header: "Mapped to", value: (c) => Object.keys(c.map || {}).map((k) => FW_SHORT[k] || k).join(" "), render: (c) => <div style={{ maxWidth: 220 }}><FwChips c={c} /></div> },
+    { key: "owner", header: "Owner", value: (c) => c.owner, render: (c) => c.owner },
+    { key: "status", header: "Status", value: (c) => c.status, render: (c) => <StatusChip s={c.status} /> },
+  ];
+  const testCols: DTColumn<Test>[] = [
+    { key: "name", header: "Test", value: (t) => t.name, locked: true, render: (t) => <><div className="strong">{t.name}</div><div style={{ fontSize: 11.5, color: "var(--muted)" }}>{t.id}</div></> },
+    { key: "source", header: "Source", value: (t) => t.source, render: (t) => t.source },
+    { key: "supports", header: "Supports", value: (t) => t.controls.join(" "), render: (t) => <>{t.controls.map((c: string, i: number) => <span key={c}>{i ? " " : ""}<span className="tag num">{c}</span></span>)}</> },
+    { key: "cadence", header: "Cadence", value: (t) => t.cadence, render: (t) => t.cadence },
+    { key: "last", header: "Last run", value: (t) => t.last, render: (t) => <span style={{ color: "var(--muted)" }}>{t.last}</span> },
+    { key: "result", header: "Result", value: (t) => t.result, render: (t) => testChip(t.result) },
+  ];
+
   if (view === "tests") {
     return (
       <Page mod="controls" acts={acts}>
         <div className="card" style={{ flex: "1 1 auto" }}>
           <div className="c-head">{seg}<div className="r"><span className="tag" id="testCount">{DATA.tests.length} tests</span></div></div>
           <div className="c-body flush scroll" style={{ padding: 0 }} id="testsBody">
-            <Table cols={[{ t: "Test" }, { t: "Source" }, { t: "Supports" }, { t: "Cadence" }, { t: "Last run" }, { t: "Result" }]}>
-              {DATA.tests.map((t) => (
-                <tr key={t.id} className="clickable" onClick={() => openTestDrawer(L, t.id)} {...rowKey(() => openTestDrawer(L, t.id))}>
-                  <td><div className="strong">{t.name}</div><div style={{ fontSize: 11.5, color: "var(--muted)" }}>{t.id}</div></td>
-                  <td>{t.source}</td>
-                  <td>{t.controls.map((c: string, i: number) => <span key={c}>{i ? " " : ""}<span className="tag num">{c}</span></span>)}</td>
-                  <td>{t.cadence}</td>
-                  <td style={{ color: "var(--muted)" }}>{t.last}</td>
-                  <td>{testChip(t.result)}</td>
-                </tr>
-              ))}
-            </Table>
+            <DataTable<Test> id="tests" label="Tests" rows={DATA.tests} rowKey={(t) => t.id} columns={testCols} searchText={(t) => `${t.id} ${t.name} ${t.source} ${t.controls.join(" ")}`}
+              filters={[{ key: "source", label: "Source", options: Array.from(new Set<string>(DATA.tests.map((t: Test) => String(t.source)))), get: (t: Test) => t.source }, { key: "result", label: "Result", options: Array.from(new Set<string>(DATA.tests.map((t: Test) => String(t.result)))), get: (t: Test) => t.result }]}
+              onOpen={(t) => openTestDrawer(L, t.id)} exportName="tests" />
           </div>
         </div>
       </Page>
@@ -135,62 +136,18 @@ export default function ControlsModule() {
     );
   }
 
-  const fwOpts = ["All"].concat(DATA.frameworks.map((f) => f.id));
-  const all = DATA.controls.filter((c) =>
-    (status === "All" || c.status === status) && (fw === "All" || (c.map && c.map[fw])) &&
-    (!q || `${c.id} ${c.title} ${c.owner} ${c.domain}`.toLowerCase().includes(q.toLowerCase())));
-  const tot = all.length, pages = Math.max(1, Math.ceil(tot / per));
-  const page = Math.min(page0, pages);
-  const rows = all.slice((page - 1) * per, page * per);
-
   return (
     <Page mod="controls" acts={acts}>
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head" style={{ flexWrap: "wrap", gap: 10 }}>
           {seg}
-          <div className="field" style={{ flex: "0 0 auto" }}>
-            <input className="input" id="ctrlQ" aria-label="Search controls" placeholder="Search controls, owners, domains" style={{ width: 200, height: 34 }} value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
-          </div>
-          <label className="vh" htmlFor="ctrlFw">Framework</label>
-          <select className="select" id="ctrlFw" style={{ width: "auto", height: 34 }} value={fw} onChange={(e) => { setFw(e.target.value); setPage(1); }}>
-            {fwOpts.map((o) => <option key={o} value={o}>{o === "All" ? "All frameworks" : FW_ID[o]}</option>)}
-          </select>
-          <div className="btngrp" id="ctrlFilters">
-            {STATUSES.map((s) => (
-              <button key={s} className="fchip" aria-pressed={status === s} onClick={() => { setStatus(s); setPage(1); }}>
-                <Icon name={s !== "All" ? (s === "Pass" ? "check" : s === "Fail" ? "x" : "alert") : "filter"} />{s}
-              </button>
-            ))}
-          </div>
-          <div className="r"><span className="tag" id="ctrlCount">{`${tot} control${tot !== 1 ? "s" : ""}${fw !== "All" ? " mapped to " + FW_ID[fw] : ""}`}</span></div>
+          <div className="r"><span className="tag" id="ctrlCount">{`${DATA.controls.length} control${DATA.controls.length !== 1 ? "s" : ""}`}</span></div>
         </div>
         <div className="c-body flush scroll" id="ctrlBody" style={{ padding: 0 }}>
-          {!rows.length ? (
-            <Empty icon="search" title="No controls match" action={<button className="btn btn-secondary" onClick={() => { setQ(""); setStatus("All"); setFw("All"); }}>Clear filters</button>}>
-              Nothing matches the current search and filter. Clear filters to see all controls.
-            </Empty>
-          ) : (
-            <Table cols={[{ t: "Control" }, { t: "Title" }, { t: "Domain" }, { t: "Mapped to" }, { t: "Owner" }, { t: "Status" }]}>
-              {rows.map((c) => (
-                <tr key={c.id} className="clickable" onClick={() => openControlDrawer(L, c.id)} {...rowKey(() => openControlDrawer(L, c.id))}>
-                  <td className="strong num">{c.id}</td><td>{c.title}</td><td>{c.domain}</td>
-                  <td style={{ maxWidth: 220 }}><FwChips c={c} /></td><td>{c.owner}</td><td><StatusChip s={c.status} /></td>
-                </tr>
-              ))}
-            </Table>
-          )}
-        </div>
-        <div className="pager" id="ctrlPager">
-          {rows.length ? (
-            <>
-              <span>Showing {(page - 1) * per + 1} to {Math.min(page * per, tot)} of {tot}</span>
-              <div className="r">
-                <button className="btn btn-secondary sm" disabled={page <= 1} onClick={() => setPage(page - 1)}><Icon name="chevl" />Prev</button>
-                <span>{page} / {pages}</span>
-                <button className="btn btn-secondary sm" disabled={page >= pages} onClick={() => setPage(page + 1)}>Next<Icon name="chevron" /></button>
-              </div>
-            </>
-          ) : null}
+          <DataTable<Control> id="controls" label="Controls" rows={DATA.controls} rowKey={(c) => c.id} columns={cols} searchText={(c) => `${c.id} ${c.title} ${c.owner} ${c.domain}`}
+            tabs={STATUSES.filter((x) => x !== "All").map((x) => ({ key: x, label: x, match: (c: Control) => c.status === x }))}
+            filters={[{ key: "fw", label: "Framework", options: DATA.frameworks.map((f) => f.id), labels: FW_ID, get: () => "", test: (c: Control, want: string) => !!(c.map && c.map[want]) }]}
+            onOpen={(c) => openControlDrawer(L, c.id)} exportName="controls" />
         </div>
       </div>
     </Page>

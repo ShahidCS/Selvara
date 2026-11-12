@@ -16,12 +16,20 @@ export interface DTColumn<T> {
   /** Sort key when the text order is not the natural order (for example Critical, High, Medium, Low). Defaults to `value`. */
   sortBy?: (row: T) => string | number;
   align?: "end";
+  /** Hide the header text visually (it stays for screen readers); for action columns. */
+  hideHeader?: boolean;
   defaultHidden?: boolean;
   /** Locked columns cannot be hidden from the Columns menu. */
   locked?: boolean;
 }
 export interface DTTab<T> { key: string; label: string; match: (row: T) => boolean }
-export interface DTFilter<T> { key: string; label: string; options: string[]; get: (row: T) => string }
+export interface DTFilter<T> {
+  key: string; label: string; options: string[]; get: (row: T) => string;
+  /** Display text for an option when it differs from its value (for example a framework id and its name). */
+  labels?: Record<string, string>;
+  /** Match rule for a row that has several values for this field. Defaults to `get(row) === option`. */
+  test?: (row: T, option: string) => boolean;
+}
 export interface DTBulk<T> { label: string; icon?: string; run: (rows: T[]) => void; disabled?: boolean; title?: string }
 export interface DTRowAction<T> { label: string; run: (row: T) => void; /** A reason the action is unavailable; shown and the item is disabled. */ whyNot?: string | null }
 
@@ -34,6 +42,8 @@ export interface DataTableProps<T> {
   rowKey: (row: T) => string;
   columns: DTColumn<T>[];
   tabs?: DTTab<T>[];
+  /** Adds a search box. Return the text a row should be found by (names, ids, owners). */
+  searchText?: (row: T) => string;
   filters?: DTFilter<T>[];
   bulk?: DTBulk<T>[];
   rowActions?: (row: T) => DTRowAction<T>[];
@@ -45,7 +55,7 @@ export interface DataTableProps<T> {
 }
 
 const initial = (sizes: number[], cols: DTColumn<unknown>[]): TableState => ({
-  tab: ALL, filters: {}, sort: null, page: 1, size: sizes[0], hidden: cols.filter((c) => c.defaultHidden).map((c) => c.key), selected: [],
+  tab: ALL, q: "", filters: {}, sort: null, page: 1, size: sizes[0], hidden: cols.filter((c) => c.defaultHidden).map((c) => c.key), selected: [],
 });
 
 function ColumnsMenu<T>({ id, cols, sizes, close }: { id: string; cols: DTColumn<T>[]; sizes: number[]; close: () => void }) {
@@ -77,7 +87,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
   const cols = p.columns.filter((c) => !st.hidden.includes(c.key));
   const tab = p.tabs?.find((t) => t.key === st.tab) || null;
   const valueOf = (key: string) => { const c = p.columns.find((x) => x.key === key); return c?.sortBy || c?.value; };
-  const rows = queryRows(p.rows, { tab, filters: p.filters || [], state: st, value: valueOf });
+  const rows = queryRows(p.rows, { tab, search: p.searchText ? { q: st.q || "", text: p.searchText } : null, filters: (p.filters || []).map((f) => ({ key: f.key, get: f.get, test: f.test ? (r: T, want: string) => f.test!(r, want) : undefined })), state: st, value: valueOf });
   const info = pageInfo(rows.length, st.page, st.size);
   const pageRows = rows.slice(info.from ? info.from - 1 : 0, info.to);
   const pageIds = pageRows.map(p.rowKey);
@@ -85,7 +95,8 @@ export function DataTable<T>(p: DataTableProps<T>) {
   const selected = st.selected.filter((id) => live.has(id));
   const sel = selectionState(pageIds, selected);
   const selectable = !!(p.bulk?.length || p.exportName);
-  const filtered = !!tab && st.tab !== ALL || Object.values(st.filters).some((v) => v && v !== ALL);
+  const filtered = (!!tab && st.tab !== ALL) || !!(st.q || "").trim() || Object.values(st.filters).some((v) => v && v !== ALL);
+  const reset = () => patch({ tab: ALL, q: "", filters: {}, page: 1 });
 
   const headCb = useRef<HTMLInputElement>(null);
   useEffect(() => { if (headCb.current) headCb.current.indeterminate = sel === "some"; }, [sel]);
@@ -94,7 +105,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
     <>
       {[ALL, ...f.options].map((o) => {
         const on = (st.filters[f.key] || ALL) === o;
-        return <button key={o} role="option" aria-selected={on} onClick={() => { patch({ filters: { ...st.filters, [f.key]: o }, page: 1 }); close(); }}><Icon name={on ? "check" : "dot"} />{o}</button>;
+        return <button key={o} role="option" aria-selected={on} onClick={() => { patch({ filters: { ...st.filters, [f.key]: o }, page: 1 }); close(); }}><Icon name={on ? "check" : "dot"} />{f.labels?.[o] ?? o}</button>;
       })}
     </>
   ), { role: "listbox", label: f.label, align: "start" });
@@ -136,15 +147,20 @@ export function DataTable<T>(p: DataTableProps<T>) {
       ) : null}
 
       <div className="dt-bar" role="group" aria-label={`${p.label} filters`}>
+        {p.searchText ? (
+          <label className="dt-search"><span className="vh">Search {p.label}</span><Icon name="search" />
+            <input type="search" className="dt-search-in" placeholder="Search" value={st.q || ""} onChange={(e) => patch({ q: e.target.value, page: 1 })} />
+          </label>
+        ) : null}
         {(p.filters || []).map((f) => {
           const v = st.filters[f.key] || ALL;
           return (
             <button key={f.key} className={`fchip${v !== ALL ? " on" : ""}`} aria-haspopup="listbox" onClick={(e) => pickFilter(e, f)}>
-              {f.label}: <b>{v}</b><Icon name="chevd" />
+              {f.label}: <b>{f.labels?.[v] ?? v}</b><Icon name="chevd" />
             </button>
           );
         })}
-        {filtered ? <button className="btn btn-ghost sm" onClick={() => patch({ tab: ALL, filters: {}, page: 1 })}>Clear filters</button> : null}
+        {filtered ? <button className="btn btn-ghost sm" onClick={reset}>Clear filters</button> : null}
         <span className="dt-spacer" />
         <span className="dt-sum" role="status" aria-live="polite">{rows.length === p.rows.length ? `${rows.length} rows` : `${rows.length} of ${p.rows.length} rows`}{st.sort ? `, sorted by ${p.columns.find((c) => c.key === st.sort!.key)?.header}` : ""}</span>
         <button className="icon-btn" aria-label="Columns" aria-haspopup="menu" onClick={(e) => L.popover(e, (close) => <ColumnsMenu id={p.id} cols={p.columns} sizes={sizes} close={close} />, { label: "Columns" })}><Icon name="rows" /></button>
@@ -165,7 +181,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
                       <button className="th-sort" onClick={() => patch({ sort: nextSort(st.sort, c.key), page: 1 })}>
                         {c.header}<Icon name="chevd" className={`th-car${s ? " on" : ""}${s === "asc" ? " up" : ""}`} />
                       </button>
-                    ) : c.header}
+                    ) : c.hideHeader ? <span className="vh">{c.header}</span> : c.header}
                   </th>
                 );
               })}
@@ -174,7 +190,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
           </thead>
           <tbody>
             {pageRows.length === 0 ? (
-              <tr><td colSpan={span} className="dt-empty">{p.emptyText || "Nothing matches these filters."}{filtered ? <> <button className="btn btn-ghost sm" onClick={() => patch({ tab: ALL, filters: {}, page: 1 })}>Clear filters</button></> : null}</td></tr>
+              <tr><td colSpan={span} className="dt-empty">{p.emptyText || "Nothing matches these filters."}{filtered ? <> <button className="btn btn-ghost sm" onClick={reset}>Clear filters</button></> : null}</td></tr>
             ) : pageRows.map((r) => {
               const id = p.rowKey(r); const on = selected.includes(id);
               return (

@@ -1,4 +1,4 @@
-import { Chip, Icon, Page, StatusChip, Table, activate } from "@/components/ui";
+import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
@@ -6,6 +6,8 @@ import { hasRole } from "@/lib/sod";
 import { polInit, policyState, openExceptions, workVersion, exceptionState } from "@/features/policies/services/policies";
 import { openPolicyDrawer, openPolicyForm } from "./PolicyLayers";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Policy = any;
 /** Policies: register, versioning and the named-approver workflow (contract: docs/security/SOD_MATRIX.md sections 3 and 5). */
 export default function PoliciesModule() {
   useData();
@@ -13,23 +15,36 @@ export default function PoliciesModule() {
   const role = useApp((s) => s.role);
   DATA.policies.forEach(polInit);
   const canCreate = hasRole(role, "admin", "owner");
+  const STATES = Array.from(new Set<string>(DATA.policies.map((p: Policy) => policyState(p))));
+  const owners = Array.from(new Set(DATA.policies.map((p: Policy) => String(p.owner)))).sort();
+  const cols: DTColumn<Policy>[] = [
+    { key: "id", header: "ID", value: (p) => p.id, locked: true, render: (p) => <span className="strong num">{p.id}</span> },
+    { key: "name", header: "Policy", value: (p) => p.name, render: (p) => p.name },
+    { key: "ver", header: "Version", value: (p) => p.ver, render: (p) => p.ver },
+    { key: "owner", header: "Owner", value: (p) => p.owner, render: (p) => p.owner },
+    { key: "review", header: "Next review", value: (p) => p.review, sortBy: (p) => Date.parse(p.review) || Number.MAX_SAFE_INTEGER, render: (p) => p.review },
+    { key: "status", header: "Status", value: (p) => policyState(p), render: (p) => {
+      const w = workVersion(p); const ex = openExceptions(p);
+      return (
+        <><StatusChip s={policyState(p)} />{w && p.status === "Active" ? <> <Chip cls="warn" icon="clock">v{w.ver} {w.status.toLowerCase()}</Chip></> : null}
+          {ex.length ? <> <Chip cls="bad" icon="alert">{ex.some((x) => exceptionState(x) === "Overdue") ? "Emergency approval overdue" : "Emergency: approval pending"}</Chip></> : null}</>
+      );
+    } },
+  ];
   return (
     <Page mod="policies" acts={<button className="btn btn-primary" disabled={!canCreate} title={canCreate ? undefined : "Read-only for your role: employees read and acknowledge, auditors read."} onClick={() => openPolicyForm(L)}><Icon name="plus" />New policy</button>}>
+      <KpiStrip label="Policy summary">
+        <KpiTile label="Policies" value={DATA.policies.length} caption="In the library" />
+        <KpiTile label="Active" value={DATA.policies.filter((p) => p.status === "Active").length} caption="Approved and in force" />
+        <KpiTile label="Review due" value={DATA.policies.filter((p) => policyState(p) === "Review due").length} delta={DATA.policies.some((p) => policyState(p) === "Review due") ? { tone: "watch", text: "Due now" } : { tone: "good", text: "Up to date" }} caption="Active, past the review date" />
+        <KpiTile label="Emergency approvals" value={DATA.policies.filter((p) => openExceptions(p).length).length} delta={DATA.policies.some((p) => openExceptions(p).length) ? { tone: "bad", text: "Needs action" } : { tone: "good", text: "None open" }} caption="Awaiting a second approver" />
+      </KpiStrip>
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-body flush scroll" style={{ padding: 0 }}>
-          <Table cols={[{ t: "ID" }, { t: "Policy" }, { t: "Version" }, { t: "Owner" }, { t: "Next review" }, { t: "Status" }, { t: "" }]}>
-            {DATA.policies.map((p) => {
-              const w = workVersion(p); const ex = openExceptions(p);
-              return (
-                <tr key={p.id} className="clickable" {...activate(() => openPolicyDrawer(L, p.id))}>
-                  <td className="strong num">{p.id}</td><td>{p.name}</td><td>{p.ver}</td><td>{p.owner}</td><td>{p.review}</td>
-                  <td><StatusChip s={policyState(p)} />{w && p.status === "Active" ? <> <Chip cls="warn" icon="clock">v{w.ver} {w.status.toLowerCase()}</Chip></> : null}
-                    {ex.length ? <> <Chip cls="bad" icon="alert">{ex.some((x) => exceptionState(x) === "Overdue") ? "Emergency approval overdue" : "Emergency: approval pending"}</Chip></> : null}</td>
-                  <td className="r"><Icon name="chevron" /></td>
-                </tr>
-              );
-            })}
-          </Table>
+          <DataTable<Policy> id="policies" label="Policies" rows={DATA.policies} rowKey={(p) => p.id} columns={cols} searchText={(p) => `${p.id} ${p.name} ${p.owner}`}
+            tabs={STATES.map((s) => ({ key: s, label: s, match: (p: Policy) => policyState(p) === s }))}
+            filters={[{ key: "owner", label: "Owner", options: owners, get: (p: Policy) => p.owner }]}
+            onOpen={(p) => openPolicyDrawer(L, p.id)} exportName="policies" />
         </div>
       </div>
     </Page>

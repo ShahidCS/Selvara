@@ -44,7 +44,7 @@ Geist and Geist Mono, SIL Open Font License 1.1, self-hosted from `front-end/pub
 | 1 | Tokens, fonts, radii, elevation, dark theme, contrast, focus | this change |
 | 2 | Shell: 72px rail, notifications slide-over, toast with Undo, shortcuts, profile menu links, search landmark | this change (see below) |
 | 3 | Shared kit: data table, KPI strip and card, AI panel, stepper, timeline, charts, switch, segmented control, skeleton | this change (see below) |
-| 4 | Module migration in waves; modal create and edit flows become pages | not started |
+| 4 | Module migration in waves; modal create and edit flows become pages | in progress: wave A done (registers) |
 | 5 | Governance features (delegation, autonomy, rules, retention, notification matrix) | needs approval to touch `rbac.ts`, `approvals.ts`, `sod.ts` |
 | 6 | RTL, density, print, tenant theming, automated accessibility tests | not started |
 
@@ -77,3 +77,18 @@ Table state (tab, filters, sort, page, columns, selection) is kept per table id 
 **Proven on a real module:** the Issues register uses `DataTable` and `KpiStrip`. The charts, AIPanel, Stepper, Timeline, Switch and Segmented are built and tested here and move into modules in the phase 4 waves.
 
 **Names to avoid:** Tailwind ships utilities called `ring` and `overline`, which collided with our classes before. The label class is `.eyebrow` and the donut class is `.donut`. A guard test checks each.
+
+## Module migration (phase 4)
+
+| Wave | Modules | State |
+|---|---|---|
+| A | Registers: controls (list and tests), policies, vendors, people, access (grants and requests), audits, commitments | done |
+| B | Detail views and create pages (modals become pages); evidence (list plus preview becomes table plus detail) | next |
+| C | Dashboards and charts: overview, reports, risk dashboard, frameworks | not started |
+| D | Assistant, AI governance, questionnaires | not started |
+| E | Settings group: team, integrations, api, billing, audit log, security | not started |
+| F | Admin Console and vendor portal (tokens and templates only) | not started |
+
+**Wave A conventions.** A register is a `DataTable` with `searchText`, status `tabs` where the module has a lifecycle, and `filters` for the fields people narrow by; the row opens the record (`onOpen`). Action buttons that already exist (Approve, Deny, Reset MFA) stay inside the row as a column with `hideHeader`, keep their segregation-of-duties reasons, and never open the row. A filter on a field with several values per row uses `test` (frameworks a control maps to) and `labels` for display text. A card that toggles a filter is a `KpiCard` with `pressed`. Tables that are not registers (the cross-framework matrix, the vendor request queue, the standard terms list, review checklists) keep the plain `Table`.
+
+**Layout rule found in wave A.** Cards in a page column shrink when the page is full, which squashed a table card to its header. A card that must keep its height sets `flex: 0 0 auto`; only the main register card keeps `flex: 1 1 auto`.

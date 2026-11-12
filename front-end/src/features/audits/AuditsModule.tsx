@@ -1,5 +1,4 @@
-import { Fragment } from "react";
-import { Icon, Page, Table, activate } from "@/components/ui";
+import { DataTable, Icon, Page, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { setModState, useApp, useData } from "@/lib/store";
 import { isOpenFinding, whyCannotManage } from "@/services/audits";
@@ -9,6 +8,8 @@ import { AuditDetail, StageChip } from "./AuditDetail";
 import { NewAuditForm } from "./AuditModals";
 
 export { StageChip };
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Audit = any;
 
 export default function AuditsModule({ param: propParam }: { param?: string | null }) {
   useData();
@@ -20,6 +21,15 @@ export default function AuditsModule({ param: propParam }: { param?: string | nu
 
   const auditorView = role === "auditor";
   const pool = auditorView ? DATA.audits.filter((a) => /External/.test(a.lead)) : DATA.audits;
+  const pctOf = (a: Audit) => Math.max(0, Math.min(100, Number(a.progress) || 0));
+  const openCount = (a: Audit) => a.findings.filter(isOpenFinding).length;
+  const cols: DTColumn<Audit>[] = [
+    { key: "name", header: "Audit", value: (a) => a.name, locked: true, render: (a) => <span className="strong">{a.name}</span> },
+    { key: "fw", header: "Framework", value: (a) => a.fw, render: (a) => a.fw },
+    { key: "auditor", header: "Auditor", value: (a) => a.auditor, render: (a) => a.auditor },
+    { key: "progress", header: "Progress", value: (a) => pctOf(a), render: (a) => <span style={{ whiteSpace: "nowrap" }}><span className="bar-track" style={{ width: 100, display: "inline-block", verticalAlign: "middle" }}><span className="bar-fill" style={{ width: pctOf(a) + "%", background: "var(--accent)" }} /></span> <span className="num" style={{ marginLeft: 6 }}>{pctOf(a)}%</span></span> },
+    { key: "open", header: "Open findings", value: (a) => openCount(a), align: "end", render: (a) => <span className="num">{openCount(a) ? <span style={{ color: "var(--bad-ink)", fontWeight: 500 }}>{openCount(a)}</span> : "0"}</span> },
+  ];
   const newAudit = () => L.openModal("New audit", (close) => <NewAuditForm L={{ ...L, closeLayer: close }} go={go} />);
   return (
     <Page mod="audits" acts={auditorView
@@ -32,29 +42,9 @@ export default function AuditsModule({ param: propParam }: { param?: string | nu
             <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>As external auditor you have read-only access to the organisation&apos;s records. You can raise information requests and draft findings; management accepts a finding into an issue. You cannot advance stages, freeze populations, end access, create issues or change management requests.</div>
           </div></div>
         ) : null}
-        <Table cols={[{ t: "Audit" }, { t: "Framework" }, { t: "Auditor" }, { t: "Progress" }, { t: "Open findings", r: true }, { t: "" }]}>
-          {DATA.auditStages.map((st: string) => {
-            const list = pool.filter((a) => a.stage === st);
-            if (!list.length) return null;
-            return (
-              <Fragment key={st}>
-                <tr><td colSpan={6} className="grouprow">{st} <span className="tag" style={{ marginLeft: 4 }}>{list.length}</span></td></tr>
-                {list.map((a) => {
-                  const open = a.findings.filter(isOpenFinding).length;
-                  const pct = Math.max(0, Math.min(100, Number(a.progress) || 0));
-                  return (
-                    <tr key={a.id} className="clickable" {...activate(() => go("/ws/audits/" + encodeURIComponent(a.id)))}>
-                      <td className="strong">{a.name}</td><td>{a.fw}</td><td>{a.auditor}</td>
-                      <td style={{ minWidth: 120 }}><div className="bar-track" style={{ width: 100, display: "inline-block", verticalAlign: "middle" }}><span className="bar-fill" style={{ width: pct + "%", background: "var(--accent)" }} /></div> <span className="num" style={{ fontSize: 12 }}>{pct}%</span></td>
-                      <td className="r num">{open ? <span style={{ color: "var(--bad-ink)", fontWeight: 500 }}>{open}</span> : "0"}</td>
-                      <td className="r"><Icon name="chevron" /></td>
-                    </tr>
-                  );
-                })}
-              </Fragment>
-            );
-          })}
-        </Table>
+        <DataTable<Audit> id="audits" label="Audits" rows={pool} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.name} ${a.fw} ${a.auditor}`}
+          tabs={DATA.auditStages.map((st: string) => ({ key: st, label: st, match: (a: Audit) => a.stage === st }))}
+          onOpen={(a) => go("/ws/audits/" + encodeURIComponent(a.id))} exportName="audits" />
       </div></div>
     </Page>
   );
