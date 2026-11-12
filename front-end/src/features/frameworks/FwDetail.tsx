@@ -1,9 +1,9 @@
 import { Fragment, useState } from "react";
-import { Chip, Icon, ReqStatusPill, Table, StatusChip, Empty } from "@/components/ui";
+import { Chip, DonutChart, Empty, Icon, KpiStrip, KpiTile, Page, ReqStatusPill, StatusChip, Table, type Segment } from "@/components/ui";
 import { ANNEXA, DATA, FRAMEWORK_REQS, annexCovered, controlsForFw } from "@/lib/data";
 import { useModState, setModState } from "@/lib/store";
 import {
-  REQ_PAGE, REQ_ST, REQ_ST_COL, fwBand, fwCanAdmin, fwEdits, fwGroupMap, fwGroupStat, fwReqControls, fwScore, fwSnoozed, clearReqNA, reqStatus, setReqNA, toggleReqControl, touchFw,
+  REQ_PAGE, REQ_ST, fwBand, fwCanAdmin, fwEdits, fwGroupMap, fwGroupStat, fwReqControls, fwScore, fwSnoozed, clearReqNA, reqStatus, setReqNA, toggleReqControl, touchFw,
 } from "@/lib/frameworks";
 import { csvCell, downloadText, nowStamp } from "@/lib/format";
 import { getMe, wsLog } from "@/lib/audit";
@@ -12,7 +12,10 @@ import { useGo } from "@/lib/route";
 import { useOpenControl } from "@/features/controls";
 import { FwSegsBar } from "./FwSegsBar";
 
-export function FwDetail({ fwId, onClose }: { fwId: string; onClose: () => void }) {
+const REQ_TONE: Record<string, Segment["tone"]> = { Met: "ok", "Partially met": "warn", "Not met": "bad", "Not assessed": "muted", "Not applicable": "ink" };
+
+/** A framework as a page (`/ws/frameworks/:id`): readiness, requirement mix, groups and requirements with mapping and applicability edits. */
+export function FwDetail({ fwId }: { fwId: string }) {
   const L = useLayer(); const go = useGo();
   const f = DATA.frameworks.find((x) => x.id === fwId);
   const [, setCtrlQ] = useModState("controls.q", ""); void setCtrlQ;
@@ -20,7 +23,8 @@ export function FwDetail({ fwId, onClose }: { fwId: string; onClose: () => void 
   const [rq, setRq] = useModState("fw.rq", "");
   const [grp, setGrp] = useModState<string | null>("fw.grp", null);
   const [limit, setLimit] = useModState("fw.limit", REQ_PAGE);
-  if (!f) return null;
+  const back = { href: "/ws/frameworks", label: "Frameworks" };
+  if (!f) return <Page title="Framework not found" back={back}><Empty icon="frameworks" title="No such framework">There is no framework with the ID &ldquo;{fwId}&rdquo; in the library.</Empty></Page>;
   const cat = FRAMEWORK_REQS[f.id]; const sc = cat ? fwScore(f.id) : null; const p = sc ? sc.pct : f.pct;
   const ctrls = controlsForFw(f.id);
   const passing = ctrls.filter((c) => c.status === "Pass").length, needs = ctrls.filter((c) => c.status !== "Pass").length;
@@ -40,35 +44,28 @@ export function FwDetail({ fwId, onClose }: { fwId: string; onClose: () => void 
   const viewInControls = () => { setModState("controls.fw", f.id); setModState("controls.status", "All"); setModState("controls.q", ""); setModState("controls.page", 1); go("/ws/controls"); };
 
   return (
-    <>
-      <section className="card"><div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, color: "var(--muted)" }}>{f.kind} · {f.region || "-"}{f.audit ? " · " + f.audit : ""}</div>
-            <h2 style={{ margin: "2px 0 0", fontSize: 22, fontWeight: 600, letterSpacing: "-.01em" }}>{f.name}</h2>
+    <Page title={f.name} sub={`${f.kind} · ${f.region || "-"}${f.audit ? " · " + f.audit : ""}`} back={back} acts={<>
+      <Chip cls={fwSnoozed(f.id) ? "neutral" : "ok"}>{fwSnoozed(f.id) ? "Snoozed" : "Active"}</Chip>
+      {cat ? <button className="btn btn-secondary" onClick={gapExport}><Icon name="download" />Export gap assessment</button> : null}
+      <button className="btn btn-secondary" onClick={viewInControls}>View in controls</button>
+    </>}>
+      <div className="scroll rec-scroll" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <KpiStrip label="Framework summary">
+        <KpiTile label="Readiness" value={p + "%"} caption={sc ? `${sc.impl} of ${sc.total} applicable requirements met` : undefined} />
+        <KpiTile label="Mapped controls" value={ctrls.length} caption={`${passing} passing, ${needs} need evidence`} />
+        <KpiTile label="Open gaps" value={sc ? sc.cnt["Not met"] + sc.cnt["Not assessed"] : f.gaps} delta={(sc ? sc.cnt["Not met"] + sc.cnt["Not assessed"] : f.gaps) ? { tone: "watch", text: "To close" } : { tone: "good", text: "None" }} caption={sc ? `${sc.cnt["Not met"]} not met, ${sc.cnt["Not assessed"]} not assessed` : "Requirements to close"} />
+        <KpiTile label="Next audit" value={f.audit || "None"} />
+      </KpiStrip>
+      {sc ? (
+        <section className="card"><div className="c-body" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(200px,260px)", gap: 24, alignItems: "center" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div className="eyebrow">Requirement status</div>
+            <div style={{ display: "flex" }}><FwSegsBar fwId={f.id} h={12} /></div>
+            <p className="field help" style={{ margin: 0 }}>Each segment is a share of the framework&apos;s requirements, scored from the status of their mapped controls.</p>
           </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-            <Chip cls={fwSnoozed(f.id) ? "neutral" : "ok"}>{fwSnoozed(f.id) ? "Snoozed" : "Active"}</Chip>
-            {cat ? <button className="btn btn-secondary sm" onClick={gapExport}><Icon name="download" />Export gap assessment</button> : null}
-            <button className="btn btn-secondary sm" onClick={viewInControls}>View in controls</button>
-            <button className="btn btn-ghost sm" onClick={onClose}><Icon name="x" />Close</button>
-          </div>
-        </div>
-        <div className="fwmetrics">
-          <div className="fwmetric"><div className="ml">Readiness</div><div className="mv" style={{ color: fwBand(p) }}>{p}%</div><div className="mm">{sc ? sc.impl + " of " + sc.total + " applicable requirements met" : ""}</div></div>
-          <div className="fwmetric"><div className="ml">Mapped controls</div><div className="mv">{ctrls.length}</div><div className="mm">{passing} passing · {needs} need evidence</div></div>
-          <div className="fwmetric"><div className="ml">Open gaps</div><div className="mv">{sc ? sc.cnt["Not met"] + sc.cnt["Not assessed"] : f.gaps}</div><div className="mm">{sc ? sc.cnt["Not met"] + " not met · " + sc.cnt["Not assessed"] + " not assessed" : "requirements to close"}</div></div>
-          <div className="fwmetric"><div className="ml">Next audit</div><div className="mv" style={{ fontSize: 15, lineHeight: 1.3, fontWeight: 600 }}>{f.audit || "—"}</div></div>
-        </div>
-        {sc ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ display: "flex", gap: 10, alignItems: "center" }}><FwSegsBar fwId={f.id} h={10} /></div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px", fontSize: 12, color: "var(--ink-2)" }}>
-              {REQ_ST.map((k) => <span key={k} style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><span style={{ width: 10, height: 10, borderRadius: 3, background: REQ_ST_COL[k], display: "inline-block" }} />{k} {sc.cnt[k]}</span>)}
-            </div>
-          </div>
-        ) : null}
-      </div></section>
+          <DonutChart title="Requirements by status" segments={REQ_ST.map((k) => ({ label: k, value: sc.cnt[k], tone: REQ_TONE[k] }))} center={p + "%"} centerSub="ready" />
+        </div></section>
+      ) : null}
 
       {cat && cat.r && cat.r.length ? (
         <div className="fwsplit">
@@ -93,7 +90,8 @@ export function FwDetail({ fwId, onClose }: { fwId: string; onClose: () => void 
       ) : null}
 
       {f.id === "iso27001" || f.id === "iso27002" ? <AnnexCard /> : null}
-    </>
+      </div>
+    </Page>
   );
 }
 

@@ -1,5 +1,5 @@
 /* Risk dashboard (source renderRiskDash, lines 2502-2555). */
-import { Chip, StatusChip, Table, activate } from "@/components/ui";
+import { Chip, DonutChart, KpiStrip, KpiTile, StatusChip, Table, activate, type Segment } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { nowStamp } from "@/lib/format";
 import {
@@ -82,10 +82,10 @@ export default function RiskDash() {
     <button key={s} className="rstat" onClick={() => riskGoReg({ status: s, rating: "all", cell: null })}><span className="rv">{DATA.risks.filter((r) => r.status === s).length}</span><span className="rl">{s}</span></button>
   ));
   const aboveApp = open.filter((r) => sCur(r) >= 11).length;
-  const reviewStats: [string, number][] = [
-    ["Above appetite (High+)", aboveApp], ["Awaiting approval", DATA.risks.filter((r) => r.review === "Submitted").length],
-    ["Accepted & valid", DATA.risks.filter((r) => r.acceptance).length], ["No control mapped", open.filter((r) => !(r.linked && r.linked.length)).length],
-  ];
+  const awaiting = DATA.risks.filter((r) => r.review === "Submitted").length;
+  const accepted = DATA.risks.filter((r) => r.acceptance).length;
+  const unmapped = open.filter((r) => !(r.linked && r.linked.length)).length;
+  const mix: Segment[] = [["Low", "ok"], ["Medium", "warn"], ["High", "bad"], ["Extreme", "ink"]].map(([name, tone]) => ({ label: name, value: open.filter((r) => rband(sCur(r)).name === name).length, tone: tone as Segment["tone"] }));
   const today = nowStamp().slice(0, 10);
   const plan = open.filter((r) => r.treat !== "Accept").map((r) => {
     const acts: any[] = r.actions || [];
@@ -95,6 +95,13 @@ export default function RiskDash() {
 
   return (
     <div className="rcaps">
+      <KpiStrip label="Risk summary">
+        <KpiTile label="Open risks" value={open.length} caption={`${DATA.risks.length} on the register`} />
+        <KpiTile label="Above appetite (High+)" value={aboveApp} delta={aboveApp ? { tone: "bad", text: "Needs treatment" } : { tone: "good", text: "None" }} caption="Current rating" />
+        <KpiTile label="Awaiting approval" value={awaiting} delta={awaiting ? { tone: "watch", text: "Needs a decision" } : undefined} caption="Submitted for review" />
+        <KpiTile label="Accepted and valid" value={accepted} caption="Within their expiry" />
+        <KpiTile label="No control mapped" value={unmapped} delta={unmapped ? { tone: "watch", text: "Data gap" } : { tone: "good", text: "None" }} caption="Open risks" />
+      </KpiStrip>
       <div className="rgrid2">
         <DistBlock open={open} which="cur" title="Current exposure" note="With existing controls in place, before planned treatment completes." />
         <DistBlock open={open} which="res" title="Residual exposure" note="Target exposure after the planned treatment is complete." />
@@ -117,9 +124,7 @@ export default function RiskDash() {
         </div></section>
         <section className="card"><div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div><h3 style={{ margin: "0 0 10px" }}>Risk status</h3><div className="rstats">{statusCards}</div></div>
-          <div><h3 style={{ margin: "0 0 10px" }}>Approval, review &amp; data quality</h3><div className="rstats">{reviewStats.map((x) => (
-            <div key={x[0]} className="rstat" style={{ cursor: "default" }}><span className="rv">{x[1]}</span><span className="rl">{x[0]}</span></div>
-          ))}</div></div>
+          <DonutChart title="Current rating of open risks" segments={mix} center={String(open.length)} centerSub="open risks" />
         </div></section>
       </div>
       <div className="rgrid3"><Breakdown open={open} k="cat" title="By category" /><Breakdown open={open} k="team" title="By team" /><Breakdown open={open} k="jur" title="By jurisdiction" /></div>

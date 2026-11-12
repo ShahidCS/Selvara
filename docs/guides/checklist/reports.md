@@ -1,5 +1,7 @@
 # Reports module checklist
 
+> **Wave C update.** The page starts with a KPI strip, and the readiness trend is the shared line chart (caption, summary and data table).
+
 Source: lines 3496-3525 (`REPORT_FREQ`, `SCHED_PACKS`, `REND.reports`, generate/schedule functions). React: `ReportsModule.tsx`, `reports/ReportLayers.tsx`, `src/features/reports/services/reports.ts`. State: `src/lib/trustData.ts` (`SCHED_PACKS`, `REPORT_FREQ`). `DATA.reports` already existed.
 
 | source feature | source lines | React file | status | notes |

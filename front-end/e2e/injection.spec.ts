@@ -114,7 +114,8 @@ test.describe("create forms", () => {
     const page = await ctx.newPage();
     await page.addInitScript(() => localStorage.setItem("assurance.v1", JSON.stringify({ role: "admin", collapsed: false, theme: "light" })));
     await page.goto("/ws/frameworks");
-    await page.locator('tr:has-text("ISO/IEC 27001:2022") >> text=Details').click();
+    await page.getByRole("searchbox", { name: "Search Frameworks" }).fill("ISO/IEC 27001:2022");
+    await page.getByRole("button", { name: "Details for ISO/IEC 27001:2022" }).click();
     const [dl] = await Promise.all([page.waitForEvent("download"), page.locator("text=Export gap assessment").click()]);
     const fs = await import("node:fs");
     const csv = fs.readFileSync(await dl.path(), "utf8");

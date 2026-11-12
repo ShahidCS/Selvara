@@ -1,4 +1,4 @@
-import { Icon, Page, Table, TrendChart } from "@/components/ui";
+import { Icon, KpiStrip, KpiTile, LineChart, Page, Table } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
@@ -41,12 +41,15 @@ export default function ReportsModule() {
   return (
     <Page mod="reports" acts={<button className="btn btn-primary" disabled={!can} title={why} onClick={schedule}><Icon name="plus" />New schedule</button>}>
       <div className="scroll" style={{ overflow: "auto" }}>
+        <KpiStrip label="Reporting summary">
+          <KpiTile label="Weighted compliance" value={M.compliance + "%"} caption="Across frameworks in scope" />
+          <KpiTile label="Scheduled packs" value={SCHED_PACKS.length} caption={`${SCHED_PACKS.filter((p) => p.external).length} sent outside the organisation`} />
+          <KpiTile label="Stored reports" value={DATA.reports.length} caption="Generate now, on demand" />
+        </KpiStrip>
         <ApprovalsPanel prefix="report." title="External distribution awaiting a different admin" />
         <div className="split" style={{ gridTemplateColumns: "1.3fr 1fr", marginBottom: 14 }}>
           <div className="card"><div className="c-head"><h3>Readiness trend</h3><span className="tag" style={{ marginLeft: "auto" }}>{M.compliance}% now</span></div>
-            <div className="c-body"><TrendChart data={trend} labels={MONTHS} unit="%" />
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--faint)", marginTop: 2 }}>{MONTHS.map((x) => <span key={x}>{x}</span>)}</div>
-            </div></div>
+            <div className="c-body"><LineChart title="Weighted compliance over the last 7 months" data={trend.map((v, i) => ({ label: MONTHS[i], value: v }))} unit="%" /></div></div>
           <div className="card"><div className="c-head"><h3>Scheduled packs</h3><button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} disabled={!can} title={why} onClick={schedule}><Icon name="plus" />Add</button></div>
             <div className="c-body flush scroll" style={{ padding: 0 }}>
               <Table cols={[{ t: "Pack" }, { t: "Frequency" }, { t: "Recipients" }, { t: "Next" }, { t: "" }]}>

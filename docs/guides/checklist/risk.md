@@ -1,5 +1,7 @@
 # Risk Register (ISO/IEC 27005) port checklist
 
+> **Wave C update.** The dashboard tab starts with a KPI strip (open, above appetite, awaiting approval, accepted and valid, no control mapped) and shows the current rating mix as a donut with a text legend. The heat map, distribution tables, breakdowns and treatment plan are unchanged.
+
 Source: `Assurance-GRC-Portal.html` lines 2411-2811. The import wizard (2813-2981) is ported separately (`risk/import/openImportWizard.tsx`); this module only calls it.
 
 | Source feature | Source lines | React file | Status | Notes |

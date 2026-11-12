@@ -1,5 +1,7 @@
 # Frameworks (Phase 1)
 
+> **Wave C update.** The library is a data table (`/ws/frameworks`, with KPI strip, kind tabs, region filter and search); a framework is a page (`/ws/frameworks/:id`, with a KPI strip and requirement-status donut) and adding one is a page (`/ws/frameworks/new`). Wherever this checklist says "details panel", read "the framework page". Snooze and scope toggles stay in the row and do not open it.
+
 | Source feature | Source lines | React file | Status |
 |---|---|---|---|
 | Library header, draft banner, kind cards (All/Standards/Frameworks/Regulations) with in-scope + average readiness | 1805-1829 | `features/frameworks/FrameworksModule.tsx` | Done |
