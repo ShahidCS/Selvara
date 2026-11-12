@@ -21,8 +21,7 @@ export const auditCanManage = (role: string) => hasRole(role, "admin", "owner");
 const pbcTone = (s: string) => (s === "Received" ? "Done" : s === "Outstanding" ? "Overdue" : "Pending");
 
 export function AuditNotFound() {
-  const go = useGo();
-  return <div className="page"><Empty icon="alert" title="Page not found" action={<button className="btn btn-primary" onClick={() => go("/ws/overview")}>Back to Overview</button>}>That route doesn&apos;t exist or has moved.</Empty></div>;
+  return <Page title="Audit not found" back={{ href: "/ws/audits", label: "Audits" }}><Empty icon="audits" title="No such audit">There is no audit with that ID, or it is not assigned to you. It may have been removed, or the link may be wrong.</Empty></Page>;
 }
 
 export function AuditDetail({ id }: { id: string }) {
@@ -189,18 +188,14 @@ export function AuditDetail({ id }: { id: string }) {
   }
 
   return (
-    <Page mod="audits" acts={
+    <Page title={a.name} sub={`${a.fw} · ${a.auditor} · ${a.lead}`} back={{ href: "/ws/audits", label: "Audits" }} acts={
       <>
+        <StageChip st={a.stage} />
         <button className="btn btn-secondary" onClick={report}><Icon name="reports" />Generate report</button>
         {a.stage !== "Complete" ? <button className="btn btn-primary" {...dis(manageWhy)} onClick={advance}><Icon name="check" />Advance stage</button> : null}
       </>}>
       <div className="card" style={{ flex: "1 1 auto" }}>
-        <div className="c-head" style={{ gap: 10 }}>
-          <button className="btn btn-ghost sm" onClick={() => go("/ws/audits")}><Icon name="back" />Back</button>
-          <div style={{ flex: "1 1 auto", minWidth: 0 }}><h3>{a.name}</h3><div className="sub">{a.fw} · {a.auditor} · {a.lead}</div></div>
-          <StageChip st={a.stage} />
-        </div>
-        <div className="c-head" style={{ padding: "0 8px", borderTop: "1px solid var(--line)" }}>
+        <div className="c-head" style={{ padding: "0 8px" }}>
           <div className="tabs" role="tablist">
             {TABS.map((t) => (
               <button key={t[0]} className="tab" role="tab" aria-selected={tab === t[0]} onClick={() => setTab(t[0])}>

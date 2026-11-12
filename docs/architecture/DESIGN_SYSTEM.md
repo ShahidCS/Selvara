@@ -83,7 +83,7 @@ Table state (tab, filters, sort, page, columns, selection) is kept per table id 
 | Wave | Modules | State |
 |---|---|---|
 | A | Registers: controls (list and tests), policies, vendors, people, access (grants and requests), audits, commitments | done |
-| B | Detail views and create pages (modals become pages); evidence (list plus preview becomes table plus detail) | in progress: Policies (pilot), Issues and Controls done |
+| B | Detail views and create pages (modals become pages); evidence (list plus preview becomes table plus detail) | in progress: Policies (pilot), Issues, Controls, Vendors, People and Audits done; Evidence next |
 | C | Dashboards and charts: overview, reports, risk dashboard, frameworks | not started |
 | D | Assistant, AI governance, questionnaires | not started |
 | E | Settings group: team, integrations, api, billing, audit log, security | not started |
@@ -120,3 +120,14 @@ A record is a page with its own address, so it can be linked, bookmarked and rea
 | `/ws/controls/test/:id`, `/ws/controls/test/new` | test record, build custom test |
 
 A module with two kinds of record uses the second segment as the kind (`test`), then the id as `sub`; the breadcrumb labels it "Tests". Other features open a control with `useOpenControl()` from `@/features/controls`, which navigates to its page. Notifications deep-link to the record (`/ws/controls/:id`, `/ws/issues/:id`).
+
+**Vendors, People and Audits**:
+
+| Address | Page |
+|---|---|
+| `/ws/vendors/:id`, `/ws/vendors/new` | vendor record, add vendor |
+| `/ws/vendors/:id/reassess`, `/ws/vendors/:id/waiver` | record a reassessment, request a certificate waiver (form pages) |
+| `/ws/people/:id`, `/ws/people/new` | person record, add contractor |
+| `/ws/audits/:id`, `/ws/audits/new` | audit record (tabs: overview, requests, information requests, control testing, findings), new audit |
+
+A record that was a tabbed drawer (vendor) becomes sections in the two-column layout; an audit, which already was a page with six table-heavy tabs, keeps its tabs under the standard page header. Other features open a person with `useOpenPerson()` from `@/features/people`.

@@ -1,5 +1,7 @@
 # People & Devices (Phase 2)
 
+> **Wave B update.** The person drawer is now a page: `/ws/people/:id` (device posture, owned accounts). Add contractor is a form page at `/ws/people/new`. Reset MFA (request dialog) and offboarding (confirmation dialog) are unchanged. Wherever this checklist says "drawer", read "the person page".
+
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|
 | 4 KPIs (Workforce, Device compliant n/N, MFA enrolled n/N, Unmanaged) | 2984-2985 | `features/people/PeopleModule.tsx` | Done | |

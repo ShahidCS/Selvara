@@ -39,7 +39,7 @@ export function notificationsFor(role: string, space: Space): Notif[] {
     if (can("vendors")) {
       for (const v of DATA.vendors.filter((x: any) => /Overdue/.test(x.due) || x.status === "In review")) {
         const overdue = /Overdue/.test(v.due);
-        out.push({ id: `ven:${v.name}`, kind: "alert", tone: overdue ? "bad" : "warn", icon: "vendors", title: overdue ? `Vendor review overdue: ${v.name}` : `Vendor in review: ${v.name}`, detail: `${v.tier} tier, ${v.cat}`, path: "/ws/vendors" });
+        out.push({ id: `ven:${v.name}`, kind: "alert", tone: overdue ? "bad" : "warn", icon: "vendors", title: overdue ? `Vendor review overdue: ${v.name}` : `Vendor in review: ${v.name}`, detail: `${v.tier} tier, ${v.cat}`, path: `/ws/vendors/${encodeURIComponent(v.id)}` });
       }
     }
   } else {

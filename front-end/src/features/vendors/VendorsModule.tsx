@@ -9,17 +9,25 @@ import { sodReason } from "@/lib/sod";
 import { useLayer } from "@/hooks/useLayer";
 import * as svc from "@/features/vendors/services/vendors";
 import { ApprovalsPanel, WhyNot, attempt } from "@/components/kit/sodKit";
-import { openVendorDrawer, scoreColor } from "./VendorDrawer";
-import { openVendorCreate } from "./VendorModals";
-
-/* Hook for other modules: `useVendorDrawer()` opens the vendor drawer by id (see vendors/VendorDrawer.tsx). */
-export { useVendorDrawer } from "./VendorDrawer";
+import { useGo, useRoute } from "@/lib/route";
+import { VendorDetail, scoreColor } from "./VendorDetail";
+import { ReassessFormPage, VendorFormPage, WaiverFormPage } from "./VendorForms";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Vendor = any;
+/** `/ws/vendors` is the register; `/new`, `/:id`, `/:id/reassess` and `/:id/waiver` are pages. */
 export default function VendorsModule() {
+  const { param, sub } = useRoute();
+  if (param === "new") return <VendorFormPage />;
+  if (param && sub === "reassess") return <ReassessFormPage id={param} />;
+  if (param && sub === "waiver") return <WaiverFormPage id={param} />;
+  if (param) return <VendorDetail id={param} />;
+  return <VendorsList />;
+}
+
+function VendorsList() {
   useData();
-  const L = useLayer();
+  const L = useLayer(); const go = useGo();
   const role = useApp((s) => s.role);
   const [tierRaw, setTier] = useModState<string>("vendors.tier", "All");
   const vt = VENDOR_TIERS.includes(tierRaw) ? tierRaw : "All";
@@ -46,7 +54,7 @@ export default function VendorsModule() {
     { key: "status", header: "Status", value: (v) => v.status, render: (v) => <StatusChip s={v.status} /> },
   ];
   return (
-    <Page mod="vendors" acts={<button className="btn btn-primary" disabled={!canManage} title={canManage ? undefined : "Only admin or owner can add vendors"} onClick={() => openVendorCreate(L)}><Icon name="plus" />Add vendor</button>}>
+    <Page mod="vendors" acts={<button className="btn btn-primary" disabled={!canManage} title={canManage ? undefined : "Only admin or owner can add vendors"} onClick={() => go("/ws/vendors/new")}><Icon name="plus" />Add vendor</button>}>
       {canManage ? <ApprovalsPanel prefix="vendor." title="Vendor approvals (four-eyes)" /> : null}
       <div className="kpis" style={{ marginBottom: 12 }} role="group" aria-label="Vendors by tier">
         {VENDOR_TIERS.map((t) => {
@@ -87,7 +95,7 @@ export default function VendorsModule() {
         <div className="c-body flush scroll" style={{ padding: 0 }}>
           <DataTable<Vendor> id="vendors" label="Third parties" rows={list} rowKey={(v) => v.id} columns={cols} searchText={(v) => `${v.name} ${v.cat} ${v.tier} ${v.status}`}
             filters={[{ key: "cat", label: "Category", options: cats, get: (v: Vendor) => v.cat }, { key: "status", label: "Status", options: statuses, get: (v: Vendor) => v.status }]}
-            onOpen={(v) => openVendorDrawer(L, v.id)} exportName="vendors" />
+            onOpen={(v) => go(`/ws/vendors/${encodeURIComponent(v.id)}`)} exportName="vendors" />
         </div>
       </div>
     </Page>
