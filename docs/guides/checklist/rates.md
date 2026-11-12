@@ -46,3 +46,5 @@
 ## Security notes (added)
 * Dual control and elevation are UI/demo enforcement; the API must verify two distinct authenticated, elevated super admins, bounds, and lock the rate in force into invoices.
 * Conflicts resolved by owner decision: single-person rate edit replaced by request + second approval; audit added.
+
+> Wave F update: the rates are a data table with a summary strip; region and status filters and search moved into the table. Release, Reject and Edit are unchanged.

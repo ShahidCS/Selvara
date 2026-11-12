@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Empty, Icon, Page, StatusChip, Table } from "@/components/ui";
+import { DataTable, Empty, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { useApp, useData, useModState } from "@/lib/store";
 import { pendingAdminApprovals } from "@/lib/adminApprovals";
@@ -13,15 +13,33 @@ import { PendingApprovals } from "@/components/kit/admin/PendingApprovals";
 export default function RatesModule() {
   useData(); const L = useLayer(); const gate = useGate();
   const allowed = svc.ratesCanManage(useApp((s) => s.role));
-  const [q, setQ] = useModState("rates.q", ""); const [region, setRegion] = useModState("rates.region", "All"); const [rules, setRules] = useModState("rates.rules", false);
+  const [rules, setRules] = useModState("rates.rules", false);
   const [refreshing, setRefreshing] = useState(false); const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   if (!allowed) return <Page mod="rates"><Empty icon="alert" title="Access restricted">Your role cannot manage exchange rates and tax.</Empty></Page>;
   const T = svc.RATE_THRESHOLDS;
   const held = svc.RATE_ROWS.filter((r) => r.status === "Held").length;
-  const ql = q.toLowerCase();
-  const rows = svc.RATE_ROWS.filter((r) => (region === "All" || r.region === region || (region === "Americas" && r.code === "US")) && (!q || `${r.country} ${r.currency}`.toLowerCase().includes(ql)));
   const pending = new Set(pendingAdminApprovals("rates.").map((a) => a.subject));
+  const cols: DTColumn<svc.RateRow>[] = [
+    { key: "country", header: "Country", value: (r) => r.country, locked: true, render: (r) => <span className="strong">{r.country}</span> },
+    { key: "currency", header: "Currency", value: (r) => r.currency, render: (r) => <span className="num">{r.currency}</span> },
+    { key: "rate", header: "Rate / USD", align: "end", value: (r) => r.rate, render: (r) => <span className="num">{r.rate.toLocaleString("en-US", { minimumFractionDigits: r.rate < 10 ? 4 : 2 })}</span> },
+    { key: "tax", header: "Tax", value: (r) => `${r.tax.type} ${r.tax.rate}%`, render: (r) => `${r.tax.type} ${r.tax.rate}%` },
+    { key: "eff", header: "Effective", value: (r) => r.tax.eff, render: (r) => r.tax.eff },
+    { key: "status", header: "Status", value: (r) => r.status, render: (r) => <>{r.status === "Held" ? <span className="chip warn" title={r.reason}><Icon name="alert" />Held for review</span> : <StatusChip s="Applied" />}{pending.has(r.code) ? <> <span className="chip info"><Icon name="clock" />Pending approval</span></> : null}</> },
+    { key: "act", header: "Actions", hideHeader: true, locked: true, align: "end", render: (r) => {
+      const why = gate.title || (pending.has(r.code) ? "A request is already pending" : undefined);
+      return (
+        <span style={{ whiteSpace: "nowrap" }}>
+          {r.status === "Held" ? <>
+            <button className="btn btn-ghost sm" aria-label={`Request release of ${r.country} rate`} disabled={gate.locked || pending.has(r.code)} title={why} onClick={() => decide(r, true)}><Icon name="check" />Release</button>
+            <button className="btn btn-ghost sm" aria-label={`Request rejection of ${r.country} rate`} disabled={gate.locked || pending.has(r.code)} title={why} onClick={() => decide(r, false)}><Icon name="x" />Reject</button></>
+            : <button className="btn btn-ghost sm" aria-label={`Edit ${r.country}`} disabled={gate.locked || pending.has(r.code)} title={why} onClick={() => L.openDrawer("Edit " + r.country, "Currency, exchange rate and tax", (close) => <RateEditForm code={r.code} close={close} />)}><Icon name="edit" />Edit</button>}
+        </span>
+      );
+    } },
+  ];
+  const regionTest = (r: svc.RateRow, o: string) => r.region === o || (o === "Americas" && r.code === "US");
   const decide = (r: svc.RateRow, ok: boolean) => L.openModal((ok ? "Release held rate: " : "Reject held rate: ") + r.country, (close) => <HeldRequestForm code={r.code} ok={ok} close={close} />);
   const refresh = async () => {
     setRefreshing(true);
@@ -32,6 +50,12 @@ export default function RatesModule() {
     <Page mod="rates">
       <ElevateGateBanner />
       <PendingApprovals prefix="rates." title="Pending approvals" run={svc.decideRates} withdraw={svc.withdrawRates} />
+      <KpiStrip label="Rates summary">
+        <KpiTile label="Countries" value={svc.RATE_ROWS.length} delta={{ tone: "flat", text: "In scope" }} caption="With a currency and tax rule" />
+        <KpiTile label="Held for review" value={held} delta={{ tone: held ? "watch" : "good", text: held ? "Needs a decision" : "None held" }} caption="Moved too far, feeds disagree or stale" />
+        <KpiTile label="Pending approvals" value={pending.size} delta={{ tone: pending.size ? "watch" : "flat", text: pending.size ? "Awaiting a second person" : "None" }} caption="Release, reject or edit requests" />
+        <KpiTile label="Last updated" value="06:00" delta={{ tone: "flat", text: "GST, every 12 hours" }} caption="From the primary feed" />
+      </KpiStrip>
       <div className="card" style={{ flex: "0 0 auto" }}><div className="c-body" style={{ gap: 10 }}>
         <div style={{ display: "flex", alignItems: "start", gap: 14, flexWrap: "wrap" }}>
           <div style={{ flex: "1 1 320px", minWidth: 0 }}>
@@ -56,30 +80,10 @@ export default function RatesModule() {
           <button className="btn btn-secondary" disabled={gate.locked} title={gate.title} onClick={() => L.toast("Sample feed run (demo)")}><Icon name="rates" />Run sample feed <span className="tag" style={{ marginLeft: 4 }}>Offline demo</span></button>
         </div>
       </div></div>
-      <div className="card" style={{ flex: "1 1 auto" }}>
-        <div className="c-head" style={{ flexWrap: "wrap", gap: 8 }}>
-          <div className="field"><input className="input" id="rateQ" aria-label="Search country or currency" placeholder="Search country or currency…" maxLength={100} style={{ width: 220, height: 32 }} value={q} onChange={(e) => setQ(e.target.value)} /></div>
-          <div className="btngrp" id="rateRegions">{svc.REGIONS.map((r) => <button key={r} className="fchip" aria-pressed={region === r} onClick={() => setRegion(r)}>{r === "All" ? <Icon name="filter" /> : null}{r}</button>)}</div>
-        </div>
+      <div className="card" style={{ flex: "1 1 auto", minHeight: 0 }}>
         <div className="c-body flush scroll" style={{ padding: 0 }} id="ratesTable">
-          {rows.length ? (
-            <Table cols={[{ t: "Country" }, { t: "Currency" }, { t: "Rate / USD", r: true }, { t: "Tax" }, { t: "Effective" }, { t: "Status" }, { t: "" }]}>
-              {rows.map((r) => (
-                <tr key={r.code}>
-                  <td className="strong">{r.country}</td><td className="num">{r.currency}</td>
-                  <td className="r num">{r.rate.toLocaleString("en-US", { minimumFractionDigits: r.rate < 10 ? 4 : 2 })}</td>
-                  <td>{r.tax.type} {r.tax.rate}%</td><td>{r.tax.eff}</td>
-                  <td>{r.status === "Held" ? <span className="chip warn" title={r.reason}><Icon name="alert" />Held for review</span> : <StatusChip s="Applied" />}{pending.has(r.code) ? <> <span className="chip info"><Icon name="clock" />Pending approval</span></> : null}</td>
-                  <td className="r" style={{ whiteSpace: "nowrap" }}>
-                    {r.status === "Held" ? <>
-                      <button className="btn btn-ghost sm" aria-label={`Request release of ${r.country} rate`} disabled={gate.locked || pending.has(r.code)} title={gate.title || (pending.has(r.code) ? "A request is already pending" : undefined)} onClick={() => decide(r, true)}><Icon name="check" />Release</button>
-                      <button className="btn btn-ghost sm" aria-label={`Request rejection of ${r.country} rate`} disabled={gate.locked || pending.has(r.code)} title={gate.title || (pending.has(r.code) ? "A request is already pending" : undefined)} onClick={() => decide(r, false)}><Icon name="x" />Reject</button></>
-                      : <button className="btn btn-ghost sm" aria-label={`Edit ${r.country}`} disabled={gate.locked || pending.has(r.code)} title={gate.title || (pending.has(r.code) ? "A request is already pending" : undefined)} onClick={() => L.openDrawer("Edit " + r.country, "Currency, exchange rate and tax", (close) => <RateEditForm code={r.code} close={close} />)}><Icon name="edit" />Edit</button>}
-                  </td>
-                </tr>
-              ))}
-            </Table>
-          ) : <Empty icon="search" title="No countries match">Adjust the search or region filter.</Empty>}
+          <DataTable<svc.RateRow> id="rates" label="Exchange rates and tax" rows={svc.RATE_ROWS} rowKey={(r) => r.code} columns={cols} searchText={(r) => `${r.country} ${r.currency}`}
+            filters={[{ key: "region", label: "Region", options: svc.REGIONS.filter((r) => r !== "All"), get: (r) => r.region, test: regionTest }, { key: "status", label: "Status", options: ["Applied", "Held"], get: (r) => r.status, labels: { Held: "Held for review" } }]} exportName="exchange-rates" emptyText="No countries match. Adjust the search or filters." />
         </div>
       </div>
     </Page>

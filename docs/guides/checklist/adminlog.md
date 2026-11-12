@@ -41,3 +41,5 @@
 
 ## Security notes (added)
 * Actor, role, IP, time and ticket must be set server-side; the elevation ticket here is client state.
+
+> Wave F update: the log is a data table with a summary strip; tenant and lawful-basis filters and search moved into the table, and the JSON and CSV exports cover the whole log.

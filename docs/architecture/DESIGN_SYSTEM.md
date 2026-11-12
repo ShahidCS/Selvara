@@ -170,3 +170,7 @@ A questionnaire is addressed by its `Q-` id (assigned when first listed, stable 
 | `/ws/auditlog` | table with category tabs, chain, RoPA and evidence views |
 
 A secret is never kept on a page. A new API key is shown once in a dialog that opens after the form page has navigated back to the list (the shell closes dialogs on a route change), and a payment page keeps display values only.
+
+## Admin Console and vendor portal (wave F)
+
+Tokens and templates only. The Admin Console and the vendor portal take the same tokens as the workspace and no hex literal remains in either. Registers use `DataTable` (rates, admin log); summary strips use `KpiStrip` (rates, admin log, commitments). The vendor portal is a standalone, unbranded page: its security panel uses `--bg-inverse` and `--text-inverse`, its logo tile uses `--accent` with `--text-inverse`, and a `Stepper` shows the five stages. Not changed on purpose: elevation gates and second-admin approvals, the hash chain, what the portal stores or logs, and the vendor-facing wording.

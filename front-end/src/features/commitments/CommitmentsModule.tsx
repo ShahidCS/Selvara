@@ -1,4 +1,4 @@
-import { DataTable, Icon, Page, StatusChip, Table, type DTColumn } from "@/components/ui";
+import { DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, Table, type DTColumn } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
@@ -46,6 +46,11 @@ export default function CommitmentsModule() {
       </>
     )}>
       {banner}
+      <KpiStrip label="Commitments summary">
+        <KpiTile label="Commitments" value={DATA.commitments.length} delta={{ tone: "flat", text: "Tracked" }} caption="Made to customers in contracts" />
+        <KpiTile label="Standard terms" value={STANDARD_TERMS.length} delta={{ tone: "flat", text: "Published" }} caption="Offered to every customer" />
+        <KpiTile label="Incident mode" value={INCIDENT.active ? "Active" : "Off"} delta={{ tone: INCIDENT.active ? "bad" : "good", text: INCIDENT.active ? "48h notice clock running" : "No open incident" }} caption="Breach clock for customer notice" />
+      </KpiStrip>
       <div className="scroll" style={{ flex: "1 1 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: 14, alignItems: "start", paddingRight: 2 }}>
           <div className="card">
