@@ -84,7 +84,7 @@ test("issues register: select rows, bulk toolbar, export selected (formula-safe 
   await s.close();
 });
 
-test("issues register: row opens the drawer by click and by keyboard, row menu and columns menu work, pagination is labelled", async ({ browser }, ti) => {
+test("issues register: row opens the record page by click and by keyboard, row menu and columns menu work, pagination is labelled", async ({ browser }, ti) => {
   const s = await openAs(browser, ti, "admin");
   const p = s.page;
   await gotoModule(p, "/ws/issues");
@@ -92,14 +92,14 @@ test("issues register: row opens the drawer by click and by keyboard, row menu a
   await expect(p.locator(".dt-foot .dt-sum")).toContainText(/Showing 1 to \d+ of \d+/);
 
   await rowsOf(p).first().locator("td").nth(2).click();
-  await expect(p.getByRole("dialog")).toBeVisible();
-  await p.keyboard.press("Escape");
-  await expect(p.getByRole("dialog")).toBeHidden();
+  await expect(p).toHaveURL(/\/ws\/issues\/R-[\w-]+$/);
+  await p.goBack();
+  await expect(p).toHaveURL(/\/ws\/issues$/);
 
   await rowsOf(p).first().focus();
   await p.keyboard.press("Enter");
-  await expect(p.getByRole("dialog")).toBeVisible();
-  await p.keyboard.press("Escape");
+  await expect(p).toHaveURL(/\/ws\/issues\/R-[\w-]+$/);
+  await p.goBack();
 
   const firstId = (await rowsOf(p).first().locator("td .strong").innerText()).trim();
   await p.getByRole("button", { name: `Actions for ${firstId}` }).click();

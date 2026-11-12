@@ -14,7 +14,7 @@ async function searchNarrows(p: Page, name: string, term: string) {
   await expect(rows(p, name)).toHaveCount(before);
 }
 
-test("controls: search, framework filter, status tabs, row opens the drawer, tests view", async ({ browser }, ti) => {
+test("controls: search, framework filter, status tabs, row opens the page, tests view", async ({ browser }, ti) => {
   const s = await openAs(browser, ti, "admin");
   const p = s.page;
   await gotoModule(p, "/ws/controls");
@@ -35,8 +35,9 @@ test("controls: search, framework filter, status tabs, row opens the drawer, tes
   await p.getByRole("tablist", { name: "Controls status" }).getByRole("tab", { name: /^All/ }).click();
 
   await rows(p, "Controls").first().locator("td").nth(1).click();
-  await expect(p.getByRole("dialog")).toBeVisible();
-  await p.keyboard.press("Escape");
+  await expect(p).toHaveURL(/\/ws\/controls\/[^/]+$/);
+  await p.goBack();
+  await expect(table(p, "Controls")).toBeVisible();
 
   await p.getByRole("tab", { name: "Tests" }).click();
   await expect(table(p, "Tests")).toBeVisible();

@@ -9,7 +9,7 @@ import { csvCell, downloadText, nowStamp } from "@/lib/format";
 import { getMe, wsLog } from "@/lib/audit";
 import { useLayer } from "@/hooks/useLayer";
 import { useGo } from "@/lib/route";
-import { useControlDrawer } from "@/features/controls";
+import { useOpenControl } from "@/features/controls";
 import { FwSegsBar } from "./FwSegsBar";
 
 export function FwDetail({ fwId, onClose }: { fwId: string; onClose: () => void }) {
@@ -156,7 +156,7 @@ function ReqPane({ fwId, reqF, setReqF, rq, setRq, grp, setGrp, limit, setLimit 
 
 function ReqRow({ fwId, r }: { fwId: string; r: string[] }) {
   const id = r[0], title = r[1], gid = r[2], gu = r[3] || "";
-  const openCtrl = useControlDrawer();
+  const openCtrl = useOpenControl();
   const [open, setOpen] = useModState<Record<string, boolean>>("fw.open", {});
   const [pick, setPick] = useModState<Record<string, string>>("fw.pick", {});
   const [nat, setNat] = useModState<Record<string, string>>("fw.nat", {});

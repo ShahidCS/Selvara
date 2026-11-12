@@ -1,5 +1,7 @@
 # Issues module checklist
 
+> **Wave B update.** The issue drawer is now a page: `/ws/issues/:id` (record), `/ws/issues/new` and `/ws/issues/:id/edit` (form pages). Wherever this checklist says "drawer" or "modal form", read "the issue page" or "the form page". Add task, link, delete and the closure notes (propose, verify, reject) remain dialogs. Leaving a form with typed work asks first.
+
 Source: `Assurance-GRC-Portal.html` lines 2370-2432 (`REND.issues`, `issDrawer` and helpers). React: `src/features/issues/IssuesModule.tsx`,
 `issues/{IssueLayers,util}.tsx`, `src/features/issues/services/issues.ts`.
 

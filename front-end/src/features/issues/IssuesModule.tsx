@@ -3,10 +3,10 @@ import { DATA } from "@/lib/data";
 import { useApp, useData, useModState } from "@/lib/store";
 import { ISSUE_SEVS, ISSUE_STATUSES, isHighSev, whyCannotWrite } from "@/features/issues/services/issues";
 import { useLayer } from "@/hooks/useLayer";
-import { DueText, openIssueDrawer, openIssueForm } from "./IssueLayers";
-
-/* Hook for other modules: `useIssueDrawer()` opens the issue drawer by id (see issues/IssueLayers.tsx). */
-export { useIssueDrawer } from "./IssueLayers";
+import { useGo, useRoute } from "@/lib/route";
+import { DueText } from "./IssueLayers";
+import { IssueDetail } from "./IssueDetail";
+import { IssueFormPage } from "./IssueFormPage";
 
 const COLS = ISSUE_STATUSES;
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -16,13 +16,23 @@ const SEV_RANK = (sev: string) => { const i = ISSUE_SEVS.indexOf(sev); return i 
 const dueRank = (due: string) => { const m = /Overdue (\d+)d/.exec(due); if (m) return -Number(m[1]); const t = Date.parse(due); return Number.isNaN(t) ? Number.MAX_SAFE_INTEGER : t; };
 const isOpen = (i: Issue) => i.status !== "Closed";
 
+/** `/ws/issues` is the register; `/new`, `/:id` and `/:id/edit` are pages. */
 export default function IssuesModule() {
+  const route = useRoute();
+  const param = route.param;
+  if (param === "new") return <IssueFormPage />;
+  if (param && route.sub === "edit") return <IssueFormPage id={param} />;
+  if (param) return <IssueDetail id={param} />;
+  return <IssuesList />;
+}
+
+function IssuesList() {
   useData();
-  const L = useLayer();
+  const L = useLayer(); const go = useGo();
   useApp((s) => s.role);
   const writeWhy = whyCannotWrite();
   const [view, setView] = useModState<"table" | "kanban">("issues.view", "table");
-  const open = (id: string) => openIssueDrawer(L, id);
+  const open = (id: string) => go(`/ws/issues/${encodeURIComponent(id)}`);
   const cols: DTColumn<Issue>[] = [
     { key: "id", header: "ID", value: (i) => i.id, locked: true, render: (i) => <span className="strong num">{i.id}</span> },
     { key: "title", header: "Issue", value: (i) => i.title, render: (i) => i.title },
@@ -34,7 +44,7 @@ export default function IssuesModule() {
   const owners = Array.from(new Set(DATA.issues.map((i: Issue) => String(i.owner)))).sort();
   const live = DATA.issues.filter(isOpen);
   return (
-    <Page mod="issues" acts={<button className="btn btn-primary" disabled={!!writeWhy} title={writeWhy || undefined} onClick={() => openIssueForm(L, null)}><Icon name="plus" />New issue</button>}>
+    <Page mod="issues" acts={<button className="btn btn-primary" disabled={!!writeWhy} title={writeWhy || undefined} onClick={() => go("/ws/issues/new")}><Icon name="plus" />New issue</button>}>
       <KpiStrip label="Issue summary">
         <KpiTile label="Open issues" value={live.length} caption={`${DATA.issues.length} in total`} />
         <KpiTile label="Overdue" value={live.filter((i: Issue) => /Overdue/.test(i.due)).length} delta={live.some((i: Issue) => /Overdue/.test(i.due)) ? { tone: "bad", text: "Needs action" } : { tone: "good", text: "None" }} caption="Past their due date" />

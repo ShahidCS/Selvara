@@ -1,5 +1,7 @@
 # Controls module checklist
 
+> **Wave B update.** The control and test drawers are now pages: `/ws/controls/:id` and `/ws/controls/test/:id`. Add custom control, Build custom test and Request exception are form pages (`/ws/controls/new`, `/ws/controls/test/new`, `/ws/controls/:id/exception`). Wherever this checklist says "drawer", read "the page". Attestation, mapping, status change and the approve or reject of an exception remain dialogs. Leaving a form with typed work asks first.
+
 Source: `Assurance-GRC-Portal.html` lines 1599-1702. React: `src/features/controls/ControlsModule.tsx`, `controls/{useControlDrawer,useTestDrawer,createModals,modalForm}.tsx`, `src/features/controls/services/controls.ts`.
 
 | source feature | source lines | React file/component | status | notes |

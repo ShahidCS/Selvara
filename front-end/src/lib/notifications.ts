@@ -26,14 +26,14 @@ export function notificationsFor(role: string, space: Space): Notif[] {
   if (space === "ws") {
     if (can("controls")) {
       for (const c of DATA.controls.filter((x: any) => x.status === "Fail")) {
-        out.push({ id: `ctl:${c.id}`, kind: "alert", tone: "bad", icon: "controls", title: `${c.id} is failing`, detail: `${c.title}, owner ${c.owner}`, path: "/ws/controls" });
+        out.push({ id: `ctl:${c.id}`, kind: "alert", tone: "bad", icon: "controls", title: `${c.id} is failing`, detail: `${c.title}, owner ${c.owner}`, path: `/ws/controls/${encodeURIComponent(c.id)}` });
       }
       const ne = DATA.controls.filter((x: any) => x.status === "Needs evidence").length;
       if (ne) out.push({ id: "ctl:needs-evidence", kind: "alert", tone: "warn", icon: "evidence", title: `${ne} control${ne === 1 ? "" : "s"} need evidence`, detail: "Collect or attach evidence before the next test", path: "/ws/controls" });
     }
     if (can("issues")) {
       for (const i of DATA.issues.filter((x: any) => x.status !== "Closed" && /Overdue/.test(x.due))) {
-        out.push({ id: `iss:${i.id}`, kind: "alert", tone: "bad", icon: "issues", title: i.title, detail: `${i.id}, ${i.owner}, ${String(i.due).toLowerCase()}`, path: "/ws/issues" });
+        out.push({ id: `iss:${i.id}`, kind: "alert", tone: "bad", icon: "issues", title: i.title, detail: `${i.id}, ${i.owner}, ${String(i.due).toLowerCase()}`, path: `/ws/issues/${encodeURIComponent(i.id)}` });
       }
     }
     if (can("vendors")) {

@@ -14,7 +14,7 @@ import { bumpData, setModState, useApp, useData } from "@/lib/store";
 import { SOD, hasRole, isMe, sodReason } from "@/lib/sod";
 import { BOARD_BODIES, riskNeedsBoard } from "@/lib/riskBoard";
 import { safeFileName } from "@/lib/security";
-import { useControlDrawer } from "@/features/controls";
+import { useOpenControl } from "@/features/controls";
 import { attemptR } from "./util";
 import * as svc from "@/features/risk/services/risks";
 import { riskOpenActions } from "@/lib/risk";
@@ -123,7 +123,7 @@ export default function RiskDetail({ id }: { id: string }) {
   useData();
   const L = useLayer();
   const role = useApp((s) => s.role);
-  const openCtrl = useControlDrawer();
+  const openCtrl = useOpenControl();
   const [mapSel, setMapSel] = useState(""); const [revNote, setRevNote] = useState(""); const [closeWhy, setCloseWhy] = useState("");
   const r = riskFindR(id);
   const closePanel = () => setModState<string | null>(K_SEL, null);
