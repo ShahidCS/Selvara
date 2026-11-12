@@ -1,52 +1,89 @@
-/* ============================ TOKENS ============================ */
+@font-face{font-family:"Geist";src:url("/fonts/Geist-Variable.woff2") format("woff2");font-weight:100 900;font-style:normal;font-display:swap}
+@font-face{font-family:"Geist Mono";src:url("/fonts/GeistMono-Variable.woff2") format("woff2");font-weight:100 900;font-style:normal;font-display:swap}
+/* ============================ TOKENS ============================
+   Source of truth: docs/architecture/DESIGN_SYSTEM.md (Flow-System-Design blueprint). Three layers:
+   1. raw ramps (--c-*) and blueprint semantic names (--bg-canvas, --text-primary, ...): the blueprint verbatim;
+   2. legacy names (--bg, --surface, --ink, --muted, --accent, ...): what existing components and ~600 inline styles reference. They are aliases of
+      layer 1, so a module restyles by token without being edited;
+   3. the brand channel is --c-brand-* only: a tenant re-skin overrides those six variables and nothing else. */
 :root{
-  /* Typography (design reference) — headings: SF Pro Display, body: SF Pro Text. Named families resolve to real SF Pro on Apple devices; Inter is the fallback elsewhere (SF Pro is not web-embeddable). Keep this split across the product: use var(--font-display) on headings/large figures, var(--font) for body. */
-  --font: "SF Pro Text", -apple-system, BlinkMacSystemFont, "Inter", system-ui, "Segoe UI", Roboto, Arial, sans-serif;
-  --font-display: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Inter", system-ui, "Segoe UI", Roboto, Arial, sans-serif;
-  --bg:#F4F6F8; --surface:#FFFFFF; --surface-2:#F1F3F5; --surface-3:#E9ECEF;
-  --ink:#15181C; --ink-2:#434B54; --muted:#5B636D; --faint:#8A929B;
-  --line:#E5E8EC; --line-2:#D6DADF;
-  --accent:#0E7C78; --accent-strong:#0A605D; --accent-weak:#E2F2F0; --accent-ink:#0A5B58; --authlink:#2563EB;
-  --btn-primary:#0E7C78; --btn-primary-hover:#0C6E6A; --btn-primary-active:#0A605D;
-  --ok-ink:#167139; --ok-bg:#E7F4EC; --warn-ink:#8A5600; --warn-bg:#FAEFD4; --bad-ink:#B12318; --bad-bg:#FBE7E4; --info-ink:#0A5B58; --info-bg:#E2F2F0;
-  --ring:#0E7C78; --shadow-sm:0 1px 2px rgba(16,24,40,.07); --shadow:0 1px 2px rgba(16,24,40,.06),0 6px 18px rgba(16,24,40,.07); --shadow-lg:0 12px 40px rgba(16,24,40,.16);
-  --radius-control:8px; --radius-chip:6px; --radius-card:12px; --radius-modal:16px;
+  /* Typography: Geist (SIL OFL 1.1, self-hosted from /public/fonts). Arabic falls back to the system Arabic face. */
+  --font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans Arabic", Roboto, Arial, sans-serif;
+  --font-display: var(--font);
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --mono: var(--font-mono);
+  --fw-light:300; --fw-normal:400; --fw-medium:500; --fw-semibold:600;
+
+  /* raw ramps */
+  --c-brand-50:#f4f0ff; --c-brand-100:#e7deff; --c-brand-200:#cfbeff; --c-brand-500:#6c3bff; --c-brand-600:#5926f0; --c-brand-700:#4418c4;
+  --c-ai-50:#f7f4ff; --c-ai-400:#9b7bff;
+  --c-lime-50:#f3fbdd; --c-lime-400:#c4f03a; --c-lime-700:#4a6600;
+  --c-success-50:#eaf7ef; --c-success-500:#18a058; --c-success-700:#0e7a42;
+  --c-warning-50:#fff6e5; --c-warning-500:#f5a524; --c-warning-700:#a86200; --c-warning-800:#8a5000;
+  --c-danger-50:#ffefef; --c-danger-500:#f0484a; --c-danger-700:#c22427;
+  --c-ink:#111113; --c-neutral-50:#f1f1ef; --c-neutral-500:#909097; --c-neutral-700:#55565c; --c-white:#fff; --c-black:#000;
+
+  /* blueprint semantic names */
+  --bg-canvas:#f1f1ef; --bg-surface:#fff; --bg-subtle:#f6f6f4; --bg-muted:#ebebe8; --bg-inverse:#111113; --bg-inverse-2:#1e1e22;
+  --text-primary:#111113; --text-secondary:#55565c; --text-tertiary:#909097; /* tertiary is decorative only (3.17:1 on white) */
+  --text-inverse:#fff; --text-inverse-muted:#a1a1a8;
+  --border-default:#e9e9e6; --border-strong:#d6d6d2; --border-inverse:#2c2c31;
+
+  /* legacy names (aliases) */
+  --bg:var(--bg-canvas); --surface:var(--bg-surface); --surface-2:var(--bg-subtle); --surface-3:var(--bg-muted);
+  --ink:var(--text-primary); --ink-2:var(--text-secondary); --muted:var(--text-secondary); --faint:#686970;
+  --line:var(--border-default); --line-2:var(--border-strong);
+  --accent:var(--c-brand-500); --accent-strong:var(--c-brand-600); --accent-weak:var(--c-brand-50); --accent-ink:var(--c-brand-600); --authlink:#2e5cff;
+  --btn-primary:var(--c-brand-500); --btn-primary-hover:var(--c-brand-600); --btn-primary-active:var(--c-brand-700);
+  --ok-ink:var(--c-success-700); --ok-bg:var(--c-success-50); --warn-ink:var(--c-warning-800); --warn-bg:var(--c-warning-50);
+  --bad-ink:var(--c-danger-700); --bad-bg:var(--c-danger-50); --info-ink:var(--c-brand-600); --info-bg:var(--c-brand-50);
+  --ring:#2e5cff;
+
+  /* elevation: sections are flat, only floating things get a shadow */
+  --shadow-e1:0 1px 2px rgba(10,15,31,.04);
+  --shadow-card:0 4px 12px -2px rgba(10,15,31,.06),0 1px 3px rgba(10,15,31,.04);
+  --shadow-floating:0 2px 6px rgba(10,15,31,.25);
+  --glow-danger:0 0 8px rgba(240,72,74,.45);
+  --shadow-sm:var(--shadow-e1); --shadow:var(--shadow-card); --shadow-lg:var(--shadow-floating);
+  --ring-inset:inset 0 0 0 1px rgba(0,0,0,.06);
+
+  /* radius: controls and labels are pills, containers 16 to 24, floating micro-cards 10 */
+  --radius-xs:4px; --radius-sm:8px; --radius-md:10px; --radius-card:12px; --radius-rail:14px; --radius-lg:16px; --radius-panel:20px; --radius-xl:24px; --radius-full:9999px;
+  --radius-control:var(--radius-full); --radius-chip:var(--radius-full); --radius-field:var(--radius-md); --radius-modal:var(--radius-xl);
+
   --sb-w:280px; --sb-rail:76px; --topbar-h:56px;
-  --space:8px;
-  --ease:cubic-bezier(.4,0,.2,1); --dur:250ms;
-  /* liquid glass (light) */
-  --glass-bg:rgba(255,255,255,.70); --glass-strong:rgba(255,255,255,.85); --glass-chrome:rgba(255,255,255,.72); --glass-2:rgba(248,250,252,.66);
-  --glass-brd:rgba(255,255,255,.65); --glass-edge:rgba(16,24,40,.10); --glass-hi:inset 0 1px 0 rgba(255,255,255,.45); --glass-sheen:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,0) 42%);
-  --glass-blur:saturate(165%) blur(16px); --glass-blur-lg:saturate(170%) blur(26px);
-  --glass-sh:0 1px 2px rgba(16,24,40,.05),0 10px 30px rgba(16,24,40,.08);
+  --space:8px; --spacing:.25rem;
+  --ease:cubic-bezier(.4,0,.2,1); --ease-soft:cubic-bezier(.22,1,.36,1); --dur:150ms;
+  --dur-fade:.16s; --dur-scale:.18s; --dur-slide:.24s; --dur-sheet:.26s; --blur-md:12px;
+
+  /* The glass tokens are kept so existing rules resolve, but the blueprint is flat ("paper, not chrome"): opaque, no blur, no sheen. */
+  --glass-bg:var(--surface); --glass-strong:var(--surface); --glass-chrome:var(--bg); --glass-2:var(--surface-2);
+  --glass-brd:var(--line); --glass-edge:var(--line); --glass-hi:0 0 0 0 transparent; --glass-sheen:none;
+  --glass-blur:none; --glass-blur-lg:none; --glass-sh:0 0 0 0 transparent;
 }
 :root[data-theme="dark"]{
-  --bg:#0D1013; --surface:#15191E; --surface-2:#1C2127; --surface-3:#232A31;
-  --ink:#E9ECEF; --ink-2:#C3C9CF; --muted:#98A1AB; --faint:#6D7681;
-  --line:#262D34; --line-2:#333B43;
-  --accent:#2CB3AB; --accent-strong:#54D0C8; --accent-weak:#113230; --accent-ink:#5ED4CC; --authlink:#6EA8FE;
-  --btn-primary:#0C7D78; --btn-primary-hover:#0F8C86; --btn-primary-active:#0A6B67;
-  --ok-ink:#6FDC97; --ok-bg:#12301F; --warn-ink:#E8C65C; --warn-bg:#2F2810; --bad-ink:#F08A80; --bad-bg:#30120F; --info-ink:#5ED4CC; --info-bg:#113230;
-  --ring:#2CB3AB; --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.45); --shadow-lg:0 16px 48px rgba(0,0,0,.6);
-  /* liquid glass (dark) */
-  --glass-bg:rgba(30,36,43,.56); --glass-strong:rgba(22,27,33,.80); --glass-chrome:rgba(19,24,30,.62); --glass-2:rgba(36,43,51,.52);
-  --glass-brd:rgba(255,255,255,.09); --glass-edge:rgba(255,255,255,.10); --glass-hi:inset 0 1px 0 rgba(255,255,255,.05); --glass-sheen:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,0) 42%);
-  --glass-blur:saturate(150%) blur(16px); --glass-blur-lg:saturate(160%) blur(26px);
-  --glass-sh:0 1px 2px rgba(0,0,0,.4),0 12px 32px rgba(0,0,0,.5);
+  /* Derived from the blueprint's inverse tokens (the blueprint defines no dark theme). Contrast checked: every text pair is at least 4.5:1. */
+  --bg:#111113; --surface:#1e1e22; --surface-2:#18181b; --surface-3:#26262b;
+  --ink:#f6f6f4; --ink-2:#a1a1a8; --muted:#a1a1a8; --faint:#8a8a92;
+  --line:#2c2c31; --line-2:#3a3a40;
+  --accent:#9b7bff; --accent-strong:#b9a2ff; --accent-weak:#241a4d; --accent-ink:#b9a2ff; --authlink:#8aa4ff;
+  --btn-primary:#6c3bff; --btn-primary-hover:#7d52ff; --btn-primary-active:#5926f0;
+  --ok-ink:#4ccf88; --ok-bg:#10281b; --warn-ink:#f5b94a; --warn-bg:#2c2210; --bad-ink:#ff8587; --bad-bg:#33161a; --info-ink:#b9a2ff; --info-bg:#241a4d;
+  --ring:#8aa4ff; --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 4px 12px -2px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.35); --shadow-lg:0 2px 6px rgba(0,0,0,.6),0 12px 32px rgba(0,0,0,.45);
+  --shadow-card:0 4px 12px -2px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.35); --shadow-floating:0 2px 6px rgba(0,0,0,.6);
+  --text-tertiary:#76767d; --border-strong:#3a3a40;
 }
 @media (prefers-color-scheme: dark){
   :root[data-theme="auto"]{
-    --bg:#0D1013; --surface:#15191E; --surface-2:#1C2127; --surface-3:#232A31;
-    --ink:#E9ECEF; --ink-2:#C3C9CF; --muted:#98A1AB; --faint:#6D7681;
-    --line:#262D34; --line-2:#333B43;
-    --accent:#2CB3AB; --accent-strong:#54D0C8; --accent-weak:#113230; --accent-ink:#5ED4CC; --authlink:#6EA8FE;
-    --btn-primary:#0C7D78; --btn-primary-hover:#0F8C86; --btn-primary-active:#0A6B67;
-    --ok-ink:#6FDC97; --ok-bg:#12301F; --warn-ink:#E8C65C; --warn-bg:#2F2810; --bad-ink:#F08A80; --bad-bg:#30120F; --info-ink:#5ED4CC; --info-bg:#113230;
-    --ring:#2CB3AB; --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.45); --shadow-lg:0 16px 48px rgba(0,0,0,.6);
-    --glass-bg:rgba(30,36,43,.56); --glass-strong:rgba(22,27,33,.80); --glass-chrome:rgba(19,24,30,.62); --glass-2:rgba(36,43,51,.52);
-    --glass-brd:rgba(255,255,255,.09); --glass-edge:rgba(255,255,255,.10); --glass-hi:inset 0 1px 0 rgba(255,255,255,.05); --glass-sheen:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,0) 42%);
-    --glass-blur:saturate(150%) blur(16px); --glass-blur-lg:saturate(160%) blur(26px);
-    --glass-sh:0 1px 2px rgba(0,0,0,.4),0 12px 32px rgba(0,0,0,.5);
+    --bg:#111113; --surface:#1e1e22; --surface-2:#18181b; --surface-3:#26262b;
+    --ink:#f6f6f4; --ink-2:#a1a1a8; --muted:#a1a1a8; --faint:#8a8a92;
+    --line:#2c2c31; --line-2:#3a3a40;
+    --accent:#9b7bff; --accent-strong:#b9a2ff; --accent-weak:#241a4d; --accent-ink:#b9a2ff; --authlink:#8aa4ff;
+    --btn-primary:#6c3bff; --btn-primary-hover:#7d52ff; --btn-primary-active:#5926f0;
+    --ok-ink:#4ccf88; --ok-bg:#10281b; --warn-ink:#f5b94a; --warn-bg:#2c2210; --bad-ink:#ff8587; --bad-bg:#33161a; --info-ink:#b9a2ff; --info-bg:#241a4d;
+    --ring:#8aa4ff; --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 4px 12px -2px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.35); --shadow-lg:0 2px 6px rgba(0,0,0,.6),0 12px 32px rgba(0,0,0,.45);
+    --shadow-card:0 4px 12px -2px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.35); --shadow-floating:0 2px 6px rgba(0,0,0,.6);
+    --text-tertiary:#76767d; --border-strong:#3a3a40;
   }
 }
 /* ============================ BASE ============================ */
@@ -58,7 +95,7 @@ h1,h2,h3,h4,p{margin:0}
 h1,h2,h3,h4,.sb-logo,.page-head h1,.kpi .v,.rstat .rv{font-family:var(--font-display)}
 a{color:var(--accent-ink);text-decoration:none}
 button{font-family:inherit}
-:focus-visible{outline:2px solid var(--ring);outline-offset:2px;border-radius:4px}
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px;border-radius:var(--radius-xs)}
 svg:not([width]){width:16px;height:16px;flex:0 0 auto}
 .kpi .k svg{width:14px;height:14px;color:var(--muted)}
 .kpi .d svg{width:13px;height:13px}
@@ -75,6 +112,8 @@ svg:not([width]){width:16px;height:16px;flex:0 0 auto}
 #app.collapsed{grid-template-columns:var(--sb-rail) 1fr}
 aside#sidebar{grid-area:side;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:hidden}
 header#topbar{grid-area:top;background:var(--surface);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 14px;min-width:0}
+/* main is a skip-link and route-change focus target (tabindex -1), not a control: no ring on it */
+main#content:focus-visible{outline:none}
 main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column}
 
 /* ============================ SIDEBAR ============================ */
@@ -121,7 +160,7 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
   font-size:0;color:transparent;border:1.5px solid var(--surface);margin:0}
 #app.collapsed .nav-parent>.nav-item .cnt{right:9px}
 .sb-foot{flex:0 0 auto;border-top:1px solid var(--line);padding:10px}
-.sb-user{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;cursor:pointer;padding:6px;border-radius:var(--radius-control)}
+.sb-user{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;cursor:pointer;padding:6px;border-radius:var(--radius-field)}
 .sb-user:hover{background:var(--surface-2)}
 .avatar{width:30px;height:30px;border-radius:999px;flex:0 0 auto;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
 .sb-user .who{min-width:0;text-align:left;line-height:1.25}
@@ -240,7 +279,7 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 .tab svg{width:15px;height:15px}
 
 /* inputs */
-.input,.select{height:36px;padding:0 11px;border:1px solid var(--line-2);border-radius:var(--radius-control);background:var(--surface);color:var(--ink);font-size:14px;font-family:inherit;width:100%}
+.input,.select{height:36px;padding:0 11px;border:1px solid var(--line-2);border-radius:var(--radius-field);background:var(--surface);color:var(--ink);font-size:14px;font-family:inherit;width:100%}
 .input:hover,.select:hover{border-color:var(--muted)}
 .input:focus,.select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-weak)}
 .input::placeholder{color:var(--faint)}
@@ -269,7 +308,7 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 .input.bad{border-color:var(--bad-ink)}
 .input.bad:focus{box-shadow:0 0 0 3px var(--bad-bg)}
 @keyframes authpop{0%{opacity:0;transform:scale(.3)}100%{opacity:1;transform:scale(1)}}
-.auth-h{font-size:16.5px;font-weight:700;letter-spacing:-.005em;margin:0 0 4px}
+.auth-h{font-size:16.5px;font-weight:600;letter-spacing:-.005em;margin:0 0 4px}
 .auth-method.sel{border-color:var(--ink);background:var(--surface-2);color:var(--ink)}
 #authBody .btn-primary{background:var(--ink);color:var(--surface);border-color:transparent;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
 #authBody .btn-primary:hover{background:var(--ink);opacity:.9}
@@ -316,7 +355,7 @@ textarea.input{height:auto;padding:9px 11px;resize:vertical;min-height:72px}
 .page-head .sub{color:var(--muted);font-size:13px;margin-top:3px;max-width:76ch}
 .page-head .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
 .panels{flex:1 1 auto;min-height:0;display:grid;gap:14px}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
 .card>.c-head{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
 .card>.c-head h3{font-size:14px;font-weight:600;letter-spacing:-.01em}
 .card>.c-head .sub{font-size:12px;color:var(--muted)}
@@ -332,7 +371,7 @@ textarea.input{height:auto;padding:9px 11px;resize:vertical;min-height:72px}
 
 /* KPI strip */
 .kpis{flex:0 0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px}
-.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-card);padding:15px 16px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow-sm);transition:box-shadow .15s,border-color .15s}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);padding:15px 16px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow-sm);transition:box-shadow .15s,border-color .15s}
 .kpi:hover{box-shadow:var(--shadow);border-color:var(--line-2)}
 .kpi-top{display:flex;align-items:center;gap:9px;min-height:32px}
 .kpi-ico{width:32px;height:32px;border-radius:9px;flex:0 0 auto;display:flex;align-items:center;justify-content:center}
@@ -449,7 +488,7 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 /* command palette */
 .cmd{position:fixed;inset:0;z-index:100;display:flex;align-items:flex-start;justify-content:center;padding-top:12vh;background:rgba(10,14,18,.4);opacity:0;pointer-events:none;transition:opacity .22s cubic-bezier(.22,1,.36,1)}
 .cmd.on{opacity:1;pointer-events:auto}
-.cmd .cbox{width:min(600px,94vw);background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);overflow:hidden;transform:translateY(-6px);transition:transform .26s cubic-bezier(.22,1,.36,1)}
+.cmd .cbox{width:min(600px,94vw);background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-panel);box-shadow:var(--shadow-lg);overflow:hidden;transform:translateY(-6px);transition:transform .26s cubic-bezier(.22,1,.36,1)}
 .cmd.on .cbox{transform:none}
 .cmd input{width:100%;height:50px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--ink);font-size:15px;padding:0 16px;outline:none}
 .cmd .res{max-height:52vh;overflow:auto;padding:6px}
@@ -460,8 +499,8 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .cmd .ritem.cur .ic{color:var(--accent-ink)}
 
 /* menus / popovers */
-.pop{position:absolute;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);padding:6px;z-index:85;min-width:200px}
-.pop button{display:flex;align-items:center;gap:9px;width:100%;border:0;background:none;cursor:pointer;color:var(--ink-2);font-size:13.5px;font-weight:500;padding:8px 10px;border-radius:8px;text-align:left}
+.pop{position:absolute;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-panel);box-shadow:var(--shadow-lg);padding:6px;z-index:85;min-width:200px}
+.pop button{display:flex;align-items:center;gap:9px;width:100%;border:0;background:none;cursor:pointer;color:var(--ink-2);font-size:13.5px;font-weight:500;padding:8px 10px;border-radius:var(--radius-card);text-align:left}
 .pop button:hover{background:var(--surface-2);color:var(--ink)}
 .pop button svg{width:16px;height:16px;color:var(--muted)}
 .pop .div{height:1px;background:var(--line);margin:5px 2px}
@@ -577,17 +616,12 @@ button.tag:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
 @keyframes tcdraw{to{stroke-dashoffset:0}}
 @media (prefers-reduced-motion: reduce){.tcheck .tc-ring,.tcheck .tc-tick{stroke-dashoffset:0!important}}
 
-/* ============================ LIQUID GLASS ============================ */
-/* ambient backdrop so frosted surfaces have light to refract */
-body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background:
-    radial-gradient(1150px 700px at 6% -10%, color-mix(in srgb,var(--accent) 6%,transparent), transparent 60%),
-    radial-gradient(950px 640px at 104% 2%, rgba(78,116,196,.05), transparent 56%),
-    radial-gradient(1050px 720px at 52% 118%, color-mix(in srgb,var(--accent) 4%,transparent), transparent 62%);}
-/* frosted chrome (own grid areas, frost the ambient backdrop) */
+/* ============================ SURFACES ============================
+   Flat paper canvas and opaque panels (blueprint 1: "Paper, not chrome"). The --glass-* tokens resolve to opaque values, so these rules stay as the single place surfaces are defined. */
+/* chrome */
 header#topbar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);box-shadow:var(--glass-hi)}
 aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
-/* glass panels */
+/* panels */
 .card,.kpi,.fwkind{background:var(--glass-sheen),var(--glass-bg);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);border-color:var(--glass-edge);box-shadow:var(--glass-hi),var(--glass-sh)}
 .kpi:hover{box-shadow:var(--glass-hi),var(--glass-sh);border-color:var(--line-2)}
 /* keep sticky table headers opaque so rows never bleed through */
@@ -609,6 +643,9 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 }
 @media (prefers-reduced-transparency: reduce){
   :root,:root[data-theme="dark"],:root[data-theme="auto"]{--glass-bg:var(--surface);--glass-strong:var(--surface);--glass-chrome:var(--surface);--glass-2:var(--surface-2);--glass-brd:var(--line);--glass-sheen:none}
-  body::before{display:none}
 }
-@media print{body::before{display:none}}
+/* ============================ HELPERS (blueprint 6) ============================ */
+.tabular{font-variant-numeric:tabular-nums}
+.overline{font-size:11px;line-height:14px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:var(--faint)}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.focus-ring:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 24%,transparent)}

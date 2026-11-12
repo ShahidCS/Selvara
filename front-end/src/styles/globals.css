@@ -45,4 +45,20 @@
 
   --font-sans: var(--font);
   --font-display: var(--font-display);
+
+  /* Blueprint ramps (docs/architecture/DESIGN_SYSTEM.md): brand, AI, feedback, ink and surfaces. Utilities such as bg-brand-500, text-danger-700, bg-subtle. */
+  --color-brand-50: var(--c-brand-50);  --color-brand-100: var(--c-brand-100); --color-brand-200: var(--c-brand-200);
+  --color-brand-500: var(--c-brand-500); --color-brand-600: var(--c-brand-600); --color-brand-700: var(--c-brand-700);
+  --color-ai-50: var(--c-ai-50); --color-ai-400: var(--c-ai-400);
+  --color-lime-50: var(--c-lime-50); --color-lime-400: var(--c-lime-400); --color-lime-700: var(--c-lime-700);
+  --color-success-50: var(--c-success-50); --color-success-500: var(--c-success-500); --color-success-700: var(--c-success-700);
+  --color-warning-50: var(--c-warning-50); --color-warning-500: var(--c-warning-500); --color-warning-700: var(--c-warning-700);
+  --color-danger-50: var(--c-danger-50); --color-danger-500: var(--c-danger-500); --color-danger-700: var(--c-danger-700);
+  --color-canvas: var(--bg-canvas); --color-subtle: var(--bg-subtle); --color-inverse: var(--bg-inverse); --color-inverse-2: var(--bg-inverse-2);
+  --color-border-default: var(--border-default); --color-border-strong: var(--border-strong);
+
+  --radius-sm: var(--radius-sm); --radius-md: var(--radius-md); --radius-lg: var(--radius-lg); --radius-xl: var(--radius-xl); --radius-panel: var(--radius-panel);
+  --shadow-e1: var(--shadow-e1); --shadow-card: var(--shadow-card); --shadow-floating: var(--shadow-floating);
+  --font-mono: var(--font-mono);
+  --ease-soft: var(--ease-soft);
 }

@@ -79,8 +79,8 @@ test("free text with markup is inert and nothing sensitive leaves the page", asy
   expect(await p.evaluate(() => ({ x: (window as unknown as { __xss?: number }).__xss || 0, i: document.querySelectorAll('img[src="x"]').length }))).toEqual({ x: 0, i: 0 });
   expect(new URL(p.url()).search).toBe("");
   expect(await p.evaluate(() => JSON.stringify(Object.keys(sessionStorage)))).not.toMatch(/code|otp|vendor\.example/i);
-  // the only other request allowed is the same-origin static favicon; anything else (API calls, third parties) fails
-  expect(requests.filter((r) => !r.includes("localhost:3100/vendor-portal") && !r.endsWith("localhost:3100/favicon.svg"))).toEqual([]);
+  // the only other requests allowed are same-origin static assets (the favicon and the self-hosted Geist font files); anything else (API calls, third parties) fails
+  expect(requests.filter((r) => !r.includes("localhost:3100/vendor-portal") && !r.endsWith("localhost:3100/favicon.svg") && !/^GET http:\/\/localhost:3100\/fonts\/[\w-]+\.woff2$/.test(r))).toEqual([]);
   expect(s.dialogs).toEqual([]);
   await s.close();
 });
