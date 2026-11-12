@@ -1,4 +1,4 @@
-import { Icon, Page, StatusChip, Table } from "@/components/ui";
+import { DataTable, Icon, Page, StatusChip, Table, type DTColumn } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
@@ -10,12 +10,19 @@ import * as svc from "@/features/commitments/services/commitments";
 import { attempt } from "@/components/kit/sodKit";
 import { ImportContractForm, StartIncidentForm, openAnalysis } from "./CommitmentLayers";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Commitment = any;
 /** Commitments, standard terms and incident mode (source REND.commitments, lines 3479-3495). */
 export default function CommitmentsModule() {
   useData();
   const L = useLayer();
   const can = hasRole(useApp((s) => s.role), "admin", "owner");
   const why = can ? undefined : "Only admin or owner can start or close an incident.";
+  const cols: DTColumn<Commitment>[] = [
+    { key: "name", header: "Commitment", value: (c) => c.name, locked: true, render: (c) => <span className="strong">{c.name}</span> },
+    { key: "detail", header: "Detail", value: (c) => c.detail, render: (c) => c.detail },
+    { key: "status", header: "Status", value: (c) => c.status, render: (c) => <StatusChip s={c.status} /> },
+  ];
   const closeIncident = () => attempt(L, async () => {
     await svc.closeIncident();
     wsLog("incident.closed", "incident resolved", "Policy");
@@ -44,9 +51,8 @@ export default function CommitmentsModule() {
           <div className="card">
             <div className="c-head"><h3>Commitments</h3><button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} onClick={() => openAnalysis(L)}><Icon name="ext" />Run contract analysis</button></div>
             <div className="c-body flush" style={{ padding: 0 }}>
-              <Table cols={[{ t: "Commitment" }, { t: "Detail" }, { t: "Status" }]}>
-                {DATA.commitments.map((c, i) => <tr key={i}><td className="strong">{c.name}</td><td>{c.detail}</td><td><StatusChip s={c.status} /></td></tr>)}
-              </Table>
+              <DataTable<Commitment> id="commitments" label="Commitments" rows={DATA.commitments} rowKey={(c) => c.name} columns={cols} searchText={(c) => `${c.name} ${c.detail}`}
+                filters={[{ key: "status", label: "Status", options: Array.from(new Set<string>(DATA.commitments.map((c: Commitment) => String(c.status)))), get: (c: Commitment) => c.status }]} exportName="commitments" />
             </div>
           </div>
           <div className="card">

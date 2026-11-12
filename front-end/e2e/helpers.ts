@@ -44,9 +44,9 @@ export async function gotoModule(page: Page, path: string) {
   await expect(heading(page)).toBeVisible();
 }
 
-/** Visible text of every enabled button in <main> that matches `re`. */
+/** Visible text of every enabled action button in <main> that matches `re`. Tabs are left out: a status tab such as "Approved" filters a list, it does not decide anything. */
 export async function enabledButtons(page: Page, re: RegExp): Promise<string[]> {
-  const all = await page.locator("main button:not([disabled])").allInnerTexts();
+  const all = await page.locator('main button:not([disabled]):not([role="tab"])').allInnerTexts();
   return all.map((s) => s.trim()).filter((s) => re.test(s));
 }
 

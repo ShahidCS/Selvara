@@ -1,9 +1,9 @@
-import { Icon, Kpi, Page, StatusChip, Table, activate } from "@/components/ui";
+import { DataTable, Icon, KpiCard, Page, StatusChip, Table, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { VENDOR_REQS } from "@/lib/requests";
-import { VENDOR_TIERS, TIER_TONE, personOnly, vInitAll, vendorCanManage } from "@/features/vendors/lib/vendors";
+import { VENDOR_TIERS, personOnly, vInitAll, vendorCanManage } from "@/features/vendors/lib/vendors";
 import { getApproval } from "@/lib/approvals";
 import { sodReason } from "@/lib/sod";
 import { useLayer } from "@/hooks/useLayer";
@@ -15,6 +15,8 @@ import { openVendorCreate } from "./VendorModals";
 /* Hook for other modules: `useVendorDrawer()` opens the vendor drawer by id (see vendors/VendorDrawer.tsx). */
 export { useVendorDrawer } from "./VendorDrawer";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Vendor = any;
 export default function VendorsModule() {
   useData();
   const L = useLayer();
@@ -33,18 +35,28 @@ export default function VendorsModule() {
     wsLog("vendor.request.dismissed", r.name, "Vendor"); L.toast("Request dismissed"); bumpData();
   });
   const list = vt === "All" ? DATA.vendors : DATA.vendors.filter((v) => v.tier === vt);
+  const cats = Array.from(new Set<string>(DATA.vendors.map((v: Vendor) => String(v.cat)))).sort();
+  const statuses = Array.from(new Set<string>(DATA.vendors.map((v: Vendor) => String(v.status)))).sort();
+  const cols: DTColumn<Vendor>[] = [
+    { key: "name", header: "Vendor", value: (v) => v.name, locked: true, render: (v) => <span className="strong">{v.name}</span> },
+    { key: "cat", header: "Category", value: (v) => v.cat, render: (v) => v.cat },
+    { key: "tier", header: "Tier", value: (v) => v.tier, sortBy: (v) => { const i = VENDOR_TIERS.indexOf(v.tier); return i < 0 ? 99 : i; }, render: (v) => <StatusChip s={v.tier === "Critical" ? "High" : v.tier} /> },
+    { key: "score", header: "Risk score", value: (v) => v.score, render: (v) => <><span style={{ fontWeight: 600, color: scoreColor(v.score) }}>{v.score}</span><span style={{ color: "var(--muted)" }}>/100</span></> },
+    { key: "due", header: "Review due", value: (v) => v.due, sortBy: (v) => { const m = /Overdue (\d+)d/.exec(v.due); if (m) return -Number(m[1]); const t = Date.parse(v.due); return Number.isNaN(t) ? Number.MAX_SAFE_INTEGER : t; }, render: (v) => (/Overdue/.test(v.due) ? <span style={{ color: "var(--bad-ink)", fontWeight: 500 }}>{v.due}</span> : <>{v.due}</>) },
+    { key: "status", header: "Status", value: (v) => v.status, render: (v) => <StatusChip s={v.status} /> },
+  ];
   return (
     <Page mod="vendors" acts={<button className="btn btn-primary" disabled={!canManage} title={canManage ? undefined : "Only admin or owner can add vendors"} onClick={() => openVendorCreate(L)}><Icon name="plus" />Add vendor</button>}>
       {canManage ? <ApprovalsPanel prefix="vendor." title="Vendor approvals (four-eyes)" /> : null}
-      <div className="kpis" style={{ marginBottom: 12 }}>
+      <div className="kpis" style={{ marginBottom: 12 }} role="group" aria-label="Vendors by tier">
         {VENDOR_TIERS.map((t) => {
           const vs = DATA.vendors.filter((v) => v.tier === t); const due = vs.filter((v) => /Overdue/.test(v.due)).length;
-          return <Kpi key={t} icon="vendors" label={t + " tier"} value={vs.length} tone={TIER_TONE[t] || "neutral"} style={{ cursor: "pointer" }} aria-label={`${t} tier: ${vs.length} vendors. ${vt === t ? "Clear filter" : "Filter the list"}`} {...activate(() => setTier(vt === t ? "All" : t))}
-            sub={<div className="kpi-sub" style={due ? { color: "var(--bad-ink)" } : undefined}>{due ? due + " overdue" : "On schedule"}</div>} />;
+          return <KpiCard key={t} icon="vendors" label={`${t} tier`} value={vs.length} sub={due ? `${due} overdue` : "On schedule"} subTone={due ? "bad" : "flat"} pressed={vt === t}
+            name={`${t} tier: ${vs.length} vendors. ${vt === t ? "Clear filter" : "Filter the list"}`} onClick={() => setTier(vt === t ? "All" : t)} />;
         })}
       </div>
       {VENDOR_REQS.length && canManage ? (
-        <div className="card" style={{ marginBottom: 12, borderColor: "color-mix(in srgb,var(--accent) 30%,var(--line))" }}>
+        <div className="card" style={{ flex: "0 0 auto", marginBottom: 12, borderColor: "color-mix(in srgb,var(--accent) 30%,var(--line))" }}>
           <div className="c-head"><h3>New vendor requests</h3><span className="tag" style={{ marginLeft: 6 }}>{VENDOR_REQS.length}</span></div>
           <div className="c-body flush" style={{ padding: 0 }}>
             <Table cols={[{ t: "Request" }, { t: "Vendor" }, { t: "Purpose" }, { t: "Requested by" }, { t: "" }]}>
@@ -73,16 +85,9 @@ export default function VendorsModule() {
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head"><h3>Third parties{vt !== "All" ? ` · ${vt} tier` : ""}</h3>{vt !== "All" ? <button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} onClick={() => setTier("All")}><Icon name="x" />Clear filter</button> : null}</div>
         <div className="c-body flush scroll" style={{ padding: 0 }}>
-          <Table cols={[{ t: "Vendor" }, { t: "Category" }, { t: "Tier" }, { t: "Risk score" }, { t: "Review due" }, { t: "Status" }, { t: "" }]}>
-            {list.map((v) => (
-              <tr key={v.id} className="clickable" {...activate(() => openVendorDrawer(L, v.id))}>
-                <td className="strong">{v.name}</td><td>{v.cat}</td><td><StatusChip s={v.tier === "Critical" ? "High" : v.tier} /></td>
-                <td><span style={{ fontWeight: 600, color: scoreColor(v.score) }}>{v.score}</span><span style={{ color: "var(--muted)" }}>/100</span></td>
-                <td>{/Overdue/.test(v.due) ? <span style={{ color: "var(--bad-ink)", fontWeight: 500 }}>{v.due}</span> : v.due}</td>
-                <td><StatusChip s={v.status} /></td><td className="r"><Icon name="chevron" /></td>
-              </tr>
-            ))}
-          </Table>
+          <DataTable<Vendor> id="vendors" label="Third parties" rows={list} rowKey={(v) => v.id} columns={cols} searchText={(v) => `${v.name} ${v.cat} ${v.tier} ${v.status}`}
+            filters={[{ key: "cat", label: "Category", options: cats, get: (v: Vendor) => v.cat }, { key: "status", label: "Status", options: statuses, get: (v: Vendor) => v.status }]}
+            onOpen={(v) => openVendorDrawer(L, v.id)} exportName="vendors" />
         </div>
       </div>
     </Page>

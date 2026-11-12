@@ -6,6 +6,8 @@ export type SortDir = "asc" | "desc";
 export interface SortState { key: string; dir: SortDir }
 export interface TableState {
   tab: string;
+  /** Text typed in the table's search box. */
+  q: string;
   filters: Record<string, string>;
   sort: SortState | null;
   page: number;
@@ -16,11 +18,17 @@ export interface TableState {
 export const ALL = "All";
 
 export interface RowQuery<T> {
+  /** Case-insensitive, accent-insensitive substring match of every word typed (all words must match). */
+  search?: { q: string; text: (r: T) => string } | null;
   tab?: { match: (r: T) => boolean } | null;
-  filters: { key: string; get: (r: T) => string }[];
+  /** `test` overrides equality for a field with several values per row (for example the frameworks a control maps to). */
+  filters: { key: string; get: (r: T) => string; test?: (r: T, want: string) => boolean }[];
   state: Pick<TableState, "filters" | "sort">;
   value: (key: string) => ((r: T) => string | number) | undefined;
 }
+
+/** Lower-case and strip accents so a search for "cafe" finds "Café". */
+export const norm = (s: string): string => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 const cmp = (a: string | number, b: string | number) =>
   typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
@@ -28,9 +36,11 @@ const cmp = (a: string | number, b: string | number) =>
 /** Tab, then filter chips (a chip set to "All" does not filter), then sort. Sorting is stable and never mutates the input. */
 export function queryRows<T>(rows: readonly T[], q: RowQuery<T>): T[] {
   let out = rows.filter((r) => (q.tab ? q.tab.match(r) : true));
+  const words = q.search ? norm(q.search.q).split(/\s+/).filter(Boolean) : [];
+  if (words.length && q.search) { const t = q.search.text; out = out.filter((r) => { const h = norm(t(r)); return words.every((w) => h.includes(w)); }); }
   for (const f of q.filters) {
     const want = q.state.filters[f.key];
-    if (want && want !== ALL) out = out.filter((r) => f.get(r) === want);
+    if (want && want !== ALL) out = out.filter((r) => (f.test ? f.test(r, want) : f.get(r) === want));
   }
   const s = q.state.sort; const val = s ? q.value(s.key) : undefined;
   if (s && val) {

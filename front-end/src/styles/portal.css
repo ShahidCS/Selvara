@@ -786,3 +786,9 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .legend{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .legend li{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);padding:4px 8px;border-radius:var(--radius-sm)}
 .legend-sw{width:10px;height:10px;border-radius:3px;flex:0 0 auto} .legend-n{margin-inline-start:auto;font-weight:600;color:var(--ink)} .legend-p{font-weight:400;color:var(--muted)}
+.dt-search{display:inline-flex;align-items:center;gap:8px;height:30px;padding:0 12px;border:1px solid var(--line-2);border-radius:var(--radius-full);background:var(--surface-2);color:var(--muted);min-width:180px;flex:0 1 240px}
+.dt-search:focus-within{border-color:var(--ring);outline:2px solid color-mix(in srgb,var(--ring) 30%,transparent);outline-offset:1px}
+.dt-search svg{width:14px;height:14px;flex:0 0 auto}
+.dt-search-in{border:0;background:none;outline:none;font:inherit;font-size:13px;color:var(--ink);width:100%;min-width:0}
+.dt-search-in::placeholder{color:var(--muted)}
+.kpi-card[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-weak)}
