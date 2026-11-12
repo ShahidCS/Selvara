@@ -34,6 +34,7 @@ test.describe("URL parameters", () => {
     "/ws/ai/" + encodeURIComponent(PAYLOADS[1]) + "/edit",
     "/ws/ai/new/" + encodeURIComponent(PAYLOADS[1]),
     "/ws/questionnaires/" + encodeURIComponent(PAYLOADS[0]),
+    "/ws/integrations/" + encodeURIComponent(PAYLOADS[0]),
     "/ws/evidence/" + encodeURIComponent(PAYLOADS[1]) + "/edit",
     "/admin/billing/" + encodeURIComponent(PAYLOADS[1]),
     "/ws/%3Cimg%20src=x%20onerror=window.__xss=1%3E",
@@ -67,6 +68,7 @@ const FORMS: [role: string, path: string, trigger: string][] = [
   ["admin", "/ws/audits", "New audit"],
   ["admin", "/ws/ai", "Register system"],
   ["admin", "/ws/questionnaires", "Import questionnaire"],
+  ["admin", "/ws/team", "Invite member"],
   ["super", "/admin/customers", "Onboard"],
   ["super", "/admin/mfa", "Reset MFA"],
 ];
@@ -86,7 +88,7 @@ test.describe("create forms", () => {
         // a create flow is a dialog, a drawer or (policies) a form page
         await expect(s.page.locator(".modal.on, .drawer.on, main form").first()).toBeVisible();
         const fields = s.page.locator(
-          [".modal.on", ".drawer.on", "main form"].flatMap((l) => ["input[type=text]", "input:not([type])", "textarea", "input[type=search]"].map((f) => `${l} ${f}:not([readonly]):not([disabled])`)).join(", "),
+          [".modal.on", ".drawer.on", "main form"].flatMap((l) => ["input[type=text]", "input[type=email]", "input:not([type])", "textarea", "input[type=search]"].map((f) => `${l} ${f}:not([readonly]):not([disabled])`)).join(", "),
         );
         const n = await fields.count();
         for (let i = 0; i < n; i++) await fields.nth(i).fill(pay);

@@ -118,6 +118,6 @@ test("a role without the issues module never reaches the register", async ({ bro
   const s = await openAs(browser, ti, "auditor");
   await s.page.goto("/ws/issues");
   await expect(s.page).not.toHaveURL(/\/ws\/issues/);
-  await expect(s.page.getByRole("table", { name: "Issues" })).toHaveCount(0);
+  await expect(s.page.getByRole("table", { name: "Issues", exact: true })).toHaveCount(0);
   await s.close();
 });

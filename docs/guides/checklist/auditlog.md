@@ -1,5 +1,7 @@
 # Workspace Audit logs (Phase 4)
 
+> **Wave E update.** The log is a data table with category tabs and search (the category chips are replaced by the tabs). The chain view, RoPA register and evidence package are unchanged.
+
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|
 | Tabs log / chain / ropa / exp (shared with sidebar sub-nav) | 3733-3739 | `AuditLogModule.tsx` | Done | `useModState("auditlog.view")`; unknown value -> log |

@@ -86,7 +86,7 @@ Table state (tab, filters, sort, page, columns, selection) is kept per table id 
 | B | Detail views and create pages (modals become pages); evidence (list plus preview becomes table plus detail) | done: Policies, Issues, Controls, Vendors, People, Audits, Evidence |
 | C | Dashboards and charts: overview, reports, risk dashboard, frameworks | done |
 | D | Assistant, AI governance, questionnaires | done |
-| E | Settings group: team, integrations, api, billing, audit log, security | not started |
+| E | Settings group: team, integrations, api, billing, audit log, security | done (Security Controls is a read-only specification page and stays as it is) |
 | F | Admin Console and vendor portal (tokens and templates only) | not started |
 
 **Wave A conventions.** A register is a `DataTable` with `searchText`, status `tabs` where the module has a lifecycle, and `filters` for the fields people narrow by; the row opens the record (`onOpen`). Action buttons that already exist (Approve, Deny, Reset MFA) stay inside the row as a column with `hideHeader`, keep their segregation-of-duties reasons, and never open the row. A filter on a field with several values per row uses `test` (frameworks a control maps to) and `labels` for display text. A card that toggles a filter is a `KpiCard` with `pressed`. Tables that are not registers (the cross-framework matrix, the vendor request queue, the standard terms list, review checklists) keep the plain `Table`.
@@ -158,3 +158,15 @@ Anything a model wrote is an `AIPanel`: the assistant's answers and its introduc
 | `/ws/questionnaires`, `/ws/questionnaires/:id`, `/ws/questionnaires/import`, `/ws/questionnaires/answer` | in flight and answer library, questionnaire, import, add answer |
 
 A questionnaire is addressed by its `Q-` id (assigned when first listed, stable for the session), not by its position in the list. The context-aware AI slide-over from the shell phase is still not built (it needs the assistant to be reachable from shared shell code, which the feature boundary forbids).
+
+## Settings group (wave E)
+
+| Address | Page |
+|---|---|
+| `/ws/integrations`, `/ws/integrations/:name` | connector register, connector |
+| `/ws/api`, `/ws/api/new-key`, `/ws/api/new-webhook`, `/ws/api/new-test` | tabs of tables, three form pages |
+| `/ws/team`, `/ws/team/invite` | members and settings tabs, invite |
+| `/ws/billingws`, `/ws/billingws/plan`, `/ws/billingws/payment` | overview with invoices, plan, payment method |
+| `/ws/auditlog` | table with category tabs, chain, RoPA and evidence views |
+
+A secret is never kept on a page. A new API key is shown once in a dialog that opens after the form page has navigated back to the list (the shell closes dialogs on a route change), and a payment page keeps display values only.

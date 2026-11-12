@@ -1,5 +1,7 @@
 # Team & Settings (Phase 3)
 
+> **Wave E update.** Members are a data table (the row opens the person page) and inviting is a page (`/ws/team/invite`). The role-change and approver dialogs and the privileged-role approval are unchanged.
+
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|
 | Seeds (`TEAM_SETTINGS`, `USER_ROLES`) | 3673, 1012 | `src/data/teamSeed.json`, `src/data/userRoles.json`, `services/team.ts` | Done | Approver "S. [name]" anonymised to "J. Avery" |

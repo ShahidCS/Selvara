@@ -1,11 +1,12 @@
-import { Icon, Kpi, Page, StatusChip, Table } from "@/components/ui";
+import { DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn } from "@/components/ui";
 import { useApp, useData } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
 import { wsLog } from "@/lib/audit";
 import { downloadText, money, num } from "@/lib/format";
 import { safeFileName } from "@/lib/security";
 import { SUBSCRIPTION, billingCanManage, findInvoice, invoiceText } from "@/services/billing";
-import { PaymentForm, PlanForm } from "./BillingForms";
+import { useGo, useRoute } from "@/lib/route";
+import { PaymentPage, PlanPage } from "./BillingFormPages";
 
 function Meter({ used, limit }: { used: number; limit: number }) {
   const pct = Math.min(100, Math.round(used / limit * 100)); const tone = pct >= 90 ? "var(--bad-ink)" : "var(--accent)";
@@ -16,27 +17,45 @@ function Meter({ used, limit }: { used: number; limit: number }) {
   );
 }
 
+/** `/ws/billingws` is the account overview; `/plan` and `/payment` are form pages. */
 export default function BillingWsModule() {
+  const { param } = useRoute();
+  if (param === "plan") return <PlanPage />;
+  if (param === "payment") return <PaymentPage />;
+  return <BillingOverview />;
+}
+
+type Invoice = (typeof SUBSCRIPTION.invoices)[number];
+
+function BillingOverview() {
   useData();
-  const L = useLayer();
+  const L = useLayer(); const go = useGo();
   const manage = billingCanManage(useApp((s) => s.role));
   const s = SUBSCRIPTION; const spct = Math.round(s.seatsUsed / s.seatLimit * 100);
-  const openPlan = () => L.openModal("Change plan", (close) => <PlanForm close={close} />);
+  const openPlan = () => go("/ws/billingws/plan");
   const download = (id: string) => {
     const iv = findInvoice(id); if (!iv) return;
     if (!downloadText(safeFileName(iv.id, "invoice") + ".txt", invoiceText(iv, money))) { L.toast("Download not available in this view"); return; }
     wsLog("invoice.downloaded", iv.id, "System"); L.toast("Downloading " + iv.id);
   };
+  const invCols: DTColumn<Invoice>[] = [
+    { key: "id", header: "Invoice", value: (iv) => iv.id, locked: true, render: (iv) => <span className="strong num">{iv.id}</span> },
+    { key: "date", header: "Date", value: (iv) => iv.date, sortBy: (iv) => Date.parse(iv.date) || 0, render: (iv) => iv.date },
+    { key: "period", header: "Period", value: (iv) => iv.period, render: (iv) => <span style={{ color: "var(--muted)" }}>{iv.period}</span> },
+    { key: "amount", header: "Amount", value: (iv) => iv.amount, align: "end", render: (iv) => <span className="num">{money(iv.amount)}</span> },
+    { key: "status", header: "Status", value: (iv) => iv.status, render: (iv) => <StatusChip s={iv.status} /> },
+    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (iv) => <button className="btn btn-ghost sm" aria-label={`Download invoice ${iv.id}`} onClick={() => download(iv.id)}><Icon name="download" />Download</button> },
+  ];
   return (
     <Page mod="billingws" acts={manage ? <button className="btn btn-secondary" onClick={openPlan}>Manage plan</button> : undefined}>
       <div className="scroll" style={{ flex: "1 1 auto" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
-          <div className="kpis">
-            <Kpi icon="billing" label="Plan" value={s.plan} tone="accent" sub={s.cycle + " billing"} />
-            <Kpi icon="people" label="Seats" value={s.seatsUsed + " / " + s.seatLimit} tone={spct >= 90 ? "bad" : "good"} sub={spct + "% used"} />
-            <Kpi icon="rates" label="Next bill" value={s.nextInvoice.replace(/^\d+\s/, "")} tone="info" sub={money(s.amount) + " due"} />
-            <Kpi icon="reports" label="Invoices" value={s.invoices.length} tone="accent" sub="All paid" />
-          </div>
+          <KpiStrip label="Billing summary">
+            <KpiTile label="Plan" value={s.plan} caption={s.cycle + " billing"} />
+            <KpiTile label="Seats" value={s.seatsUsed + " / " + s.seatLimit} delta={spct >= 90 ? { tone: "bad", text: "Near the limit" } : { tone: "flat", text: spct + "% used" }} caption="Workspace members" />
+            <KpiTile label="Next bill" value={s.nextInvoice.replace(/^\d+\s/, "")} caption={money(s.amount) + " due"} />
+            <KpiTile label="Invoices" value={s.invoices.length} caption="All paid" />
+          </KpiStrip>
           <div className="panels" style={{ gridTemplateColumns: "1.4fr 1fr", gridAutoRows: "min-content", alignItems: "stretch" }}>
             <div className="card"><div className="c-head"><h3>Usage this period</h3></div><div className="c-body">
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -60,21 +79,14 @@ export default function BillingWsModule() {
               {manage ? <button className="btn btn-secondary sm" style={{ marginTop: 10 }} onClick={openPlan}><Icon name="ext" />Compare &amp; change plan</button> : null}
               <div className="hr" /><div className="sectitle">Payment method</div>
               <dl className="meta-grid"><dt>Card</dt><dd>{s.payment.brand} ···· {s.payment.last4}</dd><dt>Expires</dt><dd>{s.payment.exp}</dd><dt>Billed to</dt><dd>{s.payment.name}</dd></dl>
-              {manage ? <button className="btn btn-secondary sm" style={{ marginTop: 10 }} onClick={() => L.openModal("Update payment method", (close) => <PaymentForm close={close} />)}><Icon name="edit" />Update payment method</button> : null}
+              {manage ? <button className="btn btn-secondary sm" style={{ marginTop: 10 }} onClick={() => go("/ws/billingws/payment")}><Icon name="edit" />Update payment method</button> : null}
             </div></div>
           </div>
           <div className="card">
             <div className="c-head"><h3>Invoices</h3><span className="tag" style={{ marginLeft: "auto" }}>{s.invoices.length}</span></div>
             <div className="c-body flush scroll" style={{ padding: 0 }}>
-              <Table cols={[{ t: "Invoice" }, { t: "Date" }, { t: "Period" }, { t: "Amount", r: true }, { t: "Status" }, { t: "" }]}>
-                {s.invoices.map((iv) => (
-                  <tr key={iv.id}>
-                    <td className="strong num">{iv.id}</td><td>{iv.date}</td><td style={{ color: "var(--muted)" }}>{iv.period}</td><td className="r num">{money(iv.amount)}</td>
-                    <td><StatusChip s={iv.status} /></td>
-                    <td className="r"><button className="btn btn-ghost sm" aria-label={`Download invoice ${iv.id}`} onClick={() => download(iv.id)}><Icon name="download" />Download</button></td>
-                  </tr>
-                ))}
-              </Table>
+              <DataTable<Invoice> id="invoices" label="Invoices" rows={s.invoices} rowKey={(iv) => iv.id} columns={invCols} searchText={(iv) => `${iv.id} ${iv.period}`}
+                tabs={Array.from(new Set(s.invoices.map((iv) => iv.status))).map((st) => ({ key: st, label: st, match: (iv: Invoice) => iv.status === st }))} exportName="invoices" />
             </div>
           </div>
         </div>
