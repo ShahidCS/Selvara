@@ -29,6 +29,8 @@ test.describe("URL parameters", () => {
     "/ws/vendors/" + encodeURIComponent(PAYLOADS[2]) + "/waiver",
     "/ws/people/" + encodeURIComponent(PAYLOADS[0]),
     "/ws/audits/" + encodeURIComponent(PAYLOADS[1]),
+    "/ws/evidence/" + encodeURIComponent(PAYLOADS[0]),
+    "/ws/evidence/" + encodeURIComponent(PAYLOADS[1]) + "/edit",
     "/admin/billing/" + encodeURIComponent(PAYLOADS[1]),
     "/ws/%3Cimg%20src=x%20onerror=window.__xss=1%3E",
     "/ws/overview?x=" + encodeURIComponent(PAYLOADS[1]),
