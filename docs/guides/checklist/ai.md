@@ -1,5 +1,7 @@
 # AI Governance module checklist
 
+> **Wave D update.** The inventory is a data table with a KPI strip; an AI system is a page (`/ws/ai/:id`, same tabs as the old drawer), registering is a page (`/ws/ai/new`, or `/ws/ai/new/:shadowId` from a discovered system) and editing is `/ws/ai/:id/edit`. Wherever this checklist says "drawer", read "the AI system page". The guardrail, EU classification, impact, bias, oversight and owner dialogs and every second-person confirmation are unchanged.
+
 Source: `Assurance-GRC-Portal.html` lines 3012-3245 (`REND.ai`, `ai*` helpers). React: `src/features/ai/AiModule.tsx`,
 `ai/{AiChips,AiDrawer,AiModals}.tsx`, `src/features/ai/lib/ai.ts`, `src/features/ai/services/ai.ts`, seed `src/features/ai/data/aiSeed.json` (extracted with `scripts/extract-source.js`; `DATA.ai` is in `seed.json`).
 Exported hook for other modules: `useAiDrawer()` (from `AiModule`), opens the drawer by id (`"AI-01"`); an unknown id opens a "not found" drawer.

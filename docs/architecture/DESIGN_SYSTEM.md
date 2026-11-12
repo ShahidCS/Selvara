@@ -85,7 +85,7 @@ Table state (tab, filters, sort, page, columns, selection) is kept per table id 
 | A | Registers: controls (list and tests), policies, vendors, people, access (grants and requests), audits, commitments | done |
 | B | Detail views and create pages (modals become pages); evidence (list plus preview becomes table plus detail) | done: Policies, Issues, Controls, Vendors, People, Audits, Evidence |
 | C | Dashboards and charts: overview, reports, risk dashboard, frameworks | done |
-| D | Assistant, AI governance, questionnaires | not started |
+| D | Assistant, AI governance, questionnaires | done |
 | E | Settings group: team, integrations, api, billing, audit log, security | not started |
 | F | Admin Console and vendor portal (tokens and templates only) | not started |
 
@@ -146,3 +146,15 @@ Held back, still plain tables by design: the cross-framework matrix, review chec
 A dashboard page is a `KpiStrip` of the headline figures (the delta pill follows desirability, not direction), then charts from the shared kit: `LineChart` for a trend, `HBarList` for a ranked comparison, `DonutChart` for a mix. Every chart says its numbers in text (caption, summary, hidden data table, legend with counts) and colour is by tone, so no meaning rests on colour alone. Do not add a target line, a threshold or a delta unless the product defines one: the overview's demo deltas are the only invented figures, and they are unchanged.
 
 Frameworks follows the register and record pattern: `/ws/frameworks` (table), `/ws/frameworks/:id` (page), `/ws/frameworks/new` (page). The risk heat map, the distribution tables and the breakdown bars are interactive filters into the register, so they stay as they are.
+
+## AI surfaces (wave D)
+
+Anything a model wrote is an `AIPanel`: the assistant's answers and its introduction. The panel says "AI-assisted" and "Review before you rely on this" in text, and its actions (Copy, Mark reviewed) are for a person to take afterwards. A person's own message is not an AI surface.
+
+| Address | Page |
+|---|---|
+| `/ws/assistant`, `/ws/assistant/new` | views chosen in the sidebar (Ask, Custom agents, Run log, MCP access); create agent |
+| `/ws/ai`, `/ws/ai/:id`, `/ws/ai/:id/edit`, `/ws/ai/new[/:shadowId]` | inventory, system (tabs kept), edit, register |
+| `/ws/questionnaires`, `/ws/questionnaires/:id`, `/ws/questionnaires/import`, `/ws/questionnaires/answer` | in flight and answer library, questionnaire, import, add answer |
+
+A questionnaire is addressed by its `Q-` id (assigned when first listed, stable for the session), not by its position in the list. The context-aware AI slide-over from the shell phase is still not built (it needs the assistant to be reachable from shared shell code, which the feature boundary forbids).

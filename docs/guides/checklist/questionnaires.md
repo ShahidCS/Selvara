@@ -1,5 +1,7 @@
 # Questionnaires module checklist
 
+> **Wave D update.** In flight and the answer library are data tables; a questionnaire is a page (`/ws/questionnaires/:id`); import (`/ws/questionnaires/import`) and add answer (`/ws/questionnaires/answer`) are form pages. Wherever this checklist says "drawer", read "the questionnaire page". Submit for review, the reviewer separation and verify-before-publish are unchanged; the vendor portal is unchanged.
+
 Source: lines 3443-3478 (`REND.questionnaires`, `qRender`, `vendorPortal`, `qDrawer`). React: `QuestionnairesModule.tsx`, `questionnaires/QuestionnaireLayers.tsx`, `questionnaires/VendorPortal.tsx`, `src/features/questionnaires/services/questionnaires.ts`. State (answer library, KB docs, vendor questions): `src/lib/trustData.ts` from `src/data/trustSeed.json`. `DATA.questionnaires` already existed.
 
 | source feature | source lines | React file | status | notes |

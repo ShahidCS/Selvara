@@ -1,7 +1,6 @@
-/* AI system drawer (source aiDrawer / aiTab / aiTabBody). Tabs re-render in place; modals reopen the drawer via openAiDrawer. */
-import { useCallback } from "react";
-import { Chip, Icon, StatusChip } from "@/components/ui";
-import type { LayerApi } from "@/components/shell/LayerProvider";
+/* An AI system as a page (`/ws/ai/:id`) with the same tabs the drawer had: overview, EU AI Act, impact, bias, signals. The short dialogs (guardrail, EU
+   classification, impact assessment, bias test, oversight, owner) stay dialogs; the page re-renders from the data store behind them. */
+import { Chip, Empty, Icon, Page, StatusChip } from "@/components/ui";
 import { useLayer } from "@/components/shell/LayerProvider";
 import { getApproval } from "@/lib/approvals";
 import { sodReason } from "@/lib/sod";
@@ -11,7 +10,7 @@ import { AI_GUARDRAILS, aiCanDecide, aiCanManage, aiEuRationale, aiFind, aiForbi
 import * as svc from "@/features/ai/services/ai";
 import { WhyNot, attempt } from "@/components/kit/sodKit";
 import { AiBiasChip, AiEuChip, AiFriaChip, AiGuardChip } from "./AiChips";
-import { openAssign, openBias, openEdit, openEuClassify, openFria, openGuard, openOversight } from "./AiModals";
+import { openAssign, openBias, openEuClassify, openFria, openGuard, openOversight } from "./AiModals";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const AI_TABS: [string, string][] = [["over", "Overview"], ["eu", "EU AI Act"], ["fria", "Impact"], ["bias", "Bias"], ["signals", "Signals"]];
@@ -19,16 +18,16 @@ const GATE = <p style={{ fontSize: 12, color: "var(--muted)", margin: "10px 0 0"
 const pendingOf = (ref: unknown) => (ref ? getApproval(String(ref))?.status === "Pending" : false);
 const card = (bg: string, extra?: object) => ({ boxShadow: "none", background: bg, borderColor: "transparent", ...extra });
 
-function AiDrawerBody({ id }: { id: string }) {
+export function AiDetail({ id }: { id: string }) {
   useData(); useApp((s) => s.role);
   const L = useLayer(); const go = useGo();
   const [tabRaw, setTab] = useModState<string>("ai.tab", "over");
   const tab = AI_TABS.some((t) => t[0] === tabRaw) ? tabRaw : "over";
   const a = aiFind(id);
-  if (!a) return <p className="field help">AI system not found.</p>;
+  const back = { href: "/ws/ai", label: "AI governance" };
+  if (!a) return <Page title="AI system not found" back={back}><Empty icon="ai" title="No such AI system">There is no AI system with the ID &ldquo;{id}&rdquo;. It may have been archived, or the link may be wrong.</Empty></Page>;
   aiInit(a);
   const manage = aiCanManage(a); const decider = aiCanDecide();
-  const reopen = () => openAiDrawer(L, id);
   /** Run a service call; a refusal shows the source toast, an exception a generic one. */
   const act = (p: () => Promise<svc.Res<any>>, ok: (r: any) => void) => attempt(L, async () => { const r = await p(); if (!r.ok) { L.toast(r.msg); return; } ok(r); });
 
@@ -44,7 +43,7 @@ function AiDrawerBody({ id }: { id: string }) {
     const reviewWhy = !decider ? "Completing a review is an approval: only admin or owner can do it." : sodReason("you registered or own this system, so a different admin or owner must complete its review", a.registeredBy, a.owner);
     body = (
       <>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}><AiEuChip c={a.euClass} /> <AiGuardChip g={a.guardrail} /> <StatusChip s={a.status} /> <span className="tag">{a.lifecycle}</span></div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}><span className="tag">{a.lifecycle}</span></div>
         <dl className="meta-grid">
           <dt>Surface</dt><dd>{a.surface}</dd><dt>Model</dt><dd>{a.model}</dd><dt>Provider</dt><dd>{a.provider}</dd><dt>Data it can reach</dt><dd>{a.dataReached}</dd><dt>Autonomy</dt><dd>{a.autonomy}</dd><dt>Users</dt><dd>{a.users}</dd><dt>Discovered by</dt><dd>{a.discovered}</dd>
           {a.tools ? <><dt>Tools &amp; MCP servers</dt><dd>{a.tools}</dd></> : null}
@@ -54,7 +53,7 @@ function AiDrawerBody({ id }: { id: string }) {
         <div style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}><AiGuardChip g={a.guardrail} /></div>
           <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>{gr[1]}</div>
-          {manage ? <button className="btn btn-ghost sm" style={{ marginTop: 8 }} disabled={pendingOf(a.guardrailPending)} onClick={() => openGuard(L, id, reopen)}><Icon name="edit" />{pendingOf(a.guardrailPending) ? "Change awaiting approval" : "Request guardrail change"}</button> : null}
+          {manage ? <button className="btn btn-ghost sm" style={{ marginTop: 8 }} disabled={pendingOf(a.guardrailPending)} onClick={() => openGuard(L, id)}><Icon name="edit" />{pendingOf(a.guardrailPending) ? "Change awaiting approval" : "Request guardrail change"}</button> : null}
         </div>
         <div className="hr" /><div className="sectitle">ISO/IEC 42001 &amp; EU AI Act obligations</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -65,10 +64,10 @@ function AiDrawerBody({ id }: { id: string }) {
           <>
             <div className="hr" /><div className="sectitle">Manage</div>
             <div className="btngrp">
-              <button className="btn btn-secondary sm" onClick={() => openEdit(L, id)}><Icon name="edit" />Edit</button>
+              <button className="btn btn-secondary sm" onClick={() => go(`/ws/ai/${encodeURIComponent(id)}/edit`)}><Icon name="edit" />Edit</button>
               <button className="btn btn-secondary sm" onClick={() => openAssign(L, id)}><Icon name="user" />Assign owner</button>
               <button className="btn btn-secondary sm" onClick={() => act(() => svc.attachEvidence(id), (r) => { aiLog("ai.evidence.attached", a.name); L.toast("Evidence attached to " + r.name); bumpData(); })}><Icon name="evidence" />Attach evidence</button>
-              <button className="btn btn-secondary sm" disabled={a.status === "In review" && !!reviewWhy} aria-describedby={a.status === "In review" && reviewWhy ? "ai-rw" : undefined} onClick={() => act(() => svc.toggleReview(id), (r) => { aiLog(r.completed ? "ai.review.completed" : "ai.review.started", a.name); L.closeLayer(); L.toast((r.completed ? "Review completed for " : "Review started for ") + r.name); bumpData(); })}><Icon name="play" />{a.status === "In review" ? "Complete review" : "Start review"}</button>
+              <button className="btn btn-secondary sm" disabled={a.status === "In review" && !!reviewWhy} aria-describedby={a.status === "In review" && reviewWhy ? "ai-rw" : undefined} onClick={() => act(() => svc.toggleReview(id), (r) => { aiLog(r.completed ? "ai.review.completed" : "ai.review.started", a.name); L.toast((r.completed ? "Review completed for " : "Review started for ") + r.name); bumpData(); })}><Icon name="play" />{a.status === "In review" ? "Complete review" : "Start review"}</button>
               <button className="btn btn-danger sm" disabled={pendingOf(a.archivePending)} onClick={() => act(() => svc.archiveSystem(id), (r) => { aiLog("ai.archive.requested", a.name); L.closeLayer(); bumpData(); L.toast("Archive of " + r.name + " requested; a second approver must confirm"); })}><Icon name="archive" />{pendingOf(a.archivePending) ? "Archive awaiting approval" : "Request archive"}</button>
             </div>
             {a.status === "In review" ? <WhyNot id="ai-rw" text={reviewWhy} /> : null}
@@ -98,7 +97,7 @@ function AiDrawerBody({ id }: { id: string }) {
         {manage ? (
           <>
             <div className="btngrp" style={{ marginTop: 14 }}>
-              <button className="btn btn-primary sm" onClick={() => openEuClassify(L, id, reopen)}><Icon name="shieldcheck" />{st.state === "Not classified" ? "Classify under EU AI Act" : "Re-run classification"}</button>
+              <button className="btn btn-primary sm" onClick={() => openEuClassify(L, id)}><Icon name="shieldcheck" />{st.state === "Not classified" ? "Classify under EU AI Act" : "Re-run classification"}</button>
               {st.state === "Draft" ? <button className="btn btn-secondary sm" disabled={!canConfirm} onClick={() => act(() => svc.confirmEu(id), () => { aiLog("ai.euact.confirmed", a.name); bumpData(); L.toast("Classification confirmed"); })}><Icon name="check" />Confirm classification</button> : null}
             </div>
             {st.state === "Draft" && !canConfirm ? <WhyNot text={confirmWhy} /> : null}
@@ -122,7 +121,7 @@ function AiDrawerBody({ id }: { id: string }) {
         {manage ? (
           <>
             <div className="btngrp" style={{ marginTop: 12 }}>
-              {(rev === "None" || rev === "Draft" || rev === "Changes requested" || rev === "Approved") ? <button className="btn btn-secondary sm" onClick={() => openFria(L, id, reopen)}><Icon name="edit" />{rev === "None" ? "Record impact assessment" : rev === "Approved" ? "Start new version (needs approval again)" : "Edit"}</button> : null}
+              {(rev === "None" || rev === "Draft" || rev === "Changes requested" || rev === "Approved") ? <button className="btn btn-secondary sm" onClick={() => openFria(L, id)}><Icon name="edit" />{rev === "None" ? "Record impact assessment" : rev === "Approved" ? "Start new version (needs approval again)" : "Edit"}</button> : null}
               {(rev === "Draft" || rev === "Changes requested") ? <button className="btn btn-primary sm" onClick={() => act(() => svc.submitFria(id), () => { aiLog("ai.impact_assessment.submitted", a.name); bumpData(); L.toast("Impact assessment submitted for approval"); })}><Icon name="check" />Submit for approval</button> : null}
               {rev === "Submitted" ? (
                 <>
@@ -143,10 +142,10 @@ function AiDrawerBody({ id }: { id: string }) {
         <div className="sectitle">Bias &amp; validation testing</div>
         <dl className="meta-grid lstart"><dt>Result</dt><dd><AiBiasChip b={bz} /></dd><dt>Last tested</dt><dd>{bz.last ? bz.last : "—"}</dd></dl>
         {bz.result ? <p style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 6, lineHeight: 1.55 }}>{bz.result}</p> : null}
-        {manage ? <button className="btn btn-secondary sm" style={{ marginTop: 8 }} onClick={() => openBias(L, id, reopen)}><Icon name="play" />Log bias / validation test</button> : null}
+        {manage ? <button className="btn btn-secondary sm" style={{ marginTop: 8 }} onClick={() => openBias(L, id)}><Icon name="play" />Log bias / validation test</button> : null}
         <div className="hr" /><div className="sectitle">Human oversight</div>
         <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--ink-2)", display: "flex", flexDirection: "column", gap: 5 }}>{a.oversight.map((o: string, k: number) => <li key={k}>{o}</li>)}</ul>
-        {manage ? <button className="btn btn-ghost sm" style={{ marginTop: 10 }} onClick={() => openOversight(L, id, reopen)}><Icon name="edit" />Edit oversight measures</button> : GATE}
+        {manage ? <button className="btn btn-ghost sm" style={{ marginTop: 10 }} onClick={() => openOversight(L, id)}><Icon name="edit" />Edit oversight measures</button> : GATE}
       </>
     );
   } else if (!a.signals.length) {
@@ -182,16 +181,11 @@ function AiDrawerBody({ id }: { id: string }) {
       </>
     );
   }
-  return <>{tabs}<div id="aiDBody">{body}</div></>;
-}
-
-export function openAiDrawer(L: LayerApi, id: string) {
-  const a = aiFind(id);
-  if (a) aiInit(a);
-  L.openDrawer(a ? a.name : "AI system", a ? a.id + " · " + a.purpose : undefined, <AiDrawerBody key={id} id={id} />, (close: () => void) => <button className="btn btn-secondary" onClick={close}>Close</button>);
-}
-/** Hook for other modules: `const openAi = useAiDrawer(); openAi("AI-01")`. Unknown ids open a "not found" drawer. */
-export function useAiDrawer() {
-  const L = useLayer();
-  return useCallback((id: string) => openAiDrawer(L, id), [L]);
+  return (
+    <Page title={a.name} sub={`${a.id} · ${a.purpose}`} back={back} acts={<><AiEuChip c={a.euClass} /><AiGuardChip g={a.guardrail} /><StatusChip s={a.status} /></>}>
+      <div className="card" style={{ flex: "1 1 auto" }}>
+        <div className="c-body scroll" id="aiDBody">{tabs}<div style={{ maxWidth: 860 }}>{body}</div></div>
+      </div>
+    </Page>
+  );
 }

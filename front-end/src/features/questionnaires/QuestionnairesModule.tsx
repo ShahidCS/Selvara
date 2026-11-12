@@ -1,4 +1,4 @@
-import { Chip, Icon, Page, StatusChip, Table, activate } from "@/components/ui";
+import { Chip, DataTable, Icon, Page, StatusChip, Table, type DTColumn } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
@@ -6,28 +6,62 @@ import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { ANSWER_LIB, KB_DOCS } from "@/lib/trustData";
 import * as svc from "@/features/questionnaires/services/questionnaires";
 import { ApprovalsPanel, WhyNot, attempt } from "@/components/kit/sodKit";
-import { AddAnswerForm, ImportForm, openQuestionnaireDrawer } from "./QuestionnaireLayers";
+import { useGo, useRoute } from "@/lib/route";
+import { AddAnswerPage, ImportFormPage } from "./QuestionnaireForms";
+import { QuestionnaireDetail } from "./QuestionnaireDetail";
 import VendorPortal from "./VendorPortal";
 
 const VIEWS: [string, string][] = [["flight", "In flight"], ["library", "Answer library"], ["kb", "Knowledge base"]];
 
 /** Questionnaires (source REND.questionnaires, lines 3443-3478). The "vendor" role gets the vendor portal instead. */
 export default function QuestionnairesModule() {
-  useData();
-  const L = useLayer();
+  const { param } = useRoute();
   const role = useApp((s) => s.role);
-  const [view, setView] = useModState("questionnaires.view", "flight");
+  const L = useLayer();
   if (role === "vendor") return <VendorPortal L={L} />;
+  if (param === "import") return <ImportFormPage />;
+  if (param === "answer") return <AddAnswerPage />;
+  if (param) return <QuestionnaireDetail id={param} />;
+  return <QuestionnairesList />;
+}
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Quest = any;
+type Answer = (typeof ANSWER_LIB)[number];
+
+function QuestionnairesList() {
+  useData();
+  const L = useLayer(); const go = useGo();
+  const [view, setView] = useModState("questionnaires.view", "flight");
+  DATA.questionnaires.forEach((q: Quest) => svc.qidOf(q));
+
+  const flightCols: DTColumn<Quest>[] = [
+    { key: "name", header: "Questionnaire", value: (q) => q.name, locked: true, render: (q) => <span className="strong">{q.name}</span> },
+    { key: "prog", header: "Progress", value: (q) => svc.qPct(q.prog), render: (q) => <span style={{ whiteSpace: "nowrap" }}><span className="bar-track" style={{ width: 90, display: "inline-block", verticalAlign: "middle" }}><span className="bar-fill" style={{ width: `${svc.qPct(q.prog)}%`, background: "var(--accent)" }} /></span> <span className="num" style={{ fontSize: 12 }}>{q.prog}</span></span> },
+    { key: "due", header: "Due", value: (q) => q.due, render: (q) => q.due },
+    { key: "status", header: "Status", value: (q) => q.status, render: (q) => <StatusChip s={q.status === "Complete" ? "Completed" : q.status} /> },
+  ];
+  const libCols: DTColumn<Answer>[] = [
+    { key: "q", header: "Question", value: (a) => a.q, locked: true, render: (a) => <span className="strong" style={{ display: "block", maxWidth: 260 }}>{a.q}</span> },
+    { key: "a", header: "Answer", value: (a) => a.a, render: (a) => <span style={{ display: "block", maxWidth: 340, color: "var(--muted)" }}>{a.a}</span> },
+    { key: "verified", header: "Verified", value: (a) => (a.verified ? "Verified" : "Unverified"), render: (a) => (a.verified ? <Chip cls="ok" icon="check">Verified</Chip> : <Chip cls="warn" icon="clock">Unverified</Chip>) },
+    { key: "uses", header: "Uses", value: (a) => a.uses, align: "end", render: (a) => <span className="num">{a.uses}</span> },
+    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (a) => {
+      const i = ANSWER_LIB.indexOf(a);
+      if (a.verified) return <span style={{ fontSize: 11.5, color: "var(--muted)" }}>{a.verifiedBy ? "by " + a.verifiedBy : ""}</span>;
+      const why = svc.verifyBlockReason(a);
+      return (<><button className="btn btn-ghost sm" disabled={!!why} aria-describedby={why ? "vf-" + i : undefined} aria-label={`Verify answer: ${a.q}`} onClick={() => verify(i)}><Icon name="check" />Verify</button><WhyNot id={"vf-" + i} text={why} /></>);
+    } },
+  ];
   const verify = (i: number) => attempt(L, async () => {
     const a = ANSWER_LIB[i]; await svc.verifyAnswer(i);
     wsLog("answer.verified", ANSWER_LIB[i].q.slice(0, 40) + " (author " + (a.author || "unknown") + "; published to the public chatbot)", "Vendor");
     L.toast("Answer verified"); bumpData();
   });
   const acts = view === "flight"
-    ? <button className="btn btn-primary" onClick={() => L.openModal("Import questionnaire", <ImportForm L={L} />)}><Icon name="plus" />Import questionnaire</button>
+    ? <button className="btn btn-primary" onClick={() => go("/ws/questionnaires/import")}><Icon name="plus" />Import questionnaire</button>
     : view === "library"
-      ? <button className="btn btn-primary" onClick={() => L.openModal("Add answer", <AddAnswerForm L={L} />)}><Icon name="plus" />Add answer</button>
+      ? <button className="btn btn-primary" onClick={() => go("/ws/questionnaires/answer")}><Icon name="plus" />Add answer</button>
       : <button className="btn btn-secondary" onClick={() => L.toast("Upload document (demo)")}><Icon name="plus" />Upload document</button>;
 
   let body;
@@ -35,29 +69,15 @@ export default function QuestionnairesModule() {
     body = (
       <>
       <div style={{ padding: "12px 12px 0" }}><ApprovalsPanel prefix="q." title="Questionnaires awaiting review before sending" /></div>
-      <Table cols={[{ t: "Questionnaire" }, { t: "Progress" }, { t: "Due" }, { t: "Status" }, { t: "" }]}>
-        {DATA.questionnaires.map((q, i) => (
-          <tr key={i} className="clickable" {...activate(() => openQuestionnaireDrawer(L, i))}>
-            <td className="strong">{q.name}</td>
-            <td style={{ minWidth: 150 }}><div className="bar-track" style={{ width: 90, display: "inline-block", verticalAlign: "middle" }}><span className="bar-fill" style={{ width: `${svc.qPct(q.prog)}%`, background: "var(--accent)" }}></span></div> <span className="num" style={{ fontSize: 12 }}>{q.prog}</span></td>
-            <td>{q.due}</td><td><StatusChip s={q.status === "Complete" ? "Completed" : q.status} /></td><td className="r"><Icon name="chevron" /></td>
-          </tr>
-        ))}
-      </Table>
+      <DataTable<Quest> id="questionnaires" label="Questionnaires" rows={DATA.questionnaires} rowKey={(q) => svc.qidOf(q)} columns={flightCols} searchText={(q) => String(q.name)}
+        tabs={["Not started", "In progress", "Complete"].map((st) => ({ key: st, label: st === "Complete" ? "Completed" : st, match: (q: Quest) => q.status === st }))}
+        onOpen={(q) => go(`/ws/questionnaires/${encodeURIComponent(svc.qidOf(q))}`)} exportName="questionnaires" />
       </>
     );
   } else if (view === "library") {
     body = (
-      <Table cols={[{ t: "Question" }, { t: "Answer" }, { t: "Verified" }, { t: "Uses", r: true }, { t: "" }]}>
-        {ANSWER_LIB.map((a, i) => (
-          <tr key={i}>
-            <td className="strong" style={{ maxWidth: 220 }}>{a.q}</td><td style={{ maxWidth: 320, color: "var(--muted)" }}>{a.a}</td>
-            <td>{a.verified ? <Chip cls="ok" icon="check">Verified</Chip> : <Chip cls="warn" icon="clock">Unverified</Chip>}</td>
-            <td className="r num">{a.uses}</td>
-            <td className="r">{a.verified ? <span style={{ fontSize: 11.5, color: "var(--muted)" }}>{a.verifiedBy ? "by " + a.verifiedBy : ""}</span> : (() => { const why = svc.verifyBlockReason(a); return (<><button className="btn btn-ghost sm" disabled={!!why} aria-describedby={why ? "vf-" + i : undefined} onClick={() => verify(i)}><Icon name="check" />Verify</button><WhyNot id={"vf-" + i} text={why} /></>); })()}</td>
-          </tr>
-        ))}
-      </Table>
+      <DataTable<Answer> id="answer-library" label="Answer library" rows={ANSWER_LIB} rowKey={(a) => String(ANSWER_LIB.indexOf(a))} columns={libCols} searchText={(a) => `${a.q} ${a.a}`}
+        tabs={[{ key: "Verified", label: "Verified", match: (a: Answer) => !!a.verified }, { key: "Unverified", label: "Unverified", match: (a: Answer) => !a.verified }]} exportName="answer-library" />
     );
   } else {
     body = (
