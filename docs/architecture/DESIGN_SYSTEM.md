@@ -83,7 +83,7 @@ Table state (tab, filters, sort, page, columns, selection) is kept per table id 
 | Wave | Modules | State |
 |---|---|---|
 | A | Registers: controls (list and tests), policies, vendors, people, access (grants and requests), audits, commitments | done |
-| B | Detail views and create pages (modals become pages); evidence (list plus preview becomes table plus detail) | in progress: Policies (pilot), Issues, Controls, Vendors, People and Audits done; Evidence next |
+| B | Detail views and create pages (modals become pages); evidence (list plus preview becomes table plus detail) | done: Policies, Issues, Controls, Vendors, People, Audits, Evidence |
 | C | Dashboards and charts: overview, reports, risk dashboard, frameworks | not started |
 | D | Assistant, AI governance, questionnaires | not started |
 | E | Settings group: team, integrations, api, billing, audit log, security | not started |
@@ -131,3 +131,12 @@ A module with two kinds of record uses the second segment as the kind (`test`), 
 | `/ws/audits/:id`, `/ws/audits/new` | audit record (tabs: overview, requests, information requests, control testing, findings), new audit |
 
 A record that was a tabbed drawer (vendor) becomes sections in the two-column layout; an audit, which already was a page with six table-heavy tabs, keeps its tabs under the standard page header. Other features open a person with `useOpenPerson()` from `@/features/people`.
+
+**Evidence** (the list-plus-preview split screen becomes a register and a page):
+
+| Address | Page |
+|---|---|
+| `/ws/evidence` | register: KPI strip, review tabs, type and collector filters |
+| `/ws/evidence/:id`, `/ws/evidence/new`, `/ws/evidence/:id/edit` | record, add, edit |
+
+Held back, still plain tables by design: the cross-framework matrix, review checklists, the vendor request queue and the standard terms list (not registers).

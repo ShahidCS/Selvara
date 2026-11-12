@@ -1,34 +1,54 @@
-import { Icon, Page, activate } from "@/components/ui";
+import { DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
-import { useApp, useData, useModState } from "@/lib/store";
-import { useLayer } from "@/hooks/useLayer";
-import { evInit, whyCannotWrite } from "@/features/evidence/services/evidence";
-import EvidencePreview, { EmptyPreview } from "./EvidencePreview";
-import { EvidenceForm, SEL_KEY } from "./EvidenceForms";
+import { useApp, useData } from "@/lib/store";
+import { useGo, useRoute } from "@/lib/route";
+import { evInit, pendingDelete, whyCannotWrite, EVIDENCE_TYPES, REVIEW_STATES } from "@/features/evidence/services/evidence";
+import { EvidenceDetail, reviewChip } from "./EvidenceDetail";
+import { EvidenceFormPage } from "./EvidenceFormPage";
 
-/** Evidence: list + preview, CRUD, attachments, versioning (source REND.evidence, lines 2217-2251). */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Ev = any;
+/** `/ws/evidence` is the register; `/new`, `/:id` and `/:id/edit` are pages. */
 export default function EvidenceModule() {
-  useData();
-  const L = useLayer();
-  useApp((s) => s.role);
+  const { param, sub } = useRoute();
+  if (param === "new") return <EvidenceFormPage />;
+  if (param && sub === "edit") return <EvidenceFormPage id={param} />;
+  if (param) return <EvidenceDetail id={param} />;
+  return <EvidenceList />;
+}
+
+function EvidenceList() {
+  useData(); useApp((s) => s.role);
+  const go = useGo();
   const writeWhy = whyCannotWrite();
-  const [sel, setSel] = useModState<string | null>(SEL_KEY, null);
   DATA.evidence.forEach(evInit);
-  const selected = sel != null && DATA.evidence.some((e) => e.id === sel) ? sel : null;
+  const status = (e: Ev) => String(e.review?.status ?? "Pending review");
+  const owners = Array.from(new Set<string>(DATA.evidence.map((e: Ev) => String(e.by)))).sort();
+  const cols: DTColumn<Ev>[] = [
+    { key: "id", header: "ID", value: (e) => e.id, locked: true, render: (e) => <span className="strong num">{e.id}</span> },
+    { key: "name", header: "Evidence", value: (e) => e.name, render: (e) => e.name },
+    { key: "type", header: "Type", value: (e) => e.type, render: (e) => e.type },
+    { key: "ver", header: "Version", value: (e) => e.ver, render: (e) => `v${e.ver}` },
+    { key: "by", header: "Collected by", value: (e) => e.by, render: (e) => e.by },
+    { key: "updated", header: "Updated", value: (e) => e.updated, sortBy: (e) => Date.parse(e.updated) || 0, render: (e) => e.updated },
+    { key: "review", header: "Review", value: (e) => status(e), render: (e) => <><StatusChip s={reviewChip(status(e))} />{pendingDelete(e) ? <> <span className="tag">Deletion requested</span></> : null}</> },
+  ];
+  const n = (s: string) => DATA.evidence.filter((e: Ev) => status(e) === s).length;
   return (
-    <Page mod="evidence" acts={<button className="btn btn-primary" disabled={!!writeWhy} title={writeWhy || undefined} onClick={() => L.openModal("Add evidence", (close) => <EvidenceForm close={close} />)}><Icon name="plus" />Add evidence</button>}>
-      <div className="split">
-        <div className="card">
-          <div className="c-head"><h3>Evidence</h3><div className="r"><span className="tag">{DATA.evidence.length}</span></div></div>
-          <div className="c-body flush scroll" id="evList">
-            {DATA.evidence.map((e) => (
-              <div key={e.id} className={`listrow ${selected === e.id ? "sel" : ""}`} {...activate(() => setSel(e.id))} aria-pressed={selected === e.id}>
-                <div className="fi"><div className="lt">{e.name}</div><div className="lm">{e.type}, v{e.ver}, {e.updated}</div></div>
-              </div>
-            ))}
-          </div>
+    <Page mod="evidence" acts={<button className="btn btn-primary" disabled={!!writeWhy} title={writeWhy || undefined} onClick={() => go("/ws/evidence/new")}><Icon name="plus" />Add evidence</button>}>
+      <KpiStrip label="Evidence summary">
+        <KpiTile label="Evidence items" value={DATA.evidence.length} caption="On record" />
+        <KpiTile label="Awaiting review" value={n("Pending review")} delta={n("Pending review") ? { tone: "bad", text: "Needs a reviewer" } : { tone: "good", text: "None" }} caption="Not yet accepted" />
+        <KpiTile label="Accepted" value={n("Accepted")} caption="Reviewed by a second person" />
+        <KpiTile label="Rejected" value={n("Rejected")} caption="Needs fixing" />
+      </KpiStrip>
+      <div className="card" style={{ flex: "1 1 auto" }}>
+        <div className="c-body flush scroll" style={{ padding: 0 }} id="evList">
+          <DataTable<Ev> id="evidence" label="Evidence" rows={DATA.evidence} rowKey={(e) => e.id} columns={cols} searchText={(e) => `${e.id} ${e.name} ${e.type} ${e.by}`}
+            tabs={REVIEW_STATES.map((s) => ({ key: s, label: s, match: (e: Ev) => status(e) === s }))}
+            filters={[{ key: "type", label: "Type", options: EVIDENCE_TYPES, get: (e: Ev) => e.type }, { key: "by", label: "Collected by", options: owners, get: (e: Ev) => e.by }]}
+            onOpen={(e) => go(`/ws/evidence/${encodeURIComponent(e.id)}`)} exportName="evidence" />
         </div>
-        <div className="card" id="evPrev">{selected ? <EvidencePreview id={selected} /> : <EmptyPreview />}</div>
       </div>
     </Page>
   );

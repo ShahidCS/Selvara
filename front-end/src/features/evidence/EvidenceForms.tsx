@@ -1,52 +1,11 @@
 import { useState } from "react";
 import { LayerFoot, useLayer } from "@/hooks/useLayer";
-import { getMe } from "@/lib/audit";
-import { bumpData, setModState } from "@/lib/store";
+import { bumpData } from "@/lib/store";
 import { clampText, safeFileName, validateUpload } from "@/lib/security";
 import { uiMessage } from "@/lib/grcSod";
 import * as svc from "@/features/evidence/services/evidence";
 
-const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
-export const SEL_KEY = "evidence.sel";
-
-/** Add / edit evidence modal (source evFormBody, evCreate/evSave, evEdit/evUpdate). */
-export function EvidenceForm({ id, close }: { id?: string; close: () => void }) {
-  const L = useLayer();
-  const e = id ? svc.findEvidence(id) : undefined;
-  const [name, setName] = useState(e ? e.name : "");
-  const [type, setType] = useState(e ? e.type : svc.EVIDENCE_TYPES[0]);
-  const by = e ? e.by : getMe().name; // collector is always the signed-in person; it cannot be typed or edited
-  const [note, setNote] = useState(e ? e.note : "");
-  const [err, setErr] = useState(false);
-  const submit = async () => {
-    const n = clampText(name, 160);
-    if (!n) { setErr(true); return; }
-    const t = svc.EVIDENCE_TYPES.includes(type) ? type : svc.EVIDENCE_TYPES[0]; // enum check
-    try {
-      if (id && e) {
-        await svc.updateEvidence(id, { name: n, type: t, note: clampText(note, 2000) });
-        close(); L.toast("Changes saved"); setModState(SEL_KEY, id); bumpData();
-      } else {
-        const r = await svc.createEvidence({ name: n, type: t, note: clampText(note, 2000) });
-        close(); L.toast("Evidence added"); setModState(SEL_KEY, r.id); bumpData();
-      }
-    } catch (x) { L.toast(uiMessage(x), false); }
-  };
-  return (
-    <>
-      <div>
-        <div className="field"><label htmlFor="ev-name">Name <Req /></label><input className="input" id="ev-name" data-focus maxLength={160} value={name} onChange={(x) => setName(x.target.value)} placeholder="e.g. Access review Q4 sign-off" aria-invalid={err} aria-describedby={err ? "ev-err" : undefined} /></div>
-        <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div className="field"><label htmlFor="ev-type">Type</label><select className="select" id="ev-type" value={type} onChange={(x) => setType(x.target.value)}>{svc.EVIDENCE_TYPES.map((t) => <option key={t}>{t}</option>)}</select></div>
-          <div className="field"><label htmlFor="ev-by">Collected by</label><input className="input" id="ev-by" value={by} readOnly aria-describedby="ev-by-h" /><p className="field help" id="ev-by-h">Set automatically. A reviewer other than the collector must accept the evidence.</p></div>
-        </div>
-        <div className="field"><label htmlFor="ev-note">Notes</label><textarea className="input" id="ev-note" rows={3} maxLength={2000} style={{ resize: "vertical" }} value={note} onChange={(x) => setNote(x.target.value)} /></div>
-        <p className="field help" id="ev-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>Name is required.</p>
-      </div>
-      <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={submit}>{id ? "Save changes" : "Add evidence"}</button></LayerFoot>
-    </>
-  );
-}
+export const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
 
 /** Step 1 of deletion (admin + reason). A second, different admin must approve before anything is removed. */
 export function DeleteEvidence({ id, close }: { id: string; close: () => void }) {

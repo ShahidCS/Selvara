@@ -226,3 +226,54 @@ test("audit: start an audit on its own page, land on its record page with a back
   expect(s.errors).toEqual([]);
   await s.close();
 });
+
+test("evidence: the register is a table, add on its own page, the record page, attach and version dialogs, edit, an unknown item says so", async ({ browser }, ti) => {
+  const s = await openAs(browser, ti, "admin");
+  const p = s.page;
+  await gotoModule(p, "/ws/evidence");
+  const table = p.getByRole("table", { name: "Evidence", exact: true });
+  await expect(table).toBeVisible();
+  await expect(p.getByRole("group", { name: "Evidence summary" })).toContainText("Awaiting review");
+  const before = await table.locator("tbody tr").count();
+  await p.getByRole("searchbox", { name: "Search Evidence" }).fill("zzz-no-such-item");
+  await expect(p.getByText(/No (results|matches)|Nothing/i).first()).toBeVisible();
+  await p.getByRole("searchbox", { name: "Search Evidence" }).fill("");
+  await expect(table.locator("tbody tr")).toHaveCount(before);
+
+  await p.getByRole("button", { name: "Add evidence" }).click();
+  await expect(p).toHaveURL(/\/ws\/evidence\/new$/);
+  await p.getByRole("button", { name: "Add evidence" }).last().click();
+  await expect(p.locator("#ev-err")).toContainText("Name is required.");
+  await p.getByLabel(/^Name/).fill("Access review Q4 sign-off");
+  await p.getByRole("button", { name: "Add evidence" }).last().click();
+  await expect(p).toHaveURL(/\/ws\/evidence\/[^/]+$/);
+  const id = new URL(p.url()).pathname.split("/").pop()!;
+  await expect(p.getByRole("heading", { level: 1, name: "Access review Q4 sign-off" })).toBeVisible();
+  await expect(p.getByRole("navigation", { name: "Breadcrumb" })).toContainText(id);
+
+  // the collector cannot accept their own evidence, and the button says why
+  const accept = p.getByRole("button", { name: "Accept", exact: true });
+  await expect(accept).toBeDisabled();
+  expect(await accept.getAttribute("title")).toBeTruthy();
+
+  await p.getByRole("button", { name: "New version" }).click();
+  await p.getByLabel(/^What changed/).fill("Refreshed export");
+  await p.getByRole("dialog").getByRole("button", { name: "Create version" }).click();
+  await expect(p.getByText("v2").first()).toBeVisible();
+
+  await p.getByRole("button", { name: /^Edit$/ }).click();
+  await expect(p).toHaveURL(new RegExp(`/ws/evidence/${id}/edit$`));
+  await expect(p.getByLabel(/^Name/)).toHaveValue("Access review Q4 sign-off");
+  await p.getByLabel(/^Name/).fill("Access review Q4 sign-off (final)");
+  await p.getByRole("button", { name: "Save changes" }).click();
+  await expect(p).toHaveURL(new RegExp(`/ws/evidence/${id}$`));
+  await expect(p.getByRole("heading", { level: 1, name: "Access review Q4 sign-off (final)" })).toBeVisible();
+
+  await p.getByRole("link", { name: "Evidence" }).first().click();
+  await p.getByRole("searchbox", { name: "Search Evidence" }).fill("final");
+  await expect(table.locator("tbody tr")).toHaveCount(1);
+  await nextPush(p, "/ws/evidence/NOPE-1");
+  await expect(p.getByRole("heading", { level: 1, name: "Evidence not found" })).toBeVisible();
+  expect(s.errors).toEqual([]);
+  await s.close();
+});

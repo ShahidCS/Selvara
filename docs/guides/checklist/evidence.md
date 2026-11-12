@@ -1,5 +1,7 @@
 # Evidence module checklist
 
+> **Wave B update.** Evidence is now a register (`/ws/evidence`, a data table with review tabs) and an item is a page (`/ws/evidence/:id`). Add and edit are form pages (`/ws/evidence/new`, `/ws/evidence/:id/edit`). Wherever this checklist says "list", "preview" or "modal form", read "the register", "the evidence page" or "the form page". Accept, reject, deletion request and decision, attach file and new version remain dialogs.
+
 Source: `Assurance-GRC-Portal.html` lines 2217-2251. React: `src/features/evidence/EvidenceModule.tsx`, `evidence/{EvidencePreview,EvidenceForms}.tsx`, `src/features/evidence/services/evidence.ts`.
 No seed data extraction was needed (`DATA.evidence` already exists).
 
