@@ -1,4 +1,4 @@
-import { Chip, Icon, Page, Table, activate } from "@/components/ui";
+import { Chip, DataTable, Icon, Page, activate, type DTColumn } from "@/components/ui";
 import { WS_AUDIT, verifyWsChain } from "@/lib/audit";
 import { ropaById, ropaFor } from "@/lib/ropa";
 import { useApp, useData, useModState } from "@/lib/store";
@@ -11,15 +11,14 @@ import { RopaRegister } from "./RopaRegister";
 
 const VIEWS = SUBNAV.auditlog.items;
 const RISKY = "Could not complete that action";
+type Entry = (typeof WS_AUDIT)[number];
 
 export default function AuditLogModule() {
   useData();
   const L = useLayer();
   const can = svc.canAuditLog(useApp((s) => s.role));
   const [v, setV] = useModState<string>("auditlog.view", "log");
-  const [filter, setFilter] = useModState<string>("auditlog.filter", "All");
   const view = VIEWS.some((x) => x[0] === v) ? v : "log";
-  const cat = svc.AUDIT_CATS.includes(filter) ? filter : "All";
   const chainOk = verifyWsChain();
   const run = async (fn: () => Promise<unknown>, done: (r: unknown) => void) => {
     try { done(await fn()); } catch { L.toast(RISKY, false); }
@@ -32,19 +31,25 @@ export default function AuditLogModule() {
     <><button className="btn btn-secondary" disabled={!can} onClick={() => fn("json")}><Icon name="download" />JSON</button><button className="btn btn-secondary" disabled={!can} onClick={() => fn("csv")}><Icon name="download" />CSV</button></>
   );
   const acts = view === "ropa" ? expBtns(doRopa) : view === "exp" ? undefined : view === "log" ? expBtns(doExport) : undefined;
-  const rows = WS_AUDIT.filter((l) => cat === "All" || l.cat === cat).slice().reverse();
+  const rows = WS_AUDIT.slice().reverse();
+  const cols: DTColumn<Entry>[] = [
+    { key: "seq", header: "#", value: (l) => l.seq, render: (l) => <span className="num" style={{ color: "var(--muted)" }}>{l.seq}</span> },
+    { key: "at", header: "Timestamp", value: (l) => l.at, render: (l) => <span className="num" style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{l.at}</span> },
+    { key: "cat", header: "Category", value: (l) => l.cat, render: (l) => <Chip cls={l.cat === "RoPA" ? "info" : "neutral"}>{l.cat}</Chip> },
+    { key: "actor", header: "Actor", value: (l) => l.actor, locked: true, render: (l) => <span className="strong">{l.actor}</span> },
+    { key: "action", header: "Action", value: (l) => l.action, render: (l) => <span className="num">{l.action}</span> },
+    { key: "target", header: "Target", value: (l) => l.target, render: (l) => l.target },
+    { key: "ropa", header: "RoPA activity", value: (l) => ropaFor(l) || "", render: (l) => {
+      const rp = ropaById(ropaFor(l));
+      return rp ? <span className="tag num" style={{ cursor: "pointer" }} aria-label={`Open RoPA register (${rp.id})`} {...activate(() => setV("ropa"))}>{rp.id}</span> : <span className="tag num" style={{ cursor: "pointer" }} aria-label="Open RoPA register" {...activate(() => setV("ropa"))}>—</span>;
+    } },
+    { key: "hash", header: "Hash", value: (l) => l.hash, render: (l) => <span className="num" style={{ fontSize: 11, color: "var(--muted)" }}>{l.hash}</span> },
+  ];
   return (
     <Page mod="auditlog" acts={acts}>
       <div className="card" style={{ flex: "0 1 auto", minHeight: 0 }}>
         <div className="c-head" style={{ flexWrap: "wrap", gap: 8 }}>
           <div className="seg" role="tablist">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div>
-          <div className="btngrp" style={view === "log" ? undefined : { display: "none" }}>
-            {svc.AUDIT_CATS.map((c) => (
-              <button key={c} className="fchip" aria-pressed={cat === c} onClick={() => setFilter(c)}>
-                {c === "All" ? <Icon name="filter" /> : null}{c} <span className="tag" style={{ marginLeft: 2 }}>{c === "All" ? WS_AUDIT.length : WS_AUDIT.filter((l) => l.cat === c).length}</span>
-              </button>
-            ))}
-          </div>
           <span className="r" style={{ marginLeft: "auto", fontSize: 12 }} role="status">
             {chainOk ? <span style={{ color: "var(--ok-ink)" }}><Icon name="check" /> Chain intact, {WS_AUDIT.length} entries</span> : <span style={{ color: "var(--bad-ink)" }}><Icon name="alert" /> Chain broken</span>}
           </span>
@@ -54,21 +59,8 @@ export default function AuditLogModule() {
             : view === "ropa" ? <RopaRegister entries={WS_AUDIT} intro="Record of Processing Activities under GDPR Article 30. Each event is tagged to one of these activities. Synthetic sample — confirm with the DPO before relying on it." />
             : view === "exp" ? <EvidenceView onGenerate={doPackage} can={can} />
             : (
-              <Table cols={[{ t: "#" }, { t: "Timestamp" }, { t: "Category" }, { t: "Actor" }, { t: "Action" }, { t: "Target" }, { t: "RoPA activity" }, { t: "Hash" }]} minw={1040}>
-                {rows.map((l) => {
-                  const rp = ropaById(ropaFor(l));
-                  return (
-                    <tr key={l.seq}>
-                      <td className="num" style={{ color: "var(--muted)" }}>{l.seq}</td>
-                      <td className="num" style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{l.at}</td>
-                      <td><Chip cls={l.cat === "RoPA" ? "info" : "neutral"}>{l.cat}</Chip></td>
-                      <td className="strong">{l.actor}</td><td className="num">{l.action}</td><td>{l.target}</td>
-                      <td>{rp ? <span className="tag num" style={{ cursor: "pointer" }} aria-label={`Open RoPA register (${rp.id})`} {...activate(() => setV("ropa"))}>{rp.id}</span> : <span className="tag num" style={{ cursor: "pointer" }} aria-label="Open RoPA register" {...activate(() => setV("ropa"))}>—</span>}</td>
-                      <td className="num" style={{ fontSize: 11, color: "var(--muted)" }}>{l.hash}</td>
-                    </tr>
-                  );
-                })}
-              </Table>
+              <DataTable<Entry> id="audit-log" label="Audit log" rows={rows} rowKey={(l) => String(l.seq)} columns={cols} searchText={(l) => `${l.actor} ${l.action} ${l.target} ${l.cat}`}
+                tabs={svc.AUDIT_CATS.filter((c) => c !== "All").map((c) => ({ key: c, label: c, match: (l: Entry) => l.cat === c }))} exportName="audit-log" />
             )}
         </div>
       </div>

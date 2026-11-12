@@ -1,5 +1,7 @@
 # Billing & Invoices, workspace view (Phase 3)
 
+> **Wave E update.** The overview has a KPI strip and the invoices are a data table. Change plan (`/ws/billingws/plan`) and update payment method (`/ws/billingws/payment`) are pages; the payment page still keeps display values only.
+
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|
 | Seeds (`SUBSCRIPTION`, `PLANS`, `PLAN_MODULES`) | 3698-3701, 3779-3784 | `src/data/billingWsSeed.json`, `src/data/plans.json`, `services/billing.ts` | Done | the real company name replaced with "Example Co Ltd" |

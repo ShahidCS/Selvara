@@ -1,4 +1,4 @@
-import { Chip, Icon, Page, StatusChip, Table } from "@/components/ui";
+import { Chip, DataTable, Icon, Page, StatusChip, Table, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { SOD } from "@/lib/sod";
 import { ROLES, ROLE_MODS } from "@/lib/rbac";
@@ -11,13 +11,26 @@ import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
 import * as svc from "@/services/team";
 import { useOpenPerson } from "@/features/people";
-import { ApproverForm, ChangeRoleForm, InviteForm } from "./TeamForms";
+import { useGo, useRoute } from "@/lib/route";
+import { ApproverForm, ChangeRoleForm } from "./TeamForms";
+import { InviteFormPage } from "./InviteFormPage";
 import { SettingsTab } from "./SettingsTab";
 
 const VIEWS: [string, string][] = [["members", "Members"], ["settings", "Review cycles & SLAs"], ["gates", "Approvers & baseline"], ["perms", "Permissions"]];
 
+/** `/ws/team` shows the tab selected here; `/ws/team/invite` is a form page. */
 export default function TeamModule() {
+  const { param } = useRoute();
+  if (param === "invite") return <InviteFormPage />;
+  return <TeamTabs />;
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Member = any;
+
+function TeamTabs() {
   useData();
+  const go = useGo();
   const L = useLayer(); const openPerson = useOpenPerson();
   const manage = svc.teamCanManage(useApp((s) => s.role));
   const [v, setV] = useModState<string>("team.view", "members");
@@ -29,9 +42,17 @@ export default function TeamModule() {
     try { const a = await svc.removeApprover(i); if (a === null) { L.toast("Approver not found", false); return; } bumpData(); }
     catch (e) { L.toast(sodMessage(e, "Could not remove the approver"), false); }
   };
+  const memberCols: DTColumn<Member>[] = [
+    { key: "name", header: "Member", value: (p) => p.name, locked: true, render: (p) => <span className="strong">{p.name}</span> },
+    { key: "title", header: "Job title", value: (p) => p.role, render: (p) => p.role },
+    { key: "role", header: "Workspace role", value: (p) => memberRole(p), render: (p) => memberRole(p) },
+    { key: "mfa", header: "MFA", value: (p) => (p.mfa ? "Enrolled" : "No MFA"), render: (p) => (p.mfa ? <Chip cls="ok" icon="check">Enrolled</Chip> : <Chip cls="neutral" icon="dot">No MFA</Chip>) },
+    { key: "status", header: "Status", value: () => "Active", render: () => <StatusChip s="Active" /> },
+    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (p) => (manage ? <button className="btn btn-ghost sm" disabled={!!sodReason("nobody changes their own role", p.name)} title={sodReason("nobody changes their own role", p.name) || undefined} aria-label={`Change role of ${p.name}`} onClick={() => L.openModal("Change role, " + p.name, (close) => <ChangeRoleForm personId={p.id} close={close} />)}><Icon name="access" />Role</button> : null) },
+  ];
   const spaces: [string, string][] = [["ws", "Workspace"], ["admin", "Admin"]];
   return (
-    <Page mod="team" acts={view === "members" && manage ? <button className="btn btn-primary" onClick={() => L.openModal("Invite someone", (close) => <InviteForm close={close} />)}><Icon name="plus" />Invite member</button> : undefined}>
+    <Page mod="team" acts={view === "members" && manage ? <button className="btn btn-primary" onClick={() => go("/ws/team/invite")}><Icon name="plus" />Invite member</button> : undefined}>
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head"><div className="seg" role="tablist">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className={`c-body ${flush ? "flush" : ""} scroll`} style={flush ? { padding: 0 } : undefined} id="teamBody">
@@ -57,16 +78,9 @@ export default function TeamModule() {
                 </div>
               ) : null}
             </div>
-            <Table cols={[{ t: "Member" }, { t: "Job title" }, { t: "Workspace role" }, { t: "MFA" }, { t: "Status" }, { t: "" }]}>
-              {DATA.people.slice(0, 8).map((p) => (
-                <tr key={p.id}>
-                  <td className="strong">{p.name}</td><td>{p.role}</td><td>{memberRole(p)}</td>
-                  <td>{p.mfa ? <Chip cls="ok" icon="check">Enrolled</Chip> : <Chip cls="neutral" icon="dot">No MFA</Chip>}</td>
-                  <td><StatusChip s="Active" /></td>
-                  <td className="r">{manage ? <button className="btn btn-ghost sm" disabled={!!sodReason("nobody changes their own role", p.name)} title={sodReason("nobody changes their own role", p.name) || undefined} aria-label={`Change role of ${p.name}`} onClick={() => L.openModal("Change role, " + p.name, (close) => <ChangeRoleForm personId={p.id} close={close} />)}><Icon name="access" />Role</button> : null}<button className="btn btn-ghost sm" aria-label={`Open ${p.name}`} onClick={() => openPerson(p.id)}><Icon name="team" />Open</button></td>
-                </tr>
-              ))}
-            </Table>
+            <DataTable<Member> id="team-members" label="Members" rows={DATA.people.slice(0, 8)} rowKey={(p) => p.id} columns={memberCols} searchText={(p) => `${p.name} ${p.role} ${memberRole(p)}`}
+              filters={[{ key: "role", label: "Workspace role", options: Array.from(new Set(DATA.people.slice(0, 8).map((p: Member) => memberRole(p)))), get: (p: Member) => memberRole(p) }]}
+              onOpen={(p) => openPerson(p.id)} exportName="members" />
             </>
           ) : view === "settings" ? <SettingsTab manage={manage} /> : view === "gates" ? (
             <div style={{ maxWidth: 640 }}>

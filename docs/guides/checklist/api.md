@@ -1,5 +1,7 @@
 # API, Webhooks & Custom Tests (Phase 3)
 
+> **Wave E update.** Keys, webhooks, custom tests and the event stream are data tables. New key, webhook and test are pages (`/ws/api/new-key`, `/ws/api/new-webhook`, `/ws/api/new-test`). A new read key is still shown once, in a dialog, once the list is back. Revoke and reveal stay dialogs; write keys and webhooks still need a second admin.
+
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|
 | Seeds (keys, webhooks, tests, events, `WH_EVENTS`) | 3559-3563 | `src/features/api/data/apiSeed.json`, `features/api/services/api.ts` | Done | |

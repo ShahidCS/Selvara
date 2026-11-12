@@ -4,36 +4,11 @@ import { LayerFoot } from "@/components/shell/LayerProvider";
 import { sodMessage } from "@/lib/approvalFlow";
 import { DATA } from "@/lib/data";
 import { bumpData, setModState } from "@/lib/store";
-import { clampText, isEmail } from "@/lib/security";
+import { clampText } from "@/lib/security";
 import { memberRole } from "@/lib/teamRoles";
-import { SOD } from "@/lib/sod";
 import * as svc from "@/services/team";
 
 const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
-const SRC_EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/; // prototype regex, kept; isEmail adds length caps
-
-/** Prototype: teamInvite / teamDoInvite (logs and toasts; no member record is created in the source). */
-export function InviteForm({ close }: { close: () => void }) {
-  const L = useLayer();
-  const [email, setEmail] = useState(""); const [role, setRole] = useState(svc.USER_ROLES[0]); const [err, setErr] = useState(false);
-  const submit = async () => {
-    const em = email.trim();
-    if (!SRC_EMAIL.test(em) || !isEmail(em)) { setErr(true); return; }
-    try {
-      const r = await svc.inviteMember({ email: em, role });
-      close(); L.toast(r.pending ? "Invitation for " + r.email + " sent for second admin approval" : "Invitation sent to " + r.email + ", link expires in " + SOD.INVITE_TTL_H + " h"); bumpData();
-    } catch (e) { L.toast(sodMessage(e, "Could not send the invitation"), false); }
-  };
-  return (
-    <>
-      <div className="field"><label htmlFor="ti-email">Work email <Req /></label><input className="input" id="ti-email" data-focus type="email" maxLength={254} autoComplete="off" spellCheck={false} placeholder="name@company.example" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={err} aria-describedby={err ? "ti-err" : undefined} /></div>
-      <div className="field"><label htmlFor="ti-role">Role</label><select className="select" id="ti-role" value={role} onChange={(e) => setRole(e.target.value)}>{svc.USER_ROLES.map((r) => <option key={r}>{r}</option>)}</select></div>
-      {svc.isPrivilegedRole(role) ? <p className="field help" role="status">A privileged role needs approval from a second admin before the invitation is sent.</p> : <p className="field help">The invitation link expires in {SOD.INVITE_TTL_H} hours.</p>}
-      <p className="field help" id="ti-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>Enter a valid email address.</p>
-      <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={submit}>Send invitation</button></LayerFoot>
-    </>
-  );
-}
 
 /** Prototype: teamAddApprover / teamDoAddApprover. */
 export function ApproverForm({ close }: { close: () => void }) {

@@ -24,7 +24,8 @@ export async function openAs(browser: Browser, testInfo: TestInfo, role: string,
   const errors: string[] = []; const dialogs: string[] = [];
   page.on("pageerror", (e) => errors.push(`pageerror ${page.url()} ${e.message}`));
   page.on("console", (m) => { if (m.type() === "error") errors.push(`console ${page.url()} ${m.text().slice(0, 200)} @ ${m.location().url}`); });
-  page.on("dialog", (d) => { dialogs.push(d.message()); void d.dismiss(); });
+  // the browser's own "leave this page?" prompt (an unsaved form) is not page script: accept it so a test can move on, and do not count it as an injected dialog
+  page.on("dialog", (d) => { if (d.type() === "beforeunload") { void d.accept(); return; } dialogs.push(d.message()); void d.dismiss(); });
   await page.addInitScript((r) => {
     try { localStorage.setItem("assurance.v1", JSON.stringify({ role: r, collapsed: false, theme: "light" })); } catch { /* ignore */ }
   }, role);

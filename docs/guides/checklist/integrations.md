@@ -1,5 +1,7 @@
 # Integrations (Phase 3)
 
+> **Wave E update.** The register is a data table with a KPI strip; a connector is a page (`/ws/integrations/:name`). Wherever this checklist says "drawer", read "the connector page". Sync, Connect and Disconnect work from the row and from the page.
+
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|
 | Seed (7 connectors) | 3528-3536 | `src/features/integrations/data/integrationsSeed.json`, `features/integrations/services/integrations.ts` | Done | Extracted with `scripts/extract-source.js` |
