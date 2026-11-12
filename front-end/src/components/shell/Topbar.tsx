@@ -1,16 +1,23 @@
 import { Icon } from "@/components/ui";
-import { appStore, persist, useApp } from "@/lib/store";
-import { ROLES, TITLE, landingPath, roleOf, allowedSpaces } from "@/lib/rbac";
+import { appStore, persist, useApp, useData, useModVersion } from "@/lib/store";
+import { ROLES, TITLE, landingPath, roleOf, allowedSpaces, modAllowed } from "@/lib/rbac";
+import { notificationsFor, unreadCount } from "@/lib/notifications";
 import { CUSTOMERS } from "@/lib/platform";
 import { wsLog } from "@/lib/audit";
 import { useGo, useRoute } from "@/lib/route";
 import { useLayer } from "./LayerProvider";
 import Link from "next/link";
+import { NotificationsBody } from "./NotificationsPanel";
+import { openShortcuts } from "./Shortcuts";
 
 export function Topbar() {
   const route = useRoute(); const go = useGo(); const L = useLayer();
+  useData(); useModVersion(); // the unread badge follows data and read state
   const theme = useApp((s) => s.theme); const roleId = useApp((s) => s.role);
   const me = roleOf(roleId);
+  const space = route.space === "admin" ? "admin" : "ws";
+  const unread = unreadCount(notificationsFor(roleId, space));
+  const canAsk = modAllowed(roleId, "ws", "assistant");
   const [title] = TITLE[route.mod] || [route.mod];
   const homeHref = route.space === "admin" ? "/admin/customers" : "/ws/overview";
   const themeIcon = theme === "dark" ? "moon" : theme === "light" ? "sun" : "auto";
@@ -37,20 +44,13 @@ export function Topbar() {
           </button>
         ))}
         <div className="div" />
+        {modAllowed(roleId, "ws", "me") ? <button role="menuitem" onClick={() => { close(); go("/ws/me"); }}><Icon name="user" />My workspace</button> : null}
         <button role="menuitem" onClick={() => { close(); go("/auth"); }}><Icon name="access" />Sign-in &amp; security</button>
+        <button role="menuitem" onClick={() => { close(); openShortcuts(L); }}><Icon name="grid" />Keyboard shortcuts</button>
       </div>
     ));
   };
-  const notifMenu = (ev: React.MouseEvent) => {
-    L.popover(ev, (close) => (
-      <>
-        <div className="ph">Notifications</div>
-        <button role="menuitem" onClick={() => { go("/ws/issues"); close(); }}><Icon name="alert" />2 controls failing</button>
-        <button role="menuitem" onClick={() => { go("/ws/vendors"); close(); }}><Icon name="vendors" />Vendor review overdue</button>
-        <button role="menuitem" onClick={() => { go("/admin/billing"); close(); }}><Icon name="billing" />Contoso invoice past due</button>
-      </>
-    ));
-  };
+  const openNotifications = () => L.openDrawer("Notifications", undefined, (close) => <NotificationsBody space={space} go={go} close={close} L={L} />);
 
   return (
     <header id="topbar">
@@ -68,8 +68,13 @@ export function Topbar() {
         )}
       </nav>
       <div className="spacer" />
+      <div role="search" aria-label="Site" style={{ display: "contents" }}>
       <button className="top-search" onClick={L.openPalette} aria-label="Search (Command or Ctrl K)"><Icon name="search" /><span className="ph">Search…</span><span className="kbd">⌘K</span></button>
-      <button className="icon-btn" aria-label="Notifications" aria-haspopup="menu" onClick={notifMenu}><Icon name="bell" /></button>
+      </div>
+      {canAsk ? <button className="icon-btn" aria-label="Ask AI (Command or Ctrl J)" title="Ask AI (⌘J)" onClick={() => go("/ws/assistant")}><Icon name="assistant" /></button> : null}
+      <button className="icon-btn nbell" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} aria-haspopup="dialog" onClick={openNotifications}>
+        <Icon name="bell" />{unread ? <span className="nbadge" aria-hidden="true">{unread > 9 ? "9+" : unread}</span> : null}
+      </button>
       <button className="icon-btn" aria-label={`Theme: ${theme}`} onClick={cycleTheme}><Icon name={themeIcon} /></button>
       <div className="top-div" aria-hidden="true" />
       <button className="top-user" aria-haspopup="menu" aria-label={`Account: ${me.person}, ${me.name}`} onClick={roleMenu}>
