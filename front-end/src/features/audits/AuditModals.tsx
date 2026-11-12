@@ -9,34 +9,8 @@ import * as svc from "@/services/audits";
 import { attempt } from "./util";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
+export const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
 const errStyle = (on: boolean) => ({ color: "var(--bad-ink)", display: on ? "block" : "none" });
-
-/** "New audit" modal (source newAudit / saveAudit). */
-export function NewAuditForm({ L, go }: { L: LayerApi; go: (to: string) => void }) {
-  const [name, setName] = useState(""); const [fw, setFw] = useState(svc.AUDIT_FWS[0]); const [auditor, setAuditor] = useState(""); const [scope, setScope] = useState("");
-  const [err, setErr] = useState(false);
-  const submit = () => attempt(L, async () => {
-    const n = clampText(name, 120);
-    if (!n) { setErr(true); return; }
-    const { id } = await svc.createAudit({ name: n, fw: svc.AUDIT_FWS.includes(fw) ? fw : svc.AUDIT_FWS[0], auditor: clampText(auditor, 120), scope: clampText(scope, 500) });
-    wsLog("audit.created", n, "Audit"); L.closeLayer(); L.toast("Audit created"); bumpData(); go("/ws/audits/" + id);
-  });
-  return (
-    <>
-      <div>
-        <div className="field"><label htmlFor="na-name">Audit name <Req /></label><input className="input" id="na-name" data-focus placeholder="e.g. PCI DSS readiness" maxLength={120} value={name} onChange={(e) => setName(e.target.value)} aria-invalid={err} aria-describedby={err ? "na-err" : undefined} /></div>
-        <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div className="field"><label htmlFor="na-fw">Framework</label><select className="select" id="na-fw" value={fw} onChange={(e) => setFw(e.target.value)}>{svc.AUDIT_FWS.map((f) => <option key={f}>{f}</option>)}</select></div>
-          <div className="field"><label htmlFor="na-auditor">Auditor</label><input className="input" id="na-auditor" placeholder="e.g. Internal Audit" maxLength={120} value={auditor} onChange={(e) => setAuditor(e.target.value)} /></div>
-        </div>
-        <div className="field"><label htmlFor="na-scope">Scope</label><input className="input" id="na-scope" placeholder="What this audit covers" maxLength={500} value={scope} onChange={(e) => setScope(e.target.value)} /></div>
-        <p className="field help" id="na-err" role={err ? "alert" : undefined} style={errStyle(err)}>Audit name is required.</p>
-      </div>
-      <LayerFoot><button className="btn btn-secondary" onClick={L.closeLayer}>Cancel</button><button className="btn btn-primary" onClick={submit}>Create audit</button></LayerFoot>
-    </>
-  );
-}
 
 /** "Add request" modal (source addPbc / savePbc). `onAdded` switches to the PBC tab. */
 export function AddPbcForm({ L, id, onAdded }: { L: LayerApi; id: string; onAdded: () => void }) {

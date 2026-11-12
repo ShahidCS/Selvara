@@ -61,7 +61,7 @@ test("policies: KPI strip, search, owner filter, row opens the policy page", asy
   await s.close();
 });
 
-test("vendors: tier cards filter the list and toggle, search, row opens the drawer", async ({ browser }, ti) => {
+test("vendors: tier cards filter the list and toggle, search, row opens the page", async ({ browser }, ti) => {
   const s = await openAs(browser, ti, "admin");
   const p = s.page;
   await gotoModule(p, "/ws/vendors");
@@ -75,7 +75,7 @@ test("vendors: tier cards filter the list and toggle, search, row opens the draw
   await expect(rows(p, "Third parties")).toHaveCount(all);
   await searchNarrows(p, "Third parties", "identity");
   await rows(p, "Third parties").first().locator("td").nth(1).click();
-  await expect(p.getByRole("dialog")).toBeVisible();
+  await expect(p).toHaveURL(/\/ws\/vendors\/[^/]+$/);
   expect(s.errors).toEqual([]);
   await s.close();
 });
@@ -90,15 +90,15 @@ test("people: KPI strip, filters, search, the MFA reset button stays usable and 
   const own = p.locator('button[aria-label^="Reset MFA for"][disabled]').first();
   await expect(own).toBeVisible();
   await expect(own).toHaveAttribute("title", /not allowed/);
-  // a button inside a row works on its own: it opens the reset request, not the person drawer
+  // a button inside a row works on its own: it opens the reset request, not the person page
   const reset = p.locator('button[aria-label^="Reset MFA for"]:not([disabled])').first();
   await reset.click();
   await expect(p.getByRole("dialog", { name: "Request MFA reset" })).toBeVisible();
   await p.keyboard.press("Escape");
   await expect(p.getByRole("dialog")).toBeHidden();
   await rows(p, "People").first().locator("td").nth(1).click();
-  await expect(p.getByRole("dialog")).toBeVisible();
-  await p.keyboard.press("Escape");
+  await expect(p).toHaveURL(/\/ws\/people\/[^/]+$/);
+  await p.goBack();
   await p.getByRole("tab", { name: "Access grants" }).click();
   await expect(table(p, "Access grants")).toBeVisible();
   expect(s.errors).toEqual([]);

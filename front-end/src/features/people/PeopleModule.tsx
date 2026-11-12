@@ -1,11 +1,11 @@
 import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData, useModState } from "@/lib/store";
-import { useLayer } from "@/hooks/useLayer";
 import { canManagePeople } from "@/services/people";
 import { GrantsTable } from "@/features/access";
-import { ContractorForm } from "./ContractorForm";
-import { openPersonDrawer } from "./PersonDrawer";
+import { useGo, useRoute } from "@/lib/route";
+import { ContractorFormPage } from "./ContractorFormPage";
+import { PersonDetail } from "./PersonDetail";
 import { useResetMfa } from "./actions";
 import { PendingApprovals } from "@/features/mfa";
 import { KINDS } from "@/services/people";
@@ -13,9 +13,17 @@ import { sodReason } from "@/lib/sod";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Person = any;
+/** `/ws/people` is the register; `/new` and `/:id` are pages. */
 export default function PeopleModule() {
+  const { param } = useRoute();
+  if (param === "new") return <ContractorFormPage />;
+  if (param) return <PersonDetail id={param} />;
+  return <PeopleList />;
+}
+
+function PeopleList() {
   useData();
-  const L = useLayer(); const resetMfa = useResetMfa();
+  const go = useGo(); const resetMfa = useResetMfa();
   const canAct = canManagePeople(useApp((s) => s.role));
   const [v, setV] = useModState<string>("people.view", "People");
   const view = v === "Access" ? "Access" : "People";
@@ -47,13 +55,13 @@ export default function PeopleModule() {
             <button className="tab" role="tab" aria-selected={view === "People"} onClick={() => setV("People")}>People &amp; devices</button>
             <button className="tab" role="tab" aria-selected={view === "Access"} onClick={() => setV("Access")}>Access grants</button>
           </div>
-          {canAct ? <button className="btn btn-secondary sm" style={{ marginLeft: "auto" }} onClick={() => L.openModal("Add a contractor", (close) => <ContractorForm close={close} />)}><Icon name="plus" />Add contractor</button> : null}
+          {canAct ? <button className="btn btn-secondary sm" style={{ marginLeft: "auto" }} onClick={() => go("/ws/people/new")}><Icon name="plus" />Add contractor</button> : null}
         </div>
         <div className="c-body flush scroll" style={{ padding: 0 }} id="pplBody">
           {view === "People" ? (
             <DataTable<Person> id="people" label="People" rows={DATA.people} rowKey={(p) => p.id} columns={cols} searchText={(p) => `${p.name} ${p.role} ${p.dept}`}
               filters={[{ key: "dept", label: "Department", options: depts, get: (p: Person) => p.dept }, { key: "device", label: "Device", options: devices, get: (p: Person) => p.device }, { key: "mfa", label: "MFA", options: ["Enrolled", "Not enrolled"], get: (p: Person) => (p.mfa ? "Enrolled" : "Not enrolled") }]}
-              onOpen={(p) => openPersonDrawer(L, p.id)} exportName="people" />
+              onOpen={(p) => go(`/ws/people/${encodeURIComponent(p.id)}`)} exportName="people" />
           ) : <GrantsTable />}
         </div>
       </div>

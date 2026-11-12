@@ -1,5 +1,7 @@
 # Audits module checklist
 
+> **Wave B update.** An audit is a page with the standard header and a back link (`/ws/audits/:id`); New audit is a form page at `/ws/audits/new`. Add request, raise or respond to an information request, draft or decline a finding, the report preview and ending auditor access remain dialogs. Leaving the form with typed work asks first.
+
 Source: `Assurance-GRC-Portal.html` lines 2286-2368 (`REND.audits`, `auditDetail` and helpers). React: `src/features/audits/AuditsModule.tsx`,
 `audits/{AuditDetail,AuditModals,util}.tsx`, `src/services/audits.ts`. Route: `/ws/audits` and `/ws/audits/<id>` (`param`).
 

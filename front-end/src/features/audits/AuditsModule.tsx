@@ -3,9 +3,8 @@ import { DATA } from "@/lib/data";
 import { setModState, useApp, useData } from "@/lib/store";
 import { isOpenFinding, whyCannotManage } from "@/services/audits";
 import { useGo, useRoute } from "@/lib/route";
-import { useLayer } from "@/hooks/useLayer";
 import { AuditDetail, StageChip } from "./AuditDetail";
-import { NewAuditForm } from "./AuditModals";
+import { AuditFormPage } from "./AuditFormPage";
 
 export { StageChip };
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -13,10 +12,11 @@ type Audit = any;
 
 export default function AuditsModule({ param: propParam }: { param?: string | null }) {
   useData();
-  const L = useLayer(); const go = useGo();
+  const go = useGo();
   const role = useApp((s) => s.role);
   const { param: routeParam } = useRoute();
   const param = propParam ?? routeParam;
+  if (param === "new") return <AuditFormPage />;
   if (param) return <AuditDetail id={param} />;
 
   const auditorView = role === "auditor";
@@ -30,7 +30,7 @@ export default function AuditsModule({ param: propParam }: { param?: string | nu
     { key: "progress", header: "Progress", value: (a) => pctOf(a), render: (a) => <span style={{ whiteSpace: "nowrap" }}><span className="bar-track" style={{ width: 100, display: "inline-block", verticalAlign: "middle" }}><span className="bar-fill" style={{ width: pctOf(a) + "%", background: "var(--accent)" }} /></span> <span className="num" style={{ marginLeft: 6 }}>{pctOf(a)}%</span></span> },
     { key: "open", header: "Open findings", value: (a) => openCount(a), align: "end", render: (a) => <span className="num">{openCount(a) ? <span style={{ color: "var(--bad-ink)", fontWeight: 500 }}>{openCount(a)}</span> : "0"}</span> },
   ];
-  const newAudit = () => L.openModal("New audit", (close) => <NewAuditForm L={{ ...L, closeLayer: close }} go={go} />);
+  const newAudit = () => go("/ws/audits/new");
   return (
     <Page mod="audits" acts={auditorView
       ? <button className="btn btn-secondary" disabled={!pool.length} onClick={() => { setModState("audits.tab", "ir"); go("/ws/audits/" + encodeURIComponent(pool[0].id)); }}><Icon name="evidence" />Information requests</button>

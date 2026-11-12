@@ -136,3 +136,93 @@ test("control: an unknown control or test says so; a failing control in the bell
   expect(s.errors).toEqual([]);
   await s.close();
 });
+
+test("vendor: add on its own page, land on the record, reassess and waiver are form pages, an unknown vendor says so", async ({ browser }, ti) => {
+  const s = await openAs(browser, ti, "admin");
+  const p = s.page;
+  await gotoModule(p, "/ws/vendors");
+  await p.getByRole("button", { name: "Add vendor" }).click();
+  await expect(p).toHaveURL(/\/ws\/vendors\/new$/);
+  await p.getByRole("button", { name: "Add vendor" }).last().click();
+  await expect(p.locator("#vn-err")).toContainText("Vendor name is required.");
+  await p.getByLabel(/^Vendor name/).fill("Northwind Messaging");
+  await p.getByLabel("Category").fill("Messaging");
+  await p.getByRole("button", { name: "Add vendor" }).last().click();
+  await expect(p).toHaveURL(/\/ws\/vendors\/[^/]+$/);
+  await expect(p.getByRole("heading", { level: 1, name: "Northwind Messaging" })).toBeVisible();
+  const id = new URL(p.url()).pathname.split("/").pop()!;
+  await expect(p.getByRole("navigation", { name: "Breadcrumb" })).toContainText(id);
+  await expect(p.getByRole("heading", { level: 3, name: "Certificates & attestations" })).toBeVisible();
+
+  // a short dialog adds a certificate and the page updates behind it
+  await p.getByRole("button", { name: "Add certificate" }).click();
+  await p.getByLabel(/^Type/).fill("SOC 2 Type II");
+  await p.getByRole("dialog").getByRole("button", { name: "Add", exact: true }).click();
+  await expect(p.getByText("SOC 2 Type II")).toBeVisible();
+
+  await p.getByRole("button", { name: "Reassess" }).click();
+  await expect(p).toHaveURL(new RegExp(`/ws/vendors/${id}/reassess$`));
+  await p.getByLabel(/^New risk score/).fill("140");
+  await p.getByRole("button", { name: "Record reassessment" }).click();
+  await expect(p.locator("#vr-err")).toContainText("between 0 and 100");
+  await p.getByLabel(/^New risk score/).fill("82");
+  await p.getByRole("button", { name: "Record reassessment" }).click();
+  await expect(p).toHaveURL(new RegExp(`/ws/vendors/${id}$`));
+  await expect(p.getByText("82/100").first()).toBeVisible();
+
+  await p.getByRole("button", { name: "Request waiver" }).click();
+  await expect(p).toHaveURL(new RegExp(`/ws/vendors/${id}/waiver$`));
+  await p.getByRole("button", { name: "Request waiver" }).last().click();
+  await expect(p.locator("#vw-err")).toBeVisible();
+  await p.getByRole("button", { name: "Cancel" }).click();
+  await expect(p).toHaveURL(new RegExp(`/ws/vendors/${id}$`));
+
+  await nextPush(p, "/ws/vendors/NOPE-1");
+  await expect(p.getByRole("heading", { level: 1, name: "Vendor not found" })).toBeVisible();
+  expect(s.errors).toEqual([]);
+  await s.close();
+});
+
+test("people: add a contractor on its own page, open the person page, offboarding stays a dialog", async ({ browser }, ti) => {
+  const s = await openAs(browser, ti, "admin");
+  const p = s.page;
+  await gotoModule(p, "/ws/people");
+  await p.getByRole("button", { name: "Add contractor" }).click();
+  await expect(p).toHaveURL(/\/ws\/people\/new$/);
+  await p.getByRole("button", { name: "Add contractor" }).last().click();
+  await expect(p.locator("#pc-err")).toContainText("Name is required.");
+  await p.getByLabel(/^Full name/).fill("Jordan Reyes");
+  await p.getByLabel("Role").fill("Security consultant");
+  await p.getByRole("button", { name: "Add contractor" }).last().click();
+  await expect(p).toHaveURL(/\/ws\/people\/[^/]+$/);
+  await expect(p.getByRole("heading", { level: 1, name: "Jordan Reyes" })).toBeVisible();
+  await expect(p.getByRole("heading", { level: 3, name: "Device posture" })).toBeVisible();
+  await p.getByRole("button", { name: "Offboard" }).click();
+  await expect(p.getByRole("dialog", { name: "Offboard Jordan Reyes" })).toBeVisible();
+  await p.keyboard.press("Escape");
+  await nextPush(p, "/ws/people/NOPE-1");
+  await expect(p.getByRole("heading", { level: 1, name: "Person not found" })).toBeVisible();
+  expect(s.errors).toEqual([]);
+  await s.close();
+});
+
+test("audit: start an audit on its own page, land on its record page with a back link; an unknown audit says so", async ({ browser }, ti) => {
+  const s = await openAs(browser, ti, "admin");
+  const p = s.page;
+  await gotoModule(p, "/ws/audits");
+  await p.getByRole("button", { name: "New audit" }).click();
+  await expect(p).toHaveURL(/\/ws\/audits\/new$/);
+  await p.getByRole("button", { name: "Create audit" }).click();
+  await expect(p.locator("#na-err")).toContainText("Audit name is required.");
+  await p.getByLabel(/^Audit name/).fill("PCI DSS readiness");
+  await p.getByRole("button", { name: "Create audit" }).click();
+  await expect(p).toHaveURL(/\/ws\/audits\/[^/]+$/);
+  await expect(p.getByRole("heading", { level: 1, name: "PCI DSS readiness" })).toBeVisible();
+  await expect(p.getByRole("tablist")).toBeVisible();
+  await p.getByRole("link", { name: "Audits" }).first().click();
+  await expect(p).toHaveURL(/\/ws\/audits$/);
+  await nextPush(p, "/ws/audits/NOPE-1");
+  await expect(p.getByRole("heading", { level: 1, name: "Audit not found" })).toBeVisible();
+  expect(s.errors).toEqual([]);
+  await s.close();
+});

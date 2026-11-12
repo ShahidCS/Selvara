@@ -10,7 +10,7 @@ import { PendingApprovals } from "@/features/mfa";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
 import * as svc from "@/services/team";
-import { openPersonDrawer } from "@/features/people";
+import { useOpenPerson } from "@/features/people";
 import { ApproverForm, ChangeRoleForm, InviteForm } from "./TeamForms";
 import { SettingsTab } from "./SettingsTab";
 
@@ -18,7 +18,7 @@ const VIEWS: [string, string][] = [["members", "Members"], ["settings", "Review 
 
 export default function TeamModule() {
   useData();
-  const L = useLayer();
+  const L = useLayer(); const openPerson = useOpenPerson();
   const manage = svc.teamCanManage(useApp((s) => s.role));
   const [v, setV] = useModState<string>("team.view", "members");
   const view = VIEWS.some((x) => x[0] === v) ? v : "members";
@@ -63,7 +63,7 @@ export default function TeamModule() {
                   <td className="strong">{p.name}</td><td>{p.role}</td><td>{memberRole(p)}</td>
                   <td>{p.mfa ? <Chip cls="ok" icon="check">Enrolled</Chip> : <Chip cls="neutral" icon="dot">No MFA</Chip>}</td>
                   <td><StatusChip s="Active" /></td>
-                  <td className="r">{manage ? <button className="btn btn-ghost sm" disabled={!!sodReason("nobody changes their own role", p.name)} title={sodReason("nobody changes their own role", p.name) || undefined} aria-label={`Change role of ${p.name}`} onClick={() => L.openModal("Change role, " + p.name, (close) => <ChangeRoleForm personId={p.id} close={close} />)}><Icon name="access" />Role</button> : null}<button className="btn btn-ghost sm" aria-label={`Open ${p.name}`} onClick={() => openPersonDrawer(L, p.id)}><Icon name="team" />Open</button></td>
+                  <td className="r">{manage ? <button className="btn btn-ghost sm" disabled={!!sodReason("nobody changes their own role", p.name)} title={sodReason("nobody changes their own role", p.name) || undefined} aria-label={`Change role of ${p.name}`} onClick={() => L.openModal("Change role, " + p.name, (close) => <ChangeRoleForm personId={p.id} close={close} />)}><Icon name="access" />Role</button> : null}<button className="btn btn-ghost sm" aria-label={`Open ${p.name}`} onClick={() => openPerson(p.id)}><Icon name="team" />Open</button></td>
                 </tr>
               ))}
             </Table>
