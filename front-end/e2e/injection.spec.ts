@@ -16,6 +16,9 @@ const CLEAN = { x: 0, imgs: 0, svg: 0, inline: 0 };
 test.describe("URL parameters", () => {
   const urls = [
     "/ws/audits/" + encodeURIComponent(PAYLOADS[0]),
+    "/ws/policies/" + encodeURIComponent(PAYLOADS[0]),
+    "/ws/policies/" + encodeURIComponent(PAYLOADS[1]) + "/edit",
+    "/ws/policies/P-001/" + encodeURIComponent(PAYLOADS[0]),
     "/admin/billing/" + encodeURIComponent(PAYLOADS[1]),
     "/ws/%3Cimg%20src=x%20onerror=window.__xss=1%3E",
     "/ws/overview?x=" + encodeURIComponent(PAYLOADS[1]),
@@ -60,13 +63,14 @@ test.describe("create forms", () => {
         await expect(btn).toBeVisible();
         if (await btn.isDisabled()) continue; // locked by design (e.g. admin space before elevation): nothing to inject into
         await btn.click();
-        await expect(s.page.locator(".modal.on, .drawer.on").first()).toBeVisible();
+        // a create flow is a dialog, a drawer or (policies) a form page
+        await expect(s.page.locator(".modal.on, .drawer.on, main form").first()).toBeVisible();
         const fields = s.page.locator(
-          [".modal.on", ".drawer.on"].flatMap((l) => ["input[type=text]", "input:not([type])", "textarea", "input[type=search]"].map((f) => `${l} ${f}:not([readonly]):not([disabled])`)).join(", "),
+          [".modal.on", ".drawer.on", "main form"].flatMap((l) => ["input[type=text]", "input:not([type])", "textarea", "input[type=search]"].map((f) => `${l} ${f}:not([readonly]):not([disabled])`)).join(", "),
         );
         const n = await fields.count();
         for (let i = 0; i < n; i++) await fields.nth(i).fill(pay);
-        const primary = s.page.locator(".modal.on .m-foot .btn-primary, .drawer.on .d-foot .btn-primary").last();
+        const primary = s.page.locator(".modal.on .m-foot .btn-primary, .drawer.on .d-foot .btn-primary, main form .form-actions .btn-primary").last();
         if (await primary.count()) await primary.click({ timeout: 3000 }).catch(() => undefined);
         exercised += n;
         expect(await probe(s.page), `payload ${pay}`).toEqual(CLEAN);

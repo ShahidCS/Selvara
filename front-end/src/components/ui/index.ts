@@ -9,3 +9,4 @@ export * from "./Controls";
 export * from "./AIPanel";
 export * from "./Flow";
 export * from "./Charts";
+export * from "./Record";

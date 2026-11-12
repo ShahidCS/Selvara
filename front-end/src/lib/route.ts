@@ -1,16 +1,19 @@
 import { useRouter } from "next/router";
 import { useCallback } from "react";
 
-export interface Route { space: "ws" | "admin" | "auth"; mod: string; param: string | null }
-/** `/ws/risk`, `/admin/billing/cust-101`, `/auth`, `/` (the prototype used `#/ws/risk` hashes). */
+/** `sub` is the third segment, for record pages with a mode such as `/ws/policies/P-001/edit`. */
+export interface Route { space: "ws" | "admin" | "auth"; mod: string; param: string | null; sub: string | null }
+/** `/ws/risk`, `/admin/billing/cust-101`, `/ws/policies/P-001/edit`, `/auth`, `/` (the prototype used `#/ws/risk` hashes). */
+/** A malformed escape such as %E0%A4 must not crash routing; it is used as written. */
+const safeDecode = (s: string): string => { try { return decodeURIComponent(s); } catch { return s; } };
 export function parseRoute(path: string): Route {
   const clean = path.split("?")[0].split("#")[0];
   const h = clean.split("/").filter(Boolean);
-  if (!h.length) return { space: "ws", mod: "overview", param: null };
-  if (h[0] === "auth") return { space: "auth", mod: "auth", param: null };
+  if (!h.length) return { space: "ws", mod: "overview", param: null, sub: null };
+  if (h[0] === "auth") return { space: "auth", mod: "auth", param: null, sub: null };
   const space = h[0] === "admin" ? "admin" : "ws";
   const rest = h[0] === "admin" || h[0] === "ws" ? h.slice(1) : h;
-  return { space, mod: rest[0] || (space === "admin" ? "customers" : "overview"), param: rest[1] ? decodeURIComponent(rest[1]) : null };
+  return { space, mod: rest[0] || (space === "admin" ? "customers" : "overview"), param: rest[1] ? safeDecode(rest[1]) : null, sub: rest[2] ? safeDecode(rest[2]) : null };
 }
 export function useRoute(): Route {
   const { asPath } = useRouter();

@@ -1,17 +1,28 @@
 import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData } from "@/lib/store";
-import { useLayer } from "@/hooks/useLayer";
 import { hasRole } from "@/lib/sod";
 import { polInit, policyState, openExceptions, workVersion, exceptionState } from "@/features/policies/services/policies";
-import { openPolicyDrawer, openPolicyForm } from "./PolicyLayers";
+import { useGo, useRoute } from "@/lib/route";
+import { PolicyDetail } from "./PolicyDetail";
+import { PolicyFormPage } from "./PolicyFormPage";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Policy = any;
 /** Policies: register, versioning and the named-approver workflow (contract: docs/security/SOD_MATRIX.md sections 3 and 5). */
-export default function PoliciesModule() {
+/** `/ws/policies` is the register; `/new`, `/:id` and `/:id/edit` are pages. */
+export default function PoliciesModule({ param: propParam }: { param?: string | null }) {
+  const route = useRoute();
+  const param = propParam ?? route.param;
+  if (param === "new") return <PolicyFormPage />;
+  if (param && route.sub === "edit") return <PolicyFormPage id={param} />;
+  if (param) return <PolicyDetail id={param} />;
+  return <PoliciesList />;
+}
+
+function PoliciesList() {
   useData();
-  const L = useLayer();
+  const go = useGo();
   const role = useApp((s) => s.role);
   DATA.policies.forEach(polInit);
   const canCreate = hasRole(role, "admin", "owner");
@@ -32,7 +43,7 @@ export default function PoliciesModule() {
     } },
   ];
   return (
-    <Page mod="policies" acts={<button className="btn btn-primary" disabled={!canCreate} title={canCreate ? undefined : "Read-only for your role: employees read and acknowledge, auditors read."} onClick={() => openPolicyForm(L)}><Icon name="plus" />New policy</button>}>
+    <Page mod="policies" acts={<button className="btn btn-primary" disabled={!canCreate} title={canCreate ? undefined : "Read-only for your role: employees read and acknowledge, auditors read."} onClick={() => go("/ws/policies/new")}><Icon name="plus" />New policy</button>}>
       <KpiStrip label="Policy summary">
         <KpiTile label="Policies" value={DATA.policies.length} caption="In the library" />
         <KpiTile label="Active" value={DATA.policies.filter((p) => p.status === "Active").length} caption="Approved and in force" />
@@ -44,7 +55,7 @@ export default function PoliciesModule() {
           <DataTable<Policy> id="policies" label="Policies" rows={DATA.policies} rowKey={(p) => p.id} columns={cols} searchText={(p) => `${p.id} ${p.name} ${p.owner}`}
             tabs={STATES.map((s) => ({ key: s, label: s, match: (p: Policy) => policyState(p) === s }))}
             filters={[{ key: "owner", label: "Owner", options: owners, get: (p: Policy) => p.owner }]}
-            onOpen={(p) => openPolicyDrawer(L, p.id)} exportName="policies" />
+            onOpen={(p) => go(`/ws/policies/${encodeURIComponent(p.id)}`)} exportName="policies" />
         </div>
       </div>
     </Page>
