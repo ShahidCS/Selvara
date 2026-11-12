@@ -3,12 +3,14 @@ import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { uiMessage } from "@/lib/grcSod";
 import { wsLog } from "@/lib/audit";
 import { downloadText } from "@/lib/format";
-import { useGo } from "@/lib/route";
+import { useGo, useRoute } from "@/lib/route";
 import { DataTable, Icon, Page, StatusChip, type DTColumn } from "@/components/ui";
 import { useLayer } from "@/components/shell/LayerProvider";
 import * as svc from "@/features/controls/services/controls";
-import { openControlDrawer, openTestDrawer, testChip } from "./useControlDrawer";
-import { openCreateControl, openCreateTest } from "./createModals";
+import { testChip } from "./controlDialogs";
+import { ControlDetail } from "./ControlDetail";
+import { TestDetail } from "./TestDetail";
+import { ControlFormPage, ExceptionFormPage, TestFormPage } from "./ControlForms";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Control = any;
@@ -28,7 +30,18 @@ function FwChips({ c, lim = 6 }: { c: any; lim?: number }) {
   );
 }
 
+/** `/ws/controls` is the register (controls, tests, matrix); `/new`, `/:id`, `/:id/exception`, `/test/new` and `/test/:id` are pages. */
 export default function ControlsModule() {
+  const route = useRoute();
+  const { param, sub } = route;
+  if (param === "new") return <ControlFormPage />;
+  if (param === "test") return sub === "new" ? <TestFormPage /> : sub ? <TestDetail id={sub} /> : <ControlsList />;
+  if (param && sub === "exception") return <ExceptionFormPage id={param} />;
+  if (param) return <ControlDetail id={param} />;
+  return <ControlsList />;
+}
+
+function ControlsList() {
   useData();
   const L = useLayer();
   const go = useGo();
@@ -64,12 +77,12 @@ export default function ControlsModule() {
     <>
       <button className="btn btn-secondary" onClick={() => go("/ws/frameworks")}><Icon name="frameworks" />Frameworks</button>
       <button className="btn btn-secondary" onClick={soa}><Icon name="download" />Export SoA</button>
-      <button className="btn btn-primary" disabled={!!manageWhy} title={manageWhy || undefined} onClick={() => openCreateControl(L)}><Icon name="plus" />Add custom control</button>
+      <button className="btn btn-primary" disabled={!!manageWhy} title={manageWhy || undefined} onClick={() => go("/ws/controls/new")}><Icon name="plus" />Add custom control</button>
     </>
   ) : view === "tests" ? (
     <>
       <button className="btn btn-secondary" disabled={!!runWhy} title={runWhy || undefined} onClick={syncAll}><Icon name="refresh" />Sync all</button>
-      <button className="btn btn-primary" disabled={!!manageWhy} title={manageWhy || undefined} onClick={() => openCreateTest(L)}><Icon name="plus" />Build custom test</button>
+      <button className="btn btn-primary" disabled={!!manageWhy} title={manageWhy || undefined} onClick={() => go("/ws/controls/test/new")}><Icon name="plus" />Build custom test</button>
     </>
   ) : (
     <button className="btn btn-secondary" onClick={matrixExport}><Icon name="download" />Export matrix (CSV)</button>
@@ -100,7 +113,7 @@ export default function ControlsModule() {
           <div className="c-body flush scroll" style={{ padding: 0 }} id="testsBody">
             <DataTable<Test> id="tests" label="Tests" rows={DATA.tests} rowKey={(t) => t.id} columns={testCols} searchText={(t) => `${t.id} ${t.name} ${t.source} ${t.controls.join(" ")}`}
               filters={[{ key: "source", label: "Source", options: Array.from(new Set<string>(DATA.tests.map((t: Test) => String(t.source)))), get: (t: Test) => t.source }, { key: "result", label: "Result", options: Array.from(new Set<string>(DATA.tests.map((t: Test) => String(t.result)))), get: (t: Test) => t.result }]}
-              onOpen={(t) => openTestDrawer(L, t.id)} exportName="tests" />
+              onOpen={(t) => go(`/ws/controls/test/${encodeURIComponent(t.id)}`)} exportName="tests" />
           </div>
         </div>
       </Page>
@@ -147,7 +160,7 @@ export default function ControlsModule() {
           <DataTable<Control> id="controls" label="Controls" rows={DATA.controls} rowKey={(c) => c.id} columns={cols} searchText={(c) => `${c.id} ${c.title} ${c.owner} ${c.domain}`}
             tabs={STATUSES.filter((x) => x !== "All").map((x) => ({ key: x, label: x, match: (c: Control) => c.status === x }))}
             filters={[{ key: "fw", label: "Framework", options: DATA.frameworks.map((f) => f.id), labels: FW_ID, get: () => "", test: (c: Control, want: string) => !!(c.map && c.map[want]) }]}
-            onOpen={(c) => openControlDrawer(L, c.id)} exportName="controls" />
+            onOpen={(c) => go(`/ws/controls/${encodeURIComponent(c.id)}`)} exportName="controls" />
         </div>
       </div>
     </Page>

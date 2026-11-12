@@ -10,6 +10,9 @@ import Link from "next/link";
 import { NotificationsBody } from "./NotificationsPanel";
 import { openShortcuts } from "./Shortcuts";
 
+/** Labels for the last breadcrumb segment of a form page (`/ws/policies/P-1/edit`, `/ws/controls/C-1/exception`, `/ws/controls/test/new`). */
+const SUB_LABEL: Record<string, string> = { edit: "Edit", exception: "Request exception", new: "New" };
+
 export function Topbar() {
   const route = useRoute(); const go = useGo(); const L = useLayer();
   useData(); useModVersion(); // the unread badge follows data and read state
@@ -68,7 +71,7 @@ export function Topbar() {
             <>
               <span className="sep"><Icon name="chevron" /></span><Link href={`/${route.space}/${route.mod}`}>{title}</Link>
               <span className="sep"><Icon name="chevron" /></span>
-              {route.sub ? <><Link href={`/${route.space}/${route.mod}/${encodeURIComponent(route.param)}`}>{route.param}</Link><span className="sep"><Icon name="chevron" /></span><span className="cur" aria-current="page">{route.sub === "edit" ? "Edit" : route.sub}</span></>
+              {route.sub ? <><Link href={route.param === "test" ? `/${route.space}/${route.mod}` : `/${route.space}/${route.mod}/${encodeURIComponent(route.param)}`}>{route.param === "test" ? "Tests" : route.param}</Link><span className="sep"><Icon name="chevron" /></span><span className="cur" aria-current="page">{SUB_LABEL[route.sub] ?? route.sub}</span></>
                 : <span className="cur" aria-current="page">{route.param === "new" ? "New" : route.param}</span>}
             </>
           ) : <><span className="sep"><Icon name="chevron" /></span><span className="cur" aria-current="page">{title}</span></>

@@ -83,7 +83,7 @@ Table state (tab, filters, sort, page, columns, selection) is kept per table id 
 | Wave | Modules | State |
 |---|---|---|
 | A | Registers: controls (list and tests), policies, vendors, people, access (grants and requests), audits, commitments | done |
-| B | Detail views and create pages (modals become pages); evidence (list plus preview becomes table plus detail) | in progress: Policies is the pilot |
+| B | Detail views and create pages (modals become pages); evidence (list plus preview becomes table plus detail) | in progress: Policies (pilot), Issues and Controls done |
 | C | Dashboards and charts: overview, reports, risk dashboard, frameworks | not started |
 | D | Assistant, AI governance, questionnaires | not started |
 | E | Settings group: team, integrations, api, billing, audit log, security | not started |
@@ -95,7 +95,7 @@ Table state (tab, filters, sort, page, columns, selection) is kept per table id 
 
 ## Record and form pages (wave B)
 
-A record is a page with its own address, so it can be linked, bookmarked and reached with the browser Back button. Pilot: Policies.
+A record is a page with its own address, so it can be linked, bookmarked and reached with the browser Back button. Pilot: Policies. Then Issues and Controls.
 
 | Address | Page |
 |---|---|
@@ -109,3 +109,14 @@ A record is a page with its own address, so it can be linked, bookmarked and rea
 - **Unsaved work:** `useUnsavedGuard(dirty, L)` asks before leaving a dirty form by the back link, the sidebar or the browser Back button ("Stay on this page" or "Discard changes"), and the browser asks before the tab closes. Call `allowLeave()` just before navigating after a successful save. It intercepts navigation without throwing, so nothing reaches the console.
 - **What stays a dialog:** short decisions that need a reason or a choice and nothing else (approve, reject, request changes, withdraw, emergency publish, submit for review with a named approver, reassign owner, map a control). They close and confirm; the page behind them re-renders from the data store.
 - **Page header:** `Page` takes `back={{ href, label }}`, a link above the title.
+
+**Issues and Controls** follow the same pattern:
+
+| Address | Page |
+|---|---|
+| `/ws/issues/:id`, `/ws/issues/new`, `/ws/issues/:id/edit` | issue record, create, edit |
+| `/ws/controls/:id`, `/ws/controls/new` | control record, add custom control |
+| `/ws/controls/:id/exception` | request an exception or waiver (form page) |
+| `/ws/controls/test/:id`, `/ws/controls/test/new` | test record, build custom test |
+
+A module with two kinds of record uses the second segment as the kind (`test`), then the id as `sub`; the breadcrumb labels it "Tests". Other features open a control with `useOpenControl()` from `@/features/controls`, which navigates to its page. Notifications deep-link to the record (`/ws/controls/:id`, `/ws/issues/:id`).
