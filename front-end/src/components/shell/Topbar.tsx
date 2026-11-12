@@ -64,7 +64,14 @@ export function Topbar() {
             <span className="sep"><Icon name="chevron" /></span><span className="cur" aria-current="page">{CUSTOMERS[route.param].name}</span>
           </>
         ) : (
-          <><span className="sep"><Icon name="chevron" /></span><span className="cur" aria-current="page">{title}</span></>
+          route.param ? (
+            <>
+              <span className="sep"><Icon name="chevron" /></span><Link href={`/${route.space}/${route.mod}`}>{title}</Link>
+              <span className="sep"><Icon name="chevron" /></span>
+              {route.sub ? <><Link href={`/${route.space}/${route.mod}/${encodeURIComponent(route.param)}`}>{route.param}</Link><span className="sep"><Icon name="chevron" /></span><span className="cur" aria-current="page">{route.sub === "edit" ? "Edit" : route.sub}</span></>
+                : <span className="cur" aria-current="page">{route.param === "new" ? "New" : route.param}</span>}
+            </>
+          ) : <><span className="sep"><Icon name="chevron" /></span><span className="cur" aria-current="page">{title}</span></>
         )}
       </nav>
       <div className="spacer" />

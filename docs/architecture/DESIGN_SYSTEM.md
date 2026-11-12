@@ -83,7 +83,7 @@ Table state (tab, filters, sort, page, columns, selection) is kept per table id 
 | Wave | Modules | State |
 |---|---|---|
 | A | Registers: controls (list and tests), policies, vendors, people, access (grants and requests), audits, commitments | done |
-| B | Detail views and create pages (modals become pages); evidence (list plus preview becomes table plus detail) | next |
+| B | Detail views and create pages (modals become pages); evidence (list plus preview becomes table plus detail) | in progress: Policies is the pilot |
 | C | Dashboards and charts: overview, reports, risk dashboard, frameworks | not started |
 | D | Assistant, AI governance, questionnaires | not started |
 | E | Settings group: team, integrations, api, billing, audit log, security | not started |
@@ -92,3 +92,20 @@ Table state (tab, filters, sort, page, columns, selection) is kept per table id 
 **Wave A conventions.** A register is a `DataTable` with `searchText`, status `tabs` where the module has a lifecycle, and `filters` for the fields people narrow by; the row opens the record (`onOpen`). Action buttons that already exist (Approve, Deny, Reset MFA) stay inside the row as a column with `hideHeader`, keep their segregation-of-duties reasons, and never open the row. A filter on a field with several values per row uses `test` (frameworks a control maps to) and `labels` for display text. A card that toggles a filter is a `KpiCard` with `pressed`. Tables that are not registers (the cross-framework matrix, the vendor request queue, the standard terms list, review checklists) keep the plain `Table`.
 
 **Layout rule found in wave A.** Cards in a page column shrink when the page is full, which squashed a table card to its header. A card that must keep its height sets `flex: 0 0 auto`; only the main register card keeps `flex: 1 1 auto`.
+
+## Record and form pages (wave B)
+
+A record is a page with its own address, so it can be linked, bookmarked and reached with the browser Back button. Pilot: Policies.
+
+| Address | Page |
+|---|---|
+| `/ws/policies` | the register |
+| `/ws/policies/:id` | the record: back link, title and status, then a two-column layout (progress stepper, details, workflow actions, version history; acceptance, mapped controls, change log timeline) |
+| `/ws/policies/new` | create form page |
+| `/ws/policies/:id/edit` | edit form page, prefilled |
+
+- **Routing:** `parseRoute` returns `sub` (the third segment) beside `param`. A module reads the route with `useRoute()` and renders the register, a record or a form. The breadcrumb shows the record (`Workspace > Policies > P-001 > Edit`), and an unknown record says so with a link back.
+- **Form pages:** `FormSection` (numbered, labelled), `FormActions` (Cancel and the primary action, pinned under the form) and `FormMessage` (errors are announced). Same fields, validation and service calls as the dialog they replace. The page explains why when the role cannot create or edit, and the service still decides.
+- **Unsaved work:** `useUnsavedGuard(dirty, L)` asks before leaving a dirty form by the back link, the sidebar or the browser Back button ("Stay on this page" or "Discard changes"), and the browser asks before the tab closes. Call `allowLeave()` just before navigating after a successful save. It intercepts navigation without throwing, so nothing reaches the console.
+- **What stays a dialog:** short decisions that need a reason or a choice and nothing else (approve, reject, request changes, withdraw, emergency publish, submit for review with a named approver, reassign owner, map a control). They close and confirm; the page behind them re-renders from the data store.
+- **Page header:** `Page` takes `back={{ href, label }}`, a link above the title.

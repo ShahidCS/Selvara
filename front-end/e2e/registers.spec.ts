@@ -47,14 +47,15 @@ test("controls: search, framework filter, status tabs, row opens the drawer, tes
   await s.close();
 });
 
-test("policies: KPI strip, search, owner filter, row opens the drawer", async ({ browser }, ti) => {
+test("policies: KPI strip, search, owner filter, row opens the policy page", async ({ browser }, ti) => {
   const s = await openAs(browser, ti, "admin");
   const p = s.page;
   await gotoModule(p, "/ws/policies");
   await expect(p.getByRole("group", { name: "Policy summary" })).toContainText("Policies");
   await searchNarrows(p, "Policies", "access");
   await rows(p, "Policies").first().locator("td").nth(2).click();
-  await expect(p.getByRole("dialog")).toBeVisible();
+  await expect(p).toHaveURL(/\/ws\/policies\/P-/);
+  await expect(p.getByRole("heading", { level: 1 })).toBeVisible();
   expect(s.errors).toEqual([]);
   await s.close();
 });

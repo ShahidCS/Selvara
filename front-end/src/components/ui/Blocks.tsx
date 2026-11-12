@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import Link from "next/link";
 import { Icon } from "./Icon";
 import { TITLE } from "@/lib/rbac";
 
@@ -36,13 +37,13 @@ export function Table({ cols, children, minw }: { cols: Col[]; children: ReactNo
   );
 }
 /** Page scaffold: title/subtitle come from the module registry (TITLE) unless overridden. */
-export function Page({ mod, title, sub, acts, children }: { mod?: string; title?: string; sub?: string; acts?: ReactNode; children: ReactNode }) {
+export function Page({ mod, title, sub, acts, back, children }: { mod?: string; title?: string; sub?: string; acts?: ReactNode; /** Record pages: a link back to the list, shown above the title. */ back?: { href: string; label: string }; children: ReactNode }) {
   const [t, s] = mod ? TITLE[mod] || ["", ""] : ["", ""];
   const T = title ?? t, S = sub ?? s;
   return (
     <div className="page">
       <div className="page-head">
-        <div className="pt"><h1>{T}</h1>{S ? <div className="sub">{S}</div> : null}</div>
+        <div className="pt">{back ? <Link className="back-link" href={back.href}><Icon name="back" />{back.label}</Link> : null}<h1>{T}</h1>{S ? <div className="sub">{S}</div> : null}</div>
         {acts ? <div className="acts">{acts}</div> : null}
       </div>
       {children}

@@ -1,6 +1,9 @@
 # Policies module checklist
 
-Source: `Assurance-GRC-Portal.html` lines 2252-2284. React: `src/features/policies/PoliciesModule.tsx`, `policies/PolicyLayers.tsx` (drawer + modals), `src/features/policies/services/policies.ts`.
+> **Wave B update.** The policy drawer is now a page: `/ws/policies/:id` (record), `/ws/policies/new` and `/ws/policies/:id/edit` (form pages). Wherever this checklist says "drawer", read "the policy page". The short decision dialogs (approve with a reason, submit for named approver, reassign owner, map control, emergency publish) are unchanged dialogs and no longer reopen anything: the page re-renders from the data store. Leaving a form with typed work asks first. See `docs/architecture/DESIGN_SYSTEM.md`, record and form pages.
+
+
+Source: `Assurance-GRC-Portal.html` lines 2252-2284. React: `src/features/policies/PoliciesModule.tsx`, `policies/PolicyLayers.tsx` (decision dialogs); `PolicyDetail.tsx`, `PolicyFormPage.tsx` (pages), `src/features/policies/services/policies.ts`.
 No seed data extraction was needed (`DATA.policies` already exists).
 
 | source feature | source lines | React file/component | status | notes |
@@ -8,14 +11,14 @@ No seed data extraction was needed (`DATA.policies` already exists).
 | polInit defaults (history, reviewers, mappedControls, acceptance) | 2253 | `features/policies/services/policies.polInit`, on render and drawer open | done | random acceptance count is demo-only |
 | Register table (ID, Policy, Version, Owner, Next review, Status, chevron), clickable rows | 2256 | `PoliciesModule` | done | rows keyboard-operable |
 | "New policy" page action | 2257 | `PoliciesModule` | done | |
-| Drawer "Policy <id>" header, name, status chip, meta grid | 2259-2262 | `openPolicyDrawer`, `DrawerBody` | done | |
-| Workflow buttons by status (Draft: Submit for review; In review: Approve & publish + Return to draft; else New revision) + Edit | 2260, 2263 | `DrawerBody` | done | no role gate in source |
-| Approvers & reviewers table + "Add approval step" | 2264 | `DrawerBody` | done | |
-| Acceptance ring, `done / required accepted`, "Remind outstanding", or "Acceptance tracking begins once the policy is published." | 2265 | `DrawerBody` | done | |
-| Mapped controls tags / "None mapped" + "Map control" | 2266 | `DrawerBody` | done | |
-| Version history (newest first) | 2267 | `DrawerBody` | done | |
+| Drawer "Policy <id>" header, name, status chip, meta grid | 2259-2262 | `PoliciesModule` route `/ws/policies/:id`, `PolicyDetail` | done | |
+| Workflow buttons by status (Draft: Submit for review; In review: Approve & publish + Return to draft; else New revision) + Edit | 2260, 2263 | `PolicyDetail` | done | no role gate in source |
+| Approvers & reviewers table + "Add approval step" | 2264 | `PolicyDetail` | done | |
+| Acceptance ring, `done / required accepted`, "Remind outstanding", or "Acceptance tracking begins once the policy is published." | 2265 | `PolicyDetail` | done | |
+| Mapped controls tags / "None mapped" + "Map control" | 2266 | `PolicyDetail` | done | |
+| Version history (newest first) | 2267 | `PolicyDetail` | done | |
 | Add approval step modal, "Reviewer name is required.", default role "Reviewer", log `policy.reviewer.added`, reopens drawer | 2268-2269 | `AddReviewerForm` | done | |
-| Remind outstanding: log `policy.acceptance.reminded`, toast `Reminder sent to N people` | 2270 | `DrawerBody.remind` | done | drawer stays open |
+| Remind outstanding: log `policy.acceptance.reminded`, toast `Reminder sent to N people` | 2270 | `PolicyDetail.remind` | done | drawer stays open |
 | Map control modal (all `DATA.controls` ids), dedupe, log `policy.control.mapped`, reopens drawer | 2271-2272 | `MapControlForm` | done | |
 | Transition: Active bumps to next whole version "N.0"; others log from → to; log `policy.status.changed`; toast `<name> published|<status lowercased>`; closes drawer | 2273-2276 | `svc.transitionPolicy`, `DrawerBody.transition` | done | |
 | New revision: Draft, ver +0.1 + " draft", log `policy.revision.started`, toast "New revision started" | 2277 | `svc.startRevision` | done | |
