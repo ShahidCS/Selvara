@@ -10,7 +10,7 @@ type Layer =
   | null
   | { kind: "drawer"; title: string; sub?: ReactNode; body: Content; foot?: Content }
   | { kind: "modal"; title: string; body: Content; foot?: Content; wide?: boolean }
-  | { kind: "popover"; top: number; right: number; body: Content; trigger?: HTMLElement | null }
+  | { kind: "popover"; top: number; right?: number; left?: number; body: Content; trigger?: HTMLElement | null; role?: "menu" | "listbox"; label?: string }
   | { kind: "palette" };
 
 export interface LayerApi {
@@ -18,7 +18,7 @@ export interface LayerApi {
   /** Modal. Default footer is a single "Close" button, as in the prototype. */
   openModal: (title: string, body: Content, foot?: Content, opts?: { wide?: boolean }) => void;
   /** Popover anchored under the clicked element (right-aligned to it). */
-  popover: (ev: { currentTarget: EventTarget | null }, body: Content) => void;
+  popover: (ev: { currentTarget: EventTarget | null }, body: Content, opts?: { role?: "menu" | "listbox"; label?: string; align?: "start" | "end" }) => void;
   openPalette: () => void;
   closeLayer: () => void;
   /** Confirmation toast. With `action` (for example Undo) it stays 7 s, pauses while hovered or focused, and the button runs `run` once. */
@@ -107,7 +107,7 @@ function Popover({ l, close }: { l: Extract<Layer, { kind: "popover" }>; close: 
   return (
     <>
       <div className="scrim" style={{ background: "transparent", pointerEvents: "auto" }} onClick={close} />
-      <div className="pop" role="menu" style={{ top: l.top, right: l.right }}>{run(l.body, close)}</div>
+      <div className="pop" role={l.role || "menu"} aria-label={l.label} style={{ top: l.top, right: l.right, left: l.left }}>{run(l.body, close)}</div>
     </>
   );
 }
@@ -184,10 +184,10 @@ export function LayerProvider({ children }: { children: ReactNode }) {
   const api = useMemo<LayerApi>(() => ({
     openDrawer: (title, sub, body, foot) => setLayer({ kind: "drawer", title, sub, body, foot }),
     openModal: (title, body, foot, opts) => setLayer({ kind: "modal", title, body, foot, wide: opts?.wide }),
-    popover: (ev, body) => {
+    popover: (ev, body, opts) => {
       const el = ev.currentTarget as HTMLElement; const b = el.getBoundingClientRect();
       el.classList?.add("ibopen");
-      setLayer({ kind: "popover", top: b.bottom + 6, right: window.innerWidth - b.right, body, trigger: el });
+      setLayer({ kind: "popover", top: b.bottom + 6, ...(opts?.align === "start" ? { left: Math.max(8, Math.min(b.left, window.innerWidth - 248)) } : { right: window.innerWidth - b.right }), body, trigger: el, role: opts?.role, label: opts?.label });
     },
     openPalette: () => setLayer({ kind: "palette" }),
     closeLayer, toast,

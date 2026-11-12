@@ -17,7 +17,7 @@ Tailwind 4 utilities for the same tokens are declared in `front-end/src/styles/g
 - **Lavender is AI.** Anything machine-authored sits on `--c-brand-50` with a `--c-brand-100` hairline.
 - **Flat sections, floating overlays.** Cards have a hairline and no shadow. Shadows are for menus, drawers, modals and toasts. The `--glass-*` tokens remain so older rules resolve, but they are opaque.
 - **Pills for controls, large radii for containers.** Controls and labels use `--radius-full`; fields `--radius-md` (10px); cards `--radius-lg` (16px); popovers and the command palette `--radius-panel` (20px); modals `--radius-xl` (24px).
-- **Numbers lead.** Overline (11px, uppercase, +0.6px) above a light tabular figure. Use `.overline`, `.tabular`, and `.mono` for timestamps, hashes and audit entries.
+- **Numbers lead.** Overline (11px, uppercase, +0.6px) above a light tabular figure. Use `.eyebrow` (not `.overline`: Tailwind owns that name and draws a line over the text), `.tabular`, and `.mono` for timestamps, hashes and audit entries.
 - **Weights 300 to 600 only.**
 
 ## Deviations from the blueprint (deliberate)
@@ -43,7 +43,7 @@ Geist and Geist Mono, SIL Open Font License 1.1, self-hosted from `front-end/pub
 |---|---|---|
 | 1 | Tokens, fonts, radii, elevation, dark theme, contrast, focus | this change |
 | 2 | Shell: 72px rail, notifications slide-over, toast with Undo, shortcuts, profile menu links, search landmark | this change (see below) |
-| 3 | Shared kit: data table, KPI strip and card, AI panel, stepper, timeline, charts, switch, skeleton | not started |
+| 3 | Shared kit: data table, KPI strip and card, AI panel, stepper, timeline, charts, switch, segmented control, skeleton | this change (see below) |
 | 4 | Module migration in waves; modal create and edit flows become pages | not started |
 | 5 | Governance features (delegation, autonomy, rules, retention, notification matrix) | needs approval to touch `rbac.ts`, `approvals.ts`, `sod.ts` |
 | 6 | RTL, density, print, tenant theming, automated accessibility tests | not started |
@@ -57,3 +57,23 @@ Decisions taken: all 33 modules stay in the rail with the existing fold and unfo
 - **Toast**: `toast(msg, ok, { action: { label, run } })` adds an action such as Undo. It stays 7 seconds, holds while hovered or focused, and is a `role="status"` live region. Use Undo only for reversible in-app state.
 - **Shortcuts**: Ctrl or ⌘ plus K (jump to a module), J (AI Assistant), B (collapse sidebar), / (shortcut list). The profile menu keeps the role switcher and gains My workspace and Keyboard shortcuts. The Ask AI button and Ctrl+J are shown only to roles that can open the assistant.
 - **Deferred**: the context-aware AI slide-over (the assistant lives in a feature, which shared shell code may not import; it is built with the assistant module in phase 4), presence and approval delegation (phase 5), language and RTL (phase 6).
+
+## Shared kit (phase 3)
+
+All of it is exported from `@/components/ui`. Pure logic is in `src/lib/dataTable.ts` and `src/lib/charts.ts` and is unit tested; markup contracts are tested by rendering to a string (`tests/unit/kit.test.tsx`).
+
+| Component | Use it for | Accessibility contract |
+|---|---|---|
+| `DataTable` | Every register: status tabs with counts, filter chips, sortable headers, row select with a bulk bar, Export selected (CSV with the formula-injection guard), pagination, columns menu, row menu | `table` with a name; `th scope="col"` and `aria-sort`; tabs are a `tablist`; filter chips are `aria-haspopup="listbox"` and open a `listbox`; row and select-all checkboxes are labelled; the bulk bar is a `role="toolbar"`; pagination is a labelled `nav` with `aria-current="page"`; rows open on click and on Enter |
+| `KpiStrip`, `KpiTile`, `KpiCard`, `DeltaPill` | Metric tiles and drill-down cards. The pill colour follows desirability, not direction | group with a name; the pill carries icon and words |
+| `AIPanel` | Anything a model wrote | says "AI-assisted" and "Review before you rely on this" in text |
+| `Stepper`, `Timeline` | Remediation stages, audit trail | ordered lists; `aria-current="step"`; Done, Current, Overdue and Projected in words; `time` elements in the mono face |
+| `Switch`, `Segmented` | A setting that is on or off; choosing one value | `role="switch"` with the state written; `radiogroup` with roving tabindex and arrow keys (use `tablist` when the control switches panels) |
+| `Skeleton` | Loading placeholders | `aria-busy` live region with a name |
+| `LineChart`, `BarChart`, `HBarList`, `DonutChart` | Charts | each is a `figure` with a caption, an `img` summary, a visually hidden data table, focusable marks with a tooltip, and legends that carry label, count and share |
+
+Table state (tab, filters, sort, page, columns, selection) is kept per table id while the app is open, like the module tabs.
+
+**Proven on a real module:** the Issues register uses `DataTable` and `KpiStrip`. The charts, AIPanel, Stepper, Timeline, Switch and Segmented are built and tested here and move into modules in the phase 4 waves.
+
+**Names to avoid:** Tailwind ships utilities called `ring` and `overline`, which collided with our classes before. The label class is `.eyebrow` and the donut class is `.donut`. A guard test checks each.

@@ -21,6 +21,7 @@ Selvara is a GRC portal: Next.js 16 (Pages Router), React 19, TypeScript, Tailwi
 ## Conventions
 - Feature boundaries: code used by one feature lives in `src/features/<name>/` (components, `services/`, `lib/`, `data/`). Another feature or a page imports it only through `@/features/<name>` (its `index.ts`). Shared code (`lib`, `services`, `hooks`, `components`, `data`) never imports a feature. ESLint enforces this (`eslint.config.mjs`). Code used by two or more features goes in shared code, for example `src/components/kit/`.
 - Styling: use the design tokens (`--bg`, `--surface`, `--ink`, `--muted`, `--accent`, `--ok-ink`, `--bad-ink`, ... or the Tailwind utilities for the blueprint ramps), never a hex literal. Status is never colour alone: pair it with an icon and a label. Rules and deliberate deviations: `docs/architecture/DESIGN_SYSTEM.md`.
+- Lists, metrics, charts and settings use the shared kit in `@/components/ui` (`DataTable`, `KpiStrip`, `Switch`, `Segmented`, `LineChart`, ...), not hand-built tables or SVG. A new module wave reuses it; add to the kit when a pattern is needed twice.
 - Business rules live in `src/services` and `src/lib`, deny by default, throw `SodError`, write an audit entry. UI gating is never the control.
 - Never self-approve: follow `docs/security/SOD_MATRIX.md`.
 - Synthetic data only. No secrets, tokens or real personal data anywhere.

@@ -1,0 +1,219 @@
+import { useEffect, useRef, type ReactNode } from "react";
+import { useLayer } from "@/hooks/useLayer";
+import { useModState } from "@/lib/store";
+import { downloadText } from "@/lib/format";
+import {
+  ALL, nextSort, pageInfo, pageWindow, queryRows, selectionState, toCsv, toggleAll, toggleOne, type TableState,
+} from "@/lib/dataTable";
+import { Icon } from "./Icon";
+
+export interface DTColumn<T> {
+  key: string;
+  header: string;
+  render: (row: T) => ReactNode;
+  /** Plain value used for sorting and for "Export selected". Without `value` or `sortBy` the column is not sortable; without `value` it is not exported. */
+  value?: (row: T) => string | number;
+  /** Sort key when the text order is not the natural order (for example Critical, High, Medium, Low). Defaults to `value`. */
+  sortBy?: (row: T) => string | number;
+  align?: "end";
+  defaultHidden?: boolean;
+  /** Locked columns cannot be hidden from the Columns menu. */
+  locked?: boolean;
+}
+export interface DTTab<T> { key: string; label: string; match: (row: T) => boolean }
+export interface DTFilter<T> { key: string; label: string; options: string[]; get: (row: T) => string }
+export interface DTBulk<T> { label: string; icon?: string; run: (rows: T[]) => void; disabled?: boolean; title?: string }
+export interface DTRowAction<T> { label: string; run: (row: T) => void; /** A reason the action is unavailable; shown and the item is disabled. */ whyNot?: string | null }
+
+export interface DataTableProps<T> {
+  /** State key: tab, filters, sort, page, columns and selection persist per id while the app is open. */
+  id: string;
+  /** Accessible name of the table and of the controls around it. */
+  label: string;
+  rows: readonly T[];
+  rowKey: (row: T) => string;
+  columns: DTColumn<T>[];
+  tabs?: DTTab<T>[];
+  filters?: DTFilter<T>[];
+  bulk?: DTBulk<T>[];
+  rowActions?: (row: T) => DTRowAction<T>[];
+  onOpen?: (row: T) => void;
+  sizes?: number[];
+  /** Adds "Export selected" (CSV of the visible columns that have a `value`). */
+  exportName?: string;
+  emptyText?: string;
+}
+
+const initial = (sizes: number[], cols: DTColumn<unknown>[]): TableState => ({
+  tab: ALL, filters: {}, sort: null, page: 1, size: sizes[0], hidden: cols.filter((c) => c.defaultHidden).map((c) => c.key), selected: [],
+});
+
+function ColumnsMenu<T>({ id, cols, sizes, close }: { id: string; cols: DTColumn<T>[]; sizes: number[]; close: () => void }) {
+  const [st, setSt] = useModState<TableState>(`dt.${id}`, initial(sizes, cols as DTColumn<unknown>[]));
+  return (
+    <>
+      <div className="ph">Columns</div>
+      {cols.map((c) => {
+        const on = !st.hidden.includes(c.key);
+        return (
+          <button key={c.key} role="menuitemcheckbox" aria-checked={on} disabled={c.locked}
+            onClick={() => setSt({ ...st, hidden: on ? [...st.hidden, c.key] : st.hidden.filter((k) => k !== c.key) })}>
+            <Icon name={on ? "check" : "dot"} />{c.header || "Actions"}
+          </button>
+        );
+      })}
+      <div className="div" />
+      <button role="menuitem" onClick={close}>Done</button>
+    </>
+  );
+}
+
+export function DataTable<T>(p: DataTableProps<T>) {
+  const L = useLayer();
+  const sizes = p.sizes || [10, 25, 50];
+  const [st, setSt] = useModState<TableState>(`dt.${p.id}`, initial(sizes, p.columns as DTColumn<unknown>[]));
+  const patch = (x: Partial<TableState>) => setSt({ ...st, ...x });
+
+  const cols = p.columns.filter((c) => !st.hidden.includes(c.key));
+  const tab = p.tabs?.find((t) => t.key === st.tab) || null;
+  const valueOf = (key: string) => { const c = p.columns.find((x) => x.key === key); return c?.sortBy || c?.value; };
+  const rows = queryRows(p.rows, { tab, filters: p.filters || [], state: st, value: valueOf });
+  const info = pageInfo(rows.length, st.page, st.size);
+  const pageRows = rows.slice(info.from ? info.from - 1 : 0, info.to);
+  const pageIds = pageRows.map(p.rowKey);
+  const live = new Set(p.rows.map(p.rowKey));
+  const selected = st.selected.filter((id) => live.has(id));
+  const sel = selectionState(pageIds, selected);
+  const selectable = !!(p.bulk?.length || p.exportName);
+  const filtered = !!tab && st.tab !== ALL || Object.values(st.filters).some((v) => v && v !== ALL);
+
+  const headCb = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (headCb.current) headCb.current.indeterminate = sel === "some"; }, [sel]);
+
+  const pickFilter = (ev: React.MouseEvent, f: DTFilter<T>) => L.popover(ev, (close) => (
+    <>
+      {[ALL, ...f.options].map((o) => {
+        const on = (st.filters[f.key] || ALL) === o;
+        return <button key={o} role="option" aria-selected={on} onClick={() => { patch({ filters: { ...st.filters, [f.key]: o }, page: 1 }); close(); }}><Icon name={on ? "check" : "dot"} />{o}</button>;
+      })}
+    </>
+  ), { role: "listbox", label: f.label, align: "start" });
+
+  const rowMenu = (ev: React.MouseEvent, r: T) => {
+    const acts = p.rowActions?.(r) || [];
+    L.popover(ev, (close) => (
+      <>{acts.map((a) => <button key={a.label} role="menuitem" disabled={!!a.whyNot} title={a.whyNot || undefined} onClick={() => { close(); a.run(r); }}>{a.label}</button>)}</>
+    ), { label: `Actions for ${p.rowKey(r)}` });
+  };
+
+  const exportSelected = () => {
+    const picked = p.rows.filter((r) => selected.includes(p.rowKey(r)));
+    const ec = cols.filter((c) => c.value);
+    const ok = downloadText(`${p.exportName || p.id}.csv`, toCsv(ec.map((c) => c.header), picked.map((r) => ec.map((c) => c.value!(r)))), "text/csv;charset=utf-8");
+    L.toast(ok ? `Exported ${picked.length} row${picked.length === 1 ? "" : "s"}` : "Download is not available in this browser", ok);
+  };
+
+  const onRowClick = (e: React.MouseEvent, r: T) => {
+    if (!p.onOpen || (e.target as HTMLElement).closest("button,a,input,select,label,textarea")) return;
+    p.onOpen(r);
+  };
+  const onRowKey = (e: React.KeyboardEvent, r: T) => {
+    if (!p.onOpen || e.target !== e.currentTarget) return;
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); p.onOpen(r); }
+  };
+
+  const span = cols.length + (selectable ? 1 : 0) + (p.rowActions ? 1 : 0);
+  return (
+    <div className="dt">
+      {p.tabs ? (
+        <div className="dt-tabs"><div className="tabs" role="tablist" aria-label={`${p.label} status`}>
+          {[{ key: ALL, label: ALL, match: () => true } as DTTab<T>, ...p.tabs].map((t) => (
+            <button key={t.key} className="tab" role="tab" aria-selected={st.tab === t.key} onClick={() => patch({ tab: t.key, page: 1 })}>
+              {t.label} <span className="dt-n">{p.rows.filter(t.match).length}</span>
+            </button>
+          ))}
+        </div></div>
+      ) : null}
+
+      <div className="dt-bar" role="group" aria-label={`${p.label} filters`}>
+        {(p.filters || []).map((f) => {
+          const v = st.filters[f.key] || ALL;
+          return (
+            <button key={f.key} className={`fchip${v !== ALL ? " on" : ""}`} aria-haspopup="listbox" onClick={(e) => pickFilter(e, f)}>
+              {f.label}: <b>{v}</b><Icon name="chevd" />
+            </button>
+          );
+        })}
+        {filtered ? <button className="btn btn-ghost sm" onClick={() => patch({ tab: ALL, filters: {}, page: 1 })}>Clear filters</button> : null}
+        <span className="dt-spacer" />
+        <span className="dt-sum" role="status" aria-live="polite">{rows.length === p.rows.length ? `${rows.length} rows` : `${rows.length} of ${p.rows.length} rows`}{st.sort ? `, sorted by ${p.columns.find((c) => c.key === st.sort!.key)?.header}` : ""}</span>
+        <button className="icon-btn" aria-label="Columns" aria-haspopup="menu" onClick={(e) => L.popover(e, (close) => <ColumnsMenu id={p.id} cols={p.columns} sizes={sizes} close={close} />, { label: "Columns" })}><Icon name="rows" /></button>
+      </div>
+
+      <div className="tbl-wrap">
+        <table className="tbl" aria-label={p.label}>
+          <thead>
+            <tr>
+              {selectable ? (
+                <th scope="col" className="dt-cb"><input ref={headCb} type="checkbox" aria-label="Select all rows" checked={sel === "all"} onChange={() => patch({ selected: toggleAll(pageIds, selected) })} /></th>
+              ) : null}
+              {cols.map((c) => {
+                const s = st.sort && st.sort.key === c.key ? st.sort.dir : null;
+                return (
+                  <th key={c.key} scope="col" className={`${c.align === "end" ? "r " : ""}${c.value || c.sortBy ? "sortable" : ""}`} aria-sort={c.value || c.sortBy ? (s === "asc" ? "ascending" : s === "desc" ? "descending" : "none") : undefined}>
+                    {c.value || c.sortBy ? (
+                      <button className="th-sort" onClick={() => patch({ sort: nextSort(st.sort, c.key), page: 1 })}>
+                        {c.header}<Icon name="chevd" className={`th-car${s ? " on" : ""}${s === "asc" ? " up" : ""}`} />
+                      </button>
+                    ) : c.header}
+                  </th>
+                );
+              })}
+              {p.rowActions ? <th scope="col" className="r dt-act"><span className="vh">Actions</span></th> : null}
+            </tr>
+          </thead>
+          <tbody>
+            {pageRows.length === 0 ? (
+              <tr><td colSpan={span} className="dt-empty">{p.emptyText || "Nothing matches these filters."}{filtered ? <> <button className="btn btn-ghost sm" onClick={() => patch({ tab: ALL, filters: {}, page: 1 })}>Clear filters</button></> : null}</td></tr>
+            ) : pageRows.map((r) => {
+              const id = p.rowKey(r); const on = selected.includes(id);
+              return (
+                <tr key={id} className={`${p.onOpen ? "clickable" : ""}${on ? " sel" : ""}`}
+                  tabIndex={p.onOpen ? 0 : undefined} onClick={(e) => onRowClick(e, r)} onKeyDown={(e) => onRowKey(e, r)}>
+                  {selectable ? <td className="dt-cb"><input type="checkbox" aria-label={`Select ${id}`} checked={on} onChange={() => patch({ selected: toggleOne(id, selected) })} /></td> : null}
+                  {cols.map((c) => <td key={c.key} className={c.align === "end" ? "r" : undefined}>{c.render(r)}</td>)}
+                  {p.rowActions ? <td className="r dt-act"><button className="icon-btn" aria-label={`Actions for ${id}`} aria-haspopup="menu" onClick={(e) => rowMenu(e, r)}><Icon name="more" /></button></td> : null}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="dt-foot">
+        <span className="dt-sum">{info.total ? `Showing ${info.from} to ${info.to} of ${info.total}` : "No rows"}</span>
+        <nav className="pg" aria-label="Pagination">
+          <button className="pg-b" aria-label="Previous page" disabled={info.page <= 1} onClick={() => patch({ page: info.page - 1 })}><Icon name="chevl" /></button>
+          {pageWindow(info.page, info.pages).map((n, i) => n === null ? <span key={"g" + i} className="pg-gap" aria-hidden="true">…</span> : (
+            <button key={n} className="pg-b" aria-label={`Page ${n}`} aria-current={n === info.page ? "page" : undefined} onClick={() => patch({ page: n })}>{n}</button>
+          ))}
+          <button className="pg-b" aria-label="Next page" disabled={info.page >= info.pages} onClick={() => patch({ page: info.page + 1 })}><Icon name="chevron" /></button>
+        </nav>
+        <label className="dt-rows">Rows
+          <select className="select" value={st.size} onChange={(e) => patch({ size: Number(e.target.value), page: 1 })}>{sizes.map((n) => <option key={n} value={n}>{n}</option>)}</select>
+        </label>
+      </div>
+
+      {selectable && selected.length ? (
+        <div className="dt-bulk" role="toolbar" aria-label={`Actions for ${selected.length} selected`}>
+          <span className="dt-bulk-n" role="status" aria-live="polite">{selected.length} selected</span>
+          {(p.bulk || []).map((b) => (
+            <button key={b.label} className="dt-bulk-b" disabled={b.disabled} title={b.title} onClick={() => b.run(p.rows.filter((r) => selected.includes(p.rowKey(r))))}>{b.icon ? <Icon name={b.icon} /> : null}{b.label}</button>
+          ))}
+          {p.exportName ? <button className="dt-bulk-b" onClick={exportSelected}><Icon name="download" />Export selected</button> : null}
+          <button className="dt-bulk-b" aria-label="Clear selection" onClick={() => patch({ selected: [] })}><Icon name="x" /></button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
