@@ -13,3 +13,14 @@ test("donut charts have no Tailwind ring outline", async ({ browser }, ti) => {
   expect(s.errors).toEqual([]);
   await s.close();
 });
+
+/* Same family of bug as the donut "ring": Tailwind ships an `overline` utility (text-decoration: overline), so the label class is `eyebrow`. */
+test("eyebrow labels have no line drawn over them", async ({ browser }, ti) => {
+  const s = await openAs(browser, ti, "admin");
+  await gotoModule(s.page, "/ws/issues");
+  const eb = s.page.locator('[role="group"][aria-label="Issue summary"] .eyebrow').first();
+  await expect(eb).toBeVisible();
+  expect(await eb.evaluate((el) => getComputedStyle(el).textDecorationLine)).toBe("none");
+  expect(s.errors).toEqual([]);
+  await s.close();
+});
