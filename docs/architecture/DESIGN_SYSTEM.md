@@ -42,10 +42,18 @@ Geist and Geist Mono, SIL Open Font License 1.1, self-hosted from `front-end/pub
 | Phase | Scope | State |
 |---|---|---|
 | 1 | Tokens, fonts, radii, elevation, dark theme, contrast, focus | this change |
-| 2 | Shell: rail, header, notifications, command and AI panels, profile menu, toast with Undo | not started |
+| 2 | Shell: 72px rail, notifications slide-over, toast with Undo, shortcuts, profile menu links, search landmark | this change (see below) |
 | 3 | Shared kit: data table, KPI strip and card, AI panel, stepper, timeline, charts, switch, skeleton | not started |
 | 4 | Module migration in waves; modal create and edit flows become pages | not started |
 | 5 | Governance features (delegation, autonomy, rules, retention, notification matrix) | needs approval to touch `rbac.ts`, `approvals.ts`, `sod.ts` |
 | 6 | RTL, density, print, tenant theming, automated accessibility tests | not started |
 
 Decisions taken: all 33 modules stay in the rail with the existing fold and unfold behaviour; the Admin Console and vendor portal take tokens and templates only; create and edit modals become full pages; the reference colour codes are kept as specified.
+
+## Shell (phase 2)
+
+- **Rail**: the existing premium sidebar is kept as it is (module groups that fold and unfold, sub-navigation, collapsed flyouts, Workspace and Admin switch). Collapsed width is 72px and nav tiles use the 16px radius.
+- **Notifications**: the bell opens a slide-over dialog (`role="dialog"`, focus trap, Escape) with All, Approvals and Alerts tabs, grouped items, and Mark all read. Items are derived from the same data the modules show (failing controls, controls needing evidence, overdue issues, vendor reviews, MFA reset requests, past-due invoices) and only for modules the role can open. An item opens the record to review. **Nothing is approved from the panel**: decisions in this product need a reason and a second person (`docs/security/SOD_MATRIX.md`), so inline Approve is deferred to phase 5, where it is built on the approval services.
+- **Toast**: `toast(msg, ok, { action: { label, run } })` adds an action such as Undo. It stays 7 seconds, holds while hovered or focused, and is a `role="status"` live region. Use Undo only for reversible in-app state.
+- **Shortcuts**: Ctrl or ⌘ plus K (jump to a module), J (AI Assistant), B (collapse sidebar), / (shortcut list). The profile menu keeps the role switcher and gains My workspace and Keyboard shortcuts. The Ask AI button and Ctrl+J are shown only to roles that can open the assistant.
+- **Deferred**: the context-aware AI slide-over (the assistant lives in a feature, which shared shell code may not import; it is built with the assistant module in phase 4), presence and approval delegation (phase 5), language and RTL (phase 6).

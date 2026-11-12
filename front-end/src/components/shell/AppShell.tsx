@@ -7,6 +7,7 @@ import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { LayerProvider, useLayer } from "./LayerProvider";
 import { Empty } from "@/components/ui";
+import { openShortcuts } from "./Shortcuts";
 
 function Frame({ children }: { children: ReactNode }) {
   const router = useRouter(); const go = useGo(); const L = useLayer();
@@ -31,16 +32,18 @@ function Frame({ children }: { children: ReactNode }) {
       if (router.asPath.replace(/\/$/, "") !== land) router.replace(land);
     }
   }, [s.hydrated, s.role, route.space, route.mod, router]);
-  // global shortcuts: Cmd/Ctrl+K palette, Cmd/Ctrl+B collapse, Escape closes mobile sidebar
+  // global shortcuts: Cmd/Ctrl+K palette, +J AI Assistant, +B collapse, +/ shortcut list, Escape closes mobile sidebar
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); L.openPalette(); }
       else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") { e.preventDefault(); appStore.set((x) => ({ collapsed: !x.collapsed })); persist(); }
+      else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") { if (modAllowed(appStore.get().role, "ws", "assistant")) { e.preventDefault(); go("/ws/assistant"); } }
+      else if ((e.metaKey || e.ctrlKey) && e.key === "/") { e.preventDefault(); openShortcuts(L); }
       else if (e.key === "Escape" && appStore.get().mobOpen) appStore.set({ mobOpen: false });
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [L]);
+  }, [L, go]);
 
   const known = !!TITLE[route.mod] || route.mod === "billing" || route.space === "auth";
   const allowed = route.space === "auth" || (allowedSpaces(s.role).includes(route.space) && modAllowed(s.role, route.space, route.mod));
