@@ -1,120 +1,100 @@
-import { useEffect, useRef } from "react";
-import { Chip, Empty, Icon, Page, Table } from "@/components/ui";
+import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, type DTColumn } from "@/components/ui";
 import { DATA, FRAMEWORK_REQS } from "@/lib/data";
-import { useData, useModState } from "@/lib/store";
+import { setModState, useApp, useData } from "@/lib/store";
 import { useFwEdits, REQ_PAGE, fwBand, fwCanAdmin, fwLegend, fwReadiness, fwScopeIn, fwScore, fwSnoozed, fwEdits, touchFw } from "@/lib/frameworks";
+import { useGo, useRoute } from "@/lib/route";
+import { wsLog } from "@/lib/audit";
 import { FwDetail } from "./FwDetail";
 import { FwAdd } from "./FwAdd";
 import { FwSegsBar } from "./FwSegsBar";
-import { getMe, wsLog } from "@/lib/audit";
-import { useLayer } from "@/hooks/useLayer";
-import { useApp } from "@/lib/store";
 
-const KINDS: [string, string][] = [["All", "All"], ["Standard", "Standards"], ["Framework", "Frameworks"], ["Regulation", "Regulations"]];
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type Fw = any;
+const KINDS = ["Standard", "Framework", "Regulation"];
 /* Ported as-is: Standard=0 is falsy, so `|| 3` sorts Standards last (Frameworks, Regulations, Standards). See checklist open question. */
 const KORD: Record<string, number> = { Standard: 0, Framework: 1, Regulation: 2 };
+const pctOf = (f: Fw) => { const sc = fwScore(f.id); return sc ? sc.pct : f.pct; };
 
+/** `/ws/frameworks` is the library register; `/new` and `/:id` are pages. */
 export default function FrameworksModule() {
+  const { param } = useRoute();
+  if (param === "new") return <FwAddPage />;
+  if (param) return <FwDetail fwId={param} />;
+  return <FrameworksList />;
+}
+
+/** Opening a framework starts its requirement view from the top (filters, search, group and paging are kept per session otherwise). */
+function resetReqView() {
+  setModState("fw.reqf", "all"); setModState("fw.rq", ""); setModState("fw.grp", null); setModState("fw.limit", REQ_PAGE); setModState("fw.open", {});
+}
+
+function FwAddPage() {
+  useApp((s) => s.role);
+  const go = useGo();
+  return (
+    <Page title="Add a regulation, standard or guideline" back={{ href: "/ws/frameworks", label: "Frameworks" }}>
+      <div className="scroll rec-scroll"><FwAdd onAdded={(id) => { resetReqView(); go(`/ws/frameworks/${encodeURIComponent(id)}`); }} /></div>
+    </Page>
+  );
+}
+
+function FrameworksList() {
   useData(); useFwEdits(); useApp((s) => s.role);
-  const L = useLayer();
-  const [kind, setKind] = useModState("fw.kind", "All");
-  const [jur, setJur] = useModState("fw.jur", "all");
-  const [q, setQ] = useModState("fw.q", "");
-  const [sel, setSel] = useModState<string | null>("fw.sel", null);
-  const [, setReqF] = useModState("fw.reqf", "all");
-  const [, setRq] = useModState("fw.rq", "");
-  const [, setGrp] = useModState<string | null>("fw.grp", null);
-  const [, setLimit] = useModState("fw.limit", REQ_PAGE);
-  const [, setOpen] = useModState<Record<string, boolean>>("fw.open", {});
-  const detailRef = useRef<HTMLDivElement>(null); const addRef = useRef<HTMLDivElement>(null);
+  const go = useGo();
   const admin = fwCanAdmin();
-
-  // returning to the module with a framework selected scrolls it into view (prototype behaviour)
-  useEffect(() => { if (sel && detailRef.current?.firstChild) detailRef.current.scrollIntoView({ block: "start" }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const select = (id: string) => {
-    if (sel !== id) { setSel(id); setReqF("all"); setRq(""); setGrp(null); setLimit(REQ_PAGE); setOpen({}); setTimeout(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0); }
-    else setSel(null);
-  };
+  const open = (id: string) => { resetReqView(); go(`/ws/frameworks/${encodeURIComponent(id)}`); };
   const toggleSnooze = (id: string) => { if (!fwCanAdmin()) return; const S = fwEdits.get().SNOOZE; S[id] = !S[id]; wsLog("framework." + (S[id] ? "snoozed" : "resumed"), id, "Control"); touchFw(); };
   const toggleScope = (id: string) => { if (!fwCanAdmin()) return; const S = fwEdits.get().SCOPE; S[id] = fwScopeIn(id) ? false : true; wsLog("framework.scope." + (S[id] === false ? "out" : "in"), id, "Control"); touchFw(); };
 
+  const rows: Fw[] = [...DATA.frameworks].sort((a, b) => (KORD[a.kind] || 3) - (KORD[b.kind] || 3) || (a.name < b.name ? -1 : 1));
   const regions = Array.from(new Set(DATA.frameworks.map((f) => f.region).filter(Boolean))).sort() as string[];
-  const ql = (q || "").trim().toLowerCase();
-  const list = DATA.frameworks
-    .filter((f) => (kind === "All" || f.kind === kind) && (jur === "all" || f.region === jur) && (!ql || (f.name + " " + f.id + " " + (f.region || "")).toLowerCase().includes(ql)))
-    .sort((a, b) => (KORD[a.kind] || 3) - (KORD[b.kind] || 3) || (a.name < b.name ? -1 : 1));
+  const inScope = DATA.frameworks.filter((f) => fwScopeIn(f.id));
+  const avg = inScope.length ? Math.round(inScope.reduce((a, f) => a + fwReadiness(f.id), 0) / inScope.length) : 0;
+  const gaps = inScope.reduce((a, f) => { const sc = fwScore(f.id); return a + (sc ? sc.cnt["Not met"] + sc.cnt["Not assessed"] : f.gaps || 0); }, 0);
+  const snoozed = DATA.frameworks.filter((f) => fwSnoozed(f.id)).length;
+
+  const cols: DTColumn<Fw>[] = [
+    { key: "name", header: "Name", value: (f) => f.name, locked: true, render: (f) => {
+      const cat = FRAMEWORK_REQS[f.id];
+      return (<>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}><span className="strong">{f.name}</span><Chip cls={f.kind === "Regulation" ? "info" : "neutral"}>{f.kind}</Chip></div>
+        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{cat ? cat.r.length + " requirements, " : ""}{f.mapped} mapped controls{f.audit ? ", " + f.audit : ""}</div>
+      </>);
+    } },
+    { key: "region", header: "Region", value: (f) => f.region || "-", render: (f) => f.region || "-" },
+    { key: "ready", header: "Readiness", value: (f) => pctOf(f), render: (f) => {
+      const p = pctOf(f);
+      return (<div style={{ minWidth: 200 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}><FwSegsBar fwId={f.id} /><span className="num" style={{ fontSize: 13, fontWeight: 600, color: fwBand(p), width: 38, textAlign: "right" }}>{p}%</span></div>
+        <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3 }}>{fwLegend(f.id)}</div>
+      </div>);
+    } },
+    { key: "status", header: "Status", value: (f) => (fwSnoozed(f.id) ? "Snoozed" : "Active"), render: (f) => (admin
+      ? <button className={`fchip sm ${fwSnoozed(f.id) ? "" : "on"}`} aria-label={`${f.name}: ${fwSnoozed(f.id) ? "snoozed" : "active"}, toggle`} onClick={() => toggleSnooze(f.id)} aria-pressed={!fwSnoozed(f.id)}>{fwSnoozed(f.id) ? "Snoozed" : "Active"}</button>
+      : <Chip cls={fwSnoozed(f.id) ? "neutral" : "ok"}>{fwSnoozed(f.id) ? "Snoozed" : "Active"}</Chip>) },
+    { key: "scope", header: "Scope", value: (f) => (fwScopeIn(f.id) ? "In scope" : "Out of scope"), render: (f) => (admin
+      ? <button className={`fchip sm ${fwScopeIn(f.id) ? "on" : ""}`} aria-label={`${f.name}: ${fwScopeIn(f.id) ? "in scope" : "out of scope"}, toggle`} onClick={() => toggleScope(f.id)} aria-pressed={fwScopeIn(f.id)}>{fwScopeIn(f.id) ? "In scope" : "Out of scope"}</button>
+      : <span style={{ fontSize: 13 }}>{fwScopeIn(f.id) ? "In scope" : "Out of scope"}</span>) },
+    { key: "act", header: "Details", hideHeader: true, align: "end", locked: true, render: (f) => <button className="btn btn-ghost sm" aria-label={`Details for ${f.name}`} onClick={() => open(f.id)}>Details</button> },
+  ];
 
   return (
-    <Page mod="frameworks" acts={<button className="btn btn-secondary" onClick={() => addRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}><Icon name="plus" />Add framework</button>}>
-      <div className="scroll" id="fwScroll" style={{ flex: "1 1 auto", minHeight: 0, overflow: "auto", display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
-        <div id="fwLibrary">
-          <section className="card"><div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600, letterSpacing: "-.01em" }}>Standards, Regulations and Frameworks</h2>
-              <p className="sub" style={{ margin: "4px 0 0" }}>One control set mapped to every catalogue in scope. Each catalogue is scored requirement by requirement from the status of its mapped controls.</p>
-            </div>
-            <div className="banner warn" style={{ display: "block" }}>Requirement titles are paraphrased; licensed standard text is not reproduced. All requirement-to-control mappings and applicability decisions are draft content requiring review by qualified compliance staff before reliance.</div>
-            <div className="fwkinds">
-              {KINDS.map((k) => {
-                const fs = DATA.frameworks.filter((f) => k[0] === "All" || f.kind === k[0]);
-                const inScope = fs.filter((f) => fwScopeIn(f.id));
-                const avg = inScope.length ? Math.round(inScope.reduce((a, f) => a + fwReadiness(f.id), 0) / inScope.length) : 0;
-                const on = kind === k[0];
-                return (
-                  <button key={k[0]} type="button" className={`fwkind ${on ? "on" : ""}`} aria-pressed={on} onClick={() => setKind(k[0])}>
-                    <span className="kl">{k[1]}</span><span className="kn">{fs.length}</span>
-                    <span className="km">{inScope.length} in scope · avg readiness {avg}%</span>
-                  </button>
-                );
-              })}
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
-              <label className="field" style={{ flex: "0 1 190px", margin: 0 }}><span className="flab">Region</span>
-                <select className="select" value={jur} onChange={(e) => setJur(e.target.value)}><option value="all">All regions</option>{regions.map((r) => <option key={r} value={r}>{r}</option>)}</select></label>
-              <label className="field" style={{ flex: "1 1 240px", margin: 0 }}><span className="flab">Search by name or region</span>
-                <input className="input" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="ISO, GDPR, EU…" /></label>
-              <span style={{ fontSize: 12, color: "var(--muted)", paddingBottom: 9 }} aria-live="polite">{list.length} of {DATA.frameworks.length} shown</span>
-            </div>
-          </div></section>
-          <section className="card">
-            <div className="c-head"><h3>In the library</h3><div className="r"><span className="tag">{list.length}</span></div></div>
-            <div className="c-body flush">
-              {list.length ? (
-                <Table cols={[{ t: "Name" }, { t: "Region" }, { t: "Readiness" }, { t: "Status" }, { t: "Scope" }, { t: "", r: true }]} minw={920}>
-                  {list.map((f) => {
-                    const sc = fwScore(f.id); const p = sc ? sc.pct : f.pct; const cat = FRAMEWORK_REQS[f.id]; const on = f.id === sel;
-                    const snoozed = fwSnoozed(f.id), inscope = fwScopeIn(f.id);
-                    return (
-                      <tr key={f.id} style={{ background: on ? "var(--accent-weak)" : undefined, opacity: inscope && !snoozed ? undefined : 0.6 }}>
-                        <td>
-                          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}><span className="strong">{f.name}</span><Chip cls={f.kind === "Regulation" ? "info" : "neutral"}>{f.kind}</Chip></div>
-                          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{cat ? cat.r.length + " requirements · " : ""}{f.mapped} mapped controls{f.audit ? " · " + f.audit : ""}</div>
-                        </td>
-                        <td style={{ fontSize: 13 }}>{f.region || "-"}</td>
-                        <td style={{ minWidth: 200 }}>
-                          <div style={{ display: "flex", gap: 10, alignItems: "center" }}><FwSegsBar fwId={f.id} /><span className="num" style={{ fontSize: 13, fontWeight: 600, color: fwBand(p), width: 38, textAlign: "right" }}>{p}%</span></div>
-                          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3 }}>{fwLegend(f.id)}</div>
-                        </td>
-                        <td>{admin
-                          ? <button className={`fchip sm ${snoozed ? "" : "on"}`} onClick={() => toggleSnooze(f.id)} aria-pressed={!snoozed}>{snoozed ? "Snoozed" : "Active"}</button>
-                          : <Chip cls={snoozed ? "neutral" : "ok"}>{snoozed ? "Snoozed" : "Active"}</Chip>}</td>
-                        <td>{admin
-                          ? <button className={`fchip sm ${inscope ? "on" : ""}`} onClick={() => toggleScope(f.id)} aria-pressed={inscope}>{inscope ? "In scope" : "Out of scope"}</button>
-                          : <span style={{ fontSize: 13 }}>{inscope ? "In scope" : "Out of scope"}</span>}</td>
-                        <td className="r"><button className={`btn ${on ? "btn-primary" : "btn-ghost"} sm`} onClick={() => select(f.id)} aria-expanded={on}>{on ? "Open" : "Details"}</button></td>
-                      </tr>
-                    );
-                  })}
-                </Table>
-              ) : <Empty icon="search" title="Nothing matches these filters" />}
-            </div>
-          </section>
+    <Page mod="frameworks" acts={<button className="btn btn-secondary" onClick={() => go("/ws/frameworks/new")}><Icon name="plus" />Add framework</button>}>
+      <KpiStrip label="Library summary">
+        <KpiTile label="In the library" value={DATA.frameworks.length} caption={`${inScope.length} in scope`} />
+        <KpiTile label="Average readiness" value={avg + "%"} caption="Frameworks in scope" />
+        <KpiTile label="Open gaps" value={gaps} delta={gaps ? { tone: "watch", text: "To close" } : { tone: "good", text: "None" }} caption="Not met or not assessed" />
+        <KpiTile label="Snoozed" value={snoozed} caption="Paused, not scored as due" />
+      </KpiStrip>
+      <div className="banner warn" style={{ display: "block" }}>Requirement titles are paraphrased; licensed standard text is not reproduced. All requirement-to-control mappings and applicability decisions are draft content requiring review by qualified compliance staff before reliance.</div>
+      <div className="card" style={{ flex: "1 1 auto" }}>
+        <div className="c-body flush scroll" style={{ padding: 0 }}>
+          <DataTable<Fw> id="frameworks" label="Frameworks" rows={rows} rowKey={(f) => f.id} columns={cols} searchText={(f) => `${f.name} ${f.id} ${f.region || ""}`}
+            tabs={KINDS.map((k) => ({ key: k, label: k + "s", match: (f: Fw) => f.kind === k }))}
+            filters={[{ key: "region", label: "Region", options: regions, get: (f: Fw) => f.region || "" }]}
+            onOpen={(f) => open(f.id)} exportName="frameworks" />
         </div>
-        <div id="fwDetail" ref={detailRef}>{sel ? <FwDetail fwId={sel} onClose={() => setSel(null)} /> : null}</div>
-        <div id="fwAdd" ref={addRef}><FwAdd onAdded={(id) => { setSel(id); setReqF("all"); setRq(""); setGrp(null); setLimit(REQ_PAGE); setOpen({}); setTimeout(() => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0); }} /></div>
       </div>
     </Page>
   );
-  void L; void getMe;
 }

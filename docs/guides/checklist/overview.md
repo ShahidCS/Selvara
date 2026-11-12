@@ -1,5 +1,7 @@
 # Overview (Phase 1)
 
+> **Wave C update.** The posture cards use the shared KPI strip, the accessible line chart and ranked bars (each chart has a caption, a text summary and a data table for screen readers). The coverage heat map is unchanged and now has a group label.
+
 | Source feature | Source lines | React file | Status |
 |---|---|---|---|
 | Header "Security posture · <Month Year>", subtitle with live counts | 1573 | `features/overview/OverviewModule.tsx` | Done |
