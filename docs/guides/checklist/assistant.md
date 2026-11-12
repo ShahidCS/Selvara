@@ -1,5 +1,7 @@
 # AI Assistant (Phase 3)
 
+> **Wave D update.** An answer is shown on the AI panel (lavender, "AI-assisted", "Review before you rely on this"). Custom agents, the run log and MCP access are data tables; Create agent is a page (`/ws/assistant/new`). The run decision dialogs and the four-eyes enable and grant approvals are unchanged.
+
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|
 | Seeds (agents, runs, MCP grants) | 3593-3608 | `src/features/assistant/data/assistantSeed.json`, `features/assistant/services/assistant.ts` | Done | |

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Chip, Icon } from "@/components/ui";
+import { AIPanel, Icon } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { getMe, wsLog } from "@/lib/audit";
 import { bumpData } from "@/lib/store";
@@ -35,23 +35,19 @@ export function AskTab({ scrollRef }: { scrollRef: React.RefObject<HTMLDivElemen
       {thread.length ? thread.map((mm, i) => mm.role === "user" ? (
         <div key={i} style={{ alignSelf: "flex-end", maxWidth: "85%", background: "var(--accent)", color: "#fff", padding: "9px 13px", borderRadius: "13px 13px 3px 13px", fontSize: 13.5, lineHeight: 1.5, overflowWrap: "anywhere" }}>{mm.text}</div>
       ) : (
-        <div key={i} className="card" style={{ boxShadow: "none", background: "var(--surface-2)", alignSelf: "flex-start", maxWidth: "94%" }}>
-          <div className="c-body">
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}><Icon name="assistant" /><span style={{ fontSize: 12, color: "var(--muted)" }}>Assistant</span><Chip cls="warn" icon="alert">Draft · review required</Chip></div>
-            <div style={{ fontSize: 13.5, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{mm.text}</div>
-            <div className="btngrp" style={{ marginTop: 10 }}>
+        <div key={i} style={{ alignSelf: "flex-start", maxWidth: "94%" }}>
+          <AIPanel source="Assistant" meta="Draft, review required" label="Assistant answer"
+            footer={<>
               <button className="btn btn-ghost sm" onClick={() => copy(i)}><Icon name="download" />Copy</button>
               <button className="btn btn-ghost sm" onClick={reviewed}><Icon name="check" />Mark reviewed</button>
-            </div>
-          </div>
+            </>}>
+            <div style={{ fontSize: 13.5, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{mm.text}</div>
+          </AIPanel>
         </div>
       )) : (
-        <div className="card" style={{ boxShadow: "none", background: "var(--surface-2)" }}>
-          <div className="c-body">
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}><Icon name="assistant" /><span style={{ fontSize: 12, color: "var(--muted)" }}>Assistant · draft, review required</span></div>
-            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>Based on current workspace data, {mtr.ctrlFail} of {mtr.ctrlTotal} controls need attention and {mtr.highRisk} of {mtr.risks} risks are rated high or critical. Ask me to summarise risks, draft a board update, or explain your posture — every answer is a draft for your review.</p>
-          </div>
-        </div>
+        <AIPanel source="Assistant" meta="Draft, review required" label="Assistant introduction">
+          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>Based on current workspace data, {mtr.ctrlFail} of {mtr.ctrlTotal} controls need attention and {mtr.highRisk} of {mtr.risks} risks are rated high or critical. Ask me to summarise risks, draft a board update, or explain your posture. Every answer is a draft for your review.</p>
+        </AIPanel>
       )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{SUGG.map((s) => <button key={s} className="fchip" onClick={() => ask(s)}>{s}</button>)}</div>
       <div className="field" style={{ margin: 0 }}>

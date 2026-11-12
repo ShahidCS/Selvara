@@ -6,13 +6,13 @@ import type { LayerApi } from "@/components/shell/LayerProvider";
 import { Icon } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { bumpData } from "@/lib/store";
-import { AI_ANNEX_AREAS, AI_AUTONOMY, AI_BIAS_STATUSES, AI_FRIA_STATUSES, AI_GUARDRAILS, AI_ROLES, AI_SHADOW, AI_TIERS, aiFind, aiInit, aiLog } from "@/features/ai/lib/ai";
+import { AI_ANNEX_AREAS, AI_BIAS_STATUSES, AI_FRIA_STATUSES, AI_GUARDRAILS, AI_ROLES, AI_TIERS, aiFind, aiInit, aiLog } from "@/features/ai/lib/ai";
 import * as svc from "@/features/ai/services/ai";
 import { attempt } from "@/components/kit/sodKit";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Reopen = (() => void) | undefined;
-const gridStyle = (gap: number) => ({ display: "grid", gridTemplateColumns: "1fr 1fr", gap });
+export const gridStyle = (gap: number) => ({ display: "grid", gridTemplateColumns: "1fr 1fr", gap });
 const Foot = ({ L, label, onSave, icon }: { L: LayerApi; label: string; onSave: () => void; icon?: string }) => (
   <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><button className="btn btn-primary" onClick={onSave}>{icon ? <Icon name={icon} /> : null}{label}</button></LayerFoot>
 );
@@ -23,61 +23,6 @@ function useAct() {
   const L = useLayer();
   return (p: () => Promise<svc.Res<any>>, ok: (r: any) => void) => attempt(L, async () => { const r = await p(); if (!r.ok) { L.toast(r.msg); return; } ok(r); });
 }
-
-/* ---------- register ---------- */
-export function RegisterForm({ shadowId }: { shadowId: string | null }) {
-  const L = useLayer(); const act = useAct();
-  const sh = shadowId ? AI_SHADOW.find((x: any) => x.id === shadowId) : null;
-  const [f, setF] = useState({ name: sh ? String(sh.name) : "", surface: sh ? String(sh.where || "") : "", tier: "Medium", model: "", provider: "", purpose: "", data: sh ? String(sh.data || "") : "", autonomy: AI_AUTONOMY[0], users: "", owner: DATA.people[0]?.name || "" });
-  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((p) => ({ ...p, [k]: e.target.value }));
-  const submit = () => act(() => svc.registerSystem(f, shadowId), (r) => {
-    aiLog("ai.registered", r.name); L.closeLayer(); bumpData(); L.toast(r.name + " registered — classify it next");
-  });
-  return (
-    <>
-      <div>
-        <p className="field help" style={{ margin: "0 0 12px" }}>For AI the discovery sources did not capture, or to bring a discovered system into governance. It starts in the Controlled guardrail until classified.</p>
-        <div className="field" style={{ marginBottom: 12 }}><label htmlFor="rN">Name</label><input className="input" id="rN" data-focus maxLength={120} placeholder="e.g. Fraud detection model" value={f.name} onChange={set("name")} /></div>
-        <div className="grid2" style={gridStyle(12)}>
-          <div className="field"><label htmlFor="rSurf">Surface</label><input className="input" id="rSurf" maxLength={120} placeholder="Where it runs" value={f.surface} onChange={set("surface")} /></div>
-          <div className="field"><label htmlFor="rT">Risk tier (interim)</label><select className="select" id="rT" value={f.tier} onChange={set("tier")}>{AI_TIERS.map((t) => <option key={t}>{t}</option>)}</select></div>
-        </div>
-        <div className="grid2" style={gridStyle(12)}>
-          <div className="field"><label htmlFor="rModel">Model</label><input className="input" id="rModel" maxLength={120} placeholder="e.g. LLM, in-house" value={f.model} onChange={set("model")} /></div>
-          <div className="field"><label htmlFor="rProv">Provider</label><input className="input" id="rProv" maxLength={120} placeholder="In-house or vendor" value={f.provider} onChange={set("provider")} /></div>
-        </div>
-        <div className="field"><label htmlFor="rP">Purpose</label><input className="input" id="rP" maxLength={200} placeholder="What it does" value={f.purpose} onChange={set("purpose")} /></div>
-        <div className="field"><label htmlFor="rData">Data it can reach</label><input className="input" id="rData" maxLength={200} placeholder="e.g. Internal documents" value={f.data} onChange={set("data")} /></div>
-        <div className="grid2" style={gridStyle(12)}>
-          <div className="field"><label htmlFor="rAuto">Autonomy</label><select className="select" id="rAuto" value={f.autonomy} onChange={set("autonomy")}>{AI_AUTONOMY.map((t) => <option key={t}>{t}</option>)}</select></div>
-          <div className="field"><label htmlFor="rUsers">Number of users</label><input className="input" id="rUsers" maxLength={40} placeholder="e.g. 20" value={f.users} onChange={set("users")} /></div>
-        </div>
-        <div className="field"><label htmlFor="rO">Owner</label><select className="select" id="rO" value={f.owner} onChange={set("owner")}>{DATA.people.map((p) => <option key={p.id || p.name}>{p.name}</option>)}</select></div>
-      </div>
-      <Foot L={L} label="Register" icon="plus" onSave={submit} />
-    </>
-  );
-}
-export const openRegister = (L: LayerApi, shadowId: string | null = null) => L.openModal("Register an AI system", () => <RegisterForm shadowId={shadowId} />);
-
-/* ---------- edit ---------- */
-function EditForm({ id }: { id: string }) {
-  const L = useLayer(); const act = useAct(); const a = aiFind(id);
-  const [n, setN] = useState(String(a?.name ?? "")); const [p, setP] = useState(String(a?.purpose ?? "")); const [b, setB] = useState(String(a?.basis ?? ""));
-  if (!a) return <NotFound />;
-  const save = () => act(() => svc.editSystem(id, { name: n, purpose: p, basis: b }), () => { aiLog("ai.updated", a.name); L.closeLayer(); bumpData(); L.toast("System updated"); });
-  return (
-    <>
-      <div>
-        <div className="field" style={{ marginBottom: 12 }}><label htmlFor="aN">Name</label><input className="input" id="aN" data-focus maxLength={120} value={n} onChange={(e) => setN(e.target.value)} /></div>
-        <div className="field" style={{ marginBottom: 12 }}><label htmlFor="aP">Purpose</label><input className="input" id="aP" maxLength={200} value={p} onChange={(e) => setP(e.target.value)} /></div>
-        <div className="field"><label htmlFor="aB">Governance basis</label><input className="input" id="aB" maxLength={200} value={b} onChange={(e) => setB(e.target.value)} /></div>
-      </div>
-      <Foot L={L} label="Save" onSave={save} />
-    </>
-  );
-}
-export function openEdit(L: LayerApi, id: string) { const a = aiFind(id); L.openModal(a ? "Edit " + a.name : "AI system", () => <EditForm id={id} />); }
 
 /* ---------- classify (tier). Defined in the source but no control calls it ---------- */
 function ClassifyForm({ id }: { id: string }) {

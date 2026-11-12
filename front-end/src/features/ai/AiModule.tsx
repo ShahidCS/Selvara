@@ -1,23 +1,32 @@
 import { adminLog } from "@/lib/adminAudit";
-import { Icon, Kpi, Page, Ring, StatusChip, Table, activate } from "@/components/ui";
+import { DataTable, Icon, KpiStrip, KpiTile, Page, Ring, StatusChip, Table, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { bumpData, useApp, useData } from "@/lib/store";
 import { hasRole } from "@/lib/sod";
 import { wsLog } from "@/lib/audit";
-import { useGo } from "@/lib/route";
+import { useGo, useRoute } from "@/lib/route";
 import { fwReadiness } from "@/lib/frameworks";
 import { AI_DISCOVERY, AI_SHADOW, aiInit } from "@/features/ai/lib/ai";
 import { useLayer } from "@/hooks/useLayer";
 import * as svc from "@/features/ai/services/ai";
 import { ApprovalsPanel, attempt } from "@/components/kit/sodKit";
-import { openAiDrawer } from "./AiDrawer";
-import { openRegister } from "./AiModals";
+import { AiDetail } from "./AiDetail";
+import { AiEditPage, AiRegisterPage } from "./AiForms";
 import { AiEuChip, AiFriaChip, AiGuardChip } from "./AiChips";
 
-/* Hook for other modules: `useAiDrawer()` opens the AI system drawer by id (see ai/AiDrawer.tsx). */
-export { useAiDrawer } from "./AiDrawer";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type AiSys = any;
 
+/** `/ws/ai` is the register; `/new` (optionally `/new/:shadowId`), `/:id` and `/:id/edit` are pages. */
 export default function AiModule() {
+  const { param, sub } = useRoute();
+  if (param === "new") return <AiRegisterPage shadowId={sub} />;
+  if (param && sub === "edit") return <AiEditPage id={param} />;
+  if (param) return <AiDetail id={param} />;
+  return <AiList />;
+}
+
+function AiList() {
   useData();
   const L = useLayer(); const go = useGo();
   const canReg = hasRole(useApp((s) => s.role), "admin", "owner", "analyst");
@@ -26,28 +35,36 @@ export default function AiModule() {
   const euHigh = live.filter((a) => a.euClass === "High-risk" || a.euClass === "Prohibited").length;
   const unconf = live.filter((a) => a.euState && a.euState.state !== "Confirmed").length;
   const iso = fwReadiness("iso42001");
-  const stop = { onClick: (e: React.MouseEvent) => e.stopPropagation(), onKeyDown: (e: React.KeyboardEvent) => e.stopPropagation() };
   const dismiss = (id: string) => attempt(L, async () => {
     const ok = await svc.dismissShadow(id); if (!ok) return;
     wsLog("ai.shadow.dismissed", id, "AI governance"); adminLog("ai.shadow.dismissed", id, { categories: ["AI governance"] });
     L.toast("Removed from the discovered list"); bumpData();
   });
-  const open = (id: string) => openAiDrawer(L, id);
+  const open = (id: string) => go(`/ws/ai/${encodeURIComponent(id)}`);
+  const cols: DTColumn<AiSys>[] = [
+    { key: "name", header: "System / model", value: (a) => a.name, locked: true, render: (a) => <span className="strong">{a.name}<div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 400 }}>{a.model} · {a.provider}</div></span> },
+    { key: "surface", header: "Surface", value: (a) => a.surface, render: (a) => a.surface },
+    { key: "eu", header: "EU AI Act", value: (a) => a.euClass || "Not classified", render: (a) => <><AiEuChip c={a.euClass} />{a.euState && a.euState.state === "Draft" ? <> <span className="tag" style={{ color: "var(--warn-ink)" }}>draft</span></> : null}</> },
+    { key: "guard", header: "Guardrail", value: (a) => a.guardrail || "Controlled", render: (a) => <AiGuardChip g={a.guardrail} /> },
+    { key: "status", header: "Status", value: (a) => a.status, render: (a) => <StatusChip s={a.status} /> },
+    { key: "owner", header: "Owner", value: (a) => a.owner, render: (a) => a.owner },
+    { key: "fria", header: "Impact assessment", value: (a) => a.fria?.status || "", render: (a) => <AiFriaChip f={a.fria} /> },
+  ];
   const readiness: [string, string][] = [
     ["Systems with a confirmed class", (live.length - unconf) + " / " + live.length],
     ["Impact assessments approved", live.filter((a) => a.fria && a.fria.review === "Approved").length + " / " + live.filter((a) => a.tier === "High").length],
     ["High-risk under a Restricted guardrail", live.filter((a) => a.tier === "High" && a.guardrail === "Restricted").length + " / " + euHigh],
   ];
   return (
-    <Page mod="ai" acts={<button className="btn btn-primary" disabled={!canReg} title={canReg ? undefined : "Only admin, owner or analyst can register AI systems"} onClick={() => openRegister(L)}><Icon name="plus" />Register system</button>}>
+    <Page mod="ai" acts={<button className="btn btn-primary" disabled={!canReg} title={canReg ? undefined : "Only admin, owner or analyst can register AI systems"} onClick={() => go("/ws/ai/new")}><Icon name="plus" />Register system</button>}>
       <div className="scroll" style={{ flex: "1 1 auto" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
-          <div className="kpis">
-            <Kpi icon="ai" label="Registered systems" value={live.length} tone="accent" />
-            <Kpi icon="shieldcheck" label="EU AI Act high-risk" value={euHigh} tone={euHigh ? "bad" : "good"} />
-            <Kpi icon="clock" label="Classifications to confirm" value={unconf} tone={unconf ? "warn" : "good"} />
-            <Kpi icon="search" label="Shadow AI found" value={AI_SHADOW.length} tone={AI_SHADOW.length ? "warn" : "good"} />
-          </div>
+          <KpiStrip label="AI governance summary">
+            <KpiTile label="Registered systems" value={live.length} caption="Not archived" />
+            <KpiTile label="EU AI Act high-risk" value={euHigh} delta={euHigh ? { tone: "bad", text: "Obligations apply" } : { tone: "good", text: "None" }} caption="High-risk or prohibited" />
+            <KpiTile label="Classifications to confirm" value={unconf} delta={unconf ? { tone: "watch", text: "Needs a second person" } : { tone: "good", text: "None" }} caption="Draft determinations" />
+            <KpiTile label="Shadow AI found" value={AI_SHADOW.length} delta={AI_SHADOW.length ? { tone: "watch", text: "Unregistered" } : { tone: "good", text: "None" }} caption="Awaiting registration" />
+          </KpiStrip>
           <div className="card" style={{ boxShadow: "none", background: "var(--info-bg)", borderColor: "transparent" }}>
             <div className="c-body" style={{ padding: "10px 14px", fontSize: 12.5, color: "var(--info-ink)", lineHeight: 1.5 }}>Classifications and assessments are draft content and need review by qualified compliance and legal staff before reliance. EU AI Act classifications must be confirmed by an admin or owner other than the drafter, impact assessments approved by someone other than the submitter, and guardrail changes and archiving approved by a second person. Registering a system does not approve it. Only the AI system owner, an admin or an owner can change a system or triage its signals.</div>
           </div>
@@ -72,7 +89,7 @@ export default function AiModule() {
                         <td className="strong">{s.name}<div style={{ fontSize: 11.5, color: "var(--muted)" }}>{s.data} · {s.risk}</div></td>
                         <td style={{ fontSize: 12 }}>{s.found}</td><td style={{ fontSize: 12, color: "var(--muted)" }}>{s.where}</td>
                         <td className="r" style={{ whiteSpace: "nowrap" }}>
-                          <button className="btn btn-ghost sm" disabled={!canReg} aria-label={`Register ${s.name}`} onClick={() => openRegister(L, s.id)}><Icon name="plus" />Register</button>
+                          <button className="btn btn-ghost sm" disabled={!canReg} aria-label={`Register ${s.name}`} onClick={() => go(`/ws/ai/new/${encodeURIComponent(s.id)}`)}><Icon name="plus" />Register</button>
                           <button className="btn btn-ghost sm" disabled={!canReg} aria-label={`Dismiss ${s.name}`} onClick={() => dismiss(s.id)}>Dismiss</button>
                         </td>
                       </tr>
@@ -93,22 +110,12 @@ export default function AiModule() {
               </div>
             </div>
           </div>
-          <div className="card"><div className="c-head"><h3>AI inventory</h3></div><div className="c-body flush" style={{ padding: 0 }}><div className="tbl-wrap">
-            <Table minw={1180} cols={[{ t: "System / model" }, { t: "Surface" }, { t: "Discovered by" }, { t: "EU AI Act" }, { t: "Guardrail" }, { t: "Status" }, { t: "Owner" }, { t: "Impact assessment" }, { t: "" }]}>
-              {DATA.ai.map((a) => {
-                const arch = a.status === "Archived";
-                return (
-                  <tr key={a.id} className={arch ? "" : "clickable"} style={arch ? { opacity: 0.55 } : undefined} {...(arch ? {} : activate(() => open(a.id)))}>
-                    <td className="strong">{a.name}<div style={{ fontSize: 12, color: "var(--muted)" }}>{a.model} · {a.provider}</div></td>
-                    <td style={{ fontSize: 12 }}>{a.surface}</td><td style={{ fontSize: 12 }}>{a.discovered}</td>
-                    <td><AiEuChip c={a.euClass} />{a.euState && a.euState.state === "Draft" ? <> <span className="tag" style={{ color: "var(--warn-ink)" }}>draft</span></> : null}</td>
-                    <td><AiGuardChip g={a.guardrail} /></td><td><StatusChip s={a.status} /></td><td style={{ fontSize: 12 }}>{a.owner}</td><td><AiFriaChip f={a.fria} /></td>
-                    <td className="r" {...stop}><button className="btn btn-ghost sm" aria-label={`Open ${a.name}`} onClick={() => open(a.id)}>Open</button></td>
-                  </tr>
-                );
-              })}
-            </Table>
-          </div></div></div>
+          <div className="card"><div className="c-head"><h3>AI inventory</h3></div><div className="c-body flush" style={{ padding: 0 }}>
+            <DataTable<AiSys> id="ai-inventory" label="AI inventory" rows={DATA.ai} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.id} ${a.name} ${a.model} ${a.provider} ${a.owner} ${a.surface}`}
+              tabs={["Active", "In review", "Archived"].map((st) => ({ key: st, label: st, match: (a: AiSys) => a.status === st }))}
+              filters={[{ key: "eu", label: "EU AI Act", options: Array.from(new Set<string>(DATA.ai.map((a: AiSys) => String(a.euClass || "Not classified")))), get: (a: AiSys) => a.euClass || "Not classified" }, { key: "guard", label: "Guardrail", options: Array.from(new Set<string>(DATA.ai.map((a: AiSys) => String(a.guardrail || "Controlled")))), get: (a: AiSys) => a.guardrail || "Controlled" }]}
+              onOpen={(a) => open(a.id)} exportName="ai-inventory" />
+          </div></div>
         </div>
       </div>
     </Page>

@@ -1,22 +1,29 @@
 import { useRef } from "react";
+import { useGo, useRoute } from "@/lib/route";
 import { Icon, Page } from "@/components/ui";
 import { useApp, useData, useModState } from "@/lib/store";
 import { SUBNAV } from "@/lib/subnav";
-import { useLayer } from "@/hooks/useLayer";
 import { asstCanManage } from "@/features/assistant/services/assistant";
 import { ApprovalsPanel } from "@/components/kit/sodKit";
-import { AgentForm } from "./AgentForm";
+import { AgentFormPage } from "./AgentFormPage";
 import { AskTab } from "./AskTab";
 import { AgentsTab, McpTab, RunLogTab } from "./Tables";
 
+/** `/ws/assistant` shows the sidebar-selected view (Ask, Agents, Run log, MCP servers); `/new` creates an agent. */
 export default function AssistantModule() {
+  const { param } = useRoute();
+  if (param === "new") return <AgentFormPage />;
+  return <AssistantViews />;
+}
+
+function AssistantViews() {
   useData();
-  const L = useLayer(); const bodyRef = useRef<HTMLDivElement>(null);
+  const go = useGo(); const bodyRef = useRef<HTMLDivElement>(null);
   const manage = asstCanManage(useApp((s) => s.role));
   const nav = SUBNAV.assistant; // the sidebar sub-nav shares this state key
   const [v, setV] = useModState<string>(nav.stateKey, nav.initial);
   const view = nav.items.some((x) => x[0] === v) ? v : nav.initial;
-  const acts = view === "agents" && manage ? <button className="btn btn-primary" onClick={() => L.openModal("Create agent", (close) => <AgentForm close={close} />)}><Icon name="plus" />Create agent</button> : undefined;
+  const acts = view === "agents" && manage ? <button className="btn btn-primary" onClick={() => go("/ws/assistant/new")}><Icon name="plus" />Create agent</button> : undefined;
   return (
     <Page mod="assistant" acts={acts}>
       <div className="card" style={{ flex: "1 1 auto" }}>
