@@ -8,6 +8,9 @@ import { bumpData } from "@/lib/store";
 import { apiFetch, viaApi } from "./http";
 
 export const pendingJoins = () => joinRequests().filter((m) => m.status === "Pending");
+export interface JoinRow { id: string; name: string; email: string; requestedAt: number }
+/** Requests waiting for a decision. Production: GET /team/join-requests (company admins only). */
+export const listPendingJoins = () => viaApi<JoinRow[]>(() => pendingJoins().map((m) => ({ id: m.id, name: m.name, email: m.email, requestedAt: m.requestedAt })), () => apiFetch<JoinRow[]>("/team/join-requests"));
 export function decideJoin(id: string, decision: "approve" | "reject", reason: string) {
   return viaApi<JoinRequest>(() => {
     assertRole("decide a request to join", "admin");

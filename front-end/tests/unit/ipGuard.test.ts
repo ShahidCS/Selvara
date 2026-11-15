@@ -38,12 +38,12 @@ describe("progressive blocking", () => {
     recordIpFailure(ip, t + IP_POLICY.WINDOW_MS + 100);
     expect(ipBlockMessage(ip, t + IP_POLICY.WINDOW_MS + 110)).toBeNull();
   });
-  it("climbs 5 minutes, 30 minutes, 2 hours, 24 hours, then permanent", () => {
+  it("climbs 5 minutes, 30 minutes, 2 hours, 24 hours, then repeats 24 hours: never permanent", () => {
     let t = Date.now();
     const lengths: number[] = [];
-    for (let i = 0; i < 5; i++) { burst(t); const r = rec(); lengths.push(r.until - (t + IP_POLICY.THRESHOLD - 1)); t = (r.until === Infinity ? t : r.until) + MIN; }
-    expect(lengths).toEqual([5 * MIN, 30 * MIN, 120 * MIN, DAY, Infinity]);
-    expect(ipBlockMessage(ip, Date.now() + 10_000 * DAY)).toMatch(/blocked after repeated failed attempts/);
+    for (let i = 0; i < 6; i++) { burst(t); const r = rec(); lengths.push(r.until - (t + IP_POLICY.THRESHOLD - 1)); t = r.until + MIN; }
+    expect(lengths).toEqual([5 * MIN, 30 * MIN, 120 * MIN, DAY, DAY, DAY]);
+    expect(ipBlockMessage(ip, t)).toBeNull(); // every block ends on its own
   });
   it("starts again at 5 minutes after 30 days without a block", () => {
     const t = Date.now();
@@ -92,12 +92,13 @@ describe("lifting a block", () => {
     expect(ADMIN_AUDIT.some((e) => e.action === "auth.ip.unblocked" && e.object.includes(ip) && e.object.includes("SEC-42"))).toBe(true);
     await expect(unblockAddress(ip, "Customer confirmed it was a misconfigured script")).rejects.toThrow(/not blocked/);
   });
-  it("a permanent block lasts until lifted", async () => {
-    resetIpGuard(true); // seeds include a permanent block
-    const perm = blockedAddresses().find((r) => r.until === Infinity)!;
-    expect(ipBlockMessage(perm.ip, Date.now() + 365 * DAY)).not.toBeNull();
+  it("the longest seeded block is 24 hours, ends on its own, and can be lifted early", async () => {
+    resetIpGuard(true);
+    const top = blockedAddresses().find((r) => r.level === IP_POLICY.LADDER.length)!;
+    expect(top.until - Date.now()).toBeLessThanOrEqual(DAY);
+    expect(ipBlockMessage(top.ip, top.until + 1)).toBeNull();
     startElevation("super", "Reviewing sign-in blocks for a customer", 15, "SEC-43");
-    await unblockAddress(perm.ip, "Address belongs to the customer's new office");
-    expect(ipBlockMessage(perm.ip)).toBeNull();
+    await unblockAddress(top.ip, "Address belongs to the customer's new office");
+    expect(ipBlockMessage(top.ip)).toBeNull();
   });
 });

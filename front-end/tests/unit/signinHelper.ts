@@ -32,6 +32,7 @@ export async function attempt(email: string, password: string): Promise<SignInRe
   const st = await firstStep(email, password);
   const e = email.trim().toLowerCase();
   if (st.step === "enroll") { SECRETS.set(e, st.secret); return completeSignIn(st.ticket, await codeFor(e)); }
+  if (st.step === "passkey") return completeSignIn(st.ticket, st.demoCode as string); // demo fallback; passkeys themselves are tested in passkeys.test.ts
   if (st.method === "demo") return completeSignIn(st.ticket, st.demoCode);
   return completeSignIn(st.ticket, await codeFor(e));
 }

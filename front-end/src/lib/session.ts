@@ -8,8 +8,9 @@
    Passwords are compared as salted SHA-256 hashes here; the server uses a slow KDF (Argon2id). Rules: docs/security/SOD_MATRIX.md section 12. */
 import { ROLES, roleOf, setSessionPerson } from "./rbac";
 import { newSecret, otpauthUri, verifyTotp } from "./totp";
+import { checkRegistration, newChallenge, verifyAssertion, type StoredPasskey } from "./webauthn";
 import { generateRecoveryCodes } from "./me";
-import { SodError } from "./sod";
+import { SodError, baseRole } from "./sod";
 import { clampText, isEmail, secureHex } from "./security";
 import { checkPassword, THROTTLED_MSG } from "./credentials";
 import { appStore, bumpData, persist } from "./store";
@@ -17,7 +18,7 @@ import { wsLog } from "./audit";
 import { adminLog } from "./adminAudit";
 import { elevationActive, endElevation } from "./elevation";
 import { allowAction, allowJoin, clientIp, ipBlockMessage, isTrusted, recentFailures, recordIpFailure, recordIpSuccess, reputationOf } from "./ipGuard";
-import { CHALLENGE, LOCKOUT, MFA, RESET, acct, hasRecentAuth, allowResetFor, dropTicket, getTicket, hashCodes, newTicket, redeemRecoveryCode, type Ticket, clearRecentAuth, createReset, currentSession, deviceLabel, endCurrentSession, findReset, markRecentAuth, notify, revokeSessions, saveAcct, setWelcome, sha256, startSession, verifyChallenge } from "./accountSecurity";
+import { CHALLENGE, LOCKOUT, MFA, ruleFor, RESET, acct, hasRecentAuth, allowResetFor, dropTicket, getTicket, hashCodes, newTicket, redeemRecoveryCode, type Ticket, clearRecentAuth, createReset, currentSession, deviceLabel, endCurrentSession, findReset, markRecentAuth, notify, revokeSessions, saveAcct, setWelcome, sha256, startSession, verifyChallenge } from "./accountSecurity";
 
 /** Sign-in events go to the audit log of the space the person works in. */
 function logAuth(action: string) {
@@ -105,7 +106,7 @@ export function currentAccount(): { email: string; person: string } | null {
 export const isDemoAccount = (email?: string) => !!(email || currentAccount()?.email)?.endsWith("@" + DEMO_DOMAIN);
 const platformOnly = (roleId: string) => !roleOf(roleId).spaces.includes("ws");
 /** Lockout for an account: the company preset for workspace accounts; platform accounts are always strict. */
-export const lockoutFor = (roleId: string) => LOCKOUT[platformOnly(roleId) ? "strict" : acct().lockout];
+export const lockoutFor = (roleId: string) => (platformOnly(roleId) ? LOCKOUT.strict : ruleFor(acct().lockout));
 
 /* ---------- sign in and out ---------- */
 /** Thrown when the sign-in needs the challenge step first. It is not a failed attempt. */
@@ -147,7 +148,9 @@ function start(acc: { email: string; roleId: string; who: string | null; status:
 export type SignInStep =
   | { step: "mfa"; ticket: string; method: "totp" }
   | { step: "mfa"; ticket: string; method: "demo"; demoCode: string }
-  | { step: "enroll"; ticket: string; secret: string; uri: string };
+  | { step: "enroll"; ticket: string; secret: string; uri: string }
+  /** Platform super admins: a passkey (added at the first sign-in). `demoCode` is a fallback in the demonstration build only, for devices without passkeys. */
+  | { step: "passkey"; ticket: string; register: boolean; challenge: string; rpId: string; allow: string[]; email: string; name: string; demoCode?: string };
 /** Step one: email and password (and the challenge answer when asked). Errors are generic, except for a proven password on a request that is not
  *  approved. Nobody is signed in until the second step succeeds (completeSignIn). */
 export async function signIn(emailIn: string, password: string, challenge?: { seed: string; nonce: number }): Promise<SignInStep> {
@@ -161,6 +164,12 @@ export async function signIn(emailIn: string, password: string, challenge?: { se
   if (!acc || !(await verifyPassword(email, password))) fail(email, ip);
   if (acc.status === "Pending") throw new Error("Your request to join is waiting for a company admin to approve it.");
   if (acc.status === "Rejected") throw new Error("Your request to join was not approved. Ask a company admin.");
+  if (needsPasskey(acc.roleId)) {
+    const keys = acct().passkeys[email] || []; const challenge = newChallenge();
+    const demoCode = acc.status === "Demo" ? String(100000 + Math.floor(Math.random() * 900000)) : undefined;
+    const t = newTicket({ email, method: "passkey", webauthn: { challenge, register: keys.length === 0 }, demoCode });
+    return { step: "passkey", ticket: t.id, register: keys.length === 0, challenge, rpId: site().rpId, allow: keys.map((k) => k.id), email, name: acc.person, demoCode };
+  }
   if (acc.status === "Demo") {
     const t = newTicket({ email, method: "demo", demoCode: String(100000 + Math.floor(Math.random() * 900000)) });
     return { step: "mfa", ticket: t.id, method: "demo", demoCode: t.demoCode as string };
@@ -186,7 +195,7 @@ export async function completeSignIn(ticketId: string, code: string, opts: { rec
     if (t.tries >= MFA.TRIES) { dropTicket(t.id); throw new Error("Too many wrong codes. Start again."); }
     throw new Error(ipBlockMessage(ip) || "That code is not correct.");
   };
-  if (t.method === "demo") { if (String(code).trim() !== t.demoCode) wrong(); }
+  if (t.method === "demo" || t.method === "passkey") { if (!t.demoCode || String(code).trim() !== t.demoCode) wrong(); } // passkey tickets accept a code only as the demo fallback
   else if (t.method === "enroll") {
     const step = await verifyTotp(t.secret as string, code); if (step === null) wrong();
     recoveryCodes = generateRecoveryCodes(MFA.RECOVERY_CODES);
@@ -202,13 +211,72 @@ export async function completeSignIn(ticketId: string, code: string, opts: { rec
       f.lastStep = step as number; saveAcct();
     }
   }
+  return finish(t, acc, ip, { recoveryCodes, recoveryLeft });
+}
+/** The end of every successful second step: counters cleared, last sign-in recorded, the session started. */
+function finish(t: Ticket, acc: NonNullable<ReturnType<typeof accountOf>>, ip: string, extra: { recoveryCodes?: string[]; recoveryLeft?: number } = {}): SignInResult {
   dropTicket(t.id); fails.delete(t.email); recordIpSuccess(ip);
   const s = acct(); const previous = s.last[t.email] || null; const failedSince = s.failedSince[t.email] || 0;
   s.last[t.email] = { at: Date.now(), ip, device: deviceLabel() }; s.failedSince[t.email] = 0; saveAcct();
   if (failedSince >= CHALLENGE.AFTER_FAILS) notify(t.email, `Signed in after ${failedSince} failed attempts since your last sign-in. If you did not make them, change your password.`);
   start(acc, ip);
   setWelcome({ previous, failedSince });
-  return { roleId: acc.roleId, person: acc.person, previous, failedSince, recoveryCodes, recoveryLeft };
+  return { roleId: acc.roleId, person: acc.person, previous, failedSince, ...extra };
+}
+
+/* ---------- passkeys (platform super admins) ---------- */
+const site = () => (typeof location === "undefined" ? { rpId: "localhost", origin: "http://localhost" } : { rpId: location.hostname, origin: location.origin });
+/** Platform super admins must use a passkey as their second step (SOD_MATRIX §2). */
+export const needsPasskey = (roleId: string) => baseRole(roleId) === "super";
+/** Finish the passkey step: either the new passkey (first sign-in) or a signature from an existing one. A failure counts like a wrong code. */
+export async function completePasskey(ticketId: string, p: { register: { id: string; publicKey: string; clientDataJSON: string } } | { assertion: { id: string; authenticatorData: string; clientDataJSON: string; signature: string } }): Promise<SignInResult> {
+  const t = getTicket(ticketId); if (!t || t.method !== "passkey" || !t.webauthn) throw new Error("This sign-in has expired. Start again.");
+  const ip = clientIp(); const blocked = ipBlockMessage(ip); if (blocked) { dropTicket(t.id); throw new Error(blocked); }
+  const acc = accountOf(t.email); if (!acc) throw new Error("This sign-in has expired. Start again.");
+  const s = acct(); const keys = s.passkeys[t.email] || [];
+  const refuse = (): never => { t.tries += 1; recordIpFailure(ip); notifyOnce(t); if (t.tries >= MFA.TRIES) dropTicket(t.id); throw new Error("That passkey could not be verified. Try again."); };
+  if ("register" in p) {
+    if (!t.webauthn.register || !checkRegistration(p.register.clientDataJSON, { challenge: t.webauthn.challenge, origin: site().origin })) refuse();
+    s.passkeys[t.email] = [...keys, { id: p.register.id, publicKey: p.register.publicKey, signCount: 0, createdAt: Date.now(), label: deviceLabel() }]; saveAcct();
+    notify(t.email, `A passkey was added to your account (${deviceLabel()}).`);
+    logAuthFor(acc, "auth.passkey.added");
+  } else {
+    const key = keys.find((k) => k.id === p.assertion.id); if (!key) refuse();
+    const count = await verifyAssertion(p.assertion, key as StoredPasskey, { challenge: t.webauthn.challenge, origin: site().origin, rpId: site().rpId });
+    if (count === null) refuse();
+    (key as StoredPasskey).signCount = count as number; saveAcct();
+  }
+  return finish(t, acc, ip);
+}
+function notifyOnce(t: Ticket) { if (!t.alerted) { t.alerted = true; notify(t.email, "Someone entered your correct password but then failed the second step. If this was not you, change your password now."); } }
+function logAuthFor(acc: { roleId: string; person: string }, action: string) {
+  if (roleOf(acc.roleId).spaces.includes("ws")) wsLog(action, acc.person, "Access", acc.person); else adminLog(action, acc.person, { actor: acc.person, role: roleOf(acc.roleId).name, categories: ["Account"] });
+}
+/** The signed-in person's passkeys. */
+export const myPasskeys = (): StoredPasskey[] => { const me = currentAccount(); return me ? acct().passkeys[me.email] || [] : []; };
+/** Remove a passkey: the password confirmed within 5 minutes; a super admin's last passkey cannot be removed. */
+export function removePasskey(id: string) {
+  const me = currentAccount(); if (!me) throw new Error("Sign in first.");
+  if (!hasRecentAuth()) throw new SodError("Confirm your password first.");
+  const keys = acct().passkeys[me.email] || []; const k = keys.find((x) => x.id === id); if (!k) throw new SodError("Passkey not found.");
+  if (needsPasskey(appStore.get().role) && keys.length <= 1) throw new SodError("Platform super admins must keep at least one passkey.");
+  acct().passkeys[me.email] = keys.filter((x) => x.id !== id); saveAcct();
+  notify(me.email, "A passkey was removed from your account."); logAuth("auth.passkey.removed");
+}
+/** Add another passkey from the account page: the password confirmed within 5 minutes. Returns the challenge to sign. */
+export function startAddPasskey(): { challenge: string; rpId: string; exclude: string[]; email: string; name: string } {
+  const me = currentAccount(); if (!me) throw new Error("Sign in first.");
+  if (!hasRecentAuth()) throw new SodError("Confirm your password first.");
+  pendingAdd = newChallenge();
+  return { challenge: pendingAdd, rpId: site().rpId, exclude: (acct().passkeys[me.email] || []).map((k) => k.id), email: me.email, name: me.person };
+}
+let pendingAdd: string | null = null;
+export function finishAddPasskey(r: { id: string; publicKey: string; clientDataJSON: string }) {
+  const me = currentAccount(); if (!me || !pendingAdd) throw new Error("Start again.");
+  const ok = checkRegistration(r.clientDataJSON, { challenge: pendingAdd, origin: site().origin }); pendingAdd = null;
+  if (!ok) throw new SodError("That passkey could not be verified.");
+  const s = acct(); s.passkeys[me.email] = [...(s.passkeys[me.email] || []), { id: r.id, publicKey: r.publicKey, signCount: 0, createdAt: Date.now(), label: deviceLabel() }]; saveAcct();
+  notify(me.email, `A passkey was added to your account (${deviceLabel()}).`); logAuth("auth.passkey.added");
 }
 export type { Ticket };
 export function signOut(audit = true) {

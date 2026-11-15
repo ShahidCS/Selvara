@@ -3,6 +3,7 @@
    The real service keeps all of this server-side; nothing here is a control on its own. Rules: docs/security/SOD_MATRIX.md section 12. */
 import { secureHex, randInt } from "./security";
 import { bumpData } from "./store";
+import type { StoredPasskey } from "./webauthn";
 
 const MIN = 60_000;
 export async function sha256(s: string): Promise<string> {
@@ -11,13 +12,22 @@ export async function sha256(s: string): Promise<string> {
 }
 
 /* ---------- lockout presets (company setting) ---------- */
-export type LockoutPreset = "standard" | "strict" | "pci";
-export const LOCKOUT: Record<LockoutPreset, { label: string; attempts: number; lockMs: number; note: string }> = {
+export type LockoutPreset = "standard" | "strict" | "pci" | "custom";
+export interface LockoutRule { label: string; attempts: number; lockMs: number; note: string }
+export const LOCKOUT: Record<Exclude<LockoutPreset, "custom">, LockoutRule> = {
   standard: { label: "Standard", attempts: 5, lockMs: 5 * MIN, note: "5 failed attempts lock the account for 5 minutes" },
   strict: { label: "Strict", attempts: 5, lockMs: 30 * MIN, note: "5 failed attempts lock the account for 30 minutes" },
   pci: { label: "PCI DSS v4", attempts: 10, lockMs: 30 * MIN, note: "10 failed attempts lock the account for 30 minutes (PCI DSS v4.0.1 requirement 8.3.4)" },
 };
-export const isPreset = (v: unknown): v is LockoutPreset => v === "standard" || v === "strict" || v === "pci";
+export const isPreset = (v: unknown): v is LockoutPreset => v === "standard" || v === "strict" || v === "pci" || v === "custom";
+/** Custom lockout bounds: a company matches its own regulator or policy inside them (no regulator publishes its own numbers; compliance decision 2026-11). */
+export const CUSTOM_BOUNDS = { attempts: [3, 10] as const, minutes: [15, 60] as const };
+export const customRule = (c: { attempts: number; minutes: number }): LockoutRule =>
+  ({ label: "Custom", attempts: c.attempts, lockMs: c.minutes * MIN, note: `${c.attempts} failed attempts lock the account for ${c.minutes} minutes` });
+export const validCustom = (c: { attempts: unknown; minutes: unknown }) =>
+  Number.isInteger(c.attempts) && Number.isInteger(c.minutes) && (c.attempts as number) >= CUSTOM_BOUNDS.attempts[0] && (c.attempts as number) <= CUSTOM_BOUNDS.attempts[1] && (c.minutes as number) >= CUSTOM_BOUNDS.minutes[0] && (c.minutes as number) <= CUSTOM_BOUNDS.minutes[1];
+/** The rule in force for a preset. */
+export const ruleFor = (p: LockoutPreset): LockoutRule => (p === "custom" ? customRule(acct().custom) : LOCKOUT[p]);
 
 /* ---------- persisted state ---------- */
 export interface Sess { id: string; email: string; device: string; ip: string; startedAt: number; lastSeen: number; revokedAt?: number; revokedWhy?: string; /** Absolute end (12 hours; 1 hour for demo accounts). */ expiresAt?: number; demo?: boolean }
@@ -33,11 +43,14 @@ interface State {
   /** Reset requests per account (times), for the per-account limit. */
   asks: Record<string, number[]>;
   mfa: Record<string, Factor>;
+  /** Passkeys per account (public keys only). */
+  passkeys: Record<string, StoredPasskey[]>;
   current: string | null;
   lockout: LockoutPreset;
+  custom: { attempts: number; minutes: number };
 }
 const KEY = "selvara.demo.account";
-const fresh = (): State => ({ pw: {}, sessions: [], notices: [], resets: [], last: {}, failedSince: {}, asks: {}, mfa: {}, current: null, lockout: "standard" });
+const fresh = (): State => ({ pw: {}, sessions: [], notices: [], resets: [], last: {}, failedSince: {}, asks: {}, mfa: {}, passkeys: {}, current: null, lockout: "standard", custom: { attempts: 5, minutes: 30 } });
 let S: State | null = null;
 export function acct(): State {
   if (S) return S;
@@ -145,7 +158,7 @@ export function welcomeText(w: Welcome): string {
 
 /* ---------- second step of sign-in ---------- */
 /** Between a correct password and the second factor. Bound to one account, 5 minutes, 5 tries; nothing is signed in until it completes. */
-export interface Ticket { id: string; email: string; method: "totp" | "enroll" | "demo"; expires: number; tries: number; secret?: string; demoCode?: string; alerted?: boolean; challengeOk?: boolean }
+export interface Ticket { id: string; email: string; method: "totp" | "enroll" | "demo" | "passkey"; expires: number; tries: number; secret?: string; demoCode?: string; alerted?: boolean; challengeOk?: boolean; /** Passkey step: the challenge to sign, and whether a passkey is being added. */ webauthn?: { challenge: string; register: boolean } }
 export const MFA = { TICKET_MS: 5 * MIN, TRIES: 5, RECOVERY_CODES: 10 };
 const tickets = new Map<string, Ticket>();
 export function newTicket(t: Omit<Ticket, "id" | "expires" | "tries">): Ticket {

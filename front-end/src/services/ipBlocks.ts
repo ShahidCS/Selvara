@@ -1,5 +1,5 @@
 /* Lifting a sign-in block on a network address (lib/ipGuard.ts). Platform super admins only, elevated, with a reason; audited in the admin log.
-   Temporary blocks also end on their own; a permanent block ends only here. The real API must enforce the same rule. */
+   Every block also ends on its own (24 hours at most); lifting one ends it early. The real API must enforce the same rule. */
 import { adminLog } from "@/lib/adminAudit";
 import { assertElevated, ticketNote } from "@/lib/elevation";
 import { LEVEL_LABEL, ipRecords, isBlocked, liftBlock, type IpRecord } from "@/lib/ipGuard";

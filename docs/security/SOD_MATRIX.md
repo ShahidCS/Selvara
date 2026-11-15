@@ -132,23 +132,55 @@ Decision (2026-11). The role switcher is gone: people sign in. Demo accounts are
 | Rule | Detail |
 |---|---|
 | Two kinds of account | Real accounts (approved requests to join) and demo accounts (one per persona, demonstration build only). A production build has no demo accounts and the server runs every rule (`services/authApi.ts`). Demo accounts are limited: labelled, one-hour sessions, the second step shows its code, the shared password cannot be changed or reset, no recovery codes. |
+| Passkeys (platform super admins) | The second step is a passkey (WebAuthn, user verification required), added at the first sign-in. The last one cannot be removed; adding or removing needs the password within 5 minutes. In the demonstration build a labelled on-screen code is a fallback for devices without passkeys; production has no fallback. |
 | Two-step verification | Real accounts add an authenticator app (TOTP, RFC 6238) at the first sign-in and enter a code at every sign-in; nobody is signed in before the second step; a code is never accepted twice; 10 recovery codes, single use, kept only as salted hashes. A correct password followed by a wrong code counts as a failure and alerts the owner; 5 wrong codes end the attempt. A reset needs the authenticator or a recovery code. |
 | Sign-in | Email and password. Errors are generic ("Email or password is incorrect."), so they never reveal whether an account exists. Five failures lock that email for five minutes. Audited as `auth.signed_in` and `auth.signed_out` in the log of the person's space. |
-| Network blocking | 10 failed sign-ins from one address within 15 minutes, across any accounts (attempts on a locked account count too), block that address for every account. A repeat block within 30 days lasts longer: 5 minutes, 30 minutes, 2 hours, 24 hours, then permanent; after 30 days without a block it starts again at 5 minutes. Temporary blocks end on their own. Only an elevated platform super admin can lift a block early or end a permanent one (Admin Console, Platform security), with a reason of at least 15 characters; the level then resets. Platform support sees the list read-only. Audited as `auth.ip.blocked` (by "Sign-in protection") and `auth.ip.unblocked` (with reason and elevation ticket). In the demo the address is a synthetic documentation-range IP per browser. |
+| Network blocking | 10 failed sign-ins from one address within 15 minutes, across any accounts (attempts on a locked account count too), block that address for every account. A repeat block within 30 days lasts longer: 5 minutes, 30 minutes, 2 hours, then 24 hours, and 24-hour blocks repeat while failures continue; no block is permanent (compliance decision 2026-11, following OWASP); after 30 days without a block it starts again at 5 minutes. Every block ends on its own. Only an elevated platform super admin can lift a block early (Admin Console, Platform security), with a reason of at least 15 characters; the level then resets. Platform support sees the list read-only. Audited as `auth.ip.blocked` (by "Sign-in protection") and `auth.ip.unblocked` (with reason and elevation ticket). In the demo the address is a synthetic documentation-range IP per browser. |
 | Challenge step | After 3 recent failures from the address or on the account, and always from hosting, VPN or proxy addresses, the next sign-in first needs a proof-of-work answer (single use, 2 minutes; the browser spends a moment hashing). A missing or wrong answer is refused and is not counted as a failure. Never asked on a trusted office network. |
 | Address reputation | Hosting, VPN and proxy ranges (synthetic in the demo; an IP intelligence feed in production) are blocked after 5 failures instead of 10 and always get the challenge step. Listed read-only in Platform security. |
 | Trusted office networks | A company admin lists an address or one /24 network (Team, Review cycles & SLAs); a different company admin approves it (`team-network`, four-eyes); removing is immediate. A trusted address is never network-blocked and skips the challenge step; accounts still lock and MFA still applies. Audited as `team.network.requested`, `.trusted`, `.removed`. |
-| Account lockout preset | Company setting (admin only, audited `team.lockout.changed`): Standard (5 failures, 5 minutes), Strict (5, 30 minutes) or PCI DSS v4 (10, 30 minutes; PCI DSS v4.0.1 req 8.3.4). Platform accounts always use Strict. |
+| Account lockout preset | Company setting (admin only, audited `team.lockout.changed` with before and after): Standard (5 failures, 5 minutes), Strict (5, 30 minutes), PCI DSS v4 (10, 30 minutes; PCI DSS v4.0.1 req 8.3.4) or Custom (3 to 10 failures, 15 to 60 minutes, whole numbers; compliance decision 2026-11: no regulator publishes its own numbers, so each company matches its regulator or policy inside these bounds). Platform accounts always use Strict. |
 | Alerts to the owner | Shown in the bell (cannot be switched off) and on the account page: account locked, signed in after 3 or more failed attempts, attempts from a blocked address, password changed or reset, a reset requested, other sessions ended. |
 | Last sign-in | After signing in, the time, address and device of the previous sign-in and the failed attempts since are shown, and kept on the account page. |
 | Sessions | Every sign-in is a session (device, address, start). The account page lists them; "Sign out other sessions" ends the rest at once (audited `session.others.revoked`). A session ended elsewhere signs out on its next load. |
 | Re-authentication | Changing the password needs the current one. New recovery codes need the password confirmed within the last 5 minutes (a fresh sign-in counts). A wrong password counts as a failed attempt. A password change ends every other session. |
 | Password reset | Same answer whether or not the account exists. The link works once, for 15 minutes; a new link replaces the old one. The second factor is also required (5 wrong codes end the link). On success every session ends, the person is not signed in, and the owner is alerted (`auth.password.reset`). Limited to 3 requests per address and 3 per account per hour; requests never lock the account. In the demo the page shows what the email and the authenticator would show. |
-| Open for review | Whether permanent network blocks should remain now that trusted networks and the challenge step exist (OWASP prefers temporary blocks); the challenge difficulty; phishing-resistant MFA (passkeys) for platform super admins. |
+| Decided (2026-11) | Network blocks capped at 24 hours (no permanent block); a bounded Custom lockout preset for regulator-specific policies. |
+| Open for review | NIST SP 800-63B rev 4 wording (not verified from the source: nist.gov is outside this environment's network allow-list); the challenge difficulty. |
 | Request to join | Name, work email and a password that meets the credential policy (`lib/credentials.ts`). The answer is the same whether or not the email is known; duplicates and demo-domain emails are ignored. Limited to 3 per address per hour; a blocked address cannot send one. Only a salted hash of the password is kept. |
 | Approval | A company admin approves or rejects, with a reason of at least 10 characters (`team.join.approved`, `team.join.rejected`). Nobody decides their own request. A pending or rejected person cannot sign in. |
 | Role | An approved person joins as Employee under their own name (audit entries and separation-of-duties checks use it). Any other role is a separate role change with its own approval. |
 | Sign-out | Ends any active elevation. A stored session for someone who is no longer an active member is signed out on load. |
 
 Enforced in `src/lib/session.ts`, `src/lib/ipGuard.ts`, `src/services/ipBlocks.ts`, `src/services/joinRequests.ts` and `src/components/shell/AppShell.tsx` (signed-out routes go to `/login`).
+
+## 13. Automation rules (draft for compliance review)
+Decision (2026-11, designed from the approval and audit model, draft for review). A rule is "when this happens, do one safe thing", set up by company admins in Team & Settings.
+
+| Rule | Detail |
+|---|---|
+| What a rule can do | Only notify the owner or open an issue (once per record). Rules never approve, reject, delete, publish or change access. Triggers and actions come from a fixed list; anything else is refused. |
+| Turning on | A rule starts as a draft. Turning it on (and back on after a pause) is four-eyes (`team-rule`): a different company admin, not its creator, approves, with the number of records it would act on shown. |
+| Limits | At most 20 actions per run and 25 rules per workspace. A preview (dry run) shows what it would act on without acting. |
+| Stopping | Pausing is immediate; a rule that is on cannot be deleted until paused. |
+| Audit | `team.rule.created`, `.enable_requested`, `.enabled`, `.paused`, `.deleted`, `.run` (counts) and `.action` (each action). |
+| Production | Rules run as a server job on a schedule; here they run by hand. |
+| Open for review | The trigger and action list, the limits, and whether some rules should need two approvers. |
+
+Enforced in `src/features/team/services/governance.ts`.
+
+## 14. Data retention and legal hold (draft for compliance review)
+
+| Rule | Detail |
+|---|---|
+| Schedule | Each kind of record has a period and a minimum (draft values: audit logs, evidence and closed risks 7 years, minimum 5; retired policy versions 10 years; closed issues and access reviews 3 years, minimum 1; sign-in history 1 year; rejected requests to join 3 months). The minimum reflects record-keeping duties such as FATF Recommendation 11 (at least five years) and must be confirmed per regulator. |
+| Changes | Longer takes effect at once. Shorter is four-eyes (`team-retention`, a different company admin) and is refused below the minimum. Every change needs a reason and is audited (`team.retention.changed`, `.shorten_requested`). |
+| Legal hold | Any company admin places a hold at once, with a reason; while it holds, nothing of that kind is deleted. Releasing it is four-eyes (`team-hold`): a different admin, not the one who placed it. Audited (`team.retention.hold_placed`, `.release_requested`, `.hold_released`). |
+| Purge | The demonstration build only previews what is past its period; nothing is deleted. Production purges run as a server job that skips held records and writes what it removed to the audit log. |
+| Open for review | Every period and minimum, per regulator and per customer contract. |
+
+Enforced in `src/features/team/services/governance.ts`.
+
+## 15. Presence (draft)
+Record and form pages show who else has the record open ("Also here"), and warn when two people are editing the same record ("the last save wins"). Names only, never content; nothing is stored. Demonstration build: between tabs of one browser (BroadcastChannel). Production: a Supabase Realtime Presence channel per record, joinable only by people the database allows to read that record. Presence is information, not a lock. Open for review: whether editing should take a lock instead.
 

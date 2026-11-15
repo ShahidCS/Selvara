@@ -63,6 +63,8 @@ export function YourAccount() {
         </div>
       </section>
 
+      {view.passkeyRequired || view.passkeys.length ? <Passkeys view={view} /> : null}
+
       {view.demo ? null : <ChangePassword />}
 
       <section className="card" aria-labelledby="ya-act" style={{ gridColumn: "1 / -1" }}><div className="c-head"><h3 id="ya-act">Security activity</h3></div>
@@ -126,6 +128,51 @@ function CodesFlow({ close }: { close: () => void }) {
           <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}><button className="btn btn-primary" disabled={!saved} onClick={() => { close(); L.toast("New recovery codes saved. Old codes no longer work"); }}>Done</button></div>
         </>
       )}
+    </div>
+  );
+}
+
+/** Passkeys on the account. Required for platform super admins (the last one cannot be removed). Adding or removing needs the password within 5 minutes. */
+function Passkeys({ view }: { view: auth.AccountView }) {
+  const L = useLayer();
+  const add = () => L.openModal("Add a passkey", (close) => <ConfirmThen close={close} label="Add a passkey" run={async () => { await auth.addPasskey(); L.toast("Passkey added"); }} />);
+  const remove = (id: string, label: string) => L.openModal(`Remove passkey: ${label}`, (close) => <ConfirmThen close={close} label="Remove passkey" danger run={async () => { await auth.removePasskey(id); L.toast("Passkey removed"); }} />);
+  return (
+    <section className="card" aria-labelledby="ya-pk"><div className="c-head"><h3 id="ya-pk">Passkeys</h3>{view.passkeyRequired ? <div className="r"><span className="tag">required for your role</span></div> : null}</div>
+      <div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
+        {view.passkeys.length ? (
+          <ul style={{ listStyle: "none", margin: 0, padding: 0 }} aria-label="Passkeys">
+            {view.passkeys.map((k) => (
+              <li key={k.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>
+                <div><div style={{ fontWeight: 600 }}>{k.label}</div><div className="sub" style={{ fontSize: 12 }}>added {utc(k.createdAt)}</div></div>
+                <button className="btn btn-ghost sm" aria-label={`Remove passkey: ${k.label}`} disabled={view.passkeyRequired && view.passkeys.length <= 1} title={view.passkeyRequired && view.passkeys.length <= 1 ? "Add another passkey before removing this one" : undefined} onClick={() => remove(k.id, k.label)}><Icon name="x" />Remove</button>
+              </li>
+            ))}
+          </ul>
+        ) : <p style={{ margin: 0 }}>No passkey yet: you add one at your next sign-in.</p>}
+        <div><button className="btn btn-secondary sm" onClick={add}>Add a passkey</button></div>
+      </div>
+    </section>
+  );
+}
+
+/** Confirm the password (unless confirmed in the last 5 minutes), then run a sensitive change. */
+function ConfirmThen({ close, label, run, danger }: { close: () => void; label: string; run: () => Promise<void>; danger?: boolean }) {
+  const [ok, setOk] = useState(hasRecentAuth()); const [pw, setPw] = useState(""); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const confirm = async (e: React.FormEvent) => { e.preventDefault(); setErr(""); try { await auth.reauthenticate(pw); setPw(""); setOk(true); } catch (x) { setErr(msg(x, "Could not confirm your password.")); } };
+  const go = async () => { setBusy(true); setErr(""); try { await run(); close(); } catch (x) { setErr(x instanceof DOMException ? "The passkey request was cancelled or timed out." : msg(x, "Could not complete the change.")); } setBusy(false); };
+  if (!ok) return (
+    <form onSubmit={confirm} noValidate>
+      <p style={{ margin: "0 0 10px", fontSize: 13 }}>Confirm your password to continue. It stays confirmed for {REAUTH_MS / 60_000} minutes.</p>
+      <PwField id="ct-pw" label="Password" ac="current-password" value={pw} onChange={setPw} invalid={!!err} describedBy={err ? "ct-err" : undefined} />
+      <ErrP id="ct-err" msg={err} />
+      <div className="btngrp" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}><button type="button" className="btn btn-secondary" onClick={close}>Cancel</button><button type="submit" className="btn btn-primary">Confirm</button></div>
+    </form>
+  );
+  return (
+    <div>
+      <ErrP id="ct-err2" msg={err} />
+      <div className="btngrp" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}><button className="btn btn-secondary" onClick={close}>Cancel</button><button className={`btn ${danger ? "btn-danger" : "btn-primary"}`} disabled={busy} onClick={go}>{label}</button></div>
     </div>
   );
 }

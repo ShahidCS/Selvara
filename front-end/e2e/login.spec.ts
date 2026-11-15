@@ -122,12 +122,13 @@ test("repeated failures from one browser block its network address, even for the
   await expect(p).toHaveURL(/\/login$/);
 });
 
-test("platform support sees blocked addresses read-only; an elevated super admin lifts a permanent block", async ({ browser }, ti) => {
+test("platform support sees blocked addresses read-only; an elevated super admin lifts a 24-hour block", async ({ browser }, ti) => {
   const sup = await openAs(browser, ti, "support"); const sp = sup.page;
   await gotoModule(sp, "/admin/security");
   const card = sp.getByRole("region", { name: "Blocked sign-in addresses" });
   await expect(card).toContainText("203.0.113.24");
-  await expect(card).toContainText("Permanent");
+  await expect(card).toContainText("24 hours");
+  await expect(card).not.toContainText("Permanent");
   await expect(card.getByRole("button", { name: /^Lift block/ })).toHaveCount(0);
   await sup.close();
 
@@ -152,4 +153,10 @@ test("platform support sees blocked addresses read-only; an elevated super admin
   await dlg.getByRole("button", { name: "Lift block" }).click();
   await expect(p.getByText("Block lifted on 203.0.113.24")).toBeVisible();
   await expect(c).not.toContainText("203.0.113.24");
+});
+
+test("the production API is off (503, not cached) until the Supabase environment is configured", async ({ request }) => {
+  const r = await request.get("/api/auth/session");
+  expect(r.status()).toBe(503);
+  expect(r.headers()["cache-control"]).toContain("no-store");
 });

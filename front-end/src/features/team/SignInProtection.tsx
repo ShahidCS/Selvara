@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Chip, Icon, Segmented, Table } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
-import { LOCKOUT, type LockoutPreset } from "@/lib/accountSecurity";
+import { CUSTOM_BOUNDS, LOCKOUT, acct, ruleFor, type LockoutPreset } from "@/lib/accountSecurity";
 import { sodMessage } from "@/lib/approvalFlow";
 import { clientIp, trustedNets } from "@/lib/ipGuard";
 import { useData } from "@/lib/store";
@@ -11,8 +11,17 @@ import * as svc from "@/services/team";
 export function SignInProtection({ manage }: { manage: boolean }) {
   useData(); const L = useLayer();
   const preset = svc.lockoutPreset();
+  const [shown, setShown] = useState<LockoutPreset>(preset);
+  const [att, setAtt] = useState(String(acct().custom.attempts)); const [mins, setMins] = useState(String(acct().custom.minutes)); const [cerr, setCerr] = useState("");
   const [net, setNet] = useState(""); const [label, setLabel] = useState(""); const [err, setErr] = useState("");
-  const pick = async (v: LockoutPreset) => { try { await svc.setLockoutPreset(v); L.toast("Account lockout: " + LOCKOUT[v].label); } catch (e) { L.toast(sodMessage(e, "Could not change the lockout"), false); } };
+  const pick = async (v: LockoutPreset) => {
+    setShown(v); setCerr(""); if (v === "custom") return; // Custom applies on Save
+    try { await svc.setLockoutPreset(v); L.toast("Account lockout: " + LOCKOUT[v].label); } catch (e) { L.toast(sodMessage(e, "Could not change the lockout"), false); }
+  };
+  const saveCustom = async (e: React.FormEvent) => {
+    e.preventDefault(); setCerr("");
+    try { await svc.setLockoutPreset("custom", { attempts: Number(att), minutes: Number(mins) }); L.toast("Account lockout: " + ruleFor("custom").note); } catch (x) { setCerr(sodMessage(x, "Could not save the custom lockout")); }
+  };
   const add = async (e: React.FormEvent) => {
     e.preventDefault(); setErr("");
     try { await svc.requestTrustedNet(net, label); setNet(""); setLabel(""); L.toast("Requested. A different company admin must approve it"); } catch (x) { setErr(sodMessage(x, "Could not add the network")); }
@@ -22,9 +31,17 @@ export function SignInProtection({ manage }: { manage: boolean }) {
   return (
     <>
       <div className="sectitle" style={{ marginTop: 20 }}>Account lockout</div>
-      <p className="field help" style={{ margin: "0 0 8px", maxWidth: "62ch" }}>How many failed sign-ins lock a workspace account, and for how long. {LOCKOUT[preset].note}. Choose PCI DSS v4 if you handle card data. Platform accounts always use Strict.</p>
-      {manage ? <Segmented<LockoutPreset> label="Account lockout" value={preset} onChange={pick} options={(Object.keys(LOCKOUT) as LockoutPreset[]).map((k) => ({ value: k, label: LOCKOUT[k].label }))} />
-        : <p style={{ margin: 0 }}>{LOCKOUT[preset].label}. Only an admin can change it.</p>}
+      <p className="field help" style={{ margin: "0 0 8px", maxWidth: "62ch" }}>How many failed sign-ins lock a workspace account, and for how long. Now: {ruleFor(preset).note}. Choose PCI DSS v4 if you handle card data, or Custom to match your regulator or internal policy ({CUSTOM_BOUNDS.attempts[0]} to {CUSTOM_BOUNDS.attempts[1]} attempts, {CUSTOM_BOUNDS.minutes[0]} to {CUSTOM_BOUNDS.minutes[1]} minutes). Platform accounts always use Strict.</p>
+      {manage ? <Segmented<LockoutPreset> label="Account lockout" value={shown} onChange={pick} options={[...(Object.keys(LOCKOUT) as LockoutPreset[]).map((k) => ({ value: k, label: LOCKOUT[k as keyof typeof LOCKOUT].label })), { value: "custom" as LockoutPreset, label: "Custom" }]} />
+        : <p style={{ margin: 0 }}>{ruleFor(preset).label}. Only an admin can change it.</p>}
+      {manage && shown === "custom" ? (
+        <form onSubmit={saveCustom} noValidate style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, alignItems: "end", marginTop: 8 }}>
+          <div className="field" style={{ margin: 0 }}><label htmlFor="lk-att">Failed attempts</label><input className="input num" id="lk-att" type="number" min={CUSTOM_BOUNDS.attempts[0]} max={CUSTOM_BOUNDS.attempts[1]} value={att} onChange={(e) => setAtt(e.target.value)} aria-invalid={!!cerr} aria-describedby={cerr ? "lk-err" : undefined} /></div>
+          <div className="field" style={{ margin: 0 }}><label htmlFor="lk-min">Lock for (minutes)</label><input className="input num" id="lk-min" type="number" min={CUSTOM_BOUNDS.minutes[0]} max={CUSTOM_BOUNDS.minutes[1]} value={mins} onChange={(e) => setMins(e.target.value)} aria-invalid={!!cerr} aria-describedby={cerr ? "lk-err" : undefined} /></div>
+          <button type="submit" className="btn btn-secondary">Save</button>
+        </form>
+      ) : null}
+      <p className="field help" id="lk-err" role="alert" style={{ color: "var(--bad-ink)", display: cerr ? "block" : "none", marginTop: 6 }}>{cerr}</p>
 
       <div className="sectitle" style={{ marginTop: 20 }}>Trusted office networks</div>
       <p className="field help" style={{ margin: "0 0 8px", maxWidth: "62ch" }}>Sign-ins from these addresses are never blocked for repeated failures and skip the extra check, so one mistyping script cannot lock out a whole office. Accounts still lock and MFA still applies. Adding a network needs approval from a different company admin; removing one is immediate. Your current address is <span className="num">{clientIp()}</span>.</p>

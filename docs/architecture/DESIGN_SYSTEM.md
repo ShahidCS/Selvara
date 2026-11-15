@@ -45,7 +45,7 @@ Geist and Geist Mono, SIL Open Font License 1.1, self-hosted from `front-end/pub
 | 2 | Shell: 72px rail, notifications slide-over, toast with Undo, shortcuts, profile menu links, search landmark | this change (see below) |
 | 3 | Shared kit: data table, KPI strip and card, AI panel, stepper, timeline, charts, switch, segmented control, skeleton | this change (see below) |
 | 4 | Module migration in waves; modal create and edit flows become pages | in progress: wave A done (registers) |
-| 5 | Governance features (inline decisions, delegation, notification matrix, autonomy, rules, retention) | approved; step 1 (inline decisions in the bell) built, the rest follows in separate pull requests |
+| 5 | Governance features (inline decisions, delegation, notification matrix, autonomy, rules, retention, presence) | built (drafts for compliance review: SOD_MATRIX §8–§15) |
 | 6 | RTL, density, print, tenant theming, automated accessibility tests | density, print, tenant theming and axe tests done; RTL and Arabic excluded for now |
 
 Decisions taken: all 33 modules stay in the rail with the existing fold and unfold behaviour; the Admin Console and vendor portal take tokens and templates only; create and edit modals become full pages; the reference colour codes are kept as specified.
