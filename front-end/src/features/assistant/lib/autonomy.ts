@@ -14,6 +14,25 @@ export const AUTONOMY = {
   /** Agents that run as this identity need two approvers to be raised. */
   TWO_APPROVERS_FOR: "Service account",
 };
+/** Certification of an acting agent (periodic recertification, as for privileged access). Every acting agent holds a certification that expires;
+ *  one that lapses drops to the lowest rung before its next run. Agents that were already acting when the ladder arrived get a transition period. */
+export const CERT = {
+  /** How long a raise or a recertification lasts. */
+  VALID_DAYS: 90,
+  /** Transition for agents that were acting before the ladder existed (never certified). */
+  TRANSITION_DAYS: 30,
+  /** Shown as due from this many days before expiry. */
+  DUE_SOON_DAYS: 14,
+};
+export const DAY_MS = 86_400_000;
+export const certDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+export type CertState = "none" | "transition" | "due" | "valid" | "lapsed";
+export function certState(a: { autonomy: string; certifiedUntil?: number; transition?: boolean }, now = Date.now()): CertState {
+  if (rungOf(a.autonomy) <= 0 || !a.certifiedUntil) return rungOf(a.autonomy) > 0 ? "lapsed" : "none";
+  if (a.certifiedUntil <= now) return "lapsed";
+  if (a.transition) return "transition";
+  return a.certifiedUntil - now <= CERT.DUE_SOON_DAYS * DAY_MS ? "due" : "valid";
+}
 /** A change an acting agent applied that a person rejected afterwards. It counts as a rejection and lowers the agent. */
 export const REJECTED_AFTER = "Rejected after applying";
 export const rungOf = (v: string): number => LADDER.indexOf(v as Rung);

@@ -10,20 +10,29 @@ import { getApproval, requestApproval } from "@/lib/approvals";
 import { payloadStr, registerApprovalHandler } from "@/lib/approvalKit";
 import { assertNotSelf, assertRole, getActor, hasRole, SodError } from "@/lib/sod";
 import { wsLog } from "@/lib/audit";
-import { AUTONOMY, LADDER, REJECTED_AFTER, isRung, nextRung, rungOf, trackRecord } from "@/features/assistant/lib/autonomy";
+import { AUTONOMY, CERT, DAY_MS, LADDER, REJECTED_AFTER, certDate, certState, isRung, nextRung, rungOf, trackRecord } from "@/features/assistant/lib/autonomy";
 import { TEAM_SETTINGS } from "@/services/team";
 import { clampText } from "@/lib/security";
 import { apiFetch, viaApi } from "@/services/http";
 
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
-export interface Agent { id: string; name: string; trigger: string; runsAs: string; autonomy: string; last: string; status: string; createdBy?: string; pendingApproval?: string; pendingAutonomy?: string }
+export interface Agent { id: string; name: string; trigger: string; runsAs: string; autonomy: string; last: string; status: string; createdBy?: string; pendingApproval?: string; pendingAutonomy?: string;
+  /** Acting agents only: when the certification to act expires (ms), who approved it, and whether it is the transition period for an agent that was acting before the ladder. */
+  certifiedUntil?: number; certifiedBy?: string; transition?: boolean; pendingRecert?: string }
 export interface AgentRun { id: string; agentId?: string; when: string; agent: string; change: string; decision: string; requestedBy?: string; decidedBy?: string; decidedReason?: string }
 export interface McpGrant { server: string; tools: string; access: string; status: string; pendingApproval?: string }
 export interface Msg { role: "user" | "assistant"; text: string; draft?: boolean }
 export const ASST = {
   thread: [] as Msg[],
-  agents: clone(seed.ASST_AGENTS) as Agent[], runs: clone(seed.ASST_RUNS) as AgentRun[], mcp: clone(seed.ASST_MCP) as McpGrant[],
+  agents: withTransition(clone(seed.ASST_AGENTS) as Agent[]), runs: clone(seed.ASST_RUNS) as AgentRun[], mcp: clone(seed.ASST_MCP) as McpGrant[],
 };
+/** Agents already acting when the ladder arrived keep acting for a transition period, then must be recertified or they drop to "Suggests only". */
+function withTransition(list: Agent[]): Agent[] {
+  const until = Date.now() + CERT.TRANSITION_DAYS * DAY_MS;
+  list.forEach((a) => { if (rungOf(a.autonomy) > 0 && !a.certifiedUntil) { a.certifiedUntil = until; a.transition = true; } });
+  return list;
+}
+const clearCert = (a: Agent) => { delete a.certifiedUntil; delete a.certifiedBy; delete a.transition; };
 export const AGENT_TRIGGERS = ["On schedule (weekly)", "Evidence overdue", "Control fails", "On new questionnaire", "Risk updated"];
 export const AGENT_AUTONOMY: string[] = [...LADDER];
 export const AGENT_RUNS_AS = ["Read-only", "Service account"];
@@ -55,9 +64,21 @@ registerApprovalHandler("assistant.agent.autonomy", {
     if (a.autonomy !== from || nextRung(from) !== to) throw new SodError("The agent's autonomy changed since this was requested.");
     const why = recordBlock(a); if (why) throw new SodError(why);
     a.autonomy = to; delete a.pendingAutonomy;
-    wsLog("assistant.agent.autonomy_raised", `${a.name}: ${from} → ${to} (approved by ${by(ap)}; requested by ${ap.requestedBy})`, "System");
+    a.certifiedUntil = Date.now() + CERT.VALID_DAYS * DAY_MS; a.certifiedBy = by(ap); a.transition = false;
+    wsLog("assistant.agent.autonomy_raised", `${a.name}: ${from} → ${to}, certified until ${certDate(a.certifiedUntil)} (approved by ${by(ap)}; requested by ${ap.requestedBy})`, "System");
   },
   closed: (ap) => { const a = findAgent(payloadStr(ap, "id")); if (a && a.pendingAutonomy === ap.id) delete a.pendingAutonomy; },
+});
+registerApprovalHandler("assistant.agent.recertify", {
+  apply: (ap) => {
+    sweepCertifications();
+    const a = findAgent(payloadStr(ap, "id")); if (!a) throw new SodError("Agent not found.");
+    if (rungOf(a.autonomy) <= 0) throw new SodError("The agent no longer acts on its own; raise it again instead.");
+    const why = cleanBlock(a); if (why) throw new SodError(why);
+    a.certifiedUntil = Date.now() + CERT.VALID_DAYS * DAY_MS; a.certifiedBy = by(ap); a.transition = false; delete a.pendingRecert;
+    wsLog("assistant.agent.recertified", `${a.name}: ${a.autonomy} until ${certDate(a.certifiedUntil)} (approved by ${by(ap)}; requested by ${ap.requestedBy})`, "System");
+  },
+  closed: (ap) => { const a = findAgent(payloadStr(ap, "id")); if (a && a.pendingRecert === ap.id) delete a.pendingRecert; },
 });
 registerApprovalHandler("assistant.mcp.grant", {
   apply: (ap) => {
@@ -105,6 +126,7 @@ export function runAgent(id: string) {
     gate("running an agent");
     const a = findAgent(id); if (!a) return null;
     if (a.status !== "Active") throw new SodError("Only an active agent can run.");
+    sweepCertifications(); // a lapsed certification never acts
     a.last = "just now"; const suggest = rungOf(a.autonomy) <= 0; // unknown values are treated as the lowest rung
     ASST.runs.unshift({ id: uid("R", ASST.runs), agentId: a.id, when: "just now", agent: a.name, change: suggest ? "Proposed an update for review" : "Ran within scope and applied", decision: suggest ? "Waiting" : "Auto-applied", requestedBy: getActor().name });
     return { agent: a, suggest };
@@ -209,7 +231,7 @@ export function lowerAutonomy(id: string) {
     const a = findAgent(id); if (!a) return null;
     const i = rungOf(a.autonomy);
     if (i <= 0) throw new SodError("Already at the lowest level.");
-    const from = a.autonomy; a.autonomy = LADDER[i - 1];
+    const from = a.autonomy; a.autonomy = LADDER[i - 1]; if (i - 1 === 0) clearCert(a);
     wsLog("assistant.agent.autonomy_lowered", `${a.name}: ${from} → ${a.autonomy} by ${getActor().name}`, "System");
     return a;
   }, () => post<Agent | null>(`/assistant/agents/${enc(id)}/autonomy/lower`, {}));
@@ -234,9 +256,49 @@ export function rejectApplied(id: string, reason: string) {
     const a = r.agentId ? findAgent(r.agentId) : ASST.agents.find((x) => x.name === r.agent);
     let lowered: Agent | null = null;
     if (a && rungOf(a.autonomy) > 0) {
-      const from = a.autonomy; a.autonomy = LADDER[0]; lowered = a;
+      const from = a.autonomy; a.autonomy = LADDER[0]; clearCert(a); lowered = a;
       wsLog("assistant.agent.autonomy_lowered", `${a.name}: ${from} → ${a.autonomy} automatically, after ${me} rejected an applied change`, "System");
     }
     return { run: r, lowered };
   }, () => post<{ run: AgentRun; lowered: Agent | null } | null>(`/assistant/runs/${enc(id)}/reject-applied`, { reason }));
 }
+
+/* Certification of acting agents (docs/security/SOD_MATRIX.md section 11, "Certification"). */
+/** Drops every acting agent whose certification lapsed to the lowest rung (audited once each). Safe to call often; runs before every agent run. */
+export function sweepCertifications(now = Date.now()): Agent[] {
+  const out: Agent[] = [];
+  ASST.agents.forEach((a) => {
+    if (rungOf(a.autonomy) > 0 && certState(a, now) === "lapsed") {
+      const from = a.autonomy; const was = a.transition ? "transition period ended without recertification" : "certification lapsed";
+      a.autonomy = LADDER[0]; clearCert(a); out.push(a);
+      wsLog("assistant.agent.autonomy_lowered", `${a.name}: ${from} → ${a.autonomy} automatically, ${was}`, "System");
+    }
+  });
+  return out;
+}
+function cleanBlock(a: Agent): string | null {
+  const n = trackSetting() || AUTONOMY.TRACK_DEFAULT; // recertification always needs a clean recent record, even when the raise threshold is off
+  return trackRecord(a, ASST.runs, n).recentRejection ? `A person rejected one of its last ${n} changes. Lower it and let it earn its way back.` : null;
+}
+/** Why the signed-in person cannot ask to recertify this agent (null = may). */
+export function recertBlockReason(a: Agent): string | null {
+  if (!hasRole(getActor().roleId, "admin", "owner")) return "Only an admin or owner can recertify an agent.";
+  if (rungOf(a.autonomy) <= 0) return "Only an agent that acts on its own is certified.";
+  if (stillPending(a.pendingRecert)) return "Recertification is already awaiting approval.";
+  return cleanBlock(a);
+}
+/** Recertify an acting agent for another period. A four-eyes approval with the same people rules as a raise (two approvers for a service account). */
+export function requestRecertify(id: string, reason: string) {
+  return viaApi<{ agent: Agent; approvalId: string } | null>(() => {
+    gate("recertifying an agent");
+    sweepCertifications();
+    const a = findAgent(id); if (!a) return null;
+    const why = recertBlockReason(a); if (why) throw new SodError(why);
+    const r = clampText(reason, 300); if (r.length < AUTONOMY.REASON_MIN) throw new SodError(`Give a reason of at least ${AUTONOMY.REASON_MIN} characters.`);
+    const ap = requestApproval({ kind: "assistant.agent.recertify", title: `Recertify agent ${clampText(a.name, 80)} to keep acting (runs as ${a.runsAs})`, subject: a.id, payload: { id: a.id, reason: r }, needs: raiseApprovers(a), approverRoles: APPROVERS, forbid: [a.createdBy].filter(Boolean) });
+    a.pendingRecert = ap.id;
+    wsLog("assistant.agent.recertify_requested", `${a.name} (${ap.id}; reason: ${r})`, "System");
+    return { agent: a, approvalId: ap.id };
+  }, () => post<{ agent: Agent; approvalId: string } | null>(`/assistant/agents/${enc(id)}/recertify`, { reason }));
+}
+

@@ -55,3 +55,21 @@ test("a small team turns the track record off; raising still needs approval; rej
   await p.getByRole("tab", { name: "Custom agents" }).click();
   await expect(table.getByRole("row", { name: /Risk summariser/ })).toContainText("Suggests only");
 });
+
+test("agents acting before the ladder show a transition deadline and can be recertified with an attestation", async ({ browser }, ti) => {
+  const s = await openAs(browser, ti, "admin"); const p = s.page;
+  await gotoModule(p, "/ws/assistant");
+  await p.getByRole("tab", { name: "Custom agents" }).click();
+  const table = p.getByRole("table", { name: "Agents", exact: true });
+  await expect(table.getByRole("row", { name: /Evidence chaser/ })).toContainText(/Recertify by \d{4}-\d{2}-\d{2}/);
+  await table.getByRole("button", { name: "Recertify: Evidence chaser" }).click();
+  const dlg = p.getByRole("dialog", { name: /Recertify: Evidence chaser/ });
+  await expect(dlg).toContainText("Two (it runs as a service account)");
+  await p.waitForTimeout(600);
+  const r = await new AxeBuilder({ page: p }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
+  const bad = r.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id} x${v.nodes.length}: ${v.nodes.slice(0, 2).map((n) => n.target.join(" ")).join(" | ")}`);
+  expect(bad, bad.join("\n")).toEqual([]);
+  await dlg.getByLabel(/^Attestation/).fill("Reviewed its last month of emails to owners");
+  await dlg.getByRole("button", { name: "Request approval" }).click();
+  await expect(table.getByRole("row", { name: /Evidence chaser/ })).toContainText("Recertification requested");
+});
