@@ -17,7 +17,7 @@ import { wsLog } from "./audit";
 import { adminLog } from "./adminAudit";
 import { elevationActive, endElevation } from "./elevation";
 import { allowAction, allowJoin, clientIp, ipBlockMessage, isTrusted, recentFailures, recordIpFailure, recordIpSuccess, reputationOf } from "./ipGuard";
-import { CHALLENGE, LOCKOUT, MFA, RESET, acct, hasRecentAuth, allowResetFor, dropTicket, getTicket, hashCodes, newTicket, redeemRecoveryCode, type Ticket, clearRecentAuth, createReset, currentSession, deviceLabel, endCurrentSession, findReset, markRecentAuth, notify, revokeSessions, saveAcct, setWelcome, sha256, startSession, verifyChallenge } from "./accountSecurity";
+import { CHALLENGE, LOCKOUT, MFA, ruleFor, RESET, acct, hasRecentAuth, allowResetFor, dropTicket, getTicket, hashCodes, newTicket, redeemRecoveryCode, type Ticket, clearRecentAuth, createReset, currentSession, deviceLabel, endCurrentSession, findReset, markRecentAuth, notify, revokeSessions, saveAcct, setWelcome, sha256, startSession, verifyChallenge } from "./accountSecurity";
 
 /** Sign-in events go to the audit log of the space the person works in. */
 function logAuth(action: string) {
@@ -105,7 +105,7 @@ export function currentAccount(): { email: string; person: string } | null {
 export const isDemoAccount = (email?: string) => !!(email || currentAccount()?.email)?.endsWith("@" + DEMO_DOMAIN);
 const platformOnly = (roleId: string) => !roleOf(roleId).spaces.includes("ws");
 /** Lockout for an account: the company preset for workspace accounts; platform accounts are always strict. */
-export const lockoutFor = (roleId: string) => LOCKOUT[platformOnly(roleId) ? "strict" : acct().lockout];
+export const lockoutFor = (roleId: string) => (platformOnly(roleId) ? LOCKOUT.strict : ruleFor(acct().lockout));
 
 /* ---------- sign in and out ---------- */
 /** Thrown when the sign-in needs the challenge step first. It is not a failed attempt. */

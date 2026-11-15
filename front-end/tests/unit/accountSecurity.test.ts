@@ -76,7 +76,7 @@ describe("account lockout preset", () => {
     appStore.set({ role: "owner" }); await expect(setLockoutPreset("pci")).rejects.toBeInstanceOf(SodError);
     appStore.set({ role: "admin" }); await expect(setLockoutPreset("lenient")).rejects.toBeInstanceOf(SodError);
     await setLockoutPreset("pci"); expect(lockoutPreset()).toBe("pci");
-    expect(WS_AUDIT.some((e) => e.action === "team.lockout.changed" && e.target.startsWith("Standard → PCI DSS v4"))).toBe(true);
+    expect(WS_AUDIT.some((e) => e.action === "team.lockout.changed" && e.target.startsWith("Standard (5 failed attempts lock the account for 5 minutes) → PCI DSS v4"))).toBe(true);
     signOut(false); trustMe(); // isolate the account lock from network blocking
     for (let i = 0; i < 9; i++) await expect(attempt(PRIYA, "nope")).rejects.toThrow(/incorrect/);
     const r = await attempt(PRIYA, DEMO); expect(r.roleId).toBe("employee"); signOut(false);
@@ -84,6 +84,19 @@ describe("account lockout preset", () => {
     await expect(attempt(PRIYA, DEMO)).rejects.toThrow(/Too many attempts/);
     expect(lockoutFor("employee").lockMs).toBe(30 * 60_000);
     expect(noticesFor(PRIYA).some((n) => n.text.includes("locked for 30 minutes"))).toBe(true);
+  });
+  it("a custom lockout is bounded, admin only and audited", async () => {
+    appStore.set({ role: "admin" });
+    await expect(setLockoutPreset("custom")).rejects.toBeInstanceOf(SodError);
+    await expect(setLockoutPreset("custom", { attempts: 2, minutes: 30 })).rejects.toBeInstanceOf(SodError);
+    await expect(setLockoutPreset("custom", { attempts: 5, minutes: 90 })).rejects.toBeInstanceOf(SodError);
+    await expect(setLockoutPreset("custom", { attempts: 5.5, minutes: 30 })).rejects.toBeInstanceOf(SodError);
+    await setLockoutPreset("custom", { attempts: 4, minutes: 45 });
+    expect(lockoutFor("employee")).toEqual(expect.objectContaining({ attempts: 4, lockMs: 45 * 60_000 }));
+    expect(WS_AUDIT.some((e) => e.action === "team.lockout.changed" && e.target.endsWith("Custom (4 failed attempts lock the account for 45 minutes)"))).toBe(true);
+    signOut(false); trustMe();
+    for (let i = 0; i < 4; i++) await expect(attempt(PRIYA, "nope")).rejects.toThrow(/incorrect/);
+    await expect(attempt(PRIYA, DEMO)).rejects.toThrow(/Too many attempts/);
   });
   it("platform accounts are always strict", () => { expect(lockoutFor("super")).toEqual(expect.objectContaining({ attempts: 5, lockMs: 30 * 60_000 })); });
 });

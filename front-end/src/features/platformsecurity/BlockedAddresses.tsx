@@ -8,7 +8,7 @@ import { hasRole } from "@/lib/sod";
 import { useApp, useData } from "@/lib/store";
 import { LIFT_REASON_MIN, blockedAddresses, unblockAddress } from "@/services/ipBlocks";
 
-const fmt = (ms: number) => (ms === Infinity ? "Never (permanent)" : new Date(ms).toISOString().slice(0, 16).replace("T", " ") + " UTC");
+const fmt = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace("T", " ") + " UTC";
 
 /** Network addresses blocked after repeated failed sign-ins. Platform support can see them; only an elevated super admin can lift one. */
 export function BlockedAddresses() {
@@ -20,7 +20,7 @@ export function BlockedAddresses() {
       <div className="c-head"><h3 id="ipb-h">Blocked sign-in addresses</h3><div className="r"><span className="tag">{list.length} blocked</span></div></div>
       <div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <p className="field help" style={{ margin: 0, maxWidth: "80ch" }}>
-          {IP_POLICY.THRESHOLD} failed sign-ins from one address within {IP_POLICY.WINDOW_MS / 60_000} minutes, across any accounts, block it. Each repeat within {IP_POLICY.RESET_MS / 86_400_000} days lasts longer: {LEVEL_LABEL.join(", ")}. Temporary blocks end on their own; only an elevated platform super admin can lift a block early or end a permanent one.
+          {IP_POLICY.THRESHOLD} failed sign-ins from one address within {IP_POLICY.WINDOW_MS / 60_000} minutes, across any accounts, block it. Each repeat within {IP_POLICY.RESET_MS / 86_400_000} days lasts longer: {LEVEL_LABEL.join(", ")}, and 24-hour blocks repeat while failures continue. No block is permanent. Every block ends on its own; only an elevated platform super admin can lift one early.
         </p>
         {list.length === 0 ? <p className="field help" style={{ margin: 0 }}>No address is blocked.</p> : (
           <div style={{ margin: "0 -16px" }}>
@@ -28,7 +28,7 @@ export function BlockedAddresses() {
               {list.map((r) => (
                 <tr key={r.ip}>
                   <td className="strong num">{r.ip}</td>
-                  <td>{r.until === Infinity ? <Chip cls="bad" icon="alert">Permanent</Chip> : <Chip cls="warn" icon="clock">{LEVEL_LABEL[r.level - 1]}</Chip>}</td>
+                  <td>{r.level >= LEVEL_LABEL.length ? <Chip cls="bad" icon="alert">{LEVEL_LABEL[r.level - 1]}</Chip> : <Chip cls="warn" icon="clock">{LEVEL_LABEL[r.level - 1]}</Chip>}</td>
                   <td className="num" style={{ fontSize: 12 }}>{fmt(r.until)}</td>
                   <td className="num">{r.blocks}</td>
                   <td className="r">{isSuper ? <button className="btn btn-ghost sm" disabled={gate.locked} title={gate.title} aria-label={`Lift block: ${r.ip}`} onClick={() => L.openModal(`Lift block on ${r.ip}`, (close) => <Lift ip={r.ip} close={close} />)}><Icon name="check" />Lift block</button> : null}</td>

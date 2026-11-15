@@ -5,7 +5,7 @@ import seed from "@/data/teamSeed.json";
 import roles from "@/data/userRoles.json";
 import { DATA } from "@/lib/data";
 import { BRANDS, DEFAULT_BRAND, isBrand } from "@/lib/brand";
-import { LOCKOUT, acct, isPreset, saveAcct } from "@/lib/accountSecurity";
+import { CUSTOM_BOUNDS, acct, isPreset, ruleFor, saveAcct, validCustom } from "@/lib/accountSecurity";
 import { saveTrustedNets, trustedNets, validNet, type TrustedNet } from "@/lib/ipGuard";
 import { registerKind, settle } from "@/lib/approvalFlow";
 import { approvals, requestApproval } from "@/lib/approvals";
@@ -167,14 +167,17 @@ export function changeMemberRole(personId: string, role: string) {
 
 /* ---------- sign-in protection settings (docs/security/SOD_MATRIX.md section 12) ---------- */
 /** Account lockout preset for this company's workspace accounts: admin only, one of the presets, audited with before and after. */
-export function setLockoutPreset(v: string) {
+export function setLockoutPreset(v: string, custom?: { attempts: number; minutes: number }) {
   return viaApi<void>(() => {
     assertRole("change the account lockout", "admin");
     if (!isPreset(v)) throw new SodError("Choose one of the listed presets.");
-    const s = acct(); const before = s.lockout; if (before === v) return;
-    s.lockout = v; saveAcct();
-    wsLog("team.lockout.changed", `${LOCKOUT[before].label} → ${LOCKOUT[v].label} (${LOCKOUT[v].note})`, "Access"); bumpData();
-  }, () => post<void>("/team/settings", { lockout: v }));
+    if (v === "custom" && (!custom || !validCustom(custom))) throw new SodError(`Custom lockout: ${CUSTOM_BOUNDS.attempts[0]} to ${CUSTOM_BOUNDS.attempts[1]} attempts and ${CUSTOM_BOUNDS.minutes[0]} to ${CUSTOM_BOUNDS.minutes[1]} minutes, whole numbers.`);
+    const s = acct(); const before = ruleFor(s.lockout);
+    if (s.lockout === v && (v !== "custom" || (s.custom.attempts === custom!.attempts && s.custom.minutes === custom!.minutes))) return;
+    s.lockout = v; if (v === "custom") s.custom = { attempts: custom!.attempts, minutes: custom!.minutes }; saveAcct();
+    const after = ruleFor(v);
+    wsLog("team.lockout.changed", `${before.label} (${before.note}) → ${after.label} (${after.note})`, "Access"); bumpData();
+  }, () => post<void>("/team/settings", { lockout: v, custom }));
 }
 export const lockoutPreset = () => acct().lockout;
 /** A trusted office network is never blocked for failed sign-ins (accounts still lock and MFA still applies). Adding one weakens a control, so a

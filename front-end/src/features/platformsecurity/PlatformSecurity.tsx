@@ -17,7 +17,7 @@ export const AUTH_RULES = ["MFA enforced for every user on every tenant — tena
   "Trusted office networks, approved by a second company admin, are never blocked for failures (accounts still lock, MFA still applies)",
   "Security alerts to the account owner: account locked, sign-in after several failures, blocked address, password changed or reset, sessions ended",
   "Sensitive changes (password, recovery codes) need the password again within 5 minutes; active sessions listed with sign out other sessions",
-  "Progressive network blocking: 10 failed sign-ins from one address in 15 minutes block it for 5 minutes, then 30 minutes, 2 hours, 24 hours, then permanently; only an elevated super admin can lift a block early",
+  "Progressive network blocking: 10 failed sign-ins from one address in 15 minutes block it for 5 minutes, then 30 minutes, 2 hours and 24 hours (repeating, never permanent); only an elevated super admin can lift a block early",
   "Requests to join limited to 3 per address per hour, and every one approved by a company admin",
   "Generic sign-in errors — no hint whether the account exists",
   "Reset links: single use, 15-minute expiry, generic response, MFA required before the new password is accepted, all sessions revoked and the user notified",

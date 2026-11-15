@@ -1,6 +1,8 @@
 /* Brute-force protection by network address (DEMO ONLY: there is no server, so the "address" is a synthetic documentation-range IP kept per browser).
    Failed sign-ins are counted per address across all accounts. Too many in the window blocks the address; each repeat block within the reset period
-   lasts longer: 5 minutes, 30 minutes, 2 hours, 24 hours, then permanent. Only a platform super admin (elevated, with a reason) can lift a block.
+   lasts longer: 5 minutes, 30 minutes, 2 hours, then 24 hours, and 24-hour blocks repeat while the abuse goes on. There is no permanent block
+   (compliance decision 2026-11, following OWASP: blocks are temporary, a whole office can share one address). Only a platform super admin
+   (elevated, with a reason) can lift a block early.
    The real service must enforce this on the server, key it on the real client address (behind trusted proxies only), and consider shared corporate
    addresses (NAT) before blocking hard. See docs/security/SOD_MATRIX.md section 12. */
 import { adminLog } from "./adminAudit";
@@ -12,15 +14,15 @@ export const IP_POLICY = {
   /** Failed sign-ins from one address, across every account, that trigger a block. */
   THRESHOLD: 10,
   WINDOW_MS: 15 * MIN,
-  /** Block length by level; the last level is permanent. */
-  LADDER: [5 * MIN, 30 * MIN, 2 * HOUR, DAY, Infinity] as const,
+  /** Block length by level; the last level (24 hours) repeats. No block is permanent. */
+  LADDER: [5 * MIN, 30 * MIN, 2 * HOUR, DAY] as const,
   /** Without a new block for this long, the next block starts again at the first level. */
   RESET_MS: 30 * DAY,
   /** Requests to join from one address per window. */
   JOIN_MAX: 3,
   JOIN_WINDOW_MS: HOUR,
 };
-export const LEVEL_LABEL = ["5 minutes", "30 minutes", "2 hours", "24 hours", "Permanent"];
+export const LEVEL_LABEL = ["5 minutes", "30 minutes", "2 hours", "24 hours"];
 
 export interface IpRecord {
   ip: string; fails: number[]; joins: number[];
@@ -28,7 +30,7 @@ export interface IpRecord {
   acts?: Record<string, number[]>;
   /** Level of the current or last block (1-based; 0 = never blocked). */
   level: number;
-  /** End of the current block (ms); `Infinity` for permanent; 0 when not blocked. */
+  /** End of the current block (ms); 0 when not blocked. */
   until: number;
   lastBlockAt: number; blocks: number;
   liftedBy?: string; liftedAt?: number;
@@ -36,18 +38,18 @@ export interface IpRecord {
 const KEY = "selvara.demo.ipGuard"; const IP_KEY = "selvara.demo.clientIp";
 /** Synthetic addresses already blocked, so the console has something to review (TEST-NET-3, never real). */
 const SEED: IpRecord[] = [
-  { ip: "203.0.113.24", fails: [], joins: [], level: 5, until: Infinity, lastBlockAt: Date.now() - 3 * DAY, blocks: 5 },
+  { ip: "203.0.113.24", fails: [], joins: [], level: 4, until: Date.now() + 9 * HOUR, lastBlockAt: Date.now() - 15 * HOUR, blocks: 6 },
   { ip: "203.0.113.77", fails: [], joins: [], level: 4, until: Date.now() + 20 * HOUR, lastBlockAt: Date.now() - 4 * HOUR, blocks: 4 },
 ];
 let RECS: IpRecord[] | null = null;
-const ser = (r: IpRecord) => ({ ...r, until: r.until === Infinity ? "permanent" : r.until });
+const ser = (r: IpRecord) => r;
 function load(): IpRecord[] {
   if (RECS) return RECS;
   RECS = SEED.map((r) => ({ ...r }));
   try {
     const raw = typeof localStorage === "undefined" ? null : localStorage.getItem(KEY);
     const list = raw ? JSON.parse(raw) : null;
-    if (Array.isArray(list)) RECS = list.filter((r) => r && typeof r.ip === "string").slice(0, 500).map((r) => ({ ...r, until: r.until === "permanent" ? Infinity : Number(r.until) || 0, fails: Array.isArray(r.fails) ? r.fails : [], joins: Array.isArray(r.joins) ? r.joins : [] }));
+    if (Array.isArray(list)) RECS = list.filter((r) => r && typeof r.ip === "string").slice(0, 500).map((r) => ({ ...r, level: Math.min(Number(r.level) || 0, IP_POLICY.LADDER.length), until: r.until === "permanent" ? (Number(r.lastBlockAt) || Date.now()) + DAY : Number(r.until) || 0, /* a permanent block stored before the cap becomes 24 hours */ fails: Array.isArray(r.fails) ? r.fails : [], joins: Array.isArray(r.joins) ? r.joins : [] }));
   } catch { /* unreadable: seeds only */ }
   return RECS;
 }
@@ -74,7 +76,6 @@ export const isBlocked = (r: IpRecord, now = Date.now()) => r.until > now;
 export function ipBlockMessage(ip: string, now = Date.now()): string | null {
   if (isTrusted(ip)) return null;
   const r = rec(ip); if (!r || !isBlocked(r, now)) return null;
-  if (r.until === Infinity) return "Sign-in from your network is blocked after repeated failed attempts. Ask your administrator to contact platform support.";
   return `Too many failed sign-in attempts from your network. Try again after ${new Date(r.until).toISOString().slice(11, 16)} UTC.`;
 }
 /** Counts a failed sign-in; blocks the address at the threshold, one level longer than its last block within the reset period. */

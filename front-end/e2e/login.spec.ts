@@ -122,12 +122,13 @@ test("repeated failures from one browser block its network address, even for the
   await expect(p).toHaveURL(/\/login$/);
 });
 
-test("platform support sees blocked addresses read-only; an elevated super admin lifts a permanent block", async ({ browser }, ti) => {
+test("platform support sees blocked addresses read-only; an elevated super admin lifts a 24-hour block", async ({ browser }, ti) => {
   const sup = await openAs(browser, ti, "support"); const sp = sup.page;
   await gotoModule(sp, "/admin/security");
   const card = sp.getByRole("region", { name: "Blocked sign-in addresses" });
   await expect(card).toContainText("203.0.113.24");
-  await expect(card).toContainText("Permanent");
+  await expect(card).toContainText("24 hours");
+  await expect(card).not.toContainText("Permanent");
   await expect(card.getByRole("button", { name: /^Lift block/ })).toHaveCount(0);
   await sup.close();
 
