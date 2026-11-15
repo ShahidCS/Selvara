@@ -1,0 +1,78 @@
+/* Sign-in, MFA, password reset and account security, the way the pages call them. Mock mode (the public demonstration) runs the browser-side flow in
+   lib/session.ts. Production (NEXT_PUBLIC_API_MODE=http) calls the server, which owns every rule: accounts, password hashing (Argon2id), MFA secrets,
+   recovery codes, lockout, network blocking, sessions (Secure, HttpOnly, SameSite=Strict cookie) and the audit log. The contract is listed in
+   docs/security/CONTROLS.md ("Authentication API contract"). Demo accounts do not exist in production. */
+import * as local from "@/lib/session";
+import { ChallengeRequired, SIGNIN_FAILED, type SignInResult, type SignInStep } from "@/lib/session";
+import { acct, activeSessions, issueChallenge, noticesFor, solveChallenge } from "@/lib/accountSecurity";
+import { THROTTLED_MSG } from "@/lib/credentials";
+import { API_BASE, API_MODE, ApiError, apiFetch } from "./http";
+
+/** Mock mode runs `mock` (sync or async); production calls `real`. */
+const mode = <T,>(mock: () => T | Promise<T>, real: () => Promise<T>): Promise<T> => (API_MODE === "http" && API_BASE ? real() : Promise.resolve().then(mock));
+
+const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
+/** Server answers are mapped to the same messages the demo shows; details stay on the server. */
+function mapError(e: unknown): never {
+  if (e instanceof ApiError) {
+    if (e.status === 428) throw new ChallengeRequired();
+    if (e.status === 401) throw new Error(SIGNIN_FAILED);
+    if (e.status === 423 || e.status === 429) throw new Error(THROTTLED_MSG);
+    if (e.status === 403) throw new Error("Sign-in from your network is blocked. Ask your administrator to contact platform support.");
+  }
+  throw e instanceof Error ? e : new Error("Something went wrong. Please try again.");
+}
+const call = async <T,>(fn: () => Promise<T>): Promise<T> => { try { return await fn(); } catch (e) { return mapError(e); } };
+
+/** The proof-of-work check. Production: the server issues the seed and verifies the answer. */
+export async function solveSignInChallenge(): Promise<{ seed: string; nonce: number }> {
+  const c = await mode(() => issueChallenge(), () => call(() => post<{ seed: string; digits: number }>("/auth/challenge", {})));
+  return { seed: c.seed, nonce: await solveChallenge(c.seed, c.digits) };
+}
+export const signIn = (email: string, password: string, challenge?: { seed: string; nonce: number }) =>
+  mode(() => local.signIn(email, password, challenge), () => call(() => post<SignInStep>("/auth/sign-in", { email, password, challenge })));
+export async function completeSignIn(ticket: string, code: string, opts: { recovery?: boolean } = {}): Promise<SignInResult> {
+  return mode(() => local.completeSignIn(ticket, code, opts), async () => {
+    const r = await call(() => post<SignInResult & { who: string | null }>("/auth/sign-in/verify", { ticket, code, recovery: !!opts.recovery }));
+    local.applyServerSession(r.roleId, r.who); return r;
+  });
+}
+export const requestToJoin = (input: local.JoinInput) => mode(() => local.requestToJoin(input), () => call(() => post<void>("/auth/join-requests", input)));
+export const requestReset = (email: string) => mode(() => local.requestReset(email), () => call(() => post<void>("/auth/password/reset-request", { email })).then(() => ({ token: null })));
+export const resetLinkValid = (token: string) => mode(() => local.resetLinkValid(token), () => call(() => apiFetch<{ valid: boolean }>(`/auth/password/reset/${encodeURIComponent(token)}`)).then((r) => r.valid));
+export const completeReset = (token: string, code: string, password: string) => mode(() => local.completeReset(token, code, password), () => call(() => post<void>("/auth/password/reset", { token, code, password })));
+export const reauthenticate = (password: string) => mode(() => local.reauthenticate(password), () => call(() => post<void>("/me/reauth", { password })));
+export const changePassword = (current: string, next: string) => mode(() => local.changePassword(current, next), () => call(() => post<void>("/me/password", { current, next })));
+export const regenerateRecoveryCodes = () => mode(() => local.regenerateRecoveryCodes(), () => call(() => post<{ codes: string[] }>("/me/recovery-codes", {})).then((r) => r.codes));
+export async function signOut(): Promise<void> {
+  await mode(() => undefined, () => call(() => post<void>("/auth/sign-out", {})).catch(() => undefined));
+  local.signOut();
+}
+/** Production: confirms the server session on load (the cookie is HttpOnly, so only the server knows). False means signed out. */
+export async function confirmSession(): Promise<boolean> {
+  return mode(() => true, async () => {
+    try { const r = await apiFetch<{ roleId: string; who: string | null }>("/auth/session"); local.applyServerSession(r.roleId, r.who); return true; }
+    catch { local.signOut(false); return false; }
+  });
+}
+
+/** What the account page shows. Production: GET /me/security. */
+export interface AccountView {
+  email: string; person: string; demo: boolean;
+  thisSignIn: { at: number; ip: string; device: string } | null;
+  sessions: { id: string; device: string; ip: string; startedAt: number; current: boolean; expiresAt?: number }[];
+  notices: { id: string; at: number; text: string }[];
+  mfa: { enrolledAt: number; codesLeft: number } | null;
+}
+export function accountView(): Promise<AccountView | null> {
+  return mode(() => {
+    const me = local.currentAccount(); if (!me) return null;
+    const a = acct(); const f = a.mfa[me.email];
+    return {
+      email: me.email, person: me.person, demo: local.isDemoAccount(me.email), thisSignIn: a.last[me.email] || null,
+      sessions: activeSessions(me.email).map((x) => ({ id: x.id, device: x.device, ip: x.ip, startedAt: x.startedAt, current: x.id === a.current, expiresAt: x.expiresAt })),
+      notices: noticesFor(me.email).slice(0, 20).map((n) => ({ id: n.id, at: n.at, text: n.text })),
+      mfa: f ? { enrolledAt: f.enrolledAt, codesLeft: f.codes.filter((c) => !c.used).length } : null,
+    };
+  }, () => call(() => apiFetch<AccountView>("/me/security")));
+}

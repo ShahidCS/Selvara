@@ -2,6 +2,8 @@ import { ReactNode, useEffect } from "react";
 import { useRouter } from "next/router";
 import { appStore, loadPersisted, persist, useApp, useData } from "@/lib/store";
 import { restoreSession } from "@/lib/session";
+import { confirmSession } from "@/services/authApi";
+import { API_MODE } from "@/services/http";
 import { getWelcome, welcomeText } from "@/lib/accountSecurity";
 import { brandAttr } from "@/lib/brand";
 import { TEAM_SETTINGS } from "@/services/team";
@@ -19,7 +21,13 @@ function Frame({ children }: { children: ReactNode }) {
   const route = parseRoute(router.asPath);
 
   // hydrate persisted role/theme/collapsed once on the client
-  useEffect(() => { loadPersisted(ROLES.map((r) => r.id)); restoreSession(); }, []);
+  // mock mode: the browser restores and checks the session (expiry, ended elsewhere); production: the server confirms its HttpOnly session cookie
+  useEffect(() => { loadPersisted(ROLES.map((r) => r.id)); if (API_MODE === "http") void confirmSession(); else restoreSession(); }, []);
+  useEffect(() => {
+    if (API_MODE === "http") return;
+    const iv = setInterval(() => { if (appStore.get().signedIn) { restoreSession(); if (!appStore.get().signedIn) L.toast("Your session ended. Sign in again.", false); } }, 30_000);
+    return () => clearInterval(iv);
+  }, [L]);
   // signed out: every shell route goes to the sign-in page (DEMO ONLY: the real API must authenticate every request, see lib/session.ts)
   useEffect(() => { if (s.hydrated && !s.signedIn) router.replace("/login"); }, [s.hydrated, s.signedIn, router]);
   // after sign-in: when and where the previous sign-in was, and failed attempts since (shown once; also on the account page)

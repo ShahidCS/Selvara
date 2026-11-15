@@ -4,7 +4,7 @@ import { endElevation, startElevation } from "@/lib/elevation";
 import { IP_POLICY, allowJoin, clientIp, ipBlockMessage, ipRecords, recordIpFailure, recordIpSuccess, resetIpGuard } from "@/lib/ipGuard";
 import { requestToJoin, resetMembers, signOut } from "@/lib/session";
 import { SodError } from "@/lib/sod";
-import { attempt } from "./signinHelper";
+import { attempt, forgetSecrets } from "./signinHelper";
 import { resetSignInState } from "@/lib/session";
 import { appStore } from "@/lib/store";
 import { resetAcct } from "@/lib/accountSecurity";
@@ -16,7 +16,7 @@ const MIN = 60_000; const DAY = 86_400_000;
 const ip = "198.51.100.9";
 const burst = (at: number, n = IP_POLICY.THRESHOLD, who = ip) => { for (let i = 0; i < n; i++) recordIpFailure(who, at + i); };
 const rec = (who = ip) => ipRecords().find((r) => r.ip === who)!;
-afterEach(() => { resetAcct(); resetSignInState(); signOut(false); endElevation(); resetIpGuard(false); resetMembers(); appStore.set({ role: "super" }); });
+afterEach(() => { forgetSecrets(); resetAcct(); resetSignInState(); signOut(false); endElevation(); resetIpGuard(false); resetMembers(); appStore.set({ role: "super" }); });
 
 describe("progressive blocking", () => {
   it("blocks at the threshold, not before", () => {

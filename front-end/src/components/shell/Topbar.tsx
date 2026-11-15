@@ -1,7 +1,8 @@
 import { Icon } from "@/components/ui";
 import { appStore, persist, useApp, useData, useModVersion } from "@/lib/store";
 import { TITLE, roleOf, allowedSpaces, modAllowed } from "@/lib/rbac";
-import { signOut } from "@/lib/session";
+import { isDemoAccount } from "@/lib/session";
+import { signOut } from "@/services/authApi";
 import { useRouter } from "next/router";
 import { notificationsFor, unreadCount } from "@/lib/notifications";
 import { CUSTOMERS } from "@/lib/platform";
@@ -32,12 +33,12 @@ export function Topbar() {
   };
   const doSignOut = () => {
     L.closeLayer();
-    signOut(); router.replace("/login");
+    void signOut().then(() => router.replace("/login"));
   };
   const roleMenu = (ev: React.MouseEvent) => {
     L.popover(ev, (close) => (
       <div style={{ maxWidth: 280, maxHeight: "70vh", overflow: "auto" }}>
-        <div className="ph" style={{ display: "flex", flexDirection: "column", gap: 2 }}><b style={{ fontWeight: 600, color: "var(--ink)" }}>{me.person}</b><span>{me.name}</span></div>
+        <div className="ph" style={{ display: "flex", flexDirection: "column", gap: 2 }}><b style={{ fontWeight: 600, color: "var(--ink)" }}>{me.person}</b><span>{me.name}{isDemoAccount() ? " · Demo account" : ""}</span></div>
         <div className="div" />
         {modAllowed(roleId, "ws", "me") ? <button role="menuitem" onClick={() => { close(); go("/ws/me"); }}><Icon name="user" />My workspace</button> : null}
         <button role="menuitem" onClick={() => { close(); go("/auth"); }}><Icon name="access" />Sign-in &amp; security</button>

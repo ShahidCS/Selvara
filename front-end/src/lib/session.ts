@@ -1,8 +1,15 @@
-/* Demo sign-in (DEMO ONLY: there is no backend). Seeded synthetic accounts, one per persona, plus people who asked to join and were approved by a
-   company admin. Passwords are compared as SHA-256 hashes; no password is stored in plain text. This is NOT an authentication control: the real
-   API must authenticate on the server (hashing with a slow KDF such as Argon2id, rate limits, MFA, session management) and never trust the client.
-   Demo account emails and the shared demo password are documented in README.md only, not shown in the product. */
+/* Sign-in in mock mode (no backend): the browser holds the accounts and does the checks, so the flow can be shown and tested end to end. In production
+   (NEXT_PUBLIC_API_MODE=http) the same steps run on the server through services/authApi.ts and this file is not used for accounts.
+   Two kinds of account, kept apart:
+   - Real accounts: people who asked to join and were approved by a company admin. Own password, an authenticator app (TOTP, RFC 6238) enrolled at
+     the first sign-in and required at every sign-in, and single-use recovery codes.
+   - Demo accounts: one shared synthetic account per persona, ONLY in mock mode, documented in README.md. Limited: labelled as demo everywhere, a
+     one-hour session, the second step shows its own code on screen, and the shared password cannot be changed or reset.
+   Passwords are compared as salted SHA-256 hashes here; the server uses a slow KDF (Argon2id). Rules: docs/security/SOD_MATRIX.md section 12. */
 import { ROLES, roleOf, setSessionPerson } from "./rbac";
+import { newSecret, otpauthUri, verifyTotp } from "./totp";
+import { generateRecoveryCodes } from "./me";
+import { SodError } from "./sod";
 import { clampText, isEmail, secureHex } from "./security";
 import { checkPassword, THROTTLED_MSG } from "./credentials";
 import { appStore, bumpData, persist } from "./store";
@@ -10,7 +17,7 @@ import { wsLog } from "./audit";
 import { adminLog } from "./adminAudit";
 import { elevationActive, endElevation } from "./elevation";
 import { allowAction, allowJoin, clientIp, ipBlockMessage, isTrusted, recentFailures, recordIpFailure, recordIpSuccess, reputationOf } from "./ipGuard";
-import { CHALLENGE, LOCKOUT, RESET, acct, allowResetFor, clearRecentAuth, createReset, currentSession, deviceLabel, endCurrentSession, findReset, markRecentAuth, notify, revokeSessions, saveAcct, setWelcome, sha256, startSession, verifyChallenge } from "./accountSecurity";
+import { CHALLENGE, LOCKOUT, MFA, RESET, acct, hasRecentAuth, allowResetFor, dropTicket, getTicket, hashCodes, newTicket, redeemRecoveryCode, type Ticket, clearRecentAuth, createReset, currentSession, deviceLabel, endCurrentSession, findReset, markRecentAuth, notify, revokeSessions, saveAcct, setWelcome, sha256, startSession, verifyChallenge } from "./accountSecurity";
 
 /** Sign-in events go to the audit log of the space the person works in. */
 function logAuth(action: string) {
@@ -18,6 +25,8 @@ function logAuth(action: string) {
   if (r.spaces.includes("ws")) wsLog(action, r.person, "Access"); else adminLog(action, r.person, { categories: ["Account"] });
 }
 
+/** Demo accounts exist only when the app runs without an API (the public demonstration). A production build has none. */
+export const DEMO_ENABLED = (process.env.NEXT_PUBLIC_API_MODE || "mock") !== "http";
 export const DEMO_DOMAIN = "demo.selvara.test";
 /** "Jordan Avery" -> "jordan.avery@demo.selvara.test". */
 export const demoEmail = (person: string) => person.toLowerCase().replace(/[^a-z ]/g, "").trim().split(/\s+/).join(".") + "@" + DEMO_DOMAIN;
@@ -74,14 +83,14 @@ export async function requestToJoin(input: JoinInput): Promise<void> {
 export async function verifyPassword(email: string, password: string): Promise<boolean> {
   const o = acct().pw[email]; const pw = String(password ?? "");
   if (o) return (await sha256(o.salt + ":" + pw)) === o.hash;
-  if (DEMO_ACCOUNTS.some((a) => a.email === email)) return (await sha256("selvara-demo-account:" + pw)) === DEMO_HASH;
+  if (DEMO_ENABLED && DEMO_ACCOUNTS.some((a) => a.email === email)) return (await sha256("selvara-demo-account:" + pw)) === DEMO_HASH;
   const m = members().find((x) => x.email === email);
   return !!m && (await sha256(m.salt + ":" + pw)) === m.hash;
 }
 async function setPassword(email: string, password: string) { const salt = secureHex(16); acct().pw[email] = { salt, hash: await sha256(salt + ":" + password), changedAt: Date.now() }; saveAcct(); }
 /** The account a sign-in email names, if it may sign in at all (demo persona, or a member whose request was approved). */
 function accountOf(email: string): { email: string; person: string; roleId: string; who: string | null; status: JoinStatus | "Demo" } | null {
-  const d = DEMO_ACCOUNTS.find((a) => a.email === email);
+  const d = DEMO_ENABLED ? DEMO_ACCOUNTS.find((a) => a.email === email) : undefined;
   if (d) return { email, person: d.person, roleId: d.roleId, who: null, status: "Demo" };
   const m = members().find((x) => x.email === email && x.status !== "Rejected") || members().find((x) => x.email === email);
   return m ? { email, person: m.name, roleId: JOIN_ROLE, who: m.name, status: m.status } : null;
@@ -90,8 +99,10 @@ function accountOf(email: string): { email: string; person: string; roleId: stri
 export function currentAccount(): { email: string; person: string } | null {
   const s = appStore.get(); if (!s.signedIn) return null;
   if (s.who) { const m = members().find((x) => x.name === s.who && x.status === "Active"); return m ? { email: m.email, person: m.name } : null; }
-  const d = DEMO_ACCOUNTS.find((a) => a.roleId === s.role); return d ? { email: d.email, person: d.person } : null;
+  const d = DEMO_ENABLED ? DEMO_ACCOUNTS.find((a) => a.roleId === s.role) : undefined; return d ? { email: d.email, person: d.person } : null;
 }
+/** True when the signed-in account is a shared demo account (limited: see the header of this file). */
+export const isDemoAccount = (email?: string) => !!(email || currentAccount()?.email)?.endsWith("@" + DEMO_DOMAIN);
 const platformOnly = (roleId: string) => !roleOf(roleId).spaces.includes("ws");
 /** Lockout for an account: the company preset for workspace accounts; platform accounts are always strict. */
 export const lockoutFor = (roleId: string) => LOCKOUT[platformOnly(roleId) ? "strict" : acct().lockout];
@@ -99,7 +110,6 @@ export const lockoutFor = (roleId: string) => LOCKOUT[platformOnly(roleId) ? "st
 /* ---------- sign in and out ---------- */
 /** Thrown when the sign-in needs the challenge step first. It is not a failed attempt. */
 export class ChallengeRequired extends Error { constructor() { super("Confirm you are not an automated script to continue."); this.name = "ChallengeRequired"; } }
-export interface SignInResult { roleId: string; person: string; previous: { at: number; ip: string; device: string } | null; failedSince: number }
 const fails = new Map<string, { n: number; until: number }>();
 const blockNotified = new Set<string>();
 /** Test helper: forget account locks and alerts already sent about blocks (in memory). */
@@ -127,15 +137,20 @@ function noteBlock(email: string, ip: string) {
   const key = email + "|" + ip; if (blockNotified.has(key)) return; blockNotified.add(key);
   notify(email, "Sign-in attempts to your account came from a network address that is now blocked after repeated failures.");
 }
-function start(acc: { email: string; roleId: string; who: string | null }, ip: string) {
+function start(acc: { email: string; roleId: string; who: string | null; status: string }, ip: string) {
   setSessionPerson(acc.who ? { roleId: acc.roleId, person: acc.who } : null);
   appStore.set({ role: acc.roleId, who: acc.who, signedIn: true, groupsOpen: {} }); persist();
-  startSession(acc.email, ip); markRecentAuth();
+  startSession(acc.email, ip, acc.status === "Demo"); markRecentAuth();
   logAuth("auth.signed_in");
 }
-/** Signs in with email and password (and the challenge answer when one was asked for). Errors are generic, except for a proven password on a request
- *  that is not approved. The account locks per the company preset; the network address is blocked per lib/ipGuard.ts. */
-export async function signIn(emailIn: string, password: string, challenge?: { seed: string; nonce: number }): Promise<SignInResult> {
+/** After a correct password: the second step. `enroll` gives a new authenticator secret to add; `demo` shows its own code (demo accounts only). */
+export type SignInStep =
+  | { step: "mfa"; ticket: string; method: "totp" }
+  | { step: "mfa"; ticket: string; method: "demo"; demoCode: string }
+  | { step: "enroll"; ticket: string; secret: string; uri: string };
+/** Step one: email and password (and the challenge answer when asked). Errors are generic, except for a proven password on a request that is not
+ *  approved. Nobody is signed in until the second step succeeds (completeSignIn). */
+export async function signIn(emailIn: string, password: string, challenge?: { seed: string; nonce: number }): Promise<SignInStep> {
   const email = norm(emailIn); const ip = clientIp();
   const blocked = ipBlockMessage(ip); // checked first: a blocked network cannot try any account
   if (blocked) { if (accountOf(email)) noteBlock(email, ip); throw new Error(blocked); }
@@ -144,16 +159,58 @@ export async function signIn(emailIn: string, password: string, challenge?: { se
   if (challengeNeeded(email, ip) && !(await verifyChallenge(challenge))) throw new ChallengeRequired();
   const acc = accountOf(email);
   if (!acc || !(await verifyPassword(email, password))) fail(email, ip);
-  fails.delete(email); recordIpSuccess(ip);
   if (acc.status === "Pending") throw new Error("Your request to join is waiting for a company admin to approve it.");
   if (acc.status === "Rejected") throw new Error("Your request to join was not approved. Ask a company admin.");
-  const s = acct(); const previous = s.last[email] || null; const failedSince = s.failedSince[email] || 0;
-  s.last[email] = { at: Date.now(), ip, device: deviceLabel() }; s.failedSince[email] = 0; saveAcct();
-  if (failedSince >= CHALLENGE.AFTER_FAILS) notify(email, `Signed in after ${failedSince} failed attempts since your last sign-in. If you did not make them, change your password.`);
+  if (acc.status === "Demo") {
+    const t = newTicket({ email, method: "demo", demoCode: String(100000 + Math.floor(Math.random() * 900000)) });
+    return { step: "mfa", ticket: t.id, method: "demo", demoCode: t.demoCode as string };
+  }
+  if (!acct().mfa[email]) { const secret = newSecret(); const t = newTicket({ email, method: "enroll", secret }); return { step: "enroll", ticket: t.id, secret, uri: otpauthUri(secret, email) }; }
+  return { step: "mfa", ticket: newTicket({ email, method: "totp" }).id, method: "totp" };
+}
+export interface SignInResult { roleId: string; person: string; previous: { at: number; ip: string; device: string } | null; failedSince: number; recoveryCodes?: string[]; recoveryLeft?: number }
+/** Step two: the authenticator code (or a recovery code, `recovery: true`), or the first code from a newly added authenticator. A wrong code counts
+ *  as a failed sign-in for the account and the address; the owner is alerted the first time a correct password is followed by a wrong code. */
+export async function completeSignIn(ticketId: string, code: string, opts: { recovery?: boolean } = {}): Promise<SignInResult> {
+  const t = getTicket(ticketId); if (!t) throw new Error("This sign-in has expired. Start again.");
+  const ip = clientIp(); const blocked = ipBlockMessage(ip); if (blocked) { dropTicket(t.id); throw new Error(blocked); }
+  const acc = accountOf(t.email); if (!acc) throw new Error("This sign-in has expired. Start again.");
+  let recoveryCodes: string[] | undefined; let recoveryLeft: number | undefined;
+  const wrong = (): never => {
+    t.tries += 1; recordIpFailure(ip);
+    const s = acct(); s.failedSince[t.email] = (s.failedSince[t.email] || 0) + 1; saveAcct();
+    if (!t.alerted && t.method !== "enroll") { t.alerted = true; notify(t.email, "Someone entered your correct password but then failed the second step. If this was not you, change your password now."); }
+    const pol = lockoutFor(acc.roleId); const fl = fails.get(t.email) || { n: 0, until: 0 }; fl.n += 1;
+    if (fl.n >= pol.attempts) { fl.until = Date.now() + pol.lockMs; fl.n = 0; dropTicket(t.id); fails.set(t.email, fl); throw new Error(THROTTLED_MSG); }
+    fails.set(t.email, fl);
+    if (t.tries >= MFA.TRIES) { dropTicket(t.id); throw new Error("Too many wrong codes. Start again."); }
+    throw new Error(ipBlockMessage(ip) || "That code is not correct.");
+  };
+  if (t.method === "demo") { if (String(code).trim() !== t.demoCode) wrong(); }
+  else if (t.method === "enroll") {
+    const step = await verifyTotp(t.secret as string, code); if (step === null) wrong();
+    recoveryCodes = generateRecoveryCodes(MFA.RECOVERY_CODES);
+    acct().mfa[t.email] = { secret: t.secret as string, lastStep: step as number, enrolledAt: Date.now(), codes: await hashCodes(recoveryCodes) }; saveAcct();
+    notify(t.email, "An authenticator app was added to your account and new recovery codes were issued.");
+  } else {
+    const f = acct().mfa[t.email];
+    if (opts.recovery) {
+      const left = await redeemRecoveryCode(f, code); if (left < 0) wrong();
+      recoveryLeft = left; notify(t.email, `A recovery code was used to sign in. ${left} left.`);
+    } else {
+      const step = await verifyTotp(f.secret, code, f.lastStep); if (step === null) wrong();
+      f.lastStep = step as number; saveAcct();
+    }
+  }
+  dropTicket(t.id); fails.delete(t.email); recordIpSuccess(ip);
+  const s = acct(); const previous = s.last[t.email] || null; const failedSince = s.failedSince[t.email] || 0;
+  s.last[t.email] = { at: Date.now(), ip, device: deviceLabel() }; s.failedSince[t.email] = 0; saveAcct();
+  if (failedSince >= CHALLENGE.AFTER_FAILS) notify(t.email, `Signed in after ${failedSince} failed attempts since your last sign-in. If you did not make them, change your password.`);
   start(acc, ip);
   setWelcome({ previous, failedSince });
-  return { roleId: acc.roleId, person: acc.person, previous, failedSince };
+  return { roleId: acc.roleId, person: acc.person, previous, failedSince, recoveryCodes, recoveryLeft };
 }
+export type { Ticket };
 export function signOut(audit = true) {
   if (elevationActive()) endElevation("ended", "on sign-out"); // privileged access never outlives the session
   if (audit && appStore.get().signedIn) logAuth("auth.signed_out");
@@ -174,7 +231,7 @@ export function restoreSession() {
   const a = acct();
   if (a.current && !currentSession()) { signOut(false); return; }
   const me = currentAccount();
-  if (!a.current && me) startSession(me.email, clientIp()); // a stored sign-in from before sessions were recorded
+  if (!a.current && me) startSession(me.email, clientIp(), isDemoAccount(me.email)); // a stored sign-in from before sessions were recorded
 }
 
 /* ---------- sensitive changes (re-authentication) ---------- */
@@ -192,6 +249,7 @@ export async function reauthenticate(password: string): Promise<void> {
 /** Change the password: needs the current one; ends every other session; alerts the owner; audited. */
 export async function changePassword(current: string, next: string): Promise<void> {
   const me = currentAccount(); if (!me) throw new Error("Sign in first.");
+  if (isDemoAccount(me.email)) throw new SodError("Demo accounts are shared: their password cannot be changed.");
   await reauthenticate(current);
   const pw = checkPassword(String(next ?? ""), { email: me.email, name: me.person });
   if (!pw.ok) throw new Error(pw.errors[0] || "Choose a stronger password.");
@@ -214,30 +272,41 @@ export function signOutOtherSessions(): number {
 export const RESET_SENT = "If an account uses that email, we have sent a link to reset its password. The link works once, for 15 minutes.";
 /** Ask for a reset link. The answer is always the same; the demo returns what the email would contain (a link token and the code the person's
  *  authenticator would show) whether or not the account exists, so the page reveals nothing. Rate limited per address and per account; never locks. */
-export function requestReset(emailIn: string): { token: string; code: string } {
+export const DEMO_RESET_NOTE = "Demo accounts are shared: their password cannot be reset. Use a real account (Request to join) to try a reset.";
+/** Ask for a reset link. The answer is always the same and never says whether the account exists. In mock mode the result carries the link the
+ *  email would contain (a random one that leads nowhere when there is no account), so the page reveals nothing either. Demo accounts get no link.
+ *  Rate limited per address and per account; never locks the account. */
+export function requestReset(emailIn: string): { token: string } {
   const email = norm(emailIn); const ip = clientIp();
   const blocked = ipBlockMessage(ip); if (blocked) throw new Error(blocked);
   if (!isEmail(email)) throw new Error("Enter a valid work email address.");
   if (!allowAction(ip, "reset", RESET.MAX_PER_HOUR, 3_600_000)) throw new Error("Too many reset requests from your network. Try again in an hour.");
   const acc = accountOf(email);
-  if (acc && (acc.status === "Demo" || acc.status === "Active") && allowResetFor(email)) {
+  if (acc && acc.status === "Active" && allowResetFor(email)) {
     const link = createReset(email);
     notify(email, "A password reset was requested for your account. If this was not you, you can ignore it: your password has not changed.");
     wsLog("auth.password.reset_requested", acc.person, "Access", acc.person);
-    return { token: link.token, code: link.code };
+    return { token: link.token };
   }
-  return { token: secureHex(16), code: String(100000 + Math.floor(Math.random() * 900000)) };
+  return { token: secureHex(16) };
 }
 export const resetLinkValid = (token: string) => !!findReset(token);
 /** Finish a reset: the link (single use, 15 minutes) AND the second factor are both needed; every session ends and nobody is signed in. */
 export async function completeReset(token: string, code: string, next: string): Promise<void> {
   const link = findReset(token);
   if (!link) throw new Error("This link is not valid or has expired. Ask for a new one.");
-  if (String(code ?? "").trim() !== link.code) {
+  const acc = accountOf(link.email); if (!acc || acc.status !== "Active") throw new Error("This link is not valid or has expired. Ask for a new one.");
+  // a reset never skips the second factor: the authenticator code, or a recovery code
+  const f = acct().mfa[link.email];
+  if (!f) throw new Error("This account has no second factor yet, so it cannot be reset. Ask a company admin.");
+  const c = String(code ?? "").trim();
+  const step = /^\d{6}$/.test(c) ? await verifyTotp(f.secret, c, f.lastStep) : null;
+  const ok = step !== null || (await redeemRecoveryCode(f, c)) >= 0;
+  if (!ok) {
     link.codeFails += 1; if (link.codeFails >= RESET.CODE_TRIES) link.used = true; saveAcct();
     throw new Error(link.used ? "Too many wrong codes. Ask for a new link." : "That code is not correct.");
   }
-  const acc = accountOf(link.email); if (!acc) throw new Error("This link is not valid or has expired. Ask for a new one.");
+  if (step !== null) { f.lastStep = step; saveAcct(); }
   const pw = checkPassword(String(next ?? ""), { email: link.email, name: acc.person });
   if (!pw.ok) throw new Error(pw.errors[0] || "Choose a stronger password.");
   await setPassword(link.email, next);
@@ -250,3 +319,22 @@ export async function completeReset(token: string, code: string, next: string): 
 
 /** Name shown for the signed-in person. */
 export const currentPerson = () => roleOf(appStore.get().role).person;
+
+/* ---------- recovery codes and server sessions ---------- */
+/** New recovery codes for a real account: the password confirmed within 5 minutes, the old codes replaced, the owner alerted. Returned once. */
+export async function regenerateRecoveryCodes(): Promise<string[]> {
+  const me = currentAccount(); if (!me) throw new Error("Sign in first.");
+  if (isDemoAccount(me.email)) throw new SodError("Demo accounts have no recovery codes.");
+  if (!hasRecentAuth()) throw new SodError("Confirm your password first.");
+  const f = acct().mfa[me.email]; if (!f) throw new SodError("Add an authenticator app first.");
+  const codes = generateRecoveryCodes(MFA.RECOVERY_CODES); f.codes = await hashCodes(codes); saveAcct();
+  notify(me.email, "New recovery codes were issued. The old ones no longer work.");
+  logAuth("recovery.codes.regenerated");
+  return codes;
+}
+/** Production: after the server signs someone in, mirror who they are in the client (display and UI gating only; the server decides). */
+export function applyServerSession(roleId: string, person: string | null) {
+  setSessionPerson(person ? { roleId, person } : null);
+  appStore.set({ role: roleId, who: person, signedIn: true, groupsOpen: {} }); persist();
+}
+

@@ -3,39 +3,43 @@ import { useRouter } from "next/router";
 import { EmailField, ErrP, PwField, emailValid } from "./AuthFields";
 import { LENGTH_COPY } from "@/lib/credentials";
 import { landingPath, ROLES } from "@/lib/rbac";
-import { ChallengeRequired, RESET_SENT, completeReset, requestReset, requestToJoin, resetLinkValid, restoreSession, signIn } from "@/lib/session";
-import { issueChallenge, solveChallenge } from "@/lib/accountSecurity";
+import { ChallengeRequired, DEMO_DOMAIN, DEMO_ENABLED, DEMO_RESET_NOTE, RESET_SENT, restoreSession, type SignInStep } from "@/lib/session";
 import { loadPersisted, useApp } from "@/lib/store";
+import * as auth from "@/services/authApi";
 
 const full = { width: "100%" } as const;
 const msg = (e: unknown, fallback: string) => (e instanceof Error && e.message ? e.message : fallback);
+const codeInput = (v: string) => v.replace(/\D/g, "").slice(0, 6);
 
-/** `/login`: sign in, or ask to join (a company admin approves). DEMO ONLY: no backend; see lib/session.ts. Demo accounts are listed in README.md, not here. */
+/** `/login`: sign in (password, then the second factor), ask to join (a company admin approves), or reset a password. In mock mode the browser runs
+ *  the checks (lib/session.ts) and demo accounts exist; in production the server does (services/authApi.ts) and there are no demo accounts. */
 export function LoginPage() {
   const router = useRouter();
   const hydrated = useApp((s) => s.hydrated); const signedIn = useApp((s) => s.signedIn); const role = useApp((s) => s.role);
   const [mode, setMode] = useState<"signin" | "join" | "forgot" | "reset">("signin"); const [token, setToken] = useState("");
+  const [hold, setHold] = useState(false); // keep the page while new recovery codes are on screen
   useEffect(() => { loadPersisted(ROLES.map((r) => r.id)); restoreSession(); }, []);
-  useEffect(() => { if (hydrated && signedIn) router.replace(landingPath(role, "ws")); }, [hydrated, signedIn, role, router]);
+  useEffect(() => { if (hydrated && signedIn && !hold) router.replace(landingPath(role, "ws")); }, [hydrated, signedIn, hold, role, router]);
   return (
     <main id="content" style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: "24px 16px" }}>
-      <div style={{ width: "100%", maxWidth: 400 }}>
+      <div style={{ width: "100%", maxWidth: 420 }}>
         <div className="card"><div className="c-body" style={{ padding: 24 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 18 }}><span className="avatar" style={{ background: "var(--accent)", color: "var(--text-inverse)" }} aria-hidden="true">S</span><span style={{ fontWeight: 600, fontSize: 16 }}>Selvara</span></div>
-          {mode === "signin" ? <SignInForm onJoin={() => setMode("join")} onForgot={() => setMode("forgot")} />
+          {mode === "signin" ? <SignInForm onJoin={() => setMode("join")} onForgot={() => setMode("forgot")} onHold={setHold} />
             : mode === "join" ? <JoinForm onBack={() => setMode("signin")} />
             : mode === "forgot" ? <ForgotForm onBack={() => setMode("signin")} onOpen={(t) => { setToken(t); setMode("reset"); }} />
             : <ResetForm token={token} onBack={() => setMode("signin")} />}
         </div></div>
-        <p className="field help" style={{ textAlign: "center", marginTop: 12 }}>Demonstration build. Accounts and data are synthetic and nothing is sent to a server.</p>
+        <p className="field help" style={{ textAlign: "center", marginTop: 12 }}>{DEMO_ENABLED ? "Demonstration build. Accounts and data are synthetic and nothing is sent to a server." : "Protected by multi-factor authentication. Activity is logged."}</p>
       </div>
     </main>
   );
 }
 
-function SignInForm({ onJoin, onForgot }: { onJoin: () => void; onForgot: () => void }) {
+function SignInForm({ onJoin, onForgot, onHold }: { onJoin: () => void; onForgot: () => void; onHold: (v: boolean) => void }) {
   const [em, setEm] = useState(""); const [pw, setPw] = useState(""); const [err, setErr] = useState(""); const [forced, setForced] = useState(false); const [busy, setBusy] = useState(false);
   const [check, setCheck] = useState<"" | "needed" | "running">("");
+  const [step, setStep] = useState<SignInStep | null>(null); const [codes, setCodes] = useState<string[] | null>(null);
   const emRef = useRef<HTMLInputElement>(null); const pwRef = useRef<HTMLInputElement>(null);
   useEffect(() => { emRef.current?.focus(); }, []);
   const submit = async (e: React.FormEvent) => {
@@ -46,7 +50,7 @@ function SignInForm({ onJoin, onForgot }: { onJoin: () => void; onForgot: () => 
   };
   const attempt = async (challenge?: { seed: string; nonce: number }) => {
     setBusy(true); setErr("");
-    try { await signIn(em, pw, challenge); setCheck(""); }
+    try { const st = await auth.signIn(em, pw, challenge); setPw(""); setCheck(""); setStep(st); }
     catch (x) {
       if (x instanceof ChallengeRequired) { setCheck("needed"); setBusy(false); return; }
       setCheck(""); setErr(msg(x, "Could not sign in.")); setPw(""); pwRef.current?.focus();
@@ -54,11 +58,10 @@ function SignInForm({ onJoin, onForgot }: { onJoin: () => void; onForgot: () => 
     setBusy(false);
   };
   /** Proof of work: the browser spends a moment hashing, which costs a script running thousands of guesses far more. No third-party service. */
-  const runCheck = async () => {
-    setCheck("running");
-    const c = issueChallenge(); const nonce = await solveChallenge(c.seed, c.digits);
-    await attempt({ seed: c.seed, nonce });
-  };
+  const runCheck = async () => { setCheck("running"); await attempt(await auth.solveSignInChallenge()); };
+  const restart = () => { setStep(null); setCodes(null); setErr(""); onHold(false); };
+  if (codes) return <RecoveryCodes codes={codes} done={() => { setCodes(null); onHold(false); }} />;
+  if (step) return <SecondStep step={step} onHold={onHold} onCodes={setCodes} onRestart={restart} />;
   if (check) return (
     <>
       <h1 className="auth-h" style={{ fontSize: 20 }}>Quick check</h1>
@@ -84,32 +87,89 @@ function SignInForm({ onJoin, onForgot }: { onJoin: () => void; onForgot: () => 
   );
 }
 
-/** Ask for a reset link. The answer is the same whether or not the account exists. DEMO: there is no email, so the page shows what it would contain. */
+/** The second step: the authenticator code (or a recovery code), adding an authenticator at the first sign-in, or the demo code. */
+function SecondStep({ step, onHold, onCodes, onRestart }: { step: SignInStep; onHold: (v: boolean) => void; onCodes: (c: string[]) => void; onRestart: () => void }) {
+  const [code, setCode] = useState(""); const [recovery, setRecovery] = useState(false); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { ref.current?.focus(); }, [recovery]);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault(); if (busy) return; setBusy(true); setErr("");
+    // adding an authenticator signs the person in and returns recovery codes: hold the page first, so they are shown before the workspace opens
+    if (step.step === "enroll") onHold(true);
+    try { const r = await auth.completeSignIn(step.ticket, code, { recovery }); if (r.recoveryCodes) onCodes(r.recoveryCodes); else onHold(false); }
+    catch (x) {
+      onHold(false); const m = msg(x, "Could not verify the code."); setErr(m); setCode(""); if (/Start again|expired|Too many/.test(m)) { setBusy(false); setTimeout(onRestart, 1500); return; } ref.current?.focus(); }
+    setBusy(false);
+  };
+  const title = step.step === "enroll" ? "Set up your authenticator" : "Two-step verification";
+  return (
+    <>
+      <h1 className="auth-h" style={{ fontSize: 20 }}>{title}</h1>
+      {step.step === "enroll" ? (
+        <>
+          <p className="sub" style={{ margin: "0 0 10px" }}>Your account needs a second step at every sign-in. Add Selvara to an authenticator app (such as Microsoft Authenticator, Google Authenticator or 1Password), then enter the 6-digit code it shows.</p>
+          <div className="field"><span style={{ fontSize: 12, color: "var(--muted)" }} id="en-key-l">Setup key</span>
+            <p className="num" aria-labelledby="en-key-l" style={{ margin: "4px 0 0", fontWeight: 600, letterSpacing: ".06em", wordBreak: "break-all" }}>{step.secret.match(/.{1,4}/g)?.join(" ")}</p></div>
+          <p style={{ margin: "0 0 12px", fontSize: 13 }}><a href={step.uri}>Open in an authenticator app on this device</a></p>
+        </>
+      ) : step.method === "demo" ? (
+        <div className="banner warn" style={{ margin: "0 0 12px", fontSize: 13 }}><b>Demo account.</b> Demo accounts have no authenticator, so the code is shown here: <span className="num" style={{ fontWeight: 600 }}>{step.demoCode}</span>. Real accounts use an authenticator app.</div>
+      ) : <p className="sub" style={{ margin: "0 0 12px" }}>{recovery ? "Enter one of your recovery codes. Each works once." : "Enter the 6-digit code from your authenticator app."}</p>}
+      <form onSubmit={submit} noValidate>
+        <div className="field"><label htmlFor="mf-code">{recovery ? "Recovery code" : "Authentication code"}</label>
+          <input ref={ref} className="input num" id="mf-code" inputMode={recovery ? "text" : "numeric"} autoComplete="one-time-code" maxLength={recovery ? 12 : 6} value={code}
+            onChange={(e) => setCode(recovery ? e.target.value.toUpperCase().slice(0, 12) : codeInput(e.target.value))} aria-invalid={!!err} aria-describedby={err ? "mf-err" : undefined} /></div>
+        <ErrP id="mf-err" msg={err} />
+        <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }} disabled={busy}>Verify</button>
+      </form>
+      {step.step === "mfa" && step.method === "totp" ? <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}><button type="button" className="linkbtn" onClick={() => { setRecovery((r) => !r); setCode(""); setErr(""); }}>{recovery ? "Use your authenticator app" : "Use a recovery code instead"}</button></div> : null}
+      <div style={{ textAlign: "center", marginTop: 8, fontSize: 13 }}><button type="button" className="linkbtn" onClick={onRestart}>Start again</button></div>
+    </>
+  );
+}
+
+/** Shown once after an authenticator is added. The codes live only in this component's state. */
+function RecoveryCodes({ codes, done }: { codes: string[]; done: () => void }) {
+  const [saved, setSaved] = useState(false); const ref = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { ref.current?.focus(); }, []);
+  return (
+    <>
+      <h1 className="auth-h" style={{ fontSize: 20 }} tabIndex={-1} ref={ref}>Save your recovery codes</h1>
+      <p className="sub" style={{ margin: "0 0 12px" }}>If you lose your authenticator, each code signs you in once. They are shown only now; we keep only a scrambled copy.</p>
+      <ul aria-label="Recovery codes" style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontFamily: "var(--mono, monospace)" }}>{codes.map((c) => <li key={c} className="tagchip" style={{ fontSize: 13, textAlign: "center" }}>{c}</li>)}</ul>
+      <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12, fontSize: 13 }}><input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} />I have stored my recovery codes</label>
+      <button type="button" className="btn btn-primary" style={{ ...full, marginTop: 12 }} disabled={!saved} onClick={done}>Continue</button>
+    </>
+  );
+}
+
+/** Ask for a reset link. The answer is the same whether or not the account exists. In mock mode there is no email, so the page shows the link. */
 function ForgotForm({ onBack, onOpen }: { onBack: () => void; onOpen: (token: string) => void }) {
   const [em, setEm] = useState(""); const [err, setErr] = useState(""); const [forced, setForced] = useState(false);
-  const [sent, setSent] = useState<{ token: string; code: string } | null>(null);
+  const [sent, setSent] = useState<{ token: string | null; demo: boolean } | null>(null);
   const emRef = useRef<HTMLInputElement>(null); const doneRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => { (sent ? doneRef.current : emRef.current)?.focus(); }, [sent]);
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!emailValid(em)) { setForced(true); emRef.current?.focus(); return; }
-    try { setSent(requestReset(em)); setErr(""); } catch (x) { setErr(msg(x, "Could not send the link.")); }
+    try { const r = await auth.requestReset(em); setSent({ token: r.token, demo: em.trim().toLowerCase().endsWith("@" + DEMO_DOMAIN) }); setErr(""); } catch (x) { setErr(msg(x, "Could not send the link.")); }
   };
   if (sent) return (
     <>
       <h1 className="auth-h" style={{ fontSize: 20 }} tabIndex={-1} ref={doneRef}>Check your email</h1>
-      <p className="sub" style={{ margin: "0 0 12px" }}>{RESET_SENT}</p>
-      <div className="banner warn" style={{ margin: "0 0 12px", fontSize: 13 }}>
-        <b>Demo only.</b> There is no email in this build. The email would contain the link below, and your authenticator app would show the code <span className="num" style={{ fontWeight: 600 }}>{sent.code}</span>.
-      </div>
-      <button type="button" className="btn btn-primary" style={full} onClick={() => onOpen(sent.token)}>Open the reset link</button>
+      <p className="sub" style={{ margin: "0 0 12px" }}>{RESET_SENT} You will also need your authenticator app or a recovery code.</p>
+      {sent.demo ? <div className="banner info" style={{ margin: "0 0 12px", fontSize: 13 }}>{DEMO_RESET_NOTE}</div>
+        : sent.token ? <>
+          <div className="banner warn" style={{ margin: "0 0 12px", fontSize: 13 }}><b>Demo only.</b> There is no email in this build. The email would contain the link below.</div>
+          <button type="button" className="btn btn-primary" style={full} onClick={() => onOpen(sent.token as string)}>Open the reset link</button>
+        </> : null}
       <button type="button" className="btn btn-secondary" style={{ ...full, marginTop: 8 }} onClick={onBack}>Back to sign in</button>
     </>
   );
   return (
     <>
       <h1 className="auth-h" style={{ fontSize: 20 }}>Reset your password</h1>
-      <p className="sub" style={{ margin: "0 0 16px" }}>We will email you a link. You will also need your second factor.</p>
+      <p className="sub" style={{ margin: "0 0 16px" }}>We will email you a link. You will also need your authenticator app or a recovery code.</p>
       <form onSubmit={submit} noValidate>
         <EmailField ref={emRef} id="fp-email" label="Work email" value={em} onChange={setEm} forced={forced} onTouch={() => setForced(false)} />
         <ErrP id="fp-err" msg={err} />
@@ -123,14 +183,16 @@ function ForgotForm({ onBack, onOpen }: { onBack: () => void; onOpen: (token: st
 /** Finish a reset: the link (single use, 15 minutes) and the second factor. Every session ends; the person then signs in themselves. */
 function ResetForm({ token, onBack }: { token: string; onBack: () => void }) {
   const [code, setCode] = useState(""); const [pw, setPw] = useState(""); const [err, setErr] = useState(""); const [done, setDone] = useState(false); const [busy, setBusy] = useState(false);
+  const [valid, setValid] = useState<boolean | null>(null);
   const codeRef = useRef<HTMLInputElement>(null); const doneRef = useRef<HTMLHeadingElement>(null);
-  const valid = resetLinkValid(token);
-  useEffect(() => { (done ? doneRef.current : codeRef.current)?.focus(); }, [done]);
+  useEffect(() => { let on = true; auth.resetLinkValid(token).then((v) => { if (on) setValid(v); }, () => { if (on) setValid(false); }); return () => { on = false; }; }, [token]);
+  useEffect(() => { (done ? doneRef.current : codeRef.current)?.focus(); }, [done, valid]);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); if (busy) return; setBusy(true); setErr("");
-    try { await completeReset(token, code, pw); setPw(""); setDone(true); } catch (x) { setErr(msg(x, "Could not reset the password.")); }
+    try { await auth.completeReset(token, code, pw); setPw(""); setDone(true); } catch (x) { setErr(msg(x, "Could not reset the password.")); }
     setBusy(false);
   };
+  if (valid === null) return <p className="field help" role="status">Checking the link…</p>;
   if (done) return (
     <>
       <h1 className="auth-h" style={{ fontSize: 20 }} tabIndex={-1} ref={doneRef}>Password reset</h1>
@@ -148,9 +210,9 @@ function ResetForm({ token, onBack }: { token: string; onBack: () => void }) {
   return (
     <>
       <h1 className="auth-h" style={{ fontSize: 20 }}>Choose a new password</h1>
-      <p className="sub" style={{ margin: "0 0 16px" }}>Enter the code from your authenticator app, then your new password.</p>
+      <p className="sub" style={{ margin: "0 0 16px" }}>Enter the code from your authenticator app (or a recovery code), then your new password.</p>
       <form onSubmit={submit} noValidate>
-        <div className="field"><label htmlFor="rs-code">Authentication code</label><input ref={codeRef} className="input num" id="rs-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} /></div>
+        <div className="field"><label htmlFor="rs-code">Authentication or recovery code</label><input ref={codeRef} className="input num" id="rs-code" autoComplete="one-time-code" maxLength={12} value={code} onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 12))} /></div>
         <PwField id="rs-pw" label="New password" ac="new-password" value={pw} onChange={setPw} invalid={!!err} describedBy={err ? "rs-err rs-help" : "rs-help"} />
         <p className="field help" id="rs-help" style={{ marginTop: -4 }}>Use {LENGTH_COPY}. Common and breached passwords are refused.</p>
         <ErrP id="rs-err" msg={err} />
@@ -169,7 +231,7 @@ function JoinForm({ onBack }: { onBack: () => void }) {
     e.preventDefault(); if (busy) return;
     if (!emailValid(em)) { setForced(true); emRef.current?.focus(); return; }
     setBusy(true); setErr("");
-    try { await requestToJoin({ name, email: em, password: pw }); setPw(""); setSent(true); } catch (x) { setErr(msg(x, "Could not send the request.")); }
+    try { await auth.requestToJoin({ name, email: em, password: pw }); setPw(""); setSent(true); } catch (x) { setErr(msg(x, "Could not send the request.")); }
     setBusy(false);
   };
   if (sent) return (

@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect, type Browser, type TestInfo } from "@playwright/test";
-import { DEMO_PASS, demoEmail, gotoModule, heading, nextPush, openAs } from "./helpers";
+import { DEMO_PASS, demoEmail, demoSecondStep, gotoModule, heading, nextPush, openAs, totpNow } from "./helpers";
 
 /* Standard sign-in replaces the role switcher. DEMO ONLY: synthetic accounts, no backend (src/lib/session.ts). */
 async function signedOut(browser: Browser, ti: TestInfo) {
@@ -38,6 +38,12 @@ test("signed out, the workspace sends you to sign in; a wrong password gets a ge
   await expect(p.getByRole("alert").filter({ hasText: "Email or password is incorrect." })).toBeVisible();
   await p.getByLabel("Password", { exact: true }).fill(DEMO_PASS);
   await p.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(p.getByRole("heading", { name: "Two-step verification" })).toBeVisible();
+  expect(await axe(p)).toEqual([]);
+  await p.getByLabel("Authentication code").fill("000000");
+  await p.getByRole("button", { name: "Verify" }).click();
+  await expect(p.getByRole("alert").filter({ hasText: "code is not correct" })).toBeVisible();
+  await demoSecondStep(p);
   await p.waitForURL(/\/ws\/overview$/);
   await expect(heading(p)).toBeVisible();
   await p.getByRole("button", { name: /^Account:/ }).click();
@@ -70,6 +76,7 @@ test("a new person asks to join, a company admin approves, and they sign in as a
   await p.getByLabel("Work email").fill(demoEmail("Jordan Avery"));
   await p.getByLabel("Password", { exact: true }).fill(DEMO_PASS);
   await p.getByRole("button", { name: "Sign in", exact: true }).click();
+  await demoSecondStep(p);
   await p.waitForURL(/\/ws\/overview$/);
   await nextPush(p, "/ws/team");
   const card = p.getByRole("region", { name: "Requests to join" });
@@ -87,6 +94,18 @@ test("a new person asks to join, a company admin approves, and they sign in as a
   await p.getByLabel("Work email").fill("alex.kim@company.example");
   await p.getByLabel("Password", { exact: true }).fill(pw);
   await p.getByRole("button", { name: "Sign in", exact: true }).click();
+  // first sign-in of a real account: add an authenticator, then save the recovery codes
+  await expect(p.getByRole("heading", { name: "Set up your authenticator" })).toBeVisible();
+  expect(await axe(p)).toEqual([]);
+  const key = (await p.locator('[aria-labelledby="en-key-l"]').innerText()).replace(/\s/g, "");
+  expect(key).toMatch(/^[A-Z2-7]{32}$/);
+  await p.getByLabel("Authentication code").fill(totpNow(key));
+  await p.getByRole("button", { name: "Verify" }).click();
+  await expect(p.getByRole("heading", { name: "Save your recovery codes" })).toBeVisible();
+  await expect(p.getByRole("list", { name: "Recovery codes" }).getByRole("listitem")).toHaveCount(10);
+  await expect(p).toHaveURL(/\/login$/); // stays until the codes are saved
+  await p.getByLabel("I have stored my recovery codes").check();
+  await p.getByRole("button", { name: "Continue" }).click();
   await p.waitForURL(/\/ws\/overview$/);
   await expect(p.getByRole("button", { name: /^Account:/ })).toContainText("Alex Kim");
   await expect(p.getByRole("button", { name: /^Account:/ })).toContainText("Employee");
