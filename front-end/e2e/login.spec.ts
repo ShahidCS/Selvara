@@ -9,6 +9,17 @@ async function signedOut(browser: Browser, ti: TestInfo) {
   await page.addInitScript(() => { try { localStorage.setItem("assurance.v1", JSON.stringify({ theme: "light" })); } catch { /* ignore */ } });
   return page;
 }
+/** Fills the sign-in form; when the "Quick check" step appears, continues through it. Waits for an error or for the workspace. */
+async function tryLogin(p: import("@playwright/test").Page, email: string, pw: string) {
+  await p.getByLabel("Work email").fill(email);
+  await p.getByLabel("Password", { exact: true }).fill(pw);
+  await p.getByRole("button", { name: "Sign in", exact: true }).click();
+  const check = p.getByRole("heading", { name: "Quick check" });
+  const err = p.getByRole("alert").filter({ hasText: /incorrect|Too many|from your network/ });
+  const inside = p.locator("#topbar");
+  await expect(check.or(err).or(inside).first()).toBeVisible();
+  if (await check.isVisible()) { await p.getByRole("button", { name: "Continue" }).click(); await expect(err.or(inside).first()).toBeVisible({ timeout: 20_000 }); }
+}
 const axe = async (p: import("@playwright/test").Page) => {
   const r = await new AxeBuilder({ page: p }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
   return r.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id} x${v.nodes.length}: ${v.nodes.slice(0, 2).map((n) => n.target.join(" ")).join(" | ")}`);
@@ -85,16 +96,9 @@ test("repeated failures from one browser block its network address, even for the
   const p = await signedOut(browser, ti);
   await p.goto("/login");
   const accounts = ["Jordan Avery", "Casey Morgan", "Owen Hart"];
-  for (let i = 0; i < 10; i++) {
-    await p.getByLabel("Work email").fill(demoEmail(accounts[i % 3]));
-    await p.getByLabel("Password", { exact: true }).fill("wrong-" + i);
-    await p.getByRole("button", { name: "Sign in", exact: true }).click();
-    await expect(p.getByRole("alert").filter({ hasText: /incorrect|Too many/ })).toBeVisible();
-  }
+  for (let i = 0; i < 10; i++) await tryLogin(p, demoEmail(accounts[i % 3]), "wrong-" + i);
   await expect(p.getByRole("alert").filter({ hasText: "from your network" })).toBeVisible();
-  await p.getByLabel("Work email").fill(demoEmail("Taylor Reed"));
-  await p.getByLabel("Password", { exact: true }).fill(DEMO_PASS);
-  await p.getByRole("button", { name: "Sign in", exact: true }).click();
+  await tryLogin(p, demoEmail("Taylor Reed"), DEMO_PASS);
   await expect(p.getByRole("alert").filter({ hasText: "from your network" })).toBeVisible();
   await expect(p).toHaveURL(/\/login$/);
 });

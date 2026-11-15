@@ -17,9 +17,9 @@ describe("notification matrix", () => {
     expect(isOn("owner", "approvals", "email")).toBe(true);
   });
   it("offers only the kinds the role can open", () => {
-    expect(catsFor("owner").map((c) => c.id)).toEqual(["approvals", "controls", "evidence", "issues", "vendors"]);
-    expect(catsFor("analyst").map((c) => c.id)).toEqual(["approvals", "controls", "evidence", "issues"]);
-    expect(catsFor("vendor").map((c) => c.id)).toEqual(["approvals"]);
+    expect(catsFor("owner").map((c) => c.id)).toEqual(["security", "approvals", "controls", "evidence", "issues", "vendors"]);
+    expect(catsFor("analyst").map((c) => c.id)).toEqual(["security", "approvals", "controls", "evidence", "issues"]);
+    expect(catsFor("vendor").map((c) => c.id)).toEqual(["security", "approvals"]);
   });
   it("hides a switched-off kind from the bell and audits the change", async () => {
     as("owner");

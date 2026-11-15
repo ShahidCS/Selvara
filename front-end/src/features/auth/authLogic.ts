@@ -1,7 +1,7 @@
 /* Sign-in & Security gallery: pure rules (prototype lines 2093-2096, 2112-2126, 2142-2155). DEMO ONLY: nothing here talks to a server.
  * Passwords, OTPs and phone numbers live only in component state and are dropped on unmount; never stored, logged or put in a URL. */
-export const AUTH_TABS: [string, string][] = [["signin", "Sign in"], ["create", "Create account"], ["password", "Set password"], ["mfa", "MFA enrollment"], ["reset", "Reset password"]];
-export type AuthView = "signin" | "challenge" | "create" | "password" | "resetpw" | "mfa" | "reset";
+export const AUTH_TABS: [string, string][] = [["account", "Your account"], ["signin", "Sign in"], ["create", "Create account"], ["password", "Set password"], ["mfa", "MFA enrollment"], ["reset", "Reset password"]];
+export type AuthView = "account" | "signin" | "challenge" | "create" | "password" | "resetpw" | "mfa" | "reset";
 export const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export type EmailState = "none" | "ok" | "bad";

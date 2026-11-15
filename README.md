@@ -225,6 +225,8 @@ Every demo account uses the password `selvara-demo`.
 
 **Request to join.** Anyone can ask to join from the sign-in page with a name, work email and a password that meets the policy. The request waits until a company admin approves it (Team, Members, "Requests to join", with a reason, audited); the person then signs in as an Employee under their own name. Requests are kept in this browser only. The answer to a request never says whether an email is already known, sign-in errors are generic, and five failures lock that email for five minutes. Ten failures from one network address within 15 minutes block that address for every account, for longer each time (5 minutes, 30 minutes, 2 hours, 24 hours, then permanently); only an elevated platform super admin can lift a block (Admin Console, Platform security). In this demo the address is a synthetic one per browser; if you block your own browser, sign in from another browser or clear this site's data.
 
+After 3 failures a short "Quick check" (a proof-of-work calculation in the browser) comes before the next try. **Forgot password?** on the sign-in page shows, in a box marked demo, the link and the authenticator code the email and app would carry. **Sign-in & security** (account menu) opens **Your account**: last sign-in, active sessions with Sign out other sessions, change password, new recovery codes (password confirmed first) and security activity. Company admins set the account lockout (Standard, Strict, PCI DSS v4) and trusted office networks in Team, Review cycles & SLAs.
+
 ## Screens at a glance
 
 | Area | Routes |

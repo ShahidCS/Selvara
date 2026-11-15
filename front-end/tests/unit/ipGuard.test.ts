@@ -2,9 +2,12 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ADMIN_AUDIT } from "@/lib/adminAudit";
 import { endElevation, startElevation } from "@/lib/elevation";
 import { IP_POLICY, allowJoin, clientIp, ipBlockMessage, ipRecords, recordIpFailure, recordIpSuccess, resetIpGuard } from "@/lib/ipGuard";
-import { requestToJoin, resetMembers, signIn, signOut } from "@/lib/session";
+import { requestToJoin, resetMembers, signOut } from "@/lib/session";
 import { SodError } from "@/lib/sod";
+import { attempt } from "./signinHelper";
+import { resetSignInState } from "@/lib/session";
 import { appStore } from "@/lib/store";
+import { resetAcct } from "@/lib/accountSecurity";
 import { blockedAddresses, unblockAddress } from "@/services/ipBlocks";
 
 /* Progressive blocking of a network address after repeated failed sign-ins. vitest has no DOM: the synthetic client address is fixed. */
@@ -13,7 +16,7 @@ const MIN = 60_000; const DAY = 86_400_000;
 const ip = "198.51.100.9";
 const burst = (at: number, n = IP_POLICY.THRESHOLD, who = ip) => { for (let i = 0; i < n; i++) recordIpFailure(who, at + i); };
 const rec = (who = ip) => ipRecords().find((r) => r.ip === who)!;
-afterEach(() => { signOut(false); endElevation(); resetIpGuard(false); resetMembers(); appStore.set({ role: "super" }); });
+afterEach(() => { resetAcct(); resetSignInState(); signOut(false); endElevation(); resetIpGuard(false); resetMembers(); appStore.set({ role: "super" }); });
 
 describe("progressive blocking", () => {
   it("blocks at the threshold, not before", () => {
@@ -57,14 +60,14 @@ describe("sign-in and sign-up under a block", () => {
     const me = clientIp();
     const emails = ["jordan.avery", "casey.morgan", "owen.hart"].map((n) => `${n}@demo.selvara.test`);
     let n = 0;
-    while (!ipBlockMessage(me)) { await expect(signIn(emails[n % 3], "wrong-" + n)).rejects.toThrow(); n++; }
+    while (!ipBlockMessage(me)) { await expect(attempt(emails[n % 3], "wrong-" + n)).rejects.toThrow(); n++; }
     expect(n).toBe(IP_POLICY.THRESHOLD);
-    await expect(signIn("taylor.reed@demo.selvara.test", DEMO)).rejects.toThrow(/from your network/);
+    await expect(attempt("taylor.reed@demo.selvara.test", DEMO)).rejects.toThrow(/from your network/);
     expect(appStore.get().signedIn).toBe(false);
   });
   it("attempts on a locked account still count against the network", async () => {
     const me = clientIp();
-    for (let i = 0; i < IP_POLICY.THRESHOLD; i++) await expect(signIn("casey.morgan@demo.selvara.test", "nope")).rejects.toThrow();
+    for (let i = 0; i < IP_POLICY.THRESHOLD; i++) await expect(attempt("casey.morgan@demo.selvara.test", "nope")).rejects.toThrow();
     expect(ipBlockMessage(me)).not.toBeNull();
   });
   it("limits requests to join from one address", async () => {

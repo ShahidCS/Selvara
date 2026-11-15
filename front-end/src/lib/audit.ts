@@ -31,9 +31,10 @@ export function verifyWsChain(): boolean {
 }
 /** Current signed-in persona (prototype: ME). */
 export function getMe() { const r = roleOf(appStore.get().role); return { name: r.person, role: r.name, initials: r.initials }; }
-export function wsLog(action: string, target: string, cat?: string): WsEntry {
+/** `actor` overrides the signed-in person, only for events with nobody signed in (a password reset, a request to join). */
+export function wsLog(action: string, target: string, cat?: string, actor?: string): WsEntry {
   const prev = wsLastHash(); const seq = WS_AUDIT.length + 1;
-  const e = { at: nowStamp(), actor: getMe().name, action, target, cat: cat || "System" };
+  const e = { at: nowStamp(), actor: actor || getMe().name, action, target, cat: cat || "System" };
   const entry = { seq, prev, ...e, hash: hashStr(body(e, prev, seq)) } as WsEntry;
   WS_AUDIT.push(entry); bumpData(); return entry;
 }

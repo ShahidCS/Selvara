@@ -6,6 +6,8 @@ import { modAllowed } from "./rbac";
 import { getModState, setModState } from "./store";
 import { inlineApprovalsFor, inlineHome } from "./inboxApprovals";
 import { isOn, type NotifCat } from "./notifPrefs";
+import { noticesFor } from "./accountSecurity";
+import { currentAccount } from "./session";
 
 export type NotifKind = "approval" | "alert";
 export type NotifTone = "bad" | "warn" | "info";
@@ -29,6 +31,9 @@ type Space = "ws" | "admin";
 export function notificationsFor(role: string, space: Space): Notif[] {
   const out: Notif[] = [];
   const can = (mod: string) => modAllowed(role, space, mod);
+  // security alerts about the signed-in person's own account, in either space; they cannot be switched off in the bell
+  const me = currentAccount();
+  if (me) for (const n of noticesFor(me.email).slice(0, 10)) out.push({ id: `sec:${n.id}`, kind: "alert", tone: "warn", icon: "access", title: n.text, detail: new Date(n.at).toISOString().slice(0, 16).replace("T", " ") + " UTC", path: "/auth", cat: "security" });
   if (space === "ws") {
     for (const a of inlineApprovalsFor(role)) {
       const left = Math.max(0, Math.ceil((a.expiresAt - Date.now()) / 3600_000));

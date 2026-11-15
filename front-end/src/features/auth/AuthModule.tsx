@@ -3,12 +3,13 @@ import { Icon, Page } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { AUTH_TABS, type AuthView } from "./authLogic";
 import { AuthCard, Challenge, Create, Mfa, PanelApi, Reset, SetPassword, SignIn } from "./AuthPanels";
+import { YourAccount } from "./YourAccount";
 
 /** Sign-in & Security "experience gallery" (prototype: REND.auth). Standalone page /auth. DEMO ONLY: no backend, nothing is sent or stored.
  *  Every panel is its own component keyed by view, so password / OTP / phone state is discarded whenever the view changes or the page unmounts. */
 export default function AuthModule() {
   const L = useLayer();
-  const [view, setView] = useState<AuthView>("signin"); const [mfa, setMfa] = useState<string | null>(null);
+  const [view, setView] = useState<AuthView>("account"); const [mfa, setMfa] = useState<string | null>(null);
   const after = useRef<null | (() => void)>(null);
   useEffect(() => { const f = after.current; after.current = null; f?.(); }, [view, mfa]);
   const onTab = AUTH_TABS.some((t) => t[0] === view);
@@ -27,7 +28,7 @@ export default function AuthModule() {
   const pickMfa = (m: string) => { after.current = () => (document.querySelector("#authBody form input, #authBody .btn-primary") as HTMLElement | null)?.focus(); setMfa(m); };
   const lab = onTab ? { "aria-labelledby": "authtab-" + view } : { "aria-label": view === "resetpw" ? "Set a new password" : "Two-factor authentication" };
   return (
-    <Page mod="auth" acts={<span className="tag"><Icon name="access" />Preview</span>}>
+    <Page mod="auth" acts={view === "account" ? undefined : <span className="tag"><Icon name="access" />Preview</span>}>
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head" style={{ padding: "0 8px" }}>
           <div className="tabs" role="tablist" aria-label="Sign-in screens" onKeyDown={tabKey}>
@@ -38,7 +39,7 @@ export default function AuthModule() {
           </div>
         </div>
         <div className="c-body scroll" id="authBody" role="tabpanel" tabIndex={0} {...lab}>
-          <AuthCard>
+          {view === "account" ? <YourAccount /> : <AuthCard>
             {view === "signin" ? <SignIn key="signin" api={api} />
               : view === "challenge" ? <Challenge key="challenge" api={api} />
               : view === "create" ? <Create key="create" api={api} />
@@ -46,7 +47,7 @@ export default function AuthModule() {
               : view === "resetpw" ? <SetPassword key="resetpw" api={api} pfx="rp" />
               : view === "mfa" ? <Mfa key={"mfa" + (mfa || "")} api={api} method={mfa} pick={pickMfa} />
               : <Reset key="reset" api={api} />}
-          </AuthCard>
+          </AuthCard>}
         </div>
       </div>
     </Page>

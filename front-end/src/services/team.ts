@@ -5,11 +5,13 @@ import seed from "@/data/teamSeed.json";
 import roles from "@/data/userRoles.json";
 import { DATA } from "@/lib/data";
 import { BRANDS, DEFAULT_BRAND, isBrand } from "@/lib/brand";
+import { LOCKOUT, acct, isPreset, saveAcct } from "@/lib/accountSecurity";
+import { saveTrustedNets, trustedNets, validNet, type TrustedNet } from "@/lib/ipGuard";
 import { registerKind, settle } from "@/lib/approvalFlow";
 import { approvals, requestApproval } from "@/lib/approvals";
 import { wsLog } from "@/lib/audit";
 import { clampText, isEmail, secureHex } from "@/lib/security";
-import { assertNotSelf, assertRole, hasRole, isSamePerson, SodError, SOD } from "@/lib/sod";
+import { assertNotSelf, assertRole, getActor, hasRole, isSamePerson, SodError, SOD } from "@/lib/sod";
 import { bumpData } from "@/lib/store";
 import { ADMIN_ROLE, adminCount, isPrivilegedRoleName, memberRole } from "@/lib/teamRoles";
 import { eligibleApprovers } from "./mfa";
@@ -24,7 +26,7 @@ const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "P
 
 /** Admins only (admin, admin2). UI gate; every mutation below asserts the role again. */
 export const teamCanManage = (roleId: string) => hasRole(roleId, "admin");
-export const KINDS = ["team-role", "team-invite"];
+export const KINDS = ["team-role", "team-invite", "team-network"];
 export const isPrivilegedRole = isPrivilegedRoleName;
 const fmtUtc = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace("T", " ") + " UTC";
 
@@ -162,3 +164,54 @@ export function changeMemberRole(personId: string, role: string) {
     return { name: p.name as string, pending: false };
   }, () => post<{ name: string; pending: boolean }>(`/team/members/${encodeURIComponent(personId)}/role`, { role }));
 }
+
+/* ---------- sign-in protection settings (docs/security/SOD_MATRIX.md section 12) ---------- */
+/** Account lockout preset for this company's workspace accounts: admin only, one of the presets, audited with before and after. */
+export function setLockoutPreset(v: string) {
+  return viaApi<void>(() => {
+    assertRole("change the account lockout", "admin");
+    if (!isPreset(v)) throw new SodError("Choose one of the listed presets.");
+    const s = acct(); const before = s.lockout; if (before === v) return;
+    s.lockout = v; saveAcct();
+    wsLog("team.lockout.changed", `${LOCKOUT[before].label} → ${LOCKOUT[v].label} (${LOCKOUT[v].note})`, "Access"); bumpData();
+  }, () => post<void>("/team/settings", { lockout: v }));
+}
+export const lockoutPreset = () => acct().lockout;
+/** A trusted office network is never blocked for failed sign-ins (accounts still lock and MFA still applies). Adding one weakens a control, so a
+ *  second company admin approves it; removing one is immediate. */
+export function requestTrustedNet(netIn: string, labelIn: string) {
+  return viaApi<TrustedNet>(() => {
+    assertRole("add a trusted office network", "admin");
+    const net = String(netIn ?? "").trim(); const label = clampText(labelIn, 60);
+    if (!validNet(net)) throw new SodError("Enter one address (203.0.113.7) or one /24 network (203.0.113.0/24).");
+    if (label.length < 3) throw new SodError("Name the office or network.");
+    if (trustedNets().some((n) => n.net === net && n.status !== "Removed")) throw new SodError("That network is already listed.");
+    const me = getActor().name;
+    const n: TrustedNet = { id: "TN-" + secureHex(3).toUpperCase(), net, label, requestedBy: me, status: "Pending" };
+    const ap = requestApproval({ kind: "team-network", title: `Trust office network ${net} (${label})`, subject: net, needs: 1, approverRoles: ["admin"], ttlHours: 72, domain: "ws", payload: { id: n.id, net, label } });
+    n.approvalId = ap.id; trustedNets().push(n); saveTrustedNets();
+    wsLog("team.network.requested", `${net} (${label})`, "Access");
+    return n;
+  }, () => post<TrustedNet>("/team/trusted-networks", { net: netIn, label: labelIn }));
+}
+export function removeTrustedNet(id: string) {
+  return viaApi<TrustedNet>(() => {
+    assertRole("remove a trusted office network", "admin");
+    const n = trustedNets().find((x) => x.id === id && x.status !== "Removed"); if (!n) throw new SodError("Network not found.");
+    n.status = "Removed"; saveTrustedNets();
+    wsLog("team.network.removed", `${n.net} (${n.label})`, "Access");
+    return n;
+  }, () => apiFetch<TrustedNet>(`/team/trusted-networks/${encodeURIComponent(id)}`, { method: "DELETE" }));
+}
+registerKind("team-network", {
+  describe: (a) => `Trust ${a.payload.net} (${a.payload.label})`,
+  apply: (a) => {
+    const n = trustedNets().find((x) => x.id === a.payload.id); if (!n || n.status !== "Pending") return;
+    n.status = "Active"; n.approvedBy = a.approvals.map((x) => x.by).join(", "); saveTrustedNets();
+    wsLog("team.network.trusted", `${n.net} (${n.label}); requested by ${a.requestedBy}, approved by ${n.approvedBy}`, "Access");
+  },
+  closed: (a) => {
+    const n = trustedNets().find((x) => x.id === a.payload.id); if (n && n.status === "Pending") { n.status = "Removed"; saveTrustedNets(); }
+    wsLog("team.network." + a.status.toLowerCase(), `${a.payload.net}${a.decidedReason ? "; reason: " + a.decidedReason : ""}`, "Access");
+  },
+});

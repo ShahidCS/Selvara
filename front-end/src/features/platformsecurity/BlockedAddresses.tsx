@@ -3,7 +3,7 @@ import { Chip, Icon, Table } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { useGate } from "@/components/kit/admin/ElevateGate";
 import { sodMessage } from "@/lib/approvalFlow";
-import { IP_POLICY, LEVEL_LABEL } from "@/lib/ipGuard";
+import { IP_POLICY, LEVEL_LABEL, REPUTATION, thresholdFor } from "@/lib/ipGuard";
 import { hasRole } from "@/lib/sod";
 import { useApp, useData } from "@/lib/store";
 import { LIFT_REASON_MIN, blockedAddresses, unblockAddress } from "@/services/ipBlocks";
@@ -38,6 +38,9 @@ export function BlockedAddresses() {
           </div>
         )}
         {!isSuper ? <p className="field help" style={{ margin: 0 }}>Read-only for your role: only a platform super admin can lift a block.</p> : null}
+        <h4 style={{ margin: "8px 0 0", fontSize: 13 }}>Address reputation</h4>
+        <p className="field help" style={{ margin: 0, maxWidth: "80ch" }}>Hosting, VPN and proxy networks are blocked after {thresholdFor(REPUTATION[0].prefix + "1")} failures instead of {IP_POLICY.THRESHOLD}, and always get the extra check before a sign-in. In production this list comes from an IP intelligence feed; here the ranges are synthetic.</p>
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>{REPUTATION.map((r) => <li key={r.prefix}>{r.label}</li>)}</ul>
       </div>
     </section>
   );
