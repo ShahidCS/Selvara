@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { Icon } from "./Icon";
 
 export type Desirability = "good" | "bad" | "watch" | "flat";
@@ -11,14 +11,26 @@ export function DeltaPill({ tone, children }: { tone: Desirability; children: Re
 }
 
 /** Flat strip of metric tiles separated by hairlines (eyebrow label, big light figure, delta, caption). */
-export function KpiStrip({ label, children }: { label: string; children: ReactNode }) {
-  return <div className="kpi-strip" role="group" aria-label={label}>{children}</div>;
+const Stacked = createContext(false);
+/** `stacked` keeps the label above the figure (the Overview page); by default the figure sits next to its label. */
+export function KpiStrip({ label, children, stacked = false }: { label: string; children: ReactNode; stacked?: boolean }) {
+  return <Stacked.Provider value={stacked}><div className="kpi-strip" role="group" aria-label={label}>{children}</div></Stacked.Provider>;
 }
 export function KpiTile({ label, value, delta, caption }: { label: string; value: string | number; delta?: { tone: Desirability; text: string }; caption?: string }) {
+  const stacked = useContext(Stacked);
   return (
     <div className="kpi-tile">
-      <div className="eyebrow">{label}</div>
-      <div className="kpi-fig"><span className="kpi-v num">{value}</span>{delta ? <DeltaPill tone={delta.tone}>{delta.text}</DeltaPill> : null}</div>
+      {stacked ? (
+        <>
+          <div className="eyebrow">{label}</div>
+          <div className="kpi-fig"><span className="kpi-v num">{value}</span>{delta ? <DeltaPill tone={delta.tone}>{delta.text}</DeltaPill> : null}</div>
+        </>
+      ) : (
+        <>
+          <div className="kpi-head"><div className="eyebrow">{label}</div><span className="kpi-v num">{value}</span></div>
+          {delta ? <div className="kpi-fig"><DeltaPill tone={delta.tone}>{delta.text}</DeltaPill></div> : null}
+        </>
+      )}
       {caption ? <div className="kpi-cap">{caption}</div> : null}
     </div>
   );
@@ -29,8 +41,7 @@ export function KpiCard({ icon, label, value, sub, subTone = "flat", onClick, pr
   return (
     <button type="button" className="kpi-card" onClick={onClick} aria-pressed={pressed} aria-label={name}>
       <span className="kpi-card-top"><Icon name={icon} /><Icon name="ext" className="kpi-card-go" /></span>
-      <span className="eyebrow">{label}</span>
-      <span className="kpi-v num">{value}</span>
+      <span className="kpi-head"><span className="eyebrow">{label}</span><span className="kpi-v num">{value}</span></span>
       {sub ? <span className={`kpi-sub ${subTone}`}>{sub}</span> : null}
     </button>
   );
