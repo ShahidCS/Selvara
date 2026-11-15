@@ -71,6 +71,16 @@ This register lists every security control in Selvara, where it is enforced, wha
 | AI-04 | Acting agents hold a 90-day certification; recertification is four-eyes with an attestation; a lapsed agent drops to "Suggests only" before its next run; a 30-day transition for agents acting before the ladder | same | `assistant.agent.recertify_requested`, `.recertified` | unit `autonomy.test.ts` "certification of acting agents"; e2e `autonomy.spec.ts` |
 | AI-05 | AI output is a draft that needs review; no model output triggers an action without the approval gate | `services/assistant.ts` | `assistant.draft.*` | e2e `ai-pages.spec.ts` |
 
+## 4b. Workspace governance (GOV, drafts)
+
+| ID | Control | Enforced in | Audit events | Evidence |
+|---|---|---|---|---|
+| GOV-01 | Automation rules: fixed triggers and safe actions only (notify, open an issue once); never approve, delete, publish or change access; at most 20 actions per run; preview before acting | `features/team/services/governance.ts` | `team.rule.run`, `team.rule.action` | unit `governance.test.ts` "automation rules" (4 tests); e2e `governance.spec.ts` "a rule is saved as a draft..." |
+| GOV-02 | Turning a rule on is four-eyes (a different admin, not the creator); pausing is immediate; an active rule cannot be deleted | same | `team.rule.enable_requested`, `.enabled`, `.paused` | same |
+| GOV-03 | Retention schedule with minimums; shorter is four-eyes and never below the minimum; longer is immediate | same | `team.retention.changed`, `.shorten_requested` | unit `governance.test.ts` "longer is immediate; shorter needs a different admin..."; e2e `governance.spec.ts` "data retention..." |
+| GOV-04 | Legal hold stops deletion at once; release is four-eyes (not the person who placed it) | same | `team.retention.hold_placed`, `.release_requested`, `.hold_released` | unit `governance.test.ts` "a legal hold is placed at once..." |
+| GOV-05 | Presence on records: who else is viewing, and a warning when two people edit the same record; names only, nothing stored | `lib/presence.ts`, `components/ui/Presence.tsx` | — | e2e `governance.spec.ts` "presence..." |
+
 ## 5. Input, output and data (DATA)
 
 | ID | Control | Standard | Enforced in | Evidence |
@@ -143,6 +153,7 @@ Evidence that the client uses this contract and never the demo path in productio
 | Server implementation | Engineering | Every production column marked server-side. Nothing in demo mode is a control. |
 | CSP nonce, CSRF tokens, cryptographic audit chain | Engineering | SECURITY.md limitations 2–4; EX-05. |
 | Agent and notification policy periods | Compliance | SOD_MATRIX §10, §11 open questions. |
+| Rules, retention periods and minimums, presence | Compliance | SOD_MATRIX §13–§15: every value is a draft. |
 
 ## Review and sign-off
 

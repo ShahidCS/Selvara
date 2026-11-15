@@ -154,3 +154,33 @@ Decision (2026-11). The role switcher is gone: people sign in. Demo accounts are
 
 Enforced in `src/lib/session.ts`, `src/lib/ipGuard.ts`, `src/services/ipBlocks.ts`, `src/services/joinRequests.ts` and `src/components/shell/AppShell.tsx` (signed-out routes go to `/login`).
 
+## 13. Automation rules (draft for compliance review)
+Decision (2026-11, designed from the approval and audit model, draft for review). A rule is "when this happens, do one safe thing", set up by company admins in Team & Settings.
+
+| Rule | Detail |
+|---|---|
+| What a rule can do | Only notify the owner or open an issue (once per record). Rules never approve, reject, delete, publish or change access. Triggers and actions come from a fixed list; anything else is refused. |
+| Turning on | A rule starts as a draft. Turning it on (and back on after a pause) is four-eyes (`team-rule`): a different company admin, not its creator, approves, with the number of records it would act on shown. |
+| Limits | At most 20 actions per run and 25 rules per workspace. A preview (dry run) shows what it would act on without acting. |
+| Stopping | Pausing is immediate; a rule that is on cannot be deleted until paused. |
+| Audit | `team.rule.created`, `.enable_requested`, `.enabled`, `.paused`, `.deleted`, `.run` (counts) and `.action` (each action). |
+| Production | Rules run as a server job on a schedule; here they run by hand. |
+| Open for review | The trigger and action list, the limits, and whether some rules should need two approvers. |
+
+Enforced in `src/features/team/services/governance.ts`.
+
+## 14. Data retention and legal hold (draft for compliance review)
+
+| Rule | Detail |
+|---|---|
+| Schedule | Each kind of record has a period and a minimum (draft values: audit logs, evidence and closed risks 7 years, minimum 5; retired policy versions 10 years; closed issues and access reviews 3 years, minimum 1; sign-in history 1 year; rejected requests to join 3 months). The minimum reflects record-keeping duties such as FATF Recommendation 11 (at least five years) and must be confirmed per regulator. |
+| Changes | Longer takes effect at once. Shorter is four-eyes (`team-retention`, a different company admin) and is refused below the minimum. Every change needs a reason and is audited (`team.retention.changed`, `.shorten_requested`). |
+| Legal hold | Any company admin places a hold at once, with a reason; while it holds, nothing of that kind is deleted. Releasing it is four-eyes (`team-hold`): a different admin, not the one who placed it. Audited (`team.retention.hold_placed`, `.release_requested`, `.hold_released`). |
+| Purge | The demonstration build only previews what is past its period; nothing is deleted. Production purges run as a server job that skips held records and writes what it removed to the audit log. |
+| Open for review | Every period and minimum, per regulator and per customer contract. |
+
+Enforced in `src/features/team/services/governance.ts`.
+
+## 15. Presence (draft)
+Record and form pages show who else has the record open ("Also here"), and warn when two people are editing the same record ("the last save wins"). Names only, never content; nothing is stored. Demonstration build: between tabs of one browser (BroadcastChannel). Production: a Supabase Realtime Presence channel per record, joinable only by people the database allows to read that record. Presence is information, not a lock. Open for review: whether editing should take a lock instead.
+

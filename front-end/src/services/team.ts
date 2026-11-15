@@ -26,7 +26,7 @@ const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "P
 
 /** Admins only (admin, admin2). UI gate; every mutation below asserts the role again. */
 export const teamCanManage = (roleId: string) => hasRole(roleId, "admin");
-export const KINDS = ["team-role", "team-invite", "team-network"];
+export const KINDS = ["team-role", "team-invite", "team-network", "team-rule", "team-retention", "team-hold"];
 export const isPrivilegedRole = isPrivilegedRoleName;
 const fmtUtc = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace("T", " ") + " UTC";
 

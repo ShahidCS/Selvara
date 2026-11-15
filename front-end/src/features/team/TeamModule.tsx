@@ -1,4 +1,6 @@
 import { Chip, DataTable, Icon, Page, StatusChip, Table, type DTColumn } from "@/components/ui";
+import { RulesTab } from "./RulesTab";
+import { RetentionTab } from "./RetentionTab";
 import { JoinRequests } from "./JoinRequests";
 import { DATA } from "@/lib/data";
 import { SOD } from "@/lib/sod";
@@ -17,7 +19,7 @@ import { ApproverForm, ChangeRoleForm } from "./TeamForms";
 import { InviteFormPage } from "./InviteFormPage";
 import { SettingsTab } from "./SettingsTab";
 
-const VIEWS: [string, string][] = [["members", "Members"], ["settings", "Review cycles & SLAs"], ["gates", "Approvers & baseline"], ["perms", "Permissions"]];
+const VIEWS: [string, string][] = [["members", "Members"], ["settings", "Review cycles & SLAs"], ["gates", "Approvers & baseline"], ["perms", "Permissions"], ["rules", "Automation rules"], ["retention", "Data retention"]];
 
 /** `/ws/team` shows the tab selected here; `/ws/team/invite` is a form page. */
 export default function TeamModule() {
@@ -84,7 +86,7 @@ function TeamTabs() {
               filters={[{ key: "role", label: "Workspace role", options: Array.from(new Set(DATA.people.slice(0, 8).map((p: Member) => memberRole(p)))), get: (p: Member) => memberRole(p) }]}
               onOpen={(p) => openPerson(p.id)} exportName="members" />
             </>
-          ) : view === "settings" ? <SettingsTab manage={manage} /> : view === "gates" ? (
+          ) : view === "rules" ? <><PendingApprovals kinds={["team-rule"]} title="Pending approvals (rules)" subjectLabel="Rule" /><RulesTab manage={manage} /></> : view === "retention" ? <><PendingApprovals kinds={["team-retention", "team-hold"]} title="Pending approvals (retention and holds)" subjectLabel="Records" /><RetentionTab manage={manage} /></> : view === "settings" ? <SettingsTab manage={manage} /> : view === "gates" ? (
             <div style={{ maxWidth: 640 }}>
               <div className="sectitle" style={{ marginTop: 0 }}>Procurement gate approvers</div>
               <Table cols={[{ t: "Approver" }, { t: "" }]}>
