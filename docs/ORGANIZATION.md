@@ -9,7 +9,7 @@
 | `front-end/src/{lib,services,hooks,data}/` | Shared infrastructure used by two or more features, including the protected security files |
 | `docs/architecture/` | What the product is and why: inventory, decisions, frameworks, porting guide, spec-board comparison, and `STACK.md` (every package and version, generated) |
 | `docs/guides/` | How to work with it: testing, and `CHECKLIST.md` (source feature to React component map) with per-module notes in `checklist/` |
-| `docs/security/` | Security contract and posture: SoD matrix, controls and limitations, pipeline, accepted risks |
+| `docs/security/` | Security contract and posture: control register for audit (CONTROLS.md), SoD matrix, front-end controls and limitations, pipeline, accepted risks |
 | `docs/screenshots/` | Images used by the README |
 | `.github/` | Workflows, the local deploy action, pipeline scripts, rulesets, CODEOWNERS, Dependabot, templates |
 | `.zap/` | ZAP scan rules |
