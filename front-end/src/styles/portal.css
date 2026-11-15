@@ -840,3 +840,6 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .form-actions{display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;padding:12px 0;background:var(--bg)}
 .form-section-body{display:flex;flex-direction:column;gap:14px}
 .form-section-body .field,.form-section-body .help{margin:0}
+.nt-pref{border:1px solid var(--line);border-radius:var(--radius-card);padding:6px 14px 4px;margin:0 0 10px;min-inline-size:0}
+.nt-pref legend{font-weight:600;padding:0 6px;display:flex;flex-direction:column}
+.nt-pref .sw-row{padding:6px 0}

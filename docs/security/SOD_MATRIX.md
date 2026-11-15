@@ -93,3 +93,16 @@ Decision (2026-11, conservative policy). Where a request names a specific approv
 
 Enforced in `src/lib/delegation.ts` (`actsAs`), `src/services/delegation.ts` (create and end), `src/lib/approvalFlow.ts` (generic named-approver kinds) and `src/features/policies/services/policies.ts` (approve, publish, return to draft). The real API must enforce all of it server-side; the card in My workspace is not a control. Delegation is draft governance for review by the customer's compliance owner before it is relied on.
 
+## 10. Notification matrix (draft for compliance review)
+Decision (2026-11, designed from the existing bell, draft for review). A person chooses, for each kind of notice, whether it reaches the bell and an email digest. The choice only ever reduces noise: it never changes who may decide something.
+
+| Rule | Detail |
+|---|---|
+| Never hidden | Approvals waiting for your decision always appear in the bell; that cell is locked on and refused by the service. A pending four-eyes decision cannot be silenced. |
+| Scope | Only kinds the role can open (the module must be allowed). A refusal otherwise. Admin Console notices are not configurable. |
+| Own settings | A person changes only their own; the real API must key them to the authenticated user. |
+| Email digest | Saved as a preference only. This build has no mail service and sends nothing; the real digest must not include record detail beyond a title and link. |
+| Audit | `notifications.pref.changed` (who, which kind, which channel, on or off). |
+| Open for review | Whether other kinds (for example critical control failures) should be locked on, and the digest content, are for the compliance owner to decide. |
+
+Enforced in `src/lib/notifPrefs.ts` (rules and defaults), `src/services/notifPrefs.ts` (change, audit) and `src/lib/notifications.ts` (bell filter).
