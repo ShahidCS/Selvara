@@ -4,6 +4,7 @@ import { DATA } from "./data";
 import { MFA_REQUESTS, custList } from "./platform";
 import { modAllowed } from "./rbac";
 import { getModState, setModState } from "./store";
+import { inlineApprovalsFor, inlineHome } from "./inboxApprovals";
 
 export type NotifKind = "approval" | "alert";
 export type NotifTone = "bad" | "warn" | "info";
@@ -14,8 +15,10 @@ export interface Notif {
   icon: string;
   title: string;
   detail: string;
-  /** Route that opens the record to review (a notification never decides anything itself: decisions need a reason and a second person). */
+  /** Route that opens the record to review. */
   path: string;
+  /** Set when the signed-in person can decide this approval from the panel itself (reason and second-person rules still apply, see `lib/inboxApprovals.ts`). */
+  approvalId?: string;
 }
 type Space = "ws" | "admin";
 
@@ -24,6 +27,10 @@ export function notificationsFor(role: string, space: Space): Notif[] {
   const out: Notif[] = [];
   const can = (mod: string) => modAllowed(role, space, mod);
   if (space === "ws") {
+    for (const a of inlineApprovalsFor(role)) {
+      const left = Math.max(0, Math.ceil((a.expiresAt - Date.now()) / 3600_000));
+      out.push({ id: `ap:${a.id}`, kind: "approval", tone: "info", icon: "check", title: a.title, detail: `${a.id}, requested by ${a.requestedBy}, ${left} h left`, path: `/ws/${inlineHome(a.kind)}`, approvalId: a.id });
+    }
     if (can("controls")) {
       for (const c of DATA.controls.filter((x: any) => x.status === "Fail")) {
         out.push({ id: `ctl:${c.id}`, kind: "alert", tone: "bad", icon: "controls", title: `${c.id} is failing`, detail: `${c.title}, owner ${c.owner}`, path: `/ws/controls/${encodeURIComponent(c.id)}` });
