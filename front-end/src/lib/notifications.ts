@@ -5,6 +5,7 @@ import { MFA_REQUESTS, custList } from "./platform";
 import { modAllowed } from "./rbac";
 import { getModState, setModState } from "./store";
 import { inlineApprovalsFor, inlineHome } from "./inboxApprovals";
+import { isOn, type NotifCat } from "./notifPrefs";
 
 export type NotifKind = "approval" | "alert";
 export type NotifTone = "bad" | "warn" | "info";
@@ -19,6 +20,8 @@ export interface Notif {
   path: string;
   /** Set when the signed-in person can decide this approval from the panel itself (reason and second-person rules still apply, see `lib/inboxApprovals.ts`). */
   approvalId?: string;
+  /** Matrix category (ws only). Items in a category the person switched off for the bell are left out, see `lib/notifPrefs.ts`. */
+  cat?: NotifCat;
 }
 type Space = "ws" | "admin";
 
@@ -29,24 +32,24 @@ export function notificationsFor(role: string, space: Space): Notif[] {
   if (space === "ws") {
     for (const a of inlineApprovalsFor(role)) {
       const left = Math.max(0, Math.ceil((a.expiresAt - Date.now()) / 3600_000));
-      out.push({ id: `ap:${a.id}`, kind: "approval", tone: "info", icon: "check", title: a.title, detail: `${a.id}, requested by ${a.requestedBy}, ${left} h left`, path: `/ws/${inlineHome(a.kind)}`, approvalId: a.id });
+      out.push({ id: `ap:${a.id}`, kind: "approval", tone: "info", icon: "check", title: a.title, detail: `${a.id}, requested by ${a.requestedBy}, ${left} h left`, path: `/ws/${inlineHome(a.kind)}`, approvalId: a.id, cat: "approvals" });
     }
     if (can("controls")) {
       for (const c of DATA.controls.filter((x: any) => x.status === "Fail")) {
-        out.push({ id: `ctl:${c.id}`, kind: "alert", tone: "bad", icon: "controls", title: `${c.id} is failing`, detail: `${c.title}, owner ${c.owner}`, path: `/ws/controls/${encodeURIComponent(c.id)}` });
+        out.push({ id: `ctl:${c.id}`, kind: "alert", tone: "bad", icon: "controls", title: `${c.id} is failing`, detail: `${c.title}, owner ${c.owner}`, path: `/ws/controls/${encodeURIComponent(c.id)}`, cat: "controls" });
       }
       const ne = DATA.controls.filter((x: any) => x.status === "Needs evidence").length;
-      if (ne) out.push({ id: "ctl:needs-evidence", kind: "alert", tone: "warn", icon: "evidence", title: `${ne} control${ne === 1 ? "" : "s"} need evidence`, detail: "Collect or attach evidence before the next test", path: "/ws/controls" });
+      if (ne) out.push({ id: "ctl:needs-evidence", kind: "alert", tone: "warn", icon: "evidence", title: `${ne} control${ne === 1 ? "" : "s"} need evidence`, detail: "Collect or attach evidence before the next test", path: "/ws/controls", cat: "evidence" });
     }
     if (can("issues")) {
       for (const i of DATA.issues.filter((x: any) => x.status !== "Closed" && /Overdue/.test(x.due))) {
-        out.push({ id: `iss:${i.id}`, kind: "alert", tone: "bad", icon: "issues", title: i.title, detail: `${i.id}, ${i.owner}, ${String(i.due).toLowerCase()}`, path: `/ws/issues/${encodeURIComponent(i.id)}` });
+        out.push({ id: `iss:${i.id}`, kind: "alert", tone: "bad", icon: "issues", title: i.title, detail: `${i.id}, ${i.owner}, ${String(i.due).toLowerCase()}`, path: `/ws/issues/${encodeURIComponent(i.id)}`, cat: "issues" });
       }
     }
     if (can("vendors")) {
       for (const v of DATA.vendors.filter((x: any) => /Overdue/.test(x.due) || x.status === "In review")) {
         const overdue = /Overdue/.test(v.due);
-        out.push({ id: `ven:${v.name}`, kind: "alert", tone: overdue ? "bad" : "warn", icon: "vendors", title: overdue ? `Vendor review overdue: ${v.name}` : `Vendor in review: ${v.name}`, detail: `${v.tier} tier, ${v.cat}`, path: `/ws/vendors/${encodeURIComponent(v.id)}` });
+        out.push({ id: `ven:${v.name}`, kind: "alert", tone: overdue ? "bad" : "warn", icon: "vendors", title: overdue ? `Vendor review overdue: ${v.name}` : `Vendor in review: ${v.name}`, detail: `${v.tier} tier, ${v.cat}`, path: `/ws/vendors/${encodeURIComponent(v.id)}`, cat: "vendors" });
       }
     }
   } else {
@@ -61,7 +64,7 @@ export function notificationsFor(role: string, space: Space): Notif[] {
       }
     }
   }
-  return out;
+  return out.filter((n) => !n.cat || isOn(role, n.cat, "bell"));
 }
 
 const KEY = "shell.notifRead";

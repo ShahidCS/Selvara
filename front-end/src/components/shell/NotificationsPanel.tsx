@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Icon } from "@/components/ui";
+import { Icon, Switch } from "@/components/ui";
 import { useApp, useData, useModVersion } from "@/lib/store";
 import { notificationsFor, markRead, readIds, restoreRead, unreadCount, type Notif } from "@/lib/notifications";
+import { NOTIF_CHANNELS, catsFor, isLocked, isOn } from "@/lib/notifPrefs";
 import { decide } from "@/services/sodApprovals";
+import { setNotifPref } from "@/services/notifPrefs";
 import { sodMessage } from "@/lib/approvalFlow";
 import type { LayerApi } from "./LayerProvider";
 
@@ -50,12 +52,34 @@ function InlineDecision({ id, title, L }: { id: string; title: string; L: LayerA
   );
 }
 
+/** The notification matrix: for each kind of notice, whether it reaches the bell and the email digest. Approvals waiting for you always reach the bell. */
+function Matrix({ role, L }: { role: string; L: LayerApi }) {
+  const cats = catsFor(role);
+  const flip = async (cat: Parameters<typeof setNotifPref>[0], ch: Parameters<typeof setNotifPref>[1], on: boolean) => {
+    try { await setNotifPref(cat, ch, on); } catch (e) { L.toast(sodMessage(e, "Could not save the setting"), false); }
+  };
+  return (
+    <div className="nt-prefs">
+      <p className="field help" style={{ margin: "0 0 8px" }}>Choose how each kind of notice reaches you. The email digest is saved as a preference only: this build sends no email. Admin Console notices are not configurable.</p>
+      {cats.map((c) => (
+        <fieldset key={c.id} className="nt-pref">
+          <legend>{c.label}<span className="sw-hint">{c.help}</span></legend>
+          {NOTIF_CHANNELS.map((ch) => (
+            <Switch key={ch.id} id={`np-${c.id}-${ch.id}`} label={ch.label} checked={isOn(role, c.id, ch.id)} disabled={isLocked(c.id, ch.id)} hint={isLocked(c.id, ch.id) ? "Always on, a pending decision is never hidden" : undefined} onChange={(v) => void flip(c.id, ch.id, v)} />
+          ))}
+        </fieldset>
+      ))}
+    </div>
+  );
+}
+
 /** Body of the notifications slide-over. An item opens its record to review. Items that the person can decide through the shared four-eyes path also
  *  carry Approve and Reject (with the reason and second-person rules); every other kind of decision is made on its record. */
 export function NotificationsBody({ space, go, close, L }: { space: "ws" | "admin"; go: (p: string) => void; close: () => void; L: LayerApi }) {
   useData(); useModVersion(); // follow data and read-state changes
   const role = useApp((s) => s.role);
   const [tab, setTab] = useState<Tab>("all");
+  const [prefs, setPrefs] = useState(false);
   const items = notificationsFor(role, space);
   const read = new Set(readIds());
   const unread = unreadCount(items);
@@ -70,6 +94,14 @@ export function NotificationsBody({ space, go, close, L }: { space: "ws" | "admi
     L.toast("All notifications marked read", true, { action: { label: "Undo", run: () => restoreRead(before) } });
   };
 
+  if (prefs) {
+    return (
+      <div className="nt">
+        <div className="nt-bar"><h4 className="nt-g" style={{ margin: 0 }}>Notification settings</h4><button className="btn btn-ghost sm" onClick={() => setPrefs(false)}><Icon name="chevron" />Back to notifications</button></div>
+        {space === "ws" ? <Matrix role={role} L={L} /> : <p className="field help">Admin Console notices are not configurable.</p>}
+      </div>
+    );
+  }
   return (
     <div className="nt">
       <div className="nt-bar">
@@ -78,7 +110,10 @@ export function NotificationsBody({ space, go, close, L }: { space: "ws" | "admi
             <button key={k} className="tab" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l} <span className="nt-n">{count(k)}</span></button>
           ))}
         </div>
-        <button className="btn btn-ghost sm" disabled={!unread} onClick={markAll}>Mark all read</button>
+        <div className="btngrp" style={{ display: "flex", gap: 8 }}>
+          <button className="btn btn-ghost sm" disabled={!unread} onClick={markAll}>Mark all read</button>
+          <button className="btn btn-ghost sm" onClick={() => setPrefs(true)}><Icon name="bell" />Settings</button>
+        </div>
       </div>
       <p className="nt-sum" role="status" aria-live="polite">{unread ? `${unread} unread` : items.length ? "You are all caught up" : ""}</p>
       {groups.length === 0 ? (
