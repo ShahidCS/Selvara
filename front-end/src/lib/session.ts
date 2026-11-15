@@ -9,6 +9,7 @@ import { appStore, bumpData, persist } from "./store";
 import { wsLog } from "./audit";
 import { adminLog } from "./adminAudit";
 import { elevationActive, endElevation } from "./elevation";
+import { allowJoin, clientIp, ipBlockMessage, recordIpFailure, recordIpSuccess } from "./ipGuard";
 
 /** Sign-in events go to the audit log of the space the person works in. */
 function logAuth(action: string) {
@@ -62,6 +63,8 @@ export async function requestToJoin(input: JoinInput): Promise<void> {
   if (!isEmail(email)) throw new Error("Enter a valid work email address.");
   const pw = checkPassword(String(input.password ?? ""), { email, name });
   if (!pw.ok) throw new Error(pw.errors[0] || "Choose a stronger password.");
+  const ip = clientIp(); const blocked = ipBlockMessage(ip); if (blocked) throw new Error(blocked);
+  if (!allowJoin(ip)) throw new Error("Too many requests to join from your network. Try again in an hour.");
   if (email.endsWith("@" + DEMO_DOMAIN) || members().some((m) => m.email === email && m.status !== "Rejected")) return;
   const salt = secureHex(16);
   members().push({ id: "JR-" + secureHex(4).toUpperCase(), name, email, salt, hash: await sha256(salt + ":" + String(input.password)), status: "Pending", requestedAt: Date.now() });
@@ -70,7 +73,9 @@ export async function requestToJoin(input: JoinInput): Promise<void> {
 
 /* ---------- sign in and out ---------- */
 const fails = new Map<string, { n: number; until: number }>();
-function fail(email: string): never {
+function fail(email: string, ip: string): never {
+  recordIpFailure(ip);
+  const blocked = ipBlockMessage(ip); if (blocked) throw new Error(blocked);
   const f = fails.get(email) || { n: 0, until: 0 }; f.n += 1;
   if (f.n >= JOIN.MAX_FAILS) { f.until = Date.now() + JOIN.LOCK_MS; f.n = 0; }
   fails.set(email, f);
@@ -83,17 +88,19 @@ function start(roleId: string, who: string | null) {
 }
 /** Signs in with email and password. Errors are generic, except for a proven password on a request that is not approved. Five failures lock that email for five minutes. */
 export async function signIn(emailIn: string, password: string): Promise<{ roleId: string; person: string }> {
-  const email = norm(emailIn);
-  const f = fails.get(email); if (f && f.until > Date.now()) throw new Error(THROTTLED_MSG);
+  const email = norm(emailIn); const ip = clientIp();
+  const blocked = ipBlockMessage(ip); if (blocked) throw new Error(blocked); // checked first: a blocked network cannot try any account
+  const f = fails.get(email);
+  if (f && f.until > Date.now()) { recordIpFailure(ip); throw new Error(ipBlockMessage(ip) || THROTTLED_MSG); } // still counts against the network
   const demo = DEMO_ACCOUNTS.find((a) => a.email === email);
   if (demo) {
-    if ((await sha256("selvara-demo-account:" + String(password ?? ""))) !== DEMO_HASH) fail(email);
-    fails.delete(email); start(demo.roleId, null);
+    if ((await sha256("selvara-demo-account:" + String(password ?? ""))) !== DEMO_HASH) fail(email, ip);
+    fails.delete(email); recordIpSuccess(ip); start(demo.roleId, null);
     return { roleId: demo.roleId, person: demo.person };
   }
   const m = members().find((x) => x.email === email && x.status !== "Rejected") || members().find((x) => x.email === email);
-  if (!m || (await sha256(m.salt + ":" + String(password ?? ""))) !== m.hash) fail(email);
-  fails.delete(email);
+  if (!m || (await sha256(m.salt + ":" + String(password ?? ""))) !== m.hash) fail(email, ip);
+  fails.delete(email); recordIpSuccess(ip);
   if (m.status === "Pending") throw new Error("Your request to join is waiting for a company admin to approve it.");
   if (m.status === "Rejected") throw new Error("Your request to join was not approved. Ask a company admin.");
   start(JOIN_ROLE, m.name);

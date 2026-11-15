@@ -2,13 +2,14 @@ import { afterEach, describe, expect, it } from "vitest";
 import { WS_AUDIT } from "@/lib/audit";
 import { getActor, SodError } from "@/lib/sod";
 import { appStore } from "@/lib/store";
+import { resetIpGuard } from "@/lib/ipGuard";
 import { DEMO_ACCOUNTS, JOIN_ROLE, SIGNIN_FAILED, demoEmail, joinRequests, requestToJoin, resetMembers, restoreSession, signIn, signOut } from "@/lib/session";
 import { decideJoin, pendingJoins } from "@/services/joinRequests";
 
 /* Demo sign-in (DEMO ONLY). The shared demo password is documented in README.md; the code holds only its hash. vitest has no DOM. */
 const DEMO = ["selvara", "demo"].join("-");
 const strong = "Lantern-orbit-Quince-71";
-afterEach(() => { signOut(false); resetMembers(); appStore.set({ role: "super" }); });
+afterEach(() => { signOut(false); resetMembers(); resetIpGuard(false); appStore.set({ role: "super" }); });
 
 describe("demo accounts", () => {
   it("has one synthetic account per persona on a reserved test domain", () => {

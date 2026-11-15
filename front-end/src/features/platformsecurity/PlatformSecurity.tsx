@@ -12,7 +12,9 @@ export const PWD_RULES = ["At least 12 and up to 128 characters (tenants may req
   "Hashed with Argon2id (or bcrypt/scrypt) plus a per-user salt and a pepper kept in a hardware security module"];
 export const AUTH_RULES = ["MFA enforced for every user on every tenant — tenants cannot disable it",
   "Passkeys / FIDO2 keys preferred; authenticator app (TOTP) allowed; SMS and voice not offered; 10 single-use recovery codes, shown once",
-  "Lockout or progressive delay after 5 failed attempts with the same generic message for known and unknown accounts; IP and device rate limiting",
+  "Lockout after 5 failed attempts on one account (5 minutes), with the same generic message for known and unknown accounts",
+  "Progressive network blocking: 10 failed sign-ins from one address in 15 minutes block it for 5 minutes, then 30 minutes, 2 hours, 24 hours, then permanently; only an elevated super admin can lift a block early",
+  "Requests to join limited to 3 per address per hour, and every one approved by a company admin",
   "Generic sign-in errors — no hint whether the account exists",
   "Reset links: single use, 15-minute expiry, generic response, MFA required before the new password is accepted, all sessions revoked and the user notified",
   "Session cookies Secure, HttpOnly, SameSite=Strict; idle timeout 15 minutes for privileged roles and 30 otherwise, 12-hour absolute limit, step-up for sensitive actions",

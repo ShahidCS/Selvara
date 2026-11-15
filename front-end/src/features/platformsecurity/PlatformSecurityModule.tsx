@@ -3,6 +3,7 @@ import { modAllowed } from "@/lib/rbac";
 import { useApp } from "@/lib/store";
 import { ElevationBanner } from "@/components/kit/admin/ElevationBanner";
 import { PlatformSecurity } from "./PlatformSecurity";
+import { BlockedAddresses } from "./BlockedAddresses";
 
 /** Board 8.G7: read-only platform security rules. Deny by default for roles without the module. */
 export default function PlatformSecurityModule() {
@@ -13,6 +14,7 @@ export default function PlatformSecurityModule() {
       <div className="scroll" style={{ flex: "1 1 auto" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
           <ElevationBanner />
+          <BlockedAddresses />
           <PlatformSecurity />
         </div>
       </div>
