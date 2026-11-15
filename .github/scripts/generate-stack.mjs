@@ -21,6 +21,7 @@ const ROLES = {
   typescript: "Type checking (tsc --noEmit); the build does not emit with it",
   tailwindcss: "Utility CSS (v4), mapped to the original design tokens; utilities only, no reset (preflight is not imported)",
   "@axe-core/playwright": "Runs the axe accessibility rules against rendered pages in the end-to-end suite (development only; MPL-2.0 is allowed for dev dependencies)",
+  "@supabase/supabase-js": "Server-side client for Supabase Auth and Postgres, used only by the authentication API in src/server (never shipped to the browser)",
   "@tailwindcss/postcss": "Runs Tailwind as a PostCSS plugin; its production optimiser also adds vendor prefixes, so autoprefixer is not used",
   postcss: "CSS processing engine that the Tailwind plugin runs on",
   eslint: "Linting (flat config; see the lint script for the warning limit)",

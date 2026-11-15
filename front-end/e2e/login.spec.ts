@@ -154,3 +154,9 @@ test("platform support sees blocked addresses read-only; an elevated super admin
   await expect(p.getByText("Block lifted on 203.0.113.24")).toBeVisible();
   await expect(c).not.toContainText("203.0.113.24");
 });
+
+test("the production API is off (503, not cached) until the Supabase environment is configured", async ({ request }) => {
+  const r = await request.get("/api/auth/session");
+  expect(r.status()).toBe(503);
+  expect(r.headers()["cache-control"]).toContain("no-store");
+});

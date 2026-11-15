@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Chip, Icon, Table } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { sodMessage } from "@/lib/approvalFlow";
 import { JOIN } from "@/lib/session";
-import { decideJoin, pendingJoins } from "@/services/joinRequests";
+import { decideJoin, listPendingJoins, type JoinRow } from "@/services/joinRequests";
+import { useData } from "@/lib/store";
 
 /** People who asked to join from the sign-in page. A company admin approves (as Employee) or rejects, with a reason; both are audited. */
 export function JoinRequests({ manage }: { manage: boolean }) {
-  const list = pendingJoins();
-  const L = useLayer();
+  const v = useData(); const L = useLayer();
+  const [list, setList] = useState<JoinRow[]>([]);
+  useEffect(() => { let on = true; listPendingJoins().then((x) => { if (on) setList(x); }, () => { if (on) setList([]); }); return () => { on = false; }; }, [v]);
   if (!list.length) return null;
   return (
     <section className="card" style={{ boxShadow: "none" }} aria-labelledby="jr-h">

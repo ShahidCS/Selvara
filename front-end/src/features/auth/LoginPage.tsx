@@ -19,7 +19,16 @@ export function LoginPage() {
   const hydrated = useApp((s) => s.hydrated); const signedIn = useApp((s) => s.signedIn); const role = useApp((s) => s.role);
   const [mode, setMode] = useState<"signin" | "join" | "forgot" | "reset">("signin"); const [token, setToken] = useState("");
   const [hold, setHold] = useState(false); // keep the page while new recovery codes are on screen
-  useEffect(() => { loadPersisted(ROLES.map((r) => r.id)); restoreSession(); }, []);
+  useEffect(() => {
+    loadPersisted(ROLES.map((r) => r.id)); restoreSession();
+    // production: the reset email from Supabase opens /login#access_token=…&refresh_token=…&type=recovery; take it out of the address at once
+    const h = new URLSearchParams(window.location.hash.slice(1));
+    if (h.get("type") === "recovery" && h.get("access_token") && h.get("refresh_token")) {
+      const t = btoa(JSON.stringify({ access: h.get("access_token"), refresh: h.get("refresh_token") })).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      window.history.replaceState(null, "", window.location.pathname);
+      setToken(t); setMode("reset"); // eslint-disable-line react-hooks/set-state-in-effect -- one-time read of the address on arrival
+    }
+  }, []);
   useEffect(() => { if (hydrated && signedIn && !hold) router.replace(landingPath(role, "ws")); }, [hydrated, signedIn, hold, role, router]);
   return (
     <main id="content" style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: "24px 16px" }}>

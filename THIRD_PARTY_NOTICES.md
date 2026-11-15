@@ -25,7 +25,7 @@ project does not use (no `next/image`). They are not modified, are dynamically l
 sharp or libvips file or reference appears in what is shipped. Licence and source: https://github.com/lovell/sharp and
 https://github.com/libvips/libvips.
 
-## Production dependencies (57)
+## Production dependencies (70)
 
 | Package | Version | Licence | Optional |
 |---|---|---|---|
@@ -67,11 +67,19 @@ https://github.com/libvips/libvips.
 | @next/swc-win32-arm64-msvc | 16.4.5 | MIT | yes |
 | @next/swc-win32-x64-msvc | 16.4.5 | MIT | yes |
 | @playwright/test | 1.65.0 | Apache-2.0 |  |
+| @supabase/auth-js | 2.118.0 | MIT |  |
+| @supabase/functions-js | 2.118.0 | MIT |  |
+| @supabase/phoenix | 0.4.5 | MIT |  |
+| @supabase/postgrest-js | 2.118.0 | MIT |  |
+| @supabase/realtime-js | 2.118.0 | MIT |  |
+| @supabase/storage-js | 2.118.0 | MIT |  |
+| @supabase/supabase-js | 2.118.0 | MIT |  |
 | @swc/helpers | 0.5.23 | Apache-2.0 |  |
 | baseline-browser-mapping | 2.11.35 | Apache-2.0 |  |
 | caniuse-lite | 1.0.30001823 | CC-BY-4.0 |  |
 | client-only | 0.0.1 | MIT |  |
 | detect-libc | 2.1.2 | Apache-2.0 |  |
+| iceberg-js | 0.8.1 | MIT |  |
 | nanoid | 3.3.20 | MIT |  |
 | next | 16.4.5 | MIT |  |
 | picocolors | 1.1.1 | ISC |  |
@@ -85,4 +93,9 @@ https://github.com/libvips/libvips.
 | sharp | 0.35.5 | Apache-2.0 | yes |
 | source-map-js | 1.2.2 | BSD-3-Clause |  |
 | styled-jsx | 5.1.6 | MIT |  |
+| tslib | 2.8.1 | 0BSD |  |
+| tslib | 2.8.1 | 0BSD |  |
+| tslib | 2.8.1 | 0BSD |  |
+| tslib | 2.8.1 | 0BSD |  |
+| tslib | 2.8.1 | 0BSD |  |
 | tslib | 2.9.1 | 0BSD |  |

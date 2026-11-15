@@ -12,7 +12,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     ...init, credentials: "include",
     headers: { "Content-Type": "application/json", Accept: "application/json", ...(init.headers || {}) },
   });
-  if (!res.ok) throw new ApiError(res.status, `${res.status} ${res.statusText}`);
+  if (!res.ok) { let m = `${res.status} ${res.statusText}`; try { const j = await res.json(); if (j && typeof j.error === "string") m = j.error; } catch { /* no JSON body */ } throw new ApiError(res.status, m); }
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 /** Run `mock()` in mock mode, else call the API. Keeps the UI synchronous-feeling in mock mode. */

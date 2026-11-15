@@ -24,6 +24,7 @@
 
 | Package | Used for | Declared | Installed |
 | --- | --- | --- | --- |
+| `@supabase/supabase-js` | Server-side client for Supabase Auth and Postgres, used only by the authentication API in src/server (never shipped to the browser) | `2.118.0` | `2.118.0` |
 | `next` | Web framework: Pages Router, server rendering, build and dev server | `^16.4.5` | `16.4.5` |
 | `react` | UI library | `^19.3.1` | `19.3.1` |
 | `react-dom` | React renderer for the browser | `^19.3.1` | `19.3.1` |
