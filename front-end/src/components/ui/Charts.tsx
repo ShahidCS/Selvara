@@ -11,7 +11,7 @@ interface Tip { x: number; y: number; text: string }
 function useTip() {
   const [tip, setTip] = useState<Tip | null>(null);
   const bind = (x: number, y: number, text: string) => ({
-    tabIndex: 0, "aria-label": text,
+    tabIndex: 0, role: "img", "aria-label": text,
     onMouseEnter: () => setTip({ x, y, text }), onMouseLeave: () => setTip(null), onFocus: () => setTip({ x, y, text }), onBlur: () => setTip(null),
   });
   return { tip, bind };
@@ -21,13 +21,15 @@ function TipBox({ tip, w, h }: { tip: Tip | null; w: number; h: number }) {
   return <div className="chart-tip" role="tooltip" style={{ left: `${(tip.x / w) * 100}%`, top: `${(tip.y / h) * 100}%` }}>{tip.text}</div>;
 }
 
-export function ChartFigure({ title, summary, head, rows, children, legend }: {
+export function ChartFigure({ title, summary, head, rows, children, legend, interactive }: {
   title: string; summary: string; head: string[]; rows: (string | number)[][]; children: ReactNode; legend?: ReactNode;
+  /** The marks take keyboard focus: the body is a labelled group (an `img` role may not contain focusable children). */
+  interactive?: boolean;
 }) {
   return (
     <figure className="chart">
       <figcaption className="chart-cap">{title}</figcaption>
-      <div className="chart-body" role="img" aria-label={`${title}. ${summary}`}>{children}</div>
+      <div className="chart-body" role={interactive ? "group" : "img"} aria-label={`${title}. ${summary}`}>{children}</div>
       {legend}
       <table className="vh"><caption>{title}</caption><thead><tr>{head.map((h) => <th key={h} scope="col">{h}</th>)}</tr></thead>
         <tbody>{rows.map((r, i) => <tr key={i}>{r.map((c, j) => (j ? <td key={j}>{c}</td> : <th key={j} scope="row">{c}</th>))}</tr>)}</tbody></table>
@@ -47,8 +49,8 @@ export function LineChart({ title, data, target, targetLabel = "Target", unit = 
   const first = data[0], last = data[data.length - 1];
   return (
     <ChartFigure title={title} summary={data.length ? `${data.length} points, from ${first.value}${unit} (${first.label}) to ${last.value}${unit} (${last.label})${target != null ? `, ${targetLabel} ${target}${unit}` : ""}.` : "No data."}
-      head={["Period", "Value"]} rows={data.map((d) => [d.label, `${d.value}${unit}`])}>
-      <div className="chart-wrap"><svg viewBox={`0 0 ${BOX.w} ${BOX.h}`} preserveAspectRatio="none" className="chart-svg" aria-hidden="true">
+      head={["Period", "Value"]} rows={data.map((d) => [d.label, `${d.value}${unit}`])} interactive>
+      <div className="chart-wrap"><svg viewBox={`0 0 ${BOX.w} ${BOX.h}`} preserveAspectRatio="none" className="chart-svg">
         {ticks(max).map((t) => { const y = linePoints([t], BOX, max)[0].y; return <g key={t}><line x1={BOX.l} x2={BOX.w - BOX.r} y1={y} y2={y} className="chart-grid" /><text x={BOX.l - 6} y={y + 4} textAnchor="end" className="chart-ax">{t}</text></g>; })}
         {data.map((d, i) => <text key={d.label} x={pts[i].x} y={BOX.h - 6} textAnchor="middle" className="chart-ax">{d.label}</text>)}
         {pts.length ? <path d={areaOf(pts, base)} fill={col} fillOpacity="0.10" /> : null}
@@ -68,8 +70,8 @@ export function BarChart({ title, data, unit = "", goodLabel = "Value", badLabel
   const rects = barRects(data.map((d) => ({ a: d.value, b: d.bad })), BOX, max);
   return (
     <ChartFigure title={title} summary={data.length ? `${data.length} bars, highest ${Math.max(...data.map((d) => d.value + (d.bad || 0)))}${unit}.` : "No data."}
-      head={["Period", goodLabel, badLabel]} rows={data.map((d) => [d.label, `${d.value}${unit}`, `${d.bad || 0}${unit}`])}>
-      <div className="chart-wrap"><svg viewBox={`0 0 ${BOX.w} ${BOX.h}`} preserveAspectRatio="none" className="chart-svg" aria-hidden="true">
+      interactive head={["Period", goodLabel, badLabel]} rows={data.map((d) => [d.label, `${d.value}${unit}`, `${d.bad || 0}${unit}`])}>
+      <div className="chart-wrap"><svg viewBox={`0 0 ${BOX.w} ${BOX.h}`} preserveAspectRatio="none" className="chart-svg">
         {ticks(max).map((t) => { const y = BOX.t + (BOX.h - BOX.t - BOX.b) * (1 - t / max); return <g key={t}><line x1={BOX.l} x2={BOX.w - BOX.r} y1={y} y2={y} className="chart-grid" /><text x={BOX.l - 6} y={y + 4} textAnchor="end" className="chart-ax">{t}</text></g>; })}
         {rects.map((r, i) => (
           <g key={data[i].label} {...bind(r.x + r.w / 2, r.b.h ? r.b.y : r.a.y, `${data[i].label}: ${data[i].value}${unit}${data[i].bad ? `, ${badLabel.toLowerCase()} ${data[i].bad}${unit}` : ""}`)} className="chart-mark">

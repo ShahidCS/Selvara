@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Icon } from "./Icon";
 import { TITLE } from "@/lib/rbac";
@@ -27,8 +27,18 @@ export interface Col { t: string; r?: boolean }
 /** Generic table. `rows` are <tr> elements. Wraps in a horizontally scrolling container with an edge-shadow affordance. */
 export function Table({ cols, children, minw }: { cols: Col[]; children: ReactNode; minw?: number }) {
   const mw = minw || (cols.length > 4 ? cols.length * 118 : 0);
+  // a region that scrolls must be reachable by keyboard (WCAG 2.1.1); one that fits is not an extra tab stop
+  const ref = useRef<HTMLDivElement>(null); const [scrolls, setScrolls] = useState(false);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const check = () => setScrolls(el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight);
+    check();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(check); ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   return (
-    <div className="tbl-wrap" style={mw ? ({ ["--tmw" as string]: `${mw}px` } as React.CSSProperties) : undefined}>
+    <div ref={ref} className="tbl-wrap" tabIndex={scrolls ? 0 : undefined} role={scrolls ? "region" : undefined} aria-label={scrolls ? "Table, scrollable" : undefined} style={mw ? ({ ["--tmw" as string]: `${mw}px` } as React.CSSProperties) : undefined}>
       <table className="tbl">
         <thead><tr>{cols.map((c, i) => <th key={i} scope="col" className={c.r ? "r" : ""}>{c.t}</th>)}</tr></thead>
         <tbody>{children}</tbody>

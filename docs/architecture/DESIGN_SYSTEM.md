@@ -46,7 +46,7 @@ Geist and Geist Mono, SIL Open Font License 1.1, self-hosted from `front-end/pub
 | 3 | Shared kit: data table, KPI strip and card, AI panel, stepper, timeline, charts, switch, segmented control, skeleton | this change (see below) |
 | 4 | Module migration in waves; modal create and edit flows become pages | in progress: wave A done (registers) |
 | 5 | Governance features (delegation, autonomy, rules, retention, notification matrix) | needs approval to touch `rbac.ts`, `approvals.ts`, `sod.ts` |
-| 6 | RTL, density, print, tenant theming, automated accessibility tests | not started |
+| 6 | RTL, density, print, tenant theming, automated accessibility tests | density, print, tenant theming and axe tests done; RTL and Arabic excluded for now |
 
 Decisions taken: all 33 modules stay in the rail with the existing fold and unfold behaviour; the Admin Console and vendor portal take tokens and templates only; create and edit modals become full pages; the reference colour codes are kept as specified.
 
@@ -174,3 +174,16 @@ A secret is never kept on a page. A new API key is shown once in a dialog that o
 ## Admin Console and vendor portal (wave F)
 
 Tokens and templates only. The Admin Console and the vendor portal take the same tokens as the workspace and no hex literal remains in either. Registers use `DataTable` (rates, admin log); summary strips use `KpiStrip` (rates, admin log, commitments). The vendor portal is a standalone, unbranded page: its security panel uses `--bg-inverse` and `--text-inverse`, its logo tile uses `--accent` with `--text-inverse`, and a `Stepper` shows the five stages. Not changed on purpose: elevation gates and second-admin approvals, the hash chain, what the portal stores or logs, and the vendor-facing wording.
+
+## Display preferences and print (phase 6, step 1)
+
+- **Density**: `appStore.density` is `comfortable` (default) or `compact`, saved with the theme and set on `<html data-density>`. Compact only changes the three spacing variables above; text size, control height and focus rings do not change. New dense components should read `--cell-y`, `--head-y` or `--tile-y` rather than a fixed padding.
+- **Print**: the stylesheet is in `portal.css` (`@media print`). `AppShell` forces the light theme on `beforeprint`, so a dark-theme user does not print white on black. Anything that should not print takes the `no-print` class. DataTable prints its current page (the page size is the user's).
+
+## Workspace colour and accessibility tests (phase 6, step 2)
+
+- **Workspace colour**: a workspace chooses one preset (`src/lib/brand.ts`: violet default, blue, teal, green, slate). The values live in `portal.css` as `[data-brand="<id>"]` rules that override only the six `--c-brand-*` variables, plus the dark-theme accent set (the dark theme defines its own accent). `<html data-brand>` is set by the shell for workspace routes only. A tenant cannot enter a free colour: the choice is a closed list so a poor contrast pair cannot be chosen. To add a preset, add its three CSS rules and its id; `tests/unit/brand.test.ts` then fails until every text pair is at least 4.5:1 in both themes. Status colours (ok, warn, bad) never change with the brand.
+- **Using the brand**: take colour from `--accent`, `--accent-weak`, `--accent-ink`, `--btn-primary*`. Never put a text colour that assumes the violet on an accent tint (the heat map once did); use `--ink` on tints.
+- **Accessibility tests**: `e2e/a11y.spec.ts` (axe, WCAG 2.2 AA) runs in the end-to-end job. A new route is covered automatically if it is in the navigation; add record and form pages to its `EXTRA` list. Wait for an open animation to finish before scanning a dialog, or axe measures a half-faded colour. Automated rules catch a part of the problems: keyboard walk-through and screen-reader checks stay manual.
+- **Excluded for now**: right-to-left and Arabic (needs a routing decision, which touches a protected file, and reviewed translations).
+

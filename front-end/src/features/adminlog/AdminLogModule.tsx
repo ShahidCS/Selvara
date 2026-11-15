@@ -47,7 +47,7 @@ export default function AdminLogModule() {
     { key: "object", header: "Object", value: (l) => l.object, render: (l) => l.object },
     { key: "ropa", header: "RoPA activity", value: (l) => ropaFor(l), render: (l) => {
       const rp = ropaById(ropaFor(l));
-      return <span className="tag num" style={{ cursor: "pointer" }} aria-label={rp ? `Open RoPA register (${rp.id})` : "Open RoPA register"} {...activate(() => setV("ropa"))}>{rp ? rp.id : "—"}</span>;
+      return <span className="tag num" style={{ cursor: "pointer" }} aria-label={rp ? `Open RoPA register, ${rp.id}` : "Open RoPA register"} {...activate(() => setV("ropa"))}>{rp ? rp.id : "—"}</span>;
     } },
     { key: "basis", header: "Basis", value: (l) => l.basis, render: (l) => l.basis },
     { key: "cats", header: "Categories", defaultHidden: true, value: (l) => (l.categories || []).join("; "), render: (l) => <>{(l.categories || []).map((c, i) => <span key={i}>{i ? " " : ""}<span className="tagchip">{c}</span></span>)}</> },

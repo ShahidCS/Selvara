@@ -32,8 +32,8 @@ export default function RatesModule() {
       return (
         <span style={{ whiteSpace: "nowrap" }}>
           {r.status === "Held" ? <>
-            <button className="btn btn-ghost sm" aria-label={`Request release of ${r.country} rate`} disabled={gate.locked || pending.has(r.code)} title={why} onClick={() => decide(r, true)}><Icon name="check" />Release</button>
-            <button className="btn btn-ghost sm" aria-label={`Request rejection of ${r.country} rate`} disabled={gate.locked || pending.has(r.code)} title={why} onClick={() => decide(r, false)}><Icon name="x" />Reject</button></>
+            <button className="btn btn-ghost sm" aria-label={`Release ${r.country} rate, needs approval`} disabled={gate.locked || pending.has(r.code)} title={why} onClick={() => decide(r, true)}><Icon name="check" />Release</button>
+            <button className="btn btn-ghost sm" aria-label={`Reject ${r.country} rate, needs approval`} disabled={gate.locked || pending.has(r.code)} title={why} onClick={() => decide(r, false)}><Icon name="x" />Reject</button></>
             : <button className="btn btn-ghost sm" aria-label={`Edit ${r.country}`} disabled={gate.locked || pending.has(r.code)} title={why} onClick={() => L.openDrawer("Edit " + r.country, "Currency, exchange rate and tax", (close) => <RateEditForm code={r.code} close={close} />)}><Icon name="edit" />Edit</button>}
         </span>
       );

@@ -5,7 +5,7 @@ test("bell opens a notifications dialog, an item opens its record, Mark all read
   const s = await openAs(browser, ti, "admin");
   const p = s.page;
   await gotoModule(p, "/ws/overview");
-  const bell = p.getByRole("button", { name: /^Notifications, \d+ unread$/ });
+  const bell = p.getByRole("button", { name: /^Notifications, (\d+|9\+) unread$/ });
   await expect(bell).toBeVisible();
 
   await bell.click();

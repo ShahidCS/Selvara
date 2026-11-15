@@ -26,7 +26,7 @@ function NavTip({ tip, onEnter, onLeave, go, hide }: { tip: { anchor: HTMLElemen
   const onMod = !!tip?.parent && route.mod === tip.parent;
   return (
     <div id="navtip" ref={ref} className={`${tip && pos ? "show" : ""}${sn ? " flyout" : ""}`}
-      role={sn ? "menu" : "tooltip"} onMouseEnter={onEnter} onMouseLeave={onLeave}
+      role={tip ? (sn ? "menu" : "tooltip") : undefined} aria-hidden={tip ? undefined : true} onMouseEnter={onEnter} onMouseLeave={onLeave}
       style={{ left: pos?.left ?? -999, top: pos?.top ?? -999, pointerEvents: sn && tip ? "auto" : "none" }}>
       {tip ? (sn ? (
         <>

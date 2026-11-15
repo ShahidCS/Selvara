@@ -1,6 +1,8 @@
 import { ReactNode, useEffect } from "react";
 import { useRouter } from "next/router";
-import { appStore, loadPersisted, persist, useApp } from "@/lib/store";
+import { appStore, loadPersisted, persist, useApp, useData } from "@/lib/store";
+import { brandAttr } from "@/lib/brand";
+import { TEAM_SETTINGS } from "@/services/team";
 import { ROLES, TITLE, allowedSpaces, landingPath, modAllowed } from "@/lib/rbac";
 import { parseRoute, useGo } from "@/lib/route";
 import { Sidebar } from "./Sidebar";
@@ -18,6 +20,24 @@ function Frame({ children }: { children: ReactNode }) {
   useEffect(() => { loadPersisted(ROLES.map((r) => r.id)); }, []);
   // theme -> <html data-theme>
   useEffect(() => { document.documentElement.setAttribute("data-theme", s.theme); }, [s.theme]);
+  // workspace colour -> <html data-brand> (workspace only: the Admin Console, sign-in and vendor portal stay on the platform colour)
+  useData();
+  const brand = route.space === "ws" ? brandAttr(TEAM_SETTINGS.brand) : null;
+  useEffect(() => {
+    const root = document.documentElement;
+    if (brand) root.setAttribute("data-brand", brand); else root.removeAttribute("data-brand");
+    return () => root.removeAttribute("data-brand"); // leaving the shell (for example to the vendor portal) leaves no tenant colour behind
+  }, [brand]);
+  // density -> <html data-density>
+  useEffect(() => { document.documentElement.setAttribute("data-density", s.density); }, [s.density]);
+  // print is always the light theme on white, whatever the screen theme is (restored afterwards)
+  useEffect(() => {
+    const root = document.documentElement; let prev: string | null = null;
+    const before = () => { prev = root.getAttribute("data-theme"); root.setAttribute("data-theme", "light"); };
+    const after = () => { if (prev !== null) root.setAttribute("data-theme", prev); prev = null; };
+    window.addEventListener("beforeprint", before); window.addEventListener("afterprint", after);
+    return () => { window.removeEventListener("beforeprint", before); window.removeEventListener("afterprint", after); };
+  }, []);
   // route change closes the mobile sidebar and resets scroll (prototype: go()/route())
   useEffect(() => {
     appStore.set({ mobOpen: false });

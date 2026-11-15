@@ -16,7 +16,7 @@ const SUB_LABEL: Record<string, string> = { edit: "Edit", exception: "Request ex
 export function Topbar() {
   const route = useRoute(); const go = useGo(); const L = useLayer();
   useData(); useModVersion(); // the unread badge follows data and read state
-  const theme = useApp((s) => s.theme); const roleId = useApp((s) => s.role);
+  const theme = useApp((s) => s.theme); const density = useApp((s) => s.density); const roleId = useApp((s) => s.role);
   const me = roleOf(roleId);
   const space = route.space === "admin" ? "admin" : "ws";
   const unread = unreadCount(notificationsFor(roleId, space));
@@ -49,6 +49,7 @@ export function Topbar() {
         <div className="div" />
         {modAllowed(roleId, "ws", "me") ? <button role="menuitem" onClick={() => { close(); go("/ws/me"); }}><Icon name="user" />My workspace</button> : null}
         <button role="menuitem" onClick={() => { close(); go("/auth"); }}><Icon name="access" />Sign-in &amp; security</button>
+        <button role="menuitemcheckbox" aria-checked={density === "compact"} onClick={() => { const d = density === "compact" ? "comfortable" : "compact"; appStore.set({ density: d }); persist(); close(); L.toast("Density: " + d); }}><Icon name={density === "compact" ? "check" : "dot"} />Compact density</button>
         <button role="menuitem" onClick={() => { close(); openShortcuts(L); }}><Icon name="grid" />Keyboard shortcuts</button>
       </div>
     ));
@@ -82,14 +83,14 @@ export function Topbar() {
       <button className="top-search" onClick={L.openPalette} aria-label="Search (Command or Ctrl K)"><Icon name="search" /><span className="ph">Search…</span><span className="kbd">⌘K</span></button>
       </div>
       {canAsk ? <button className="icon-btn" aria-label="Ask AI (Command or Ctrl J)" title="Ask AI (⌘J)" onClick={() => go("/ws/assistant")}><Icon name="assistant" /></button> : null}
-      <button className="icon-btn nbell" aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"} aria-haspopup="dialog" onClick={openNotifications}>
+      <button className="icon-btn nbell" aria-label={unread ? `Notifications, ${unread > 9 ? "9+" : unread} unread` : "Notifications"} aria-haspopup="dialog" onClick={openNotifications}>
         <Icon name="bell" />{unread ? <span className="nbadge" aria-hidden="true">{unread > 9 ? "9+" : unread}</span> : null}
       </button>
       <button className="icon-btn" aria-label={`Theme: ${theme}`} onClick={cycleTheme}><Icon name={themeIcon} /></button>
       <div className="top-div" aria-hidden="true" />
-      <button className="top-user" aria-haspopup="menu" aria-label={`Account: ${me.person}, ${me.name}`} onClick={roleMenu}>
-        <span className="avatar">{me.initials}</span>
-        <span className="tu-who"><b>{me.person}</b><span>{me.name}</span></span>
+      <button className="top-user" aria-haspopup="menu" onClick={roleMenu}>
+        <span className="avatar" aria-hidden="true">{me.initials}</span>
+        <span className="tu-who"><span className="vh">Account: </span><b>{me.person}</b><span>{me.name}</span></span>
         <Icon name="chevd" className="tu-chev" />
       </button>
     </header>

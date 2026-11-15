@@ -41,7 +41,7 @@ export default function AuditLogModule() {
     { key: "target", header: "Target", value: (l) => l.target, render: (l) => l.target },
     { key: "ropa", header: "RoPA activity", value: (l) => ropaFor(l) || "", render: (l) => {
       const rp = ropaById(ropaFor(l));
-      return rp ? <span className="tag num" style={{ cursor: "pointer" }} aria-label={`Open RoPA register (${rp.id})`} {...activate(() => setV("ropa"))}>{rp.id}</span> : <span className="tag num" style={{ cursor: "pointer" }} aria-label="Open RoPA register" {...activate(() => setV("ropa"))}>—</span>;
+      return rp ? <span className="tag num" style={{ cursor: "pointer" }} aria-label={`Open RoPA register, ${rp.id}`} {...activate(() => setV("ropa"))}>{rp.id}</span> : <span className="tag num" style={{ cursor: "pointer" }} aria-label="Open RoPA register" {...activate(() => setV("ropa"))}>—</span>;
     } },
     { key: "hash", header: "Hash", value: (l) => l.hash, render: (l) => <span className="num" style={{ fontSize: 11, color: "var(--muted)" }}>{l.hash}</span> },
   ];

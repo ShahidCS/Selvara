@@ -17,10 +17,12 @@ export function createStore<T extends object>(initial: T) {
 
 /* ---------- application shell state (was the global `S` in the prototype) ---------- */
 export type Theme = "auto" | "light" | "dark";
+export type Density = "comfortable" | "compact";
 export interface AppState {
   role: string;
   collapsed: boolean;
   theme: Theme;
+  density: Density;
   scope: string;
   groupsOpen: Record<string, boolean>;
   navOpen: string | null;
@@ -28,7 +30,7 @@ export interface AppState {
   hydrated: boolean;
 }
 export const appStore = createStore<AppState>({
-  role: "super", collapsed: false, theme: "auto", scope: "ISO 27001", groupsOpen: {}, navOpen: null, mobOpen: false, hydrated: false,
+  role: "super", collapsed: false, theme: "auto", density: "comfortable", scope: "ISO 27001", groupsOpen: {}, navOpen: null, mobOpen: false, hydrated: false,
 });
 export function useApp<R>(sel: (s: AppState) => R): R {
   return useSyncExternalStore(appStore.subscribe, () => sel(appStore.get()), () => sel(appStore.get()));
@@ -37,7 +39,7 @@ export const PKEY = "assurance.v1";
 export function persist() {
   try {
     const s = appStore.get();
-    localStorage.setItem(PKEY, JSON.stringify({ role: s.role, collapsed: s.collapsed, theme: s.theme }));
+    localStorage.setItem(PKEY, JSON.stringify({ role: s.role, collapsed: s.collapsed, theme: s.theme, density: s.density }));
   } catch { /* storage unavailable (private mode): the UI still works */ }
 }
 export function loadPersisted(validRoles: string[]) {
@@ -47,6 +49,7 @@ export function loadPersisted(validRoles: string[]) {
     if (o && typeof o === "object") {
       if (o.role && validRoles.includes(o.role)) patch.role = o.role;
       if (o.theme === "auto" || o.theme === "light" || o.theme === "dark") patch.theme = o.theme;
+      if (o.density === "comfortable" || o.density === "compact") patch.density = o.density;
       if (typeof o.collapsed === "boolean") patch.collapsed = o.collapsed;
     }
     appStore.set({ ...patch, hydrated: true });

@@ -79,9 +79,9 @@ The workflow has `permissions: contents: read`, no secrets, third-party actions 
 
 - Backend and API behaviour: the app runs on in-memory mock data, so server-side authorization, persistence and audit integrity are untested. UI gating is not a control; the API must enforce every rule (see `docs/security/SECURITY.md` and `docs/security/SOD_MATRIX.md`).
 - Real authentication: sign-in, MFA, passkeys and sessions are simulated. The vendor code `123456` and the "key touch" are demo stand-ins.
-- Visual regression: no screenshot comparison, and no responsive or dark-theme checks.
+- Visual regression: no screenshot comparison, and no responsive checks. Dark and light themes are covered for accessibility only (axe, below).
 - Cross-browser: Chromium only (Firefox and WebKit are not run).
-- Accessibility audits (axe or similar) and load or performance testing.
+- Load and performance testing. Accessibility is partly covered: `e2e/a11y.spec.ts` runs axe (WCAG 2.2 A and AA) on every route in light and dark and fails on serious or critical findings, but automated rules find only a part of the problems, so keyboard walk-throughs and screen-reader checks remain manual.
 - The `useElevation` React hook (its on-screen clock and countdown): unit tests run in plain Node with no component renderer, so only the module behind it is tested. The e2e test checks the "expires in" banner appears.
 - Upload content scanning: only name, extension and size gates are exercised.
 

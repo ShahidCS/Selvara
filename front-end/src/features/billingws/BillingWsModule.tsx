@@ -8,10 +8,10 @@ import { SUBSCRIPTION, billingCanManage, findInvoice, invoiceText } from "@/serv
 import { useGo, useRoute } from "@/lib/route";
 import { PaymentPage, PlanPage } from "./BillingFormPages";
 
-function Meter({ used, limit }: { used: number; limit: number }) {
+function Meter({ used, limit, label }: { used: number; limit: number; label: string }) {
   const pct = Math.min(100, Math.round(used / limit * 100)); const tone = pct >= 90 ? "var(--bad-ink)" : "var(--accent)";
   return (
-    <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} style={{ height: 7, borderRadius: 5, background: "var(--line,#e5e7eb)", overflow: "hidden" }}>
+    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} style={{ height: 7, borderRadius: 5, background: "var(--line)", overflow: "hidden" }}>
       <div style={{ height: "100%", width: `${pct}%`, background: tone, borderRadius: 5 }} />
     </div>
   );
@@ -67,7 +67,7 @@ function BillingOverview() {
                         <span style={{ color: "var(--ink-2)", fontWeight: 500 }}>{u.k}</span>
                         <span className="num" style={{ color: "var(--muted)", fontSize: 12.5 }}>{num(u.used)}{u.unit} / {num(u.limit)}{u.unit} · {p}%</span>
                       </div>
-                      <Meter used={u.used} limit={u.limit} />
+                      <Meter used={u.used} limit={u.limit} label={`${u.k} used`} />
                     </div>
                   );
                 })}

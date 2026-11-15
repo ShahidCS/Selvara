@@ -44,7 +44,7 @@ export default function AppSecModule() {
           {SECTIONS.map(([id, label]) => <button key={id} type="button" className="btn btn-secondary sm" onClick={() => jump(id)}>{label}</button>)}
         </nav>
 
-        <section className="card" id="appsec-core" tabIndex={-1} aria-labelledby="appsec-core-h"><div className="c-body">
+        <section className="card" id="appsec-core" tabIndex={-1} aria-labelledby="appsec-core-h"><div className="c-body" tabIndex={0}>
           <h2 id="appsec-core-h" style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>{spec.coreRule.heading}</h2>
           <p style={{ margin: "6px 0 0", color: "var(--ink-2)" }}>{spec.coreRule.body}</p>
         </div></section>
@@ -67,12 +67,12 @@ export default function AppSecModule() {
             list.map(({ g, n }) => <ControlGroup key={g.id} g={g} n={n} open={!!open[g.id] || !!ql} onToggle={() => setOpen({ ...open, [g.id]: !open[g.id] })} />)}
         </section>
 
-        <section className="card" id="appsec-limits" tabIndex={-1} aria-labelledby="appsec-limits-h"><div className="c-body">
+        <section className="card" id="appsec-limits" tabIndex={-1} aria-labelledby="appsec-limits-h"><div className="c-body" tabIndex={0}>
           <div id="appsec-limits-h">{secHead("limits", "Rate limits and lockout (starting values)", spec.rateLimitsIntro)}</div>
           <RateLimitTable rows={spec.rateLimits} />
         </div></section>
 
-        <section className="card" id="appsec-matrix" tabIndex={-1} aria-labelledby="appsec-matrix-h"><div className="c-body">
+        <section className="card" id="appsec-matrix" tabIndex={-1} aria-labelledby="appsec-matrix-h"><div className="c-body" tabIndex={0}>
           <div id="appsec-matrix-h">{secHead("matrix", "Server-side permission matrix", spec.matrixIntro)}</div>
           <PermissionMatrix roles={spec.matrixRoles} rows={spec.matrix} />
         </div></section>

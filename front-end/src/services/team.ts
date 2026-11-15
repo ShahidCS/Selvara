@@ -4,6 +4,7 @@
 import seed from "@/data/teamSeed.json";
 import roles from "@/data/userRoles.json";
 import { DATA } from "@/lib/data";
+import { BRANDS, DEFAULT_BRAND, isBrand } from "@/lib/brand";
 import { registerKind, settle } from "@/lib/approvalFlow";
 import { approvals, requestApproval } from "@/lib/approvals";
 import { wsLog } from "@/lib/audit";
@@ -14,8 +15,8 @@ import { ADMIN_ROLE, adminCount, isPrivilegedRoleName, memberRole } from "@/lib/
 import { eligibleApprovers } from "./mfa";
 import { apiFetch, viaApi } from "./http";
 
-export interface TeamSettings { reviewCycle: string; appetite: string; controlSla: string; critSla: string; approvers: string[]; baseline: string[] }
-export const TEAM_SETTINGS: TeamSettings = JSON.parse(JSON.stringify(seed.TEAM_SETTINGS));
+export interface TeamSettings { reviewCycle: string; appetite: string; controlSla: string; critSla: string; approvers: string[]; baseline: string[]; /** Workspace brand preset id (`@/lib/brand`). */ brand: string }
+export const TEAM_SETTINGS: TeamSettings = { brand: DEFAULT_BRAND, ...JSON.parse(JSON.stringify(seed.TEAM_SETTINGS)) };
 export const USER_ROLES: string[] = roles.USER_ROLES;
 export const REVIEW_CYCLES = ["Monthly", "Quarterly", "Annually"];
 export const APPETITES = ["Low", "Moderate", "High"];
@@ -37,6 +38,16 @@ export function setSetting(key: "reviewCycle" | "appetite" | "controlSla" | "cri
     wsLog("team.setting.changed", `${key}: ${before} → ${TEAM_SETTINGS[key]}`, "System"); bumpData();
   }, () => post<void>("/team/settings", { [key]: value }));
 }
+/** Workspace colour: admin only, one of the contrast-checked presets (anything else is refused), audited with before and after. */
+export function setBrand(id: string) {
+  return viaApi<void>(() => {
+    assertRole("change the workspace colour", "admin");
+    if (!isBrand(id)) throw new SodError("Choose one of the listed colours.");
+    const before = TEAM_SETTINGS.brand; TEAM_SETTINGS.brand = id;
+    wsLog("team.brand.changed", `${before} → ${id}`, "System"); bumpData();
+  }, () => post<void>("/team/settings", { brand: id }));
+}
+export const BRAND_CHOICES = BRANDS;
 export function saveSettings() {
   return viaApi<void>(() => { assertRole("save settings", "admin"); }, () => post<void>("/team/settings/save", { ...TEAM_SETTINGS }));
 }

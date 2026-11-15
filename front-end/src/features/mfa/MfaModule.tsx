@@ -25,7 +25,7 @@ export default function MfaModule() {
   const lock = "Elevate to make changes";
   return (
     <Page mod="mfa" acts={<button className="btn btn-secondary" onClick={() => go("/admin/adminlog")}><Icon name="log" />Audit log</button>}>
-      <div className="scroll" style={{ flex: "1 1 auto" }}>
+      <div className="scroll" tabIndex={0} role="region" aria-label="Second-factor reset requests" style={{ flex: "1 1 auto" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
           {!can ? <p className="field help" role="status" style={{ margin: 0 }}>Read-only: your role cannot raise or decide MFA resets.</p> : null}
           <PendingApprovals kinds={[svc.KIND_ADMIN]} title="Pending approval" subjectLabel="Admin" />

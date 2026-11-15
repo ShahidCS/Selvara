@@ -26,7 +26,7 @@ function CoverageHeatmap() {
               const r = covCell(fid, cats);
               if (!r) return <div key={cn} className="covcell" style={{ background: "var(--surface-2)", color: "var(--faint)", borderColor: "var(--line)" }} title={`${fname} · ${cn}: no mapped controls`}>—</div>;
               return (
-                <div key={cn} className="covcell" style={{ background: `color-mix(in srgb,var(--accent) ${Math.round(8 + r.pct * 0.5)}%,var(--surface))`, color: r.pct >= 60 ? "var(--accent-ink)" : "var(--ink-2)", borderColor: "color-mix(in srgb,var(--accent) 24%,var(--surface))" }}
+                <div key={cn} className="covcell" style={{ background: `color-mix(in srgb,var(--accent) ${Math.round(8 + r.pct * 0.27)}%,var(--surface))`, color: "var(--ink)", borderColor: "color-mix(in srgb,var(--accent) 24%,var(--surface))" }}
                   title={`${fname} · ${cn}: ${r.pass} of ${r.n} controls implemented`}>{r.pct}%</div>
               );
             })}
@@ -122,13 +122,13 @@ export default function OverviewModule() {
       </div>
       <div className="card" style={{ marginTop: 14 }}>
         <div className="c-head"><h3>Control coverage</h3><div className="r" style={{ fontSize: 12, color: "var(--muted)" }}>Implemented %, framework × category</div></div>
-        <div className="c-body">
+        <div className="c-body" tabIndex={0}>
           <CoverageHeatmap />
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center", marginTop: 12, fontSize: 11.5, color: "var(--muted)" }}>
             <span>Each cell: controls passing ÷ controls mapped to that framework in that category. &quot;—&quot; means no mapped controls.</span>
             <span style={{ display: "flex", gap: 10, marginLeft: "auto", alignItems: "center" }}>
               <span style={{ display: "inline-flex", gap: 5, alignItems: "center" }}><span style={{ width: 12, height: 12, borderRadius: 3, background: "color-mix(in srgb,var(--accent) 12%,var(--surface))", border: "1px solid color-mix(in srgb,var(--accent) 24%,var(--surface))" }} />lower</span>
-              <span style={{ display: "inline-flex", gap: 5, alignItems: "center" }}><span style={{ width: 12, height: 12, borderRadius: 3, background: "color-mix(in srgb,var(--accent) 55%,var(--surface))", border: "1px solid color-mix(in srgb,var(--accent) 24%,var(--surface))" }} />higher</span>
+              <span style={{ display: "inline-flex", gap: 5, alignItems: "center" }}><span style={{ width: 12, height: 12, borderRadius: 3, background: "color-mix(in srgb,var(--accent) 35%,var(--surface))", border: "1px solid color-mix(in srgb,var(--accent) 24%,var(--surface))" }} />higher</span>
             </span>
           </div>
         </div>
