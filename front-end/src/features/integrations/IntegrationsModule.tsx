@@ -32,7 +32,7 @@ function IntegrationsList() {
         <button className="btn btn-ghost sm" aria-label={`Sync ${r.name}`} onClick={() => act.sync(r.name)}><Icon name="refresh" />Sync</button>
         <button className="btn btn-ghost sm" aria-label={`Disconnect ${r.name}`} onClick={() => act.toggle(r.name)}><Icon name="x" />Disconnect</button>
       </div>
-    ) : <button className="btn btn-ghost sm" aria-label={`Connect ${r.name} read-only`} onClick={() => act.toggle(r.name)}><Icon name="plus" />Connect read-only</button>) : <Icon name="chevron" />) },
+    ) : <button className="btn btn-ghost sm" aria-label={`Connect read-only: ${r.name}`} onClick={() => act.toggle(r.name)}><Icon name="plus" />Connect read-only</button>) : <Icon name="chevron" />) },
   ];
   return (
     <Page mod="integrations" acts={manage ? <button className="btn btn-secondary" onClick={act.syncAll}><Icon name="refresh" />Sync all</button> : undefined}>
