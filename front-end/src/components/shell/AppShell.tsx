@@ -18,6 +18,16 @@ function Frame({ children }: { children: ReactNode }) {
   useEffect(() => { loadPersisted(ROLES.map((r) => r.id)); }, []);
   // theme -> <html data-theme>
   useEffect(() => { document.documentElement.setAttribute("data-theme", s.theme); }, [s.theme]);
+  // density -> <html data-density>
+  useEffect(() => { document.documentElement.setAttribute("data-density", s.density); }, [s.density]);
+  // print is always the light theme on white, whatever the screen theme is (restored afterwards)
+  useEffect(() => {
+    const root = document.documentElement; let prev: string | null = null;
+    const before = () => { prev = root.getAttribute("data-theme"); root.setAttribute("data-theme", "light"); };
+    const after = () => { if (prev !== null) root.setAttribute("data-theme", prev); prev = null; };
+    window.addEventListener("beforeprint", before); window.addEventListener("afterprint", after);
+    return () => { window.removeEventListener("beforeprint", before); window.removeEventListener("afterprint", after); };
+  }, []);
   // route change closes the mobile sidebar and resets scroll (prototype: go()/route())
   useEffect(() => {
     appStore.set({ mobOpen: false });

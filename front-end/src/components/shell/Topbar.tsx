@@ -16,7 +16,7 @@ const SUB_LABEL: Record<string, string> = { edit: "Edit", exception: "Request ex
 export function Topbar() {
   const route = useRoute(); const go = useGo(); const L = useLayer();
   useData(); useModVersion(); // the unread badge follows data and read state
-  const theme = useApp((s) => s.theme); const roleId = useApp((s) => s.role);
+  const theme = useApp((s) => s.theme); const density = useApp((s) => s.density); const roleId = useApp((s) => s.role);
   const me = roleOf(roleId);
   const space = route.space === "admin" ? "admin" : "ws";
   const unread = unreadCount(notificationsFor(roleId, space));
@@ -49,6 +49,7 @@ export function Topbar() {
         <div className="div" />
         {modAllowed(roleId, "ws", "me") ? <button role="menuitem" onClick={() => { close(); go("/ws/me"); }}><Icon name="user" />My workspace</button> : null}
         <button role="menuitem" onClick={() => { close(); go("/auth"); }}><Icon name="access" />Sign-in &amp; security</button>
+        <button role="menuitemcheckbox" aria-checked={density === "compact"} onClick={() => { const d = density === "compact" ? "comfortable" : "compact"; appStore.set({ density: d }); persist(); close(); L.toast("Density: " + d); }}><Icon name={density === "compact" ? "check" : "dot"} />Compact density</button>
         <button role="menuitem" onClick={() => { close(); openShortcuts(L); }}><Icon name="grid" />Keyboard shortcuts</button>
       </div>
     ));

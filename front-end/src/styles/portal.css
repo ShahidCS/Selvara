@@ -387,8 +387,8 @@ textarea.input{height:auto;padding:9px 11px;resize:vertical;min-height:72px}
 
 /* tables */
 table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
-.tbl thead th{position:sticky;top:0;z-index:1;background:var(--surface);text-align:left;font-weight:600;color:var(--muted);font-size:12px;letter-spacing:0;padding:9px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
-.tbl tbody td{padding:11px 14px;border-bottom:1px solid var(--line);color:var(--ink-2);vertical-align:middle}
+.tbl thead th{position:sticky;top:0;z-index:1;background:var(--surface);text-align:left;font-weight:600;color:var(--muted);font-size:12px;letter-spacing:0;padding:var(--head-y,9px) 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl tbody td{padding:var(--cell-y,11px) 14px;border-bottom:1px solid var(--line);color:var(--ink-2);vertical-align:middle}
 .tbl tbody tr:hover td{background:var(--surface-2)}
 .tbl tbody tr{cursor:default}
 .tbl tbody tr.clickable{cursor:pointer}
@@ -602,11 +602,19 @@ button.tag:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
 }
 .hamburger{display:none}
 
+/* density: Compact tightens table rows and KPI tiles (controls keep their size, so targets stay usable) */
+:root[data-density="compact"]{--cell-y:6px;--head-y:6px;--tile-y:10px}
+/* print: light theme on white (AppShell switches it on beforeprint), no chrome, no inner scrolling, tables break between rows */
 @media print{
-  #sidebar,#topbar,.page-head .acts,.icon-btn,.btn,.no-print{display:none!important}
-  #app{display:block;height:auto} main#content{overflow:visible}
-  .card{break-inside:avoid;box-shadow:none;border:1px solid #ccc}
-  body{background:#fff}
+  @page{margin:14mm}
+  #sidebar,#topbar,.page-head .acts,.icon-btn,.btn,.no-print,.dt-bulk,.dt-bar,.dt-foot,.toast,.chart-tip,.back-link,[role="dialog"]{display:none!important}
+  #app{display:block;height:auto;width:auto} main#content{overflow:visible;height:auto}
+  .scroll,.rec-scroll,.tbl-wrap{overflow:visible!important;max-height:none!important;height:auto!important}
+  .card,.kpi,.kpi-tile,figure.chart{break-inside:avoid;box-shadow:none;border:1px solid var(--line)}
+  .tbl thead{display:table-header-group} .tbl tr{break-inside:avoid}
+  .tbl thead th{position:static}
+  body{background:var(--surface);color:var(--ink)}
+  a[href^="http"]::after{content:" (" attr(href) ")";font-size:.85em;color:var(--muted)}
 }
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 /* success draw (toast check): ring first, then tick */
@@ -714,7 +722,7 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .dt-bulk-b:focus-visible{outline-color:#8aa4ff}
 /* KPI */
 .kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));border-block:1px solid var(--line)}
-.kpi-tile{padding:16px 20px;border-inline-start:1px solid var(--line);display:flex;flex-direction:column;gap:6px;min-width:0}
+.kpi-tile{padding:var(--tile-y,16px) 20px;border-inline-start:1px solid var(--line);display:flex;flex-direction:column;gap:6px;min-width:0}
 .kpi-tile:first-child{border-inline-start:0;padding-inline-start:4px}
 .kpi-fig{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .kpi-v{font-family:var(--font-display);font-size:36px;line-height:40px;font-weight:300;letter-spacing:-1.4px;color:var(--ink)}

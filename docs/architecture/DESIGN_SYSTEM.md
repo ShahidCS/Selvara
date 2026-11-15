@@ -46,7 +46,7 @@ Geist and Geist Mono, SIL Open Font License 1.1, self-hosted from `front-end/pub
 | 3 | Shared kit: data table, KPI strip and card, AI panel, stepper, timeline, charts, switch, segmented control, skeleton | this change (see below) |
 | 4 | Module migration in waves; modal create and edit flows become pages | in progress: wave A done (registers) |
 | 5 | Governance features (delegation, autonomy, rules, retention, notification matrix) | needs approval to touch `rbac.ts`, `approvals.ts`, `sod.ts` |
-| 6 | RTL, density, print, tenant theming, automated accessibility tests | not started |
+| 6 | RTL, density, print, tenant theming, automated accessibility tests | in progress: density and print done |
 
 Decisions taken: all 33 modules stay in the rail with the existing fold and unfold behaviour; the Admin Console and vendor portal take tokens and templates only; create and edit modals become full pages; the reference colour codes are kept as specified.
 
@@ -174,3 +174,8 @@ A secret is never kept on a page. A new API key is shown once in a dialog that o
 ## Admin Console and vendor portal (wave F)
 
 Tokens and templates only. The Admin Console and the vendor portal take the same tokens as the workspace and no hex literal remains in either. Registers use `DataTable` (rates, admin log); summary strips use `KpiStrip` (rates, admin log, commitments). The vendor portal is a standalone, unbranded page: its security panel uses `--bg-inverse` and `--text-inverse`, its logo tile uses `--accent` with `--text-inverse`, and a `Stepper` shows the five stages. Not changed on purpose: elevation gates and second-admin approvals, the hash chain, what the portal stores or logs, and the vendor-facing wording.
+
+## Display preferences and print (phase 6, step 1)
+
+- **Density**: `appStore.density` is `comfortable` (default) or `compact`, saved with the theme and set on `<html data-density>`. Compact only changes the three spacing variables above; text size, control height and focus rings do not change. New dense components should read `--cell-y`, `--head-y` or `--tile-y` rather than a fixed padding.
+- **Print**: the stylesheet is in `portal.css` (`@media print`). `AppShell` forces the light theme on `beforeprint`, so a dark-theme user does not print white on black. Anything that should not print takes the `no-print` class. DataTable prints its current page (the page size is the user's).
