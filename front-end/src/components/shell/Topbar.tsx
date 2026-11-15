@@ -1,9 +1,10 @@
 import { Icon } from "@/components/ui";
 import { appStore, persist, useApp, useData, useModVersion } from "@/lib/store";
-import { ROLES, TITLE, landingPath, roleOf, allowedSpaces, modAllowed } from "@/lib/rbac";
+import { TITLE, roleOf, allowedSpaces, modAllowed } from "@/lib/rbac";
+import { signOut } from "@/lib/session";
+import { useRouter } from "next/router";
 import { notificationsFor, unreadCount } from "@/lib/notifications";
 import { CUSTOMERS } from "@/lib/platform";
-import { wsLog } from "@/lib/audit";
 import { useGo, useRoute } from "@/lib/route";
 import { useLayer } from "./LayerProvider";
 import Link from "next/link";
@@ -14,7 +15,7 @@ import { openShortcuts } from "./Shortcuts";
 const SUB_LABEL: Record<string, string> = { edit: "Edit", exception: "Request exception", new: "New" };
 
 export function Topbar() {
-  const route = useRoute(); const go = useGo(); const L = useLayer();
+  const route = useRoute(); const go = useGo(); const L = useLayer(); const router = useRouter();
   useData(); useModVersion(); // the unread badge follows data and read state
   const theme = useApp((s) => s.theme); const density = useApp((s) => s.density); const roleId = useApp((s) => s.role);
   const me = roleOf(roleId);
@@ -29,28 +30,21 @@ export function Topbar() {
     const t = theme === "auto" ? "light" : theme === "light" ? "dark" : "auto";
     appStore.set({ theme: t }); persist(); L.toast("Theme: " + t);
   };
-  const setRole = (id: string) => {
-    if (id === roleId) { L.closeLayer(); return; }
-    appStore.set({ role: id, groupsOpen: {} }); persist(); L.closeLayer();
-    const r = roleOf(id);
-    wsLog("role.view.switch", r.name + " (" + r.person + ")", "System");
-    go(landingPath(id, route.space)); L.toast("Viewing as " + r.name);
+  const doSignOut = () => {
+    L.closeLayer();
+    signOut(); router.replace("/login");
   };
   const roleMenu = (ev: React.MouseEvent) => {
     L.popover(ev, (close) => (
       <div style={{ maxWidth: 280, maxHeight: "70vh", overflow: "auto" }}>
-        <div className="ph">Switch role view</div>
-        {ROLES.map((r) => (
-          <button key={r.id} role="menuitem" onClick={() => setRole(r.id)} style={r.id === roleId ? { background: "var(--accent-weak)", color: "var(--accent-ink)" } : undefined}>
-            <span className="avatar" style={{ width: 24, height: 24, fontSize: 10 }}>{r.initials}</span>
-            <span style={{ minWidth: 0, textAlign: "left" }}><b style={{ display: "block", fontWeight: 600 }}>{r.name}</b><span style={{ fontSize: 11.5, color: "var(--muted)" }}>{r.person}</span></span>
-          </button>
-        ))}
+        <div className="ph" style={{ display: "flex", flexDirection: "column", gap: 2 }}><b style={{ fontWeight: 600, color: "var(--ink)" }}>{me.person}</b><span>{me.name}</span></div>
         <div className="div" />
         {modAllowed(roleId, "ws", "me") ? <button role="menuitem" onClick={() => { close(); go("/ws/me"); }}><Icon name="user" />My workspace</button> : null}
         <button role="menuitem" onClick={() => { close(); go("/auth"); }}><Icon name="access" />Sign-in &amp; security</button>
         <button role="menuitemcheckbox" aria-checked={density === "compact"} onClick={() => { const d = density === "compact" ? "comfortable" : "compact"; appStore.set({ density: d }); persist(); close(); L.toast("Density: " + d); }}><Icon name={density === "compact" ? "check" : "dot"} />Compact density</button>
         <button role="menuitem" onClick={() => { close(); openShortcuts(L); }}><Icon name="grid" />Keyboard shortcuts</button>
+        <div className="div" />
+        <button role="menuitem" onClick={doSignOut}><Icon name="back" />Sign out</button>
       </div>
     ));
   };

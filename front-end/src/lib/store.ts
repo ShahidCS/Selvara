@@ -28,9 +28,12 @@ export interface AppState {
   navOpen: string | null;
   mobOpen: boolean;
   hydrated: boolean;
+  /** Demo sign-in (`lib/session.ts`). `who` is set only for a member who joined through a request (not a seeded persona). */
+  signedIn: boolean;
+  who: string | null;
 }
 export const appStore = createStore<AppState>({
-  role: "super", collapsed: false, theme: "auto", density: "comfortable", scope: "ISO 27001", groupsOpen: {}, navOpen: null, mobOpen: false, hydrated: false,
+  role: "super", collapsed: false, theme: "auto", density: "comfortable", scope: "ISO 27001", groupsOpen: {}, navOpen: null, mobOpen: false, hydrated: false, signedIn: false, who: null,
 });
 export function useApp<R>(sel: (s: AppState) => R): R {
   return useSyncExternalStore(appStore.subscribe, () => sel(appStore.get()), () => sel(appStore.get()));
@@ -39,7 +42,7 @@ export const PKEY = "assurance.v1";
 export function persist() {
   try {
     const s = appStore.get();
-    localStorage.setItem(PKEY, JSON.stringify({ role: s.role, collapsed: s.collapsed, theme: s.theme, density: s.density }));
+    localStorage.setItem(PKEY, JSON.stringify({ role: s.role, collapsed: s.collapsed, theme: s.theme, density: s.density, signedIn: s.signedIn, who: s.who }));
   } catch { /* storage unavailable (private mode): the UI still works */ }
 }
 export function loadPersisted(validRoles: string[]) {
@@ -51,6 +54,8 @@ export function loadPersisted(validRoles: string[]) {
       if (o.theme === "auto" || o.theme === "light" || o.theme === "dark") patch.theme = o.theme;
       if (o.density === "comfortable" || o.density === "compact") patch.density = o.density;
       if (typeof o.collapsed === "boolean") patch.collapsed = o.collapsed;
+      patch.signedIn = o.signedIn === true && !!patch.role;
+      patch.who = patch.signedIn && typeof o.who === "string" && o.who.length <= 80 ? o.who : null;
     }
     appStore.set({ ...patch, hydrated: true });
   } catch { appStore.set({ hydrated: true }); }

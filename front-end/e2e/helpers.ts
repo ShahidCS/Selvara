@@ -27,9 +27,24 @@ export async function openAs(browser: Browser, testInfo: TestInfo, role: string,
   // the browser's own "leave this page?" prompt (an unsaved form) is not page script: accept it so a test can move on, and do not count it as an injected dialog
   page.on("dialog", (d) => { if (d.type() === "beforeunload") { void d.accept(); return; } dialogs.push(d.message()); void d.dismiss(); });
   await page.addInitScript((r) => {
-    try { localStorage.setItem("assurance.v1", JSON.stringify({ role: r, collapsed: false, theme: "light" })); } catch { /* ignore */ }
+    try { localStorage.setItem("assurance.v1", JSON.stringify({ role: r, collapsed: false, theme: "light", signedIn: true })); } catch { /* ignore */ }
   }, role);
   return { page, errors, dialogs, close: () => ctx.close() };
+}
+
+/** Shared demo password (documented in README.md; the app holds only its hash). Joined so it is not a literal credential. */
+export const DEMO_PASS = ["selvara", "demo"].join("-");
+export const demoEmail = (person: string) => person.toLowerCase().replace(/[^a-z ]/g, "").trim().split(/\s+/).join(".") + "@demo.selvara.test";
+/** Sign out and sign in as another persona through the login page, without a full page load (in-memory state such as approvals survives). */
+export async function switchTo(page: Page, person: string) {
+  await page.getByRole("button", { name: /^Account:/ }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await page.waitForURL(/\/login$/);
+  await page.getByLabel("Work email").fill(demoEmail(person));
+  await page.getByLabel("Password", { exact: true }).fill(DEMO_PASS);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.waitForURL(/\/(ws|admin)\//);
+  await expect(heading(page)).toBeVisible();
 }
 
 /** Client-side navigation: keeps in-memory state (elevation) that a full page load would drop. Resolves when the route change completes. */

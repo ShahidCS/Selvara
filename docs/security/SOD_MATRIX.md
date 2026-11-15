@@ -21,7 +21,7 @@ Every decision below writes an audit entry (`wsLog`, and `adminLog` for platform
 |---|---|
 | Space access | `super`/`super2`: admin space only (no `ws`). `support`: admin space subset per ROLE_MODS. Workspace content only via a customer-approved support grant (read-only, expiring), shown in Elevated Access. |
 | Elevation | Required for EVERY mutation in `/admin/*` (customers, billing, rates, MFA reset requests/approvals). Browsing stays read-only. `useElevation()`/`elevationActive()` in `src/lib/elevation.ts`. Buttons are disabled with the exact text "Elevate to make changes"; services refuse without an active elevation (`SodError("Elevation required")`). |
-| Elevation request | super only; reason (>= 15 chars) + ticket reference (pattern `[A-Z]{2,6}-\d{1,6}`); max 60 minutes; ends on role switch, timeout or "End elevation"; audited start/end/expiry. |
+| Elevation request | super only; reason (>= 15 chars) + ticket reference (pattern `[A-Z]{2,6}-\d{1,6}`); max 60 minutes; ends on sign-out, timeout or "End elevation" (a different person never inherits it); audited start/end/expiry. |
 | Admin-log | Read-only for everyone; never editable. Export needs elevation not required (read) but is audited. |
 
 ## 3. Four-eyes actions
@@ -123,4 +123,17 @@ Decision (2026-11, designed from the existing agent behaviour, draft for review)
 | Open for review | Whether agents that were already at `Acts (logged)` before the ladder existed must re-earn it. |
 
 Enforced in `src/features/assistant/lib/autonomy.ts` (rungs and track record) and `src/features/assistant/services/assistant.ts` (`raiseBlockReason`, `requestRaise`, `lowerAutonomy`, the approval handler, and `createAgent`, which pins new agents to the lowest rung).
+
+## 12. Sign-in and requests to join (demo)
+Decision (2026-11). The role switcher is gone: people sign in. Demo accounts are synthetic, one per persona (README.md); this is not an authentication control and the real API must authenticate on the server.
+
+| Rule | Detail |
+|---|---|
+| Sign-in | Email and password. Errors are generic ("Email or password is incorrect."), so they never reveal whether an account exists. Five failures lock that email for five minutes. Audited as `auth.signed_in` and `auth.signed_out` in the log of the person's space. |
+| Request to join | Name, work email and a password that meets the credential policy (`lib/credentials.ts`). The answer is the same whether or not the email is known; duplicates and demo-domain emails are ignored. Only a salted hash of the password is kept. |
+| Approval | A company admin approves or rejects, with a reason of at least 10 characters (`team.join.approved`, `team.join.rejected`). Nobody decides their own request. A pending or rejected person cannot sign in. |
+| Role | An approved person joins as Employee under their own name (audit entries and separation-of-duties checks use it). Any other role is a separate role change with its own approval. |
+| Sign-out | Ends any active elevation. A stored session for someone who is no longer an active member is signed out on load. |
+
+Enforced in `src/lib/session.ts`, `src/services/joinRequests.ts` and `src/components/shell/AppShell.tsx` (signed-out routes go to `/login`).
 
