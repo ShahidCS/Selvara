@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui";
 import { useApp, useData, useModVersion } from "@/lib/store";
 import { notificationsFor, markRead, readIds, restoreRead, unreadCount, type Notif } from "@/lib/notifications";
+import { decide } from "@/services/sodApprovals";
+import { sodMessage } from "@/lib/approvalFlow";
 import type { LayerApi } from "./LayerProvider";
 
 type Tab = "all" | "approval" | "alert";
@@ -9,7 +11,47 @@ const TABS: [Tab, string][] = [["all", "All"], ["approval", "Approvals"], ["aler
 const TONE: Record<Notif["tone"], string> = { bad: "bad", warn: "warn", info: "info" };
 const TONE_LABEL: Record<Notif["tone"], string> = { bad: "Critical", warn: "Needs attention", info: "Awaiting decision" };
 
-/** Body of the notifications slide-over. Items open the record to review; nothing is approved from here, because a decision needs a reason and a second person. */
+const REASON_MIN = 10;
+/** Approve or Reject an item from the panel. It calls the same decision function as the module's own panel, so the reason (at least 10 characters), the
+ *  second-person and the role rules are the same; a refusal shows its reason here. Only offered for the kinds in `lib/inboxApprovals.ts`. */
+function InlineDecision({ id, title, L }: { id: string; title: string; L: LayerApi }) {
+  const [mode, setMode] = useState<null | "approve" | "reject">(null);
+  const [reason, setReason] = useState(""); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const box = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => { if (mode) box.current?.focus(); }, [mode]);
+  const short = reason.trim().length < REASON_MIN;
+  const go = async () => {
+    if (!mode || busy || short) return;
+    setBusy(true); setErr("");
+    try {
+      const r = await decide(id, mode, reason);
+      L.toast(mode === "reject" ? "Rejected" : r.status === "Approved" ? "Approved, change applied" : `Approval recorded (${r.approvals.length} of ${r.needs})`);
+    } catch (e) { setErr(sodMessage(e, "Could not record the decision")); }
+    setBusy(false);
+  };
+  return (
+    <div className="nt-act">
+      <div className="btngrp">
+        <button className="btn btn-primary sm" aria-label={`Approve: ${title}`} aria-expanded={mode === "approve"} onClick={() => { setMode("approve"); setErr(""); }}><Icon name="check" />Approve</button>
+        <button className="btn btn-ghost sm" aria-label={`Reject: ${title}`} aria-expanded={mode === "reject"} onClick={() => { setMode("reject"); setErr(""); }}><Icon name="x" />Reject</button>
+      </div>
+      {mode ? (
+        <form onSubmit={(e) => { e.preventDefault(); void go(); }} noValidate>
+          <div className="field"><label htmlFor={`ntr-${id}`}>Reason to {mode} (at least {REASON_MIN} characters)</label>
+            <textarea ref={box} className="input" id={`ntr-${id}`} rows={2} maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} aria-describedby={err ? `nte-${id}` : undefined} /></div>
+          <p className="field help" id={`nte-${id}`} role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none", margin: "4px 0" }}>{err}</p>
+          <div className="btngrp">
+            <button type="submit" className={`btn sm ${mode === "approve" ? "btn-primary" : "btn-danger"}`} disabled={short || busy}>Confirm {mode}</button>
+            <button type="button" className="btn btn-ghost sm" onClick={() => { setMode(null); setReason(""); setErr(""); }}>Cancel</button>
+          </div>
+        </form>
+      ) : null}
+    </div>
+  );
+}
+
+/** Body of the notifications slide-over. An item opens its record to review. Items that the person can decide through the shared four-eyes path also
+ *  carry Approve and Reject (with the reason and second-person rules); every other kind of decision is made on its record. */
 export function NotificationsBody({ space, go, close, L }: { space: "ws" | "admin"; go: (p: string) => void; close: () => void; L: LayerApi }) {
   useData(); useModVersion(); // follow data and read-state changes
   const role = useApp((s) => s.role);
@@ -57,6 +99,7 @@ export function NotificationsBody({ space, go, close, L }: { space: "ws" | "admi
                   {read.has(n.id) ? null : <span className="nt-dot" aria-label="Unread" />}
                   <span className="nt-go">Review<Icon name="chevron" /></span>
                 </button>
+                {n.approvalId ? <InlineDecision id={n.approvalId} title={n.title} L={L} /> : null}
               </li>
             ))}
           </ul>

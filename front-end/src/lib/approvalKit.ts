@@ -15,6 +15,7 @@ export interface ApprovalHandler {
 }
 const handlers = new Map<string, ApprovalHandler>();
 export const registerApprovalHandler = (kind: string, h: ApprovalHandler): void => { handlers.set(kind, h); };
+export const hasApprovalHandler = (kind: string): boolean => handlers.has(kind);
 
 /** Never trust a stored payload field's type: read strings defensively. */
 export const payloadStr = (a: Approval, k: string): string => { const v = a.payload[k]; return typeof v === "string" ? v : ""; };
@@ -31,6 +32,9 @@ export function decideApproval(id: string, decision: "approve" | "reject" | "wit
   if (decision === "reject") {
     const a = reject(id, r); handlers.get(a.kind)?.closed?.(a, "rejected"); touch(); return a;
   }
+  // refuse BEFORE recording anything if the change could not be applied afterwards (an approval recorded and never applied would be stranded)
+  const pending = approvals.get().list.find((x) => x.id === id);
+  if (pending && !handlers.has(pending.kind)) throw new SodError("This approval cannot be applied in this session.");
   const a = approve(id, r);
   if (a.status === "Approved" && a.payload.applied !== true) {
     const h = handlers.get(a.kind);

@@ -72,3 +72,7 @@ Draft -> In review (named approver assigned, must differ from author) -> Approve
 
 ## 7. Where this is enforced
 Service layer in `src/services/*.ts` (each mutation calls `assertRole` / `assertNotSelf` / threshold checks and writes the audit entry), UI via disabled buttons with `sodReason`, and documented per module under "Security notes" in `docs/guides/checklist/*.md`. Anything the front-end cannot enforce is listed in `docs/security/SECURITY.md` as a backend requirement.
+
+## 8. Decisions from the notifications panel
+Approve and Reject can be pressed in the bell for approvals decided through the shared four-eyes path (`ai.`, `vendor.`, `api.`, `assistant.`, `report.`, `trust.`, `q.` kinds). The panel calls the same decision function as the module's own approvals panel, so sections 1 and 3 apply unchanged: no self-approval, role check, subject exclusion, reason of at least 10 characters, expiry, audit entry, and the change is applied only on the final approval. An item the person cannot decide is not listed. All other kinds stay on their records because their modules add rules (second approver differs from the first, board evidence, elevation, named approver). The real API must enforce every rule again; the panel is not a control.
+
