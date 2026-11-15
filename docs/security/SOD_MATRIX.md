@@ -76,3 +76,20 @@ Service layer in `src/services/*.ts` (each mutation calls `assertRole` / `assert
 ## 8. Decisions from the notifications panel
 Approve and Reject can be pressed in the bell for approvals decided through the shared four-eyes path (`ai.`, `vendor.`, `api.`, `assistant.`, `report.`, `trust.`, `q.` kinds). The panel calls the same decision function as the module's own approvals panel, so sections 1 and 3 apply unchanged: no self-approval, role check, subject exclusion, reason of at least 10 characters, expiry, audit entry, and the change is applied only on the final approval. An item the person cannot decide is not listed. All other kinds stay on their records because their modules add rules (second approver differs from the first, board evidence, elevation, named approver). The real API must enforce every rule again; the panel is not a control.
 
+## 9. Delegation of a named approver slot
+Decision (2026-11, conservative policy). Where a request names a specific approver (a policy under review, a member MFA reset), that person can hand the slot to another person for a limited time. Delegation never grants authority: every rule in sections 1 and 3 still applies to the delegate.
+
+| Rule | Detail |
+|---|---|
+| Who | Delegator and delegate must both be a company admin or an owner (base roles `admin`, `owner`). Nobody delegates to themselves. A delegate who is not an admin or owner is refused, and a delegate who stops holding one stops being able to use it. |
+| Length | 1 to 14 whole days, then it ends by itself (the expiry is audited). One live delegation per person. No loops (A to B while B has delegated to A). |
+| Reason | At least 10 characters, stored and shown to the delegate. |
+| No new privilege | The delegate is still refused anything they raised, wrote, last edited or are the subject of, needs the reason of at least 10 characters, and a second different person is still needed where two approvers are required (the delegate counts as the named approver, never as the second one). |
+| Delegator's own limits | It does not cover a request that the delegator raised or is the subject of: if the delegator could not decide it, nobody decides it for them. |
+| No chains | A delegation covers only the delegator's OWN slot. A delegate cannot pass it on, and a third person gains nothing from it. |
+| Not for the platform | Admin Console approvals (elevated, super admin) are never delegated. |
+| Audit | Start (`delegation.created`: who, to whom, until, reason), end (`delegation.revoked`, by whom; `delegation.expired`), and every decision made on behalf (`approval.<kind>.on_behalf`; policies also name it in the version history and the change log). |
+| Ending | The delegator at any time. A company admin may end anyone's delegation (safety valve). |
+
+Enforced in `src/lib/delegation.ts` (`actsAs`), `src/services/delegation.ts` (create and end), `src/lib/approvalFlow.ts` (generic named-approver kinds) and `src/features/policies/services/policies.ts` (approve, publish, return to draft). The real API must enforce all of it server-side; the card in My workspace is not a control. Delegation is draft governance for review by the customer's compliance owner before it is relied on.
+

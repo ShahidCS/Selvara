@@ -4,6 +4,7 @@ import { toAcknowledge } from "@/lib/me";
 import { modAllowed } from "@/lib/rbac";
 import { useApp, useData } from "@/lib/store";
 import AccountSecurity from "./AccountSecurity";
+import { DelegationCard } from "./DelegationCard";
 import MyRemarks from "./MyRemarks";
 import MyTasks, { useTasks } from "./MyTasks";
 import PublishedPolicies from "./PublishedPolicies";
@@ -34,6 +35,7 @@ function MeBody({ role }: { role: string }) {
         <MyRemarks role={role} />
       </div>
       <PublishedPolicies />
+      <DelegationCard />
       <AccountSecurity />
     </Page>
   );

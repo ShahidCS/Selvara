@@ -103,7 +103,7 @@ export function PolicyDetail({ id }: { id: string }) {
               <Table cols={[{ t: "Version" }, { t: "State" }, { t: "Author / last editor" }, { t: "Approved by" }, { t: "Effective" }, { t: "Why" }]}>
                 {p.versions.slice().reverse().map((v: svc.PolicyVersion, i: number) => (
                   <tr key={i}><td className="strong num">v{v.ver}</td><td><Chip cls={VER_TONE[v.status]}>{v.status}</Chip>{v.emergency ? <> <Chip cls="bad">Emergency</Chip></> : null}</td>
-                    <td>{v.author}{!samePerson(v.author, v.lastEditor) ? ` / ${v.lastEditor}` : ""}</td><td>{v.approvedBy ? `${v.approvedBy} on ${v.approvedAt}` : v.approver ? `Awaiting ${v.approver}` : "—"}</td><td>{v.effective || "—"}</td><td>{v.note}</td></tr>
+                    <td>{v.author}{!samePerson(v.author, v.lastEditor) ? ` / ${v.lastEditor}` : ""}</td><td>{v.approvedBy ? `${v.approvedBy}${v.approvedOnBehalfOf ? ` for ${v.approvedOnBehalfOf} (delegation)` : ""} on ${v.approvedAt}` : v.approver ? `Awaiting ${v.approver}` : "—"}</td><td>{v.effective || "—"}</td><td>{v.note}</td></tr>
                 ))}
               </Table>
             </div></div>
