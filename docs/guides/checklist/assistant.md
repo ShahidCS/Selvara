@@ -1,6 +1,6 @@
 # AI Assistant (Phase 3)
 
-> **Phase 5 update, autonomy ladder.** New agents start at "Suggests only" (the create form shows it read-only). Raise autonomy needs a track record (company setting: 3, 2 or Off), no recent rejection, a reason and a different admin or owner who is not the creator (two for a service-account agent); lowering is immediate, and Reject applied change in the Run log lowers the agent automatically. See `docs/security/SOD_MATRIX.md` section 11.
+> **Phase 5 update, autonomy ladder.** New agents start at "Suggests only" (the create form shows it read-only). Raise autonomy needs a track record (company setting: 3, 2 or Off), no recent rejection, a reason and a different admin or owner who is not the creator (two for a service-account agent); lowering is immediate, and Reject applied change in the Run log lowers the agent automatically. Acting agents are certified for 90 days and must be recertified (Recertify, four-eyes, attestation) or they drop to "Suggests only"; agents acting before the ladder have a 30-day transition. See `docs/security/SOD_MATRIX.md` section 11.
 
 > **Wave D update.** An answer is shown on the AI panel (lavender, "AI-assisted", "Review before you rely on this"). Custom agents, the run log and MCP access are data tables; Create agent is a page (`/ws/assistant/new`). The run decision dialogs and the four-eyes enable and grant approvals are unchanged.
 
