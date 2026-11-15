@@ -375,8 +375,7 @@ textarea.input{height:auto;padding:9px 11px;resize:vertical;min-height:72px}
 .kpi:hover{box-shadow:var(--shadow);border-color:var(--line-2)}
 .kpi-top{display:flex;align-items:center;gap:9px;min-height:32px}
 .kpi-ico{width:32px;height:32px;border-radius:9px;flex:0 0 auto;display:flex;align-items:center;justify-content:center}
-.kpi-top{flex-wrap:wrap}
-.kpi-top .v{flex:0 0 auto;margin-inline-start:auto;padding-inline-start:10px}
+.kpi-top .v{margin-left:auto;flex:0 0 auto;padding-left:10px}
 .kpi-ico svg{width:16px;height:16px}
 .kpi-lbl{font-size:12.5px;color:var(--muted);font-weight:500;line-height:1.25;letter-spacing:.01em;min-width:0;flex:1 1 auto}
 .kpi .v{font-size:21px;font-weight:600;letter-spacing:-.02em;line-height:1.15;color:var(--ink);word-break:break-word}
@@ -744,10 +743,6 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .kpi-tile{padding:var(--tile-y,16px) 20px;border-inline-start:1px solid var(--line);display:flex;flex-direction:column;gap:6px;min-width:0}
 .kpi-tile:first-child{border-inline-start:0;padding-inline-start:4px}
 .kpi-fig{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-/* the figure sits next to its label (the stacked variant, used by Overview, keeps the label above) */
-.kpi-head{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;width:100%}
-.kpi-head .eyebrow{min-width:0}
-.kpi-head .kpi-v{flex:0 0 auto;margin-inline-start:auto}
 .kpi-v{font-family:var(--font-display);font-size:36px;line-height:40px;font-weight:300;letter-spacing:-1.4px;color:var(--ink)}
 .kpi-cap{font-size:12px;color:var(--muted)}
 .kpi-card{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:start;padding:16px;border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}

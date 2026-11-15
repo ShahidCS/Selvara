@@ -72,7 +72,7 @@ export default function OverviewModule() {
       <button className="btn btn-secondary" onClick={() => go("/ws/reports")}><Icon name="reports" />Reports</button>
       <button className="btn btn-primary" onClick={() => go("/ws/work")}><Icon name="work" />Open my work</button>
     </>}>
-      <KpiStrip label="Posture summary" stacked>
+      <KpiStrip label="Posture summary">
         <KpiTile label="Weighted compliance" value={M.compliance + "%"} delta={tile("good", "+3 pts this month")} caption="Across frameworks in scope" />
         <KpiTile label="Open risks" value={M.openRisks} delta={tile("good", "2 fewer this month")} caption={`${M.aboveAppetite} above appetite`} />
         <KpiTile label="Controls failing" value={M.overdueControls} delta={tile("bad", "1 more this week")} caption="Need remediation" />

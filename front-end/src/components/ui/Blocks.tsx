@@ -17,7 +17,8 @@ export function Kpi({ icon, label, value, tone = "neutral", sub, ...rest }: { ic
   const T = KPI_TONE[tone] || KPI_TONE.neutral;
   return (
     <div className="kpi" {...rest}>
-      <div className="kpi-top"><span className="kpi-ico" style={{ color: T[0], background: T[1] }}><Icon name={icon} /></span><span className="kpi-lbl">{label}</span><span className="v">{String(value)}</span></div>
+      <div className="kpi-top"><span className="kpi-ico" style={{ color: T[0], background: T[1] }}><Icon name={icon} /></span><span className="kpi-lbl">{label}</span></div>
+      <div className="v">{String(value)}</div>
       {sub == null || sub === "" ? null : typeof sub === "string" ? <div className="kpi-sub">{sub}</div> : sub}
     </div>
   );
