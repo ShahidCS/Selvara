@@ -10,12 +10,13 @@ import { getApproval, requestApproval } from "@/lib/approvals";
 import { payloadStr, registerApprovalHandler } from "@/lib/approvalKit";
 import { assertNotSelf, assertRole, getActor, hasRole, SodError } from "@/lib/sod";
 import { wsLog } from "@/lib/audit";
+import { AUTONOMY, LADDER, isRung, nextRung, rungOf, trackRecord } from "@/features/assistant/lib/autonomy";
 import { clampText } from "@/lib/security";
 import { apiFetch, viaApi } from "@/services/http";
 
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
-export interface Agent { id: string; name: string; trigger: string; runsAs: string; autonomy: string; last: string; status: string; createdBy?: string; pendingApproval?: string }
-export interface AgentRun { id: string; when: string; agent: string; change: string; decision: string; requestedBy?: string; decidedBy?: string; decidedReason?: string }
+export interface Agent { id: string; name: string; trigger: string; runsAs: string; autonomy: string; last: string; status: string; createdBy?: string; pendingApproval?: string; pendingAutonomy?: string }
+export interface AgentRun { id: string; agentId?: string; when: string; agent: string; change: string; decision: string; requestedBy?: string; decidedBy?: string; decidedReason?: string }
 export interface McpGrant { server: string; tools: string; access: string; status: string; pendingApproval?: string }
 export interface Msg { role: "user" | "assistant"; text: string; draft?: boolean }
 export const ASST = {
@@ -23,7 +24,7 @@ export const ASST = {
   agents: clone(seed.ASST_AGENTS) as Agent[], runs: clone(seed.ASST_RUNS) as AgentRun[], mcp: clone(seed.ASST_MCP) as McpGrant[],
 };
 export const AGENT_TRIGGERS = ["On schedule (weekly)", "Evidence overdue", "Control fails", "On new questionnaire", "Risk updated"];
-export const AGENT_AUTONOMY = ["Suggests only", "Acts (logged)"];
+export const AGENT_AUTONOMY: string[] = [...LADDER];
 export const AGENT_RUNS_AS = ["Read-only", "Service account"];
 export const ASK_MAX = 2000;
 const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
@@ -44,6 +45,18 @@ registerApprovalHandler("assistant.agent.enable", {
     wsLog("assistant.agent.enabled", `${a.name} (approved by ${by(ap)}; requested by ${ap.requestedBy})`, "System");
   },
   closed: (ap) => { const a = findAgent(payloadStr(ap, "id")); if (a) { delete a.pendingApproval; if (a.status === "Pending approval") a.status = "Paused"; } },
+});
+registerApprovalHandler("assistant.agent.autonomy", {
+  apply: (ap) => {
+    const a = findAgent(payloadStr(ap, "id")); if (!a) throw new SodError("Agent not found.");
+    const from = payloadStr(ap, "from"); const to = payloadStr(ap, "to");
+    // re-checked at decision time: the agent must still be on the rung it was on, and still have a clean record
+    if (a.autonomy !== from || nextRung(from) !== to) throw new SodError("The agent's autonomy changed since this was requested.");
+    const why = recordBlock(a); if (why) throw new SodError(why);
+    a.autonomy = to; delete a.pendingAutonomy;
+    wsLog("assistant.agent.autonomy_raised", `${a.name}: ${from} → ${to} (approved by ${by(ap)}; requested by ${ap.requestedBy})`, "System");
+  },
+  closed: (ap) => { const a = findAgent(payloadStr(ap, "id")); if (a && a.pendingAutonomy === ap.id) delete a.pendingAutonomy; },
 });
 registerApprovalHandler("assistant.mcp.grant", {
   apply: (ap) => {
@@ -91,8 +104,8 @@ export function runAgent(id: string) {
     gate("running an agent");
     const a = findAgent(id); if (!a) return null;
     if (a.status !== "Active") throw new SodError("Only an active agent can run.");
-    a.last = "just now"; const suggest = a.autonomy === "Suggests only";
-    ASST.runs.unshift({ id: uid("R", ASST.runs), when: "just now", agent: a.name, change: suggest ? "Proposed an update for review" : "Ran within scope and applied", decision: suggest ? "Waiting" : "Auto-applied", requestedBy: getActor().name });
+    a.last = "just now"; const suggest = rungOf(a.autonomy) <= 0; // unknown values are treated as the lowest rung
+    ASST.runs.unshift({ id: uid("R", ASST.runs), agentId: a.id, when: "just now", agent: a.name, change: suggest ? "Proposed an update for review" : "Ran within scope and applied", decision: suggest ? "Waiting" : "Auto-applied", requestedBy: getActor().name });
     return { agent: a, suggest };
   }, () => post(`/assistant/agents/${enc(id)}/run`, {}));
 }
@@ -110,15 +123,15 @@ export function toggleAgent(id: string) {
 export function deleteAgent(id: string) {
   return viaApi<Agent | null>(() => { gate("deleting an agent"); const a = findAgent(id); if (!a) return null; ASST.agents = ASST.agents.filter((x) => x.id !== id); return a; }, () => apiFetch<Agent | null>(`/assistant/agents/${enc(id)}`, { method: "DELETE" }));
 }
-/** A new custom agent is created "Pending approval" and cannot run until a second admin/owner (not the creator) approves enabling it. */
-export function createAgent(input: { name: string; trigger: string; autonomy: string; runsAs: string }) {
+/** A new custom agent is created "Pending approval" on the lowest rung of the autonomy ladder (whatever `autonomy` asks for) and cannot run until a second admin/owner (not the creator) approves enabling it. */
+export function createAgent(input: { name: string; trigger: string; autonomy?: string; runsAs: string }) {
   return viaApi<Agent>(() => {
     gate("creating an agent");
     const a: Agent = {
       id: uid("AG", ASST.agents), name: input.name,
       trigger: AGENT_TRIGGERS.includes(input.trigger) ? input.trigger : AGENT_TRIGGERS[0],
       runsAs: AGENT_RUNS_AS.includes(input.runsAs) ? input.runsAs : AGENT_RUNS_AS[0],
-      autonomy: AGENT_AUTONOMY.includes(input.autonomy) ? input.autonomy : AGENT_AUTONOMY[0], last: "never", status: "Pending approval", createdBy: getActor().name,
+      autonomy: LADDER[0], last: "never", status: "Pending approval", createdBy: getActor().name,
     };
     const ap = requestApproval({ kind: "assistant.agent.enable", title: `Enable new agent ${clampText(a.name, 80)} (${a.autonomy}, runs as ${a.runsAs})`, subject: a.id, payload: { id: a.id }, needs: 1, approverRoles: APPROVERS, forbid: [a.createdBy] });
     a.pendingApproval = ap.id; ASST.agents.unshift(a); return a;
@@ -151,4 +164,47 @@ export function toggleMcp(i: number) {
     const ap = requestApproval({ kind: "assistant.mcp.grant", title: `Grant MCP access: ${clampText(s.server, 60)} (${clampText(s.tools, 80)}; ${clampText(s.access, 60)})`, subject: s.server, payload: { server: s.server }, needs: 1, approverRoles: APPROVERS });
     s.pendingApproval = ap.id; return { grant: s, pending: true };
   }, () => post<{ grant: McpGrant; pending: boolean } | null>(`/assistant/mcp/${i}/toggle`, {}));
+}
+
+/* Autonomy ladder (features/assistant/lib/autonomy.ts; docs/security/SOD_MATRIX.md section 11). */
+function recordBlock(a: Agent): string | null {
+  const t = trackRecord(a, ASST.runs);
+  if (t.recentRejection) return `A person rejected one of its last ${AUTONOMY.CLEAN_LAST} suggestions. It needs a clean record before it can act on its own.`;
+  if (t.approved < AUTONOMY.TRACK_MIN) return `It needs ${AUTONOMY.TRACK_MIN} approved suggestions before it can act on its own (it has ${t.approved}).`;
+  return null;
+}
+/** Why the signed-in person cannot ask to raise this agent (null = may). Shared with the UI so the button shows the same reason. */
+export function raiseBlockReason(a: Agent): string | null {
+  if (!hasRole(getActor().roleId, "admin", "owner")) return "Only an admin or owner can change an agent's autonomy.";
+  if (!isRung(a.autonomy)) return "Unknown autonomy level.";
+  if (!nextRung(a.autonomy)) return "Already at the highest level.";
+  if (a.status === "Pending approval") return "Enable the agent first.";
+  if (stillPending(a.pendingAutonomy)) return "Raising is already awaiting approval.";
+  return recordBlock(a);
+}
+/** Climb one rung. An approval by a different admin or owner, never the agent's creator; the record is checked again when it is decided. */
+export function requestRaise(id: string, reason: string) {
+  return viaApi<{ agent: Agent; approvalId: string } | null>(() => {
+    gate("raising an agent's autonomy");
+    const a = findAgent(id); if (!a) return null;
+    const why = raiseBlockReason(a); if (why) throw new SodError(why);
+    const r = clampText(reason, 300); if (r.length < AUTONOMY.REASON_MIN) throw new SodError(`Give a reason of at least ${AUTONOMY.REASON_MIN} characters.`);
+    const to = nextRung(a.autonomy) as string;
+    const ap = requestApproval({ kind: "assistant.agent.autonomy", title: `Raise agent ${clampText(a.name, 80)} to ${to} (runs as ${a.runsAs})`, subject: a.id, payload: { id: a.id, from: a.autonomy, to, reason: r }, needs: 1, approverRoles: APPROVERS, forbid: [a.createdBy].filter(Boolean) });
+    a.pendingAutonomy = ap.id;
+    wsLog("assistant.agent.autonomy_requested", `${a.name}: ${a.autonomy} → ${to} (${ap.id}; reason: ${r})`, "System");
+    return { agent: a, approvalId: ap.id };
+  }, () => post<{ agent: Agent; approvalId: string } | null>(`/assistant/agents/${enc(id)}/autonomy/raise`, { reason }));
+}
+/** Step down one rung at once (safe direction): any admin or owner, audited. */
+export function lowerAutonomy(id: string) {
+  return viaApi<Agent | null>(() => {
+    gate("lowering an agent's autonomy");
+    const a = findAgent(id); if (!a) return null;
+    const i = rungOf(a.autonomy);
+    if (i <= 0) throw new SodError("Already at the lowest level.");
+    const from = a.autonomy; a.autonomy = LADDER[i - 1];
+    wsLog("assistant.agent.autonomy_lowered", `${a.name}: ${from} → ${a.autonomy} by ${getActor().name}`, "System");
+    return a;
+  }, () => post<Agent | null>(`/assistant/agents/${enc(id)}/autonomy/lower`, {}));
 }

@@ -4,6 +4,8 @@ import { LayerFoot, useLayer } from "@/components/shell/LayerProvider";
 import { wsLog } from "@/lib/audit";
 import { bumpData, setModState } from "@/lib/store";
 import * as svc from "@/features/assistant/services/assistant";
+import { AUTONOMY, RUNG_HELP, nextRung, trackRecord, type Rung } from "@/features/assistant/lib/autonomy";
+import { getApproval } from "@/lib/approvals";
 import { WhyNot, attempt } from "@/components/kit/sodKit";
 
 type Agent = (typeof svc.ASST.agents)[number];
@@ -24,12 +26,26 @@ export function AgentsTab({ manage }: { manage: boolean }) {
     if (r.pending) { wsLog("assistant.agent.enable_requested", r.agent.name, "System"); L.toast("Enabling " + r.agent.name + " needs approval from a different admin or owner"); bumpData(); return; }
     wsLog("assistant.agent.paused", r.agent.name, "System"); bumpData();
   });
+  const lower = (a: Agent) => attempt(L, async () => { const r = await svc.lowerAutonomy(a.id); if (!r) return fail("Agent not found"); L.toast(`${r.name} now ${r.autonomy.toLowerCase()}`); bumpData(); });
+  const raise = (a: Agent) => L.openModal(`Raise autonomy: ${a.name}`, () => <RaiseForm id={a.id} />);
   const del = (id: string) => attempt(L, async () => { const a = await svc.deleteAgent(id); if (!a) return fail("Agent not found"); wsLog("assistant.agent.deleted", a.name, "System"); L.toast("Agent deleted"); bumpData(); });
   const cols: DTColumn<Agent>[] = [
     { key: "name", header: "Agent", value: (a) => a.name, locked: true, render: (a) => <span className="strong">{a.name}</span> },
     { key: "trigger", header: "Trigger", value: (a) => a.trigger, render: (a) => a.trigger },
     { key: "runsAs", header: "Runs as", value: (a) => a.runsAs, render: (a) => a.runsAs },
-    { key: "autonomy", header: "Autonomy", value: (a) => a.autonomy, render: (a) => (a.autonomy === "Suggests only" ? <Chip cls="neutral" icon="dot">{a.autonomy}</Chip> : <Chip cls="info" icon="check">{a.autonomy}</Chip>) },
+    { key: "autonomy", header: "Autonomy", value: (a) => a.autonomy, render: (a) => {
+      const pending = !!a.pendingAutonomy && getApproval(a.pendingAutonomy)?.status === "Pending";
+      const up = nextRung(a.autonomy);
+      return (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+          {a.autonomy === "Suggests only" ? <Chip cls="neutral" icon="dot">{a.autonomy}</Chip> : <Chip cls="info" icon="check">{a.autonomy}</Chip>}
+          {pending ? <Chip cls="warn" icon="clock">Raise requested</Chip> : null}
+          {manage && !pending && a.status !== "Pending approval" ? (up
+            ? <button className="btn btn-ghost sm" aria-label={`Raise autonomy: ${a.name}`} onClick={() => raise(a)}>Raise autonomy</button>
+            : <button className="btn btn-ghost sm" aria-label={`Lower to suggests only: ${a.name}`} onClick={() => lower(a)}>Lower to suggests only</button>) : null}
+        </div>
+      );
+    } },
     { key: "last", header: "Last run", value: (a) => a.last, render: (a) => <span style={{ color: "var(--muted)" }}>{a.last}</span> },
     { key: "status", header: "Status", value: (a) => a.status, render: (a) => (a.status === "Active" ? <Chip cls="ok" icon="check">Active</Chip> : a.status === "Pending approval" ? <Chip cls="warn" icon="clock">Pending approval</Chip> : <Chip cls="neutral" icon="dot">Paused</Chip>) },
     { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (a) => (manage ? (
@@ -42,10 +58,41 @@ export function AgentsTab({ manage }: { manage: boolean }) {
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <p className="field help" style={{ margin: 0 }}>Agents run on triggers with least-privilege access. Creating or resuming an agent needs approval from a different admin or owner. &quot;Suggests only&quot; agents never act without approval; &quot;Acts (logged)&quot; agents act within their scope and record every action to the audit log.</p>
+      <p className="field help" style={{ margin: 0 }}>Agents run on triggers with least-privilege access. Creating or resuming an agent needs approval from a different admin or owner. Every agent starts at &quot;Suggests only&quot;, where a person approves each change. It can be raised to &quot;Acts (logged)&quot; after {AUTONOMY.TRACK_MIN} approved suggestions and no recent rejection, with approval from a different admin or owner; lowering is immediate.</p>
       <DataTable<Agent> id="agents" label="Agents" rows={svc.ASST.agents} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.name} ${a.trigger} ${a.runsAs}`}
         tabs={["Active", "Pending approval", "Paused"].map((st) => ({ key: st, label: st, match: (a: Agent) => a.status === st }))} exportName="agents" />
     </div>
+  );
+}
+
+/** Ask to raise an agent one rung. Shows its track record; the request goes to a different admin or owner (not the creator). */
+function RaiseForm({ id }: { id: string }) {
+  const L = useLayer(); const a = svc.findAgent(id);
+  const [reason, setReason] = useState(""); const [err, setErr] = useState("");
+  if (!a) return <p className="field help">Agent not found.</p>;
+  const to = nextRung(a.autonomy); const t = trackRecord(a, svc.ASST.runs); const why = svc.raiseBlockReason(a);
+  const go = () => attempt(L, async () => {
+    if (reason.trim().length < AUTONOMY.REASON_MIN) { setErr(`Give a reason of at least ${AUTONOMY.REASON_MIN} characters.`); return; }
+    const r = await svc.requestRaise(id, reason); if (!r) { L.toast("Agent not found", false); return; }
+    L.closeLayer(); L.toast(`Raising ${r.agent.name} needs approval from a different admin or owner`); bumpData();
+  });
+  return (
+    <>
+      <div>
+        <dl className="meta-grid">
+          <dt>Now</dt><dd>{a.autonomy}: {RUNG_HELP[a.autonomy as Rung] ?? ""}</dd>
+          <dt>Raise to</dt><dd>{to ? `${to}: ${RUNG_HELP[to]}` : "Already at the highest level"}</dd>
+          <dt>Approved suggestions</dt><dd>{t.approved} of {AUTONOMY.TRACK_MIN} needed</dd>
+          <dt>Recent rejection</dt><dd>{t.recentRejection ? `Yes, in its last ${AUTONOMY.CLEAN_LAST}` : "None"}</dd>
+        </dl>
+        {why ? <p className="field help" id="ra-why" style={{ color: "var(--bad-ink)", marginTop: 10 }}>{why}</p> : (
+          <div className="field" style={{ marginTop: 10 }}><label htmlFor="ra-reason">Reason <span style={{ color: "var(--bad-ink)" }}>*</span></label><textarea className="input" id="ra-reason" data-focus rows={3} maxLength={300} style={{ resize: "vertical" }} value={reason} onChange={(e) => { setReason(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "ra-err" : undefined} /></div>
+        )}
+        <p className="field help" id="ra-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
+        <p className="field help">A different admin or owner, not the agent&apos;s creator, must approve. Any admin or owner can lower it again at once.</p>
+      </div>
+      <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><button className="btn btn-primary" disabled={!!why} aria-describedby={why ? "ra-why" : undefined} onClick={go}>Request approval</button></LayerFoot>
+    </>
   );
 }
 

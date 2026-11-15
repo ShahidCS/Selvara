@@ -47,7 +47,7 @@ Every decision below writes an audit entry (`wsLog`, and `adminLog` for platform
 | AI | Classification | drafter | confirmer != drafter | | impact assessment approver != submitter; guardrail change needs second approver |
 | Trust | Publish a resource publicly; approve access; Verify answer | editor | approver != editor / verifier != author | blocklisted domains cannot be approved | |
 | Questionnaire | Send externally | author | reviewer != author | | |
-| Assistant | Run an agent action needing approval; enable a custom agent | requester | approver != requester | | |
+| Assistant | Run an agent action needing approval; enable a custom agent; raise an agent's autonomy (section 11) | requester | approver != requester (and != the agent's creator for enable and raise) | | |
 | API | Create key with write scope; add webhook | admin | second admin approves write scope keys | | webhook URL https-only (existing); keys shown once |
 | Billing (admin) | Credit, refund, write-off | super (elevated) | different super (super2), elevated, when amount > `SOD.FINANCE_DUAL_USD`; always for write-off | initiator != approver | reason + ticket |
 | Rates | Manual rate/tax override | super (elevated) | different super (elevated) | initiator != approver | numeric bounds as today |
@@ -106,3 +106,19 @@ Decision (2026-11, designed from the existing bell, draft for review). A person 
 | Open for review | Whether other kinds (for example critical control failures) should be locked on, and the digest content, are for the compliance owner to decide. |
 
 Enforced in `src/lib/notifPrefs.ts` (rules and defaults), `src/services/notifPrefs.ts` (change, audit) and `src/lib/notifications.ts` (bell filter).
+
+## 11. Autonomy ladder for custom agents (draft for compliance review)
+Decision (2026-11, designed from the existing agent behaviour, draft for review). An agent's autonomy is earned one rung at a time and given up at once.
+
+| Rule | Detail |
+|---|---|
+| Rungs | `Suggests only` (a person approves each proposed change, as before) then `Acts (logged)` (applies within its scope at once, each run recorded). A paused agent is off whatever its rung. |
+| Start | Every new agent starts at `Suggests only`, whatever the request asks for. Before this change the creator could pick `Acts (logged)` at creation. |
+| Track record | To be raised, an agent needs 3 suggestions approved by a person and no rejection among its last 3 decided suggestions. |
+| Raise | One rung at a time, with a reason (at least 10 characters), as a four-eyes approval (`assistant.agent.autonomy`) by an admin or owner who is neither the requester nor the agent's creator. The rung and the record are checked again when it is decided. |
+| Lower | Immediate, by any admin or owner (safe direction). Climbing back needs the record again. |
+| Audit | `assistant.agent.autonomy_requested` (with reason), `assistant.agent.autonomy_raised` (approver and requester), `assistant.agent.autonomy_lowered` (by whom). |
+| Open for review | The thresholds (3 and 3), whether a rejection of an acting agent's change should lower it automatically, whether an agent that runs as a service account needs a second approver to act, and whether seed agents already at `Acts (logged)` must re-earn it. |
+
+Enforced in `src/features/assistant/lib/autonomy.ts` (rungs and track record) and `src/features/assistant/services/assistant.ts` (`raiseBlockReason`, `requestRaise`, `lowerAutonomy`, the approval handler, and `createAgent`, which pins new agents to the lowest rung).
+
