@@ -15,8 +15,8 @@ import { ADMIN_ROLE, adminCount, isPrivilegedRoleName, memberRole } from "@/lib/
 import { eligibleApprovers } from "./mfa";
 import { apiFetch, viaApi } from "./http";
 
-export interface TeamSettings { reviewCycle: string; appetite: string; controlSla: string; critSla: string; approvers: string[]; baseline: string[]; /** Workspace brand preset id (`@/lib/brand`). */ brand: string }
-export const TEAM_SETTINGS: TeamSettings = { brand: DEFAULT_BRAND, ...JSON.parse(JSON.stringify(seed.TEAM_SETTINGS)) };
+export interface TeamSettings { reviewCycle: string; appetite: string; controlSla: string; critSla: string; approvers: string[]; baseline: string[]; /** Workspace brand preset id (`@/lib/brand`). */ brand: string; /** Agent track record before raising autonomy: approved suggestions needed (and the clean window), 0 = no track record required. */ agentTrackRecord: number }
+export const TEAM_SETTINGS: TeamSettings = { brand: DEFAULT_BRAND, agentTrackRecord: 3, ...JSON.parse(JSON.stringify(seed.TEAM_SETTINGS)) };
 export const USER_ROLES: string[] = roles.USER_ROLES;
 export const REVIEW_CYCLES = ["Monthly", "Quarterly", "Annually"];
 export const APPETITES = ["Low", "Moderate", "High"];
@@ -48,6 +48,20 @@ export function setBrand(id: string) {
   }, () => post<void>("/team/settings", { brand: id }));
 }
 export const BRAND_CHOICES = BRANDS;
+/** Track record an agent needs before its autonomy can be raised (docs/security/SOD_MATRIX.md section 11). 0 turns it off for small teams;
+ *  the second person's approval of the raise always stays. */
+export const TRACK_RECORD_CHOICES = [{ value: 3, label: "3 suggestions" }, { value: 2, label: "2 suggestions" }, { value: 0, label: "Off" }] as const;
+/** Admin only, one of the listed values (anything else is refused), audited with before and after. */
+export function setAgentTrackRecord(n: number) {
+  return viaApi<void>(() => {
+    assertRole("change the agent track record", "admin");
+    if (!TRACK_RECORD_CHOICES.some((c) => c.value === n)) throw new SodError("Choose 3, 2 or Off.");
+    const before = TEAM_SETTINGS.agentTrackRecord; if (before === n) return;
+    TEAM_SETTINGS.agentTrackRecord = n;
+    const show = (v: number) => (v ? `${v} approved suggestions` : "off");
+    wsLog("team.agent_track_record.changed", `${show(before)} → ${show(n)}`, "System"); bumpData();
+  }, () => post<void>("/team/settings", { agentTrackRecord: n }));
+}
 export function saveSettings() {
   return viaApi<void>(() => { assertRole("save settings", "admin"); }, () => post<void>("/team/settings/save", { ...TEAM_SETTINGS }));
 }

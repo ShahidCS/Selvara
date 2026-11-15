@@ -28,6 +28,10 @@ export function SettingsTab({ manage }: { manage: boolean }) {
     if (!manage || id === T.brand) return;
     try { await svc.setBrand(id); L.toast("Workspace colour: " + (svc.BRAND_CHOICES.find((b) => b.id === id)?.label ?? id)); } catch { L.toast("Could not change the colour", false); }
   };
+  const pickTrack = async (v: string) => {
+    const n = Number(v); if (!manage || n === T.agentTrackRecord) return;
+    try { await svc.setAgentTrackRecord(n); L.toast("AI agent track record: " + (svc.TRACK_RECORD_CHOICES.find((c) => c.value === n)?.label ?? v)); } catch { L.toast("Could not change the setting", false); }
+  };
   const brand: BrandId = isBrand(T.brand) ? T.brand : "violet";
   const enter = (key: "controlSla" | "critSla", v: string) => (e: React.KeyboardEvent) => { if (e.key === "Enter") commit(key, v); };
   return (
@@ -45,6 +49,12 @@ export function SettingsTab({ manage }: { manage: boolean }) {
         <Segmented<BrandId> label="Workspace colour" value={brand} onChange={pickBrand}
           options={svc.BRAND_CHOICES.map((b) => ({ value: b.id, text: b.label, label: <><span className="brand-sw" data-brand={b.id} aria-hidden="true" />{b.label}</> }))} />
       ) : <p style={{ margin: 0 }}><span className="brand-sw" data-brand={brand} aria-hidden="true" /> {svc.BRAND_CHOICES.find((b) => b.id === brand)?.label}. Only an admin can change it.</p>}
+      <div className="sectitle" style={{ marginTop: 20 }}>AI agent track record</div>
+      <p className="field help" style={{ margin: "0 0 8px", maxWidth: "62ch" }}>How many of an agent&apos;s suggestions a person must approve, with none of the latest that many rejected, before the agent can be raised to act on its own. Turn it off if your team is too small to build a record. Raising still always needs approval from a different admin or owner.</p>
+      {manage ? (
+        <Segmented<string> label="AI agent track record" value={String(T.agentTrackRecord)} onChange={pickTrack}
+          options={svc.TRACK_RECORD_CHOICES.map((c) => ({ value: String(c.value), label: c.label }))} />
+      ) : <p style={{ margin: 0 }}>{svc.TRACK_RECORD_CHOICES.find((c) => c.value === T.agentTrackRecord)?.label ?? "3 suggestions"}. Only an admin can change it.</p>}
       <CredentialPolicy manage={manage} />
       {manage ? <button className="btn btn-primary sm" style={{ marginTop: 10 }} onClick={save}><Icon name="check" />Save settings</button> : <p className="field help" style={{ marginTop: 10 }}>Read-only for your role.</p>}
     </div>

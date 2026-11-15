@@ -13,9 +13,9 @@ import * as svc from "@/features/assistant/services/assistant";
 export function AgentFormPage() {
   const role = useApp((s) => s.role);
   const L = useLayer(); const go = useGo();
-  const [name, setName] = useState(""); const [trig, setTrig] = useState(svc.AGENT_TRIGGERS[0]); const [auto, setAuto] = useState(svc.AGENT_AUTONOMY[0]); const [runs, setRuns] = useState(svc.AGENT_RUNS_AS[0]);
+  const [name, setName] = useState(""); const [trig, setTrig] = useState(svc.AGENT_TRIGGERS[0]); const [runs, setRuns] = useState(svc.AGENT_RUNS_AS[0]);
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
-  const dirty = !busy && (name !== "" || trig !== svc.AGENT_TRIGGERS[0] || auto !== svc.AGENT_AUTONOMY[0] || runs !== svc.AGENT_RUNS_AS[0]);
+  const dirty = !busy && (name !== "" || trig !== svc.AGENT_TRIGGERS[0] || runs !== svc.AGENT_RUNS_AS[0]);
   const { allowLeave } = useUnsavedGuard(dirty, L);
   const ref = useRef<HTMLInputElement>(null); useEffect(() => { ref.current?.focus(); }, []);
   const back = { href: "/ws/assistant", label: "AI Assistant" };
@@ -26,7 +26,7 @@ export function AgentFormPage() {
     if (!n) { setErr("Agent name is required."); return; }
     setBusy(true);
     try {
-      await svc.createAgent({ name: n, trigger: trig, autonomy: auto, runsAs: runs });
+      await svc.createAgent({ name: n, trigger: trig, runsAs: runs });
       wsLog("assistant.agent.created", n + " (pending approval)", "System"); allowLeave(); L.toast("Agent created; a different admin or owner must approve enabling it");
       setModState("assistant.view", "agents"); bumpData(); go("/ws/assistant");
     } catch (x) { setBusy(false); setErr(""); L.toast(uiMessage(x) || FAIL_MSG, false); }
@@ -38,12 +38,12 @@ export function AgentFormPage() {
           <div className="field"><label htmlFor="ag-name">Agent name <span style={{ color: "var(--bad-ink)" }}>*</span></label><input ref={ref} className="input" id="ag-name" maxLength={80} placeholder="e.g. Control test monitor" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={!!err} aria-describedby={err ? "ag-err" : undefined} /></div>
           <div className="field"><label htmlFor="ag-trig">Trigger</label><select className="select" id="ag-trig" value={trig} onChange={(e) => setTrig(e.target.value)}>{svc.AGENT_TRIGGERS.map((x) => <option key={x}>{x}</option>)}</select></div>
         </FormSection>
-        <FormSection n={2} title="Access and autonomy" note="Least privilege: what it runs as and whether it acts or only suggests.">
+        <FormSection n={2} title="Access and autonomy" note="Least privilege: what it runs as. Every new agent starts at the lowest autonomy level.">
           <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div className="field"><label htmlFor="ag-auto">Autonomy</label><select className="select" id="ag-auto" value={auto} onChange={(e) => setAuto(e.target.value)}>{svc.AGENT_AUTONOMY.map((x) => <option key={x}>{x}</option>)}</select></div>
+            <div className="field"><label htmlFor="ag-auto">Autonomy</label><input className="input" id="ag-auto" readOnly value={svc.AGENT_AUTONOMY[0]} /></div>
             <div className="field"><label htmlFor="ag-runs">Runs as</label><select className="select" id="ag-runs" value={runs} onChange={(e) => setRuns(e.target.value)}>{svc.AGENT_RUNS_AS.map((x) => <option key={x}>{x}</option>)}</select></div>
           </div>
-          <p className="field help">&quot;Acts (logged)&quot; agents operate within their granted scope and record every action to the immutable audit log.</p>
+          <p className="field help">A person approves each change it suggests. After a track record of approved suggestions (set by a company admin in Team &amp; Settings), it can be raised to &quot;Acts (logged)&quot;, where it acts within its scope and records every action to the audit log; a different admin or owner must approve that.</p>
         </FormSection>
         {err ? <FormMessage id="ag-err">{err}</FormMessage> : null}
         <FormActions><button type="button" className="btn btn-secondary" onClick={() => go("/ws/assistant")}>Cancel</button><button type="submit" className="btn btn-primary" disabled={busy}>Create agent</button></FormActions>
