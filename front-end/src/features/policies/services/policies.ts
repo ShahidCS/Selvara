@@ -6,6 +6,7 @@
 import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
 import { getActor, SodError } from "@/lib/sod";
+import { actsAs, onBehalfOf } from "@/lib/delegation";
 import { approve as engineApprove, reject as engineReject, requestApproval, getApproval, whyCannotApprove as engineWhy } from "@/lib/approvals";
 import {
   addBusinessDays, addMonths, eligiblePeople, fmtDay, guard, iAm, isoDay, parseDay, parseIso, personByName, reasonText, roleReason, samePerson, selfReason,
@@ -22,7 +23,7 @@ export interface PolicyVersion {
   ver: string; name: string; status: VersionStatus; body: string; note: string; cycle: number;
   author: string; editors: string[]; lastEditor: string; createdAt: string;
   approver?: string; approverRole?: string; submittedAt?: string;
-  approvedBy?: string; approvedAt?: string; approvalReason?: string; effective?: string;
+  approvedBy?: string; approvedOnBehalfOf?: string; approvedAt?: string; approvalReason?: string; effective?: string;
   publishedBy?: string; publishedAt?: string; supersededAt?: string;
   emergency?: boolean; exceptionId?: string;
 }
@@ -99,14 +100,14 @@ export function whyCannotApprove(p: any): string | null {
   return roleReason("approving a policy", "admin", "owner")
     || (w.approver ? null : "No approver has been named yet.")
     || selfReason("the author or a last editor cannot approve their own policy", ...editorsOf(w))
-    || (iAm(w.approver) ? null : `Only the named approver (${w.approver}) can do this.`);
+    || (actsAs(w.approver) ? null : `Only the named approver (${w.approver}) can do this.`);
 }
 export function whyCannotPublish(p: any): string | null {
   const w = workVersion(p);
   if (!w || w.status !== "Approved") return "Only an approved version can be published.";
   return roleReason("publishing a policy", "admin", "owner")
     || selfReason("the author or a last editor cannot publish their own policy", ...editorsOf(w))
-    || (iAm(w.approver) ? null : `Only the named approver (${w.approver}) can publish.`)
+    || (actsAs(w.approver) ? null : `Only the named approver (${w.approver}) can publish.`)
     || (w.effective && w.effective > today() ? `The effective date (${w.effective}) has not been reached.` : null);
 }
 export function whyCannotEmergency(p: any): string | null {
@@ -197,7 +198,7 @@ export function returnToDraft(id: string, reason: string) {
   return viaApi(() => {
     const p = need(id); const w = workVersion(p);
     if (!w || w.status !== "In review") throw new SodError("Only a version in review can be returned to draft.");
-    const isApprover = !!w.approver && iAm(w.approver);
+    const isApprover = !!w.approver && actsAs(w.approver);
     if (!isApprover) guard(roleReason("returning a policy to draft", "admin", "owner"), isPolicyOwner(p) ? null : "Only the named approver or the policy owner can return it to draft.");
     else guard(selfReason("the author or a last editor cannot act as approver", ...editorsOf(w)));
     const r = reasonText(reason, 10, "A reason");
@@ -217,9 +218,10 @@ export function approveVersion(id: string, input: { reason: string; effective?: 
     if (eff < today()) throw new SodError("The effective date cannot be in the past.");
     if (parseIso(eff).getTime() > Date.now() + 90 * 86400_000) throw new SodError("The effective date can be at most 90 days ahead.");
     if (w.ver.startsWith("0.")) w.ver = "1.0";
-    w.status = "Approved"; w.approvedBy = getActor().name; w.approvedAt = today(); w.approvalReason = reason; w.effective = eff;
-    syncTop(p); log(p, w.ver, "Approved (immutable)", reason);
-    wsLog("policy.approved", `${p.id} v${w.ver} by ${w.approvedBy}, effective ${eff}`, "Policy");
+    const proxy = w.approver ? onBehalfOf(w.approver) : null; // acting for the named approver through a delegation
+    w.status = "Approved"; w.approvedBy = getActor().name; w.approvedOnBehalfOf = proxy || undefined; w.approvedAt = today(); w.approvalReason = reason; w.effective = eff;
+    syncTop(p); log(p, w.ver, "Approved (immutable)", proxy ? `${reason} (on behalf of ${proxy}, by delegation)` : reason);
+    wsLog("policy.approved", `${p.id} v${w.ver} by ${w.approvedBy}${proxy ? ` on behalf of ${proxy} (delegation)` : ""}, effective ${eff}`, "Policy");
     return { ver: w.ver };
   }, () => send<any>("POST", `/policies/${enc(id)}/approve`, input));
 }
@@ -228,12 +230,13 @@ export function publishVersion(id: string) {
   return viaApi(() => {
     const p = need(id); guard(whyCannotPublish(p)); const w = workVersion(p) as PolicyVersion;
     const prev = liveVersion(p); if (prev) { prev.status = "Superseded"; prev.supersededAt = today(); }
+    const proxy = w.approver ? onBehalfOf(w.approver) : null;
     w.status = "Published"; w.publishedBy = getActor().name; w.publishedAt = today();
     syncTop(p); p.body = w.body;
     p.review = fmtDay(addMonths(parseIso(w.effective || today()), w.cycle));
     p.acceptance = { required: 42, done: 0 };
     log(p, w.ver, "Published", "Effective " + (w.effective || today()) + (prev ? "; v" + prev.ver + " superseded (kept in history)" : ""));
-    wsLog("policy.published", `${p.id} v${w.ver} by ${w.publishedBy}` + (prev ? `, supersedes v${prev.ver}` : ""), "Policy");
+    wsLog("policy.published", `${p.id} v${w.ver} by ${w.publishedBy}${proxy ? ` on behalf of ${proxy} (delegation)` : ""}` + (prev ? `, supersedes v${prev.ver}` : ""), "Policy");
     return { ver: w.ver };
   }, () => send<any>("POST", `/policies/${enc(id)}/publish`, {}));
 }

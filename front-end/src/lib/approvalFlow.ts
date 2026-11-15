@@ -8,6 +8,8 @@ import { approvals, approve, reject, sweepExpired, whyCannotApprove, withdraw } 
 import type { Approval } from "./approvals";
 import { assertElevated, elevationActive } from "./elevation";
 import { getActor, isSamePerson, SodError } from "./sod";
+import { actsAs, onBehalfOf } from "./delegation";
+import { wsLog } from "./audit";
 import { bumpData } from "./store";
 
 export interface KindHandler {
@@ -43,8 +45,8 @@ export function whyCannotDecide(a: Approval): string | null {
   const base = whyCannotApprove(a); if (base) return base;
   if (a.domain === "admin" && !elevationActive()) return "Elevate to make changes";
   const named = namedApprover(a);
-  if (named && !isSamePerson(getActor().name, named)) {
-    // two-approver requests: the named person must approve; the other eligible person is the additional one
+  if (named && !actsAs(named, a)) {
+    // two-approver requests: the named person (or their delegate) must approve; the other eligible person is the additional one
     if (a.needs < 2 || a.approvals.some((x) => isSamePerson(x.by, getActor().name))) return `Only the named approver (${named}) can decide this request.`;
   }
   return null;
@@ -58,11 +60,19 @@ export function decideApproval(id: string, ok: boolean, reason: string): Approva
   const why = whyCannotDecide(a); if (why) throw new SodError(why);
   const r = String(reason || "").trim(); if (r.length < 10) throw new SodError("Give a reason of at least 10 characters.");
   const named = namedApprover(a);
-  // final approval must include the named approver
-  if (ok && named && a.needs >= 2 && a.approvals.length + 1 >= a.needs && !isSamePerson(getActor().name, named) && !a.approvals.some((x) => isSamePerson(x.by, named))) {
+  // final approval must include the named approver, or the person they delegated to
+  const viaDelegation = named ? onBehalfOf(named, a) : null;
+  const delegated = (a.payload.delegated && typeof a.payload.delegated === "object" ? a.payload.delegated : {}) as Record<string, string>;
+  if (ok && named && a.needs >= 2 && a.approvals.length + 1 >= a.needs && !actsAs(named, a) && !a.approvals.some((x) => isSamePerson(x.by, named) || isSamePerson(delegated[x.by], named))) {
     throw new SodError(`The named approver (${named}) must also approve this request.`);
   }
+  const me = getActor().name;
   const out = ok ? approve(id, r) : reject(id, r);
+  if (viaDelegation) {
+    // remember who this decision was made for, and say so in the audit log
+    out.payload.delegated = { ...delegated, [me]: viaDelegation };
+    wsLog(`approval.${out.kind}.on_behalf`, `${out.title} (${out.id}): ${ok ? "approved" : "rejected"} by ${me} on behalf of ${viaDelegation} (delegation)`, "Approval");
+  }
   settle();
   return out;
 }

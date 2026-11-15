@@ -86,3 +86,5 @@ Enforced in the service layer (mock) and mirrored in the UI; the real API must e
 2. Persona "Jordan A." (admin) is the seed's "J. Avery"; matched by `samePerson`. Fix the persona name in `roles.json` or keep the alias rule?
 3. Acceptance counts remain random demo values (the Policies drawer ring); the Me workspace holds real per-user acknowledgements.
 4. Remarks/collaborators/policy library from `docs/architecture/SPEC_BOARDS.md` section 2 are not part of this change.
+
+> Phase 5 update: the named approver can delegate the slot for up to 14 days to another admin or owner (see `docs/security/SOD_MATRIX.md` section 9). A delegate may approve, publish or return the version to draft for them, never as the author or a last editor; the version history shows "<delegate> for <named approver> (delegation)".
