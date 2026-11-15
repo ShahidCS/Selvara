@@ -5,7 +5,8 @@ import { WS_AUDIT } from "@/lib/audit";
 import { SodError } from "@/lib/sod";
 import { appStore } from "@/lib/store";
 import { AUTONOMY, LADDER, nextRung, trackRecord } from "@/features/assistant/lib/autonomy";
-import { ASST, createAgent, decideRun, findAgent, lowerAutonomy, raiseBlockReason, rejectApplied, requestRaise, runAgent } from "@/features/assistant/services/assistant";
+import { ASST, createAgent, decideRun, findAgent, lowerAutonomy, raiseBlockReason, recertBlockReason, rejectApplied, requestRaise, requestRecertify, runAgent, sweepCertifications } from "@/features/assistant/services/assistant";
+import { CERT, DAY_MS, certState } from "@/features/assistant/lib/autonomy";
 import { setAgentTrackRecord, TEAM_SETTINGS } from "@/services/team";
 
 /* Autonomy ladder. Personas: admin = Jordan Avery, admin2 = Casey Morgan, owner = Owen Hart, owner2 = Taylor Reed, employee = Priya Nair. No DOM. */
@@ -135,5 +136,55 @@ describe("rejecting a change an acting agent applied", () => {
   });
   it("refuses a suggestion that is still waiting", async () => {
     as("admin"); await expect(rejectApplied("R1", "Not an applied change")).rejects.toBeInstanceOf(SodError);
+  });
+});
+
+describe("certification of acting agents", () => {
+  it("gives agents that were acting before the ladder a transition period", () => {
+    const a = findAgent("AG1")!;
+    expect(certState(a)).toBe("transition");
+    expect(Math.round((a.certifiedUntil! - Date.now()) / DAY_MS)).toBe(CERT.TRANSITION_DAYS);
+    expect(certState(findAgent("AG3")!)).toBe("none");
+  });
+  it("drops a lapsed agent to suggests only before it can act, audited", async () => {
+    const a = findAgent("AG2")!; a.certifiedUntil = Date.now() - 1;
+    as("admin"); const r = await runAgent("AG2");
+    expect(r!.suggest).toBe(true); expect(ASST.runs[0].decision).toBe("Waiting");
+    expect(a.autonomy).toBe("Suggests only"); expect(a.certifiedUntil).toBeUndefined();
+    expect(WS_AUDIT.some((e) => e.action === "assistant.agent.autonomy_lowered" && e.target.includes("Risk summariser") && e.target.includes("transition period ended"))).toBe(true);
+    expect(sweepCertifications()).toEqual([]); // once only
+  });
+  it("certifies a raised agent for the renewal period", async () => {
+    const a = await seasoned(AUTONOMY.TRACK_DEFAULT);
+    as("owner"); const r = await requestRaise(a.id, reason); await decide(r!.approvalId, "admin2");
+    expect(certState(a)).toBe("valid");
+    expect(Math.round((a.certifiedUntil! - Date.now()) / DAY_MS)).toBe(CERT.VALID_DAYS);
+    expect(a.certifiedBy).toBe("Casey Morgan");
+  });
+  it("recertifies with two different approvers for a service account, never the requester", async () => {
+    const a = findAgent("AG1")!; // service account, in transition
+    as("owner"); await expect(requestRecertify("AG1", "short")).rejects.toBeInstanceOf(SodError);
+    const r = await requestRecertify("AG1", "Reviewed its last month of changes");
+    await expect(requestRecertify("AG1", "Reviewed its last month of changes")).rejects.toThrow(/already awaiting/);
+    await expect(decide(r!.approvalId, "owner")).rejects.toBeInstanceOf(SodError);
+    await decide(r!.approvalId, "admin");
+    expect(certState(a)).toBe("transition"); // one of two
+    await decide(r!.approvalId, "admin2");
+    expect(certState(a)).toBe("valid"); expect(a.transition).toBe(false);
+    expect(Math.round((a.certifiedUntil! - Date.now()) / DAY_MS)).toBe(CERT.VALID_DAYS);
+    expect(WS_AUDIT.some((e) => e.action === "assistant.agent.recertified" && e.target.includes("Evidence chaser"))).toBe(true);
+  });
+  it("needs a clean recent record even when the raise threshold is off, and only for acting agents", async () => {
+    as("admin"); await setAgentTrackRecord(0);
+    await runAgent("AG2"); await rejectApplied(ASST.runs[0].id, "Summary used stale scores");
+    // rejectApplied lowered it; put it back to acting to check the record rule
+    const a = findAgent("AG2")!; a.autonomy = "Acts (logged)"; a.certifiedUntil = Date.now() + DAY_MS;
+    expect(recertBlockReason(a)).toMatch(/rejected/);
+    expect(recertBlockReason(findAgent("AG3")!)).toMatch(/Only an agent that acts/);
+    as("employee"); expect(recertBlockReason(findAgent("AG1")!)).toMatch(/Only an admin or owner/);
+  });
+  it("clears the certification when the agent is lowered", async () => {
+    as("owner"); const a = await lowerAutonomy("AG1");
+    expect(a!.certifiedUntil).toBeUndefined(); expect(certState(a!)).toBe("none");
   });
 });

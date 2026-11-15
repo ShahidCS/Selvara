@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Chip, DataTable, Icon, type DTColumn } from "@/components/ui";
 import { LayerFoot, useLayer } from "@/components/shell/LayerProvider";
 import { wsLog } from "@/lib/audit";
 import { bumpData, setModState } from "@/lib/store";
 import * as svc from "@/features/assistant/services/assistant";
-import { AUTONOMY, REJECTED_AFTER, RUNG_HELP, nextRung, trackRecord, type Rung } from "@/features/assistant/lib/autonomy";
+import { AUTONOMY, CERT, REJECTED_AFTER, RUNG_HELP, certDate, certState, nextRung, trackRecord, type Rung } from "@/features/assistant/lib/autonomy";
 import { getApproval } from "@/lib/approvals";
 import { WhyNot, attempt } from "@/components/kit/sodKit";
 
@@ -28,6 +28,8 @@ export function AgentsTab({ manage }: { manage: boolean }) {
   });
   const lower = (a: Agent) => attempt(L, async () => { const r = await svc.lowerAutonomy(a.id); if (!r) return fail("Agent not found"); L.toast(`${r.name} now ${r.autonomy.toLowerCase()}`); bumpData(); });
   const raise = (a: Agent) => L.openModal(`Raise autonomy: ${a.name}`, () => <RaiseForm id={a.id} />);
+  const recert = (a: Agent) => L.openModal(`Recertify: ${a.name}`, () => <RecertForm id={a.id} />);
+  useEffect(() => { if (svc.sweepCertifications().length) bumpData(); }, []);
   const del = (id: string) => attempt(L, async () => { const a = await svc.deleteAgent(id); if (!a) return fail("Agent not found"); wsLog("assistant.agent.deleted", a.name, "System"); L.toast("Agent deleted"); bumpData(); });
   const cols: DTColumn<Agent>[] = [
     { key: "name", header: "Agent", value: (a) => a.name, locked: true, render: (a) => <span className="strong">{a.name}</span> },
@@ -40,9 +42,13 @@ export function AgentsTab({ manage }: { manage: boolean }) {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
           {a.autonomy === "Suggests only" ? <Chip cls="neutral" icon="dot">{a.autonomy}</Chip> : <Chip cls="info" icon="check">{a.autonomy}</Chip>}
           {pending ? <Chip cls="warn" icon="clock">Raise requested</Chip> : null}
+          <CertChip a={a} />
           {manage && !pending && a.status !== "Pending approval" ? (up
             ? <button className="btn btn-ghost sm" aria-label={`Raise autonomy: ${a.name}`} onClick={() => raise(a)}>Raise autonomy</button>
-            : <button className="btn btn-ghost sm" aria-label={`Lower to suggests only: ${a.name}`} onClick={() => lower(a)}>Lower to suggests only</button>) : null}
+            : <>
+              {a.pendingRecert && getApproval(a.pendingRecert)?.status === "Pending" ? null : <button className="btn btn-ghost sm" aria-label={`Recertify: ${a.name}`} onClick={() => recert(a)}>Recertify</button>}
+              <button className="btn btn-ghost sm" aria-label={`Lower to suggests only: ${a.name}`} onClick={() => lower(a)}>Lower to suggests only</button>
+            </>) : null}
         </div>
       );
     } },
@@ -58,10 +64,51 @@ export function AgentsTab({ manage }: { manage: boolean }) {
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <p className="field help" style={{ margin: 0 }}>Agents run on triggers with least-privilege access. Creating or resuming an agent needs approval from a different admin or owner. Every agent starts at &quot;Suggests only&quot;, where a person approves each change. It can be raised to &quot;Acts (logged)&quot; after {svc.trackSetting() ? `${svc.trackSetting()} approved suggestions and no recent rejection` : "approval (no track record is required in this workspace)"}, with approval from a different admin or owner (two for an agent that runs as a service account). Lowering is immediate, and rejecting a change an agent applied lowers it automatically.</p>
+      <p className="field help" style={{ margin: 0 }}>Agents run on triggers with least-privilege access. Creating or resuming an agent needs approval from a different admin or owner. Every agent starts at &quot;Suggests only&quot;, where a person approves each change. It can be raised to &quot;Acts (logged)&quot; after {svc.trackSetting() ? `${svc.trackSetting()} approved suggestions and no recent rejection` : "approval (no track record is required in this workspace)"}, with approval from a different admin or owner (two for an agent that runs as a service account). Lowering is immediate, and rejecting a change an agent applied lowers it automatically. An acting agent must be recertified every {CERT.VALID_DAYS} days or it drops to &quot;Suggests only&quot; before its next run.</p>
       <DataTable<Agent> id="agents" label="Agents" rows={svc.ASST.agents} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.name} ${a.trigger} ${a.runsAs}`}
         tabs={["Active", "Pending approval", "Paused"].map((st) => ({ key: st, label: st, match: (a: Agent) => a.status === st }))} exportName="agents" />
     </div>
+  );
+}
+
+/** Certification of an acting agent: transition (acting before the ladder), due soon, valid, or a recertification in progress. Never colour alone. */
+function CertChip({ a }: { a: Agent }) {
+  const st = certState(a);
+  if (a.pendingRecert && getApproval(a.pendingRecert)?.status === "Pending") return <Chip cls="warn" icon="clock">Recertification requested</Chip>;
+  if (st === "transition") return <Chip cls="warn" icon="alert">Recertify by {certDate(a.certifiedUntil as number)}</Chip>;
+  if (st === "due") return <Chip cls="warn" icon="clock">Recertification due {certDate(a.certifiedUntil as number)}</Chip>;
+  if (st === "valid") return <span style={{ fontSize: 11.5, color: "var(--muted)" }}>Certified until {certDate(a.certifiedUntil as number)}</span>;
+  return null;
+}
+
+/** Ask to recertify an acting agent for another period (four-eyes; two approvers for a service account). */
+function RecertForm({ id }: { id: string }) {
+  const L = useLayer(); const a = svc.findAgent(id);
+  const [reason, setReason] = useState(""); const [err, setErr] = useState("");
+  if (!a) return <p className="field help">Agent not found.</p>;
+  const why = svc.recertBlockReason(a); const need = svc.raiseApprovers(a); const st = certState(a);
+  const go = () => attempt(L, async () => {
+    if (reason.trim().length < AUTONOMY.REASON_MIN) { setErr(`Give a reason of at least ${AUTONOMY.REASON_MIN} characters.`); return; }
+    const r = await svc.requestRecertify(id, reason); if (!r) { L.toast("Agent not found", false); return; }
+    L.closeLayer(); L.toast(`Recertifying ${r.agent.name} needs approval from ${need === 2 ? "two different admins or owners" : "a different admin or owner"}`); bumpData();
+  });
+  return (
+    <>
+      <div>
+        <dl className="meta-grid">
+          <dt>Acts as</dt><dd>{a.autonomy}, runs as {a.runsAs}</dd>
+          <dt>Certified</dt><dd>{st === "transition" ? `Never: acting before the ladder, transition ends ${certDate(a.certifiedUntil as number)}` : a.certifiedUntil ? `Until ${certDate(a.certifiedUntil)}${a.certifiedBy ? `, by ${a.certifiedBy}` : ""}` : "No"}</dd>
+          <dt>Renewal</dt><dd>{CERT.VALID_DAYS} days from approval</dd>
+          <dt>Approvers needed</dt><dd>{need === 2 ? "Two (it runs as a service account)" : "One"}</dd>
+        </dl>
+        {why ? <p className="field help" id="rc-why" style={{ color: "var(--bad-ink)", marginTop: 10 }}>{why}</p> : (
+          <div className="field" style={{ marginTop: 10 }}><label htmlFor="rc-reason">Attestation <span style={{ color: "var(--bad-ink)" }}>*</span></label><textarea className="input" id="rc-reason" data-focus rows={3} maxLength={300} style={{ resize: "vertical" }} placeholder="What you checked: its recent changes, its scope, its owner" value={reason} onChange={(e) => { setReason(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "rc-err" : undefined} /></div>
+        )}
+        <p className="field help" id="rc-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
+        <p className="field help">If it is not recertified in time it drops to &quot;Suggests only&quot; automatically before its next run.</p>
+      </div>
+      <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><button className="btn btn-primary" disabled={!!why} aria-describedby={why ? "rc-why" : undefined} onClick={go}>Request approval</button></LayerFoot>
+    </>
   );
 }
 
