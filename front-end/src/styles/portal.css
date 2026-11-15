@@ -162,7 +162,7 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 .sb-foot{flex:0 0 auto;border-top:1px solid var(--line);padding:10px}
 .sb-user{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;cursor:pointer;padding:6px;border-radius:var(--radius-field)}
 .sb-user:hover{background:var(--surface-2)}
-.avatar{width:30px;height:30px;border-radius:999px;flex:0 0 auto;background:var(--accent);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+.avatar{width:30px;height:30px;border-radius:999px;flex:0 0 auto;background:var(--accent);color:var(--surface);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
 .sb-user .who{min-width:0;text-align:left;line-height:1.25}
 .sb-user .who b{display:block;font-weight:600;font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sb-user .who span{font-size:11.5px;color:var(--muted)}
@@ -602,6 +602,24 @@ button.tag:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
 }
 .hamburger{display:none}
 
+/* tenant brand (phase 6): a workspace picks one of these presets. Each overrides the six --c-brand-* variables and, for the dark theme (which sets its own accent), the accent set.
+   Every pair is contrast-checked in tests/unit/brand.test.ts (text 4.5:1). Not free-form: a tenant cannot choose a colour that fails. The attribute selector (no :root) lets a swatch preview a preset. */
+[data-brand="violet"]{--c-brand-50:#f4f0ff; --c-brand-100:#e7deff; --c-brand-200:#cfbeff; --c-brand-500:#6c3bff; --c-brand-600:#5926f0; --c-brand-700:#4418c4} /* the default; the shell never sets it, it lets the Violet swatch preview itself */
+[data-brand="blue"]{--c-brand-50:#eef3ff; --c-brand-100:#dbe6ff; --c-brand-200:#bad0ff; --c-brand-500:#2f5fe8; --c-brand-600:#2149c4; --c-brand-700:#193a9c}
+[data-brand="teal"]{--c-brand-50:#e8f7f5; --c-brand-100:#c9ece8; --c-brand-200:#96d9d2; --c-brand-500:#0a7f78; --c-brand-600:#076a64; --c-brand-700:#055651}
+[data-brand="green"]{--c-brand-50:#ebf8ef; --c-brand-100:#d2f0dc; --c-brand-200:#a4e0b9; --c-brand-500:#1b7f3b; --c-brand-600:#146830; --c-brand-700:#0f5224}
+[data-brand="slate"]{--c-brand-50:#f3f4f6; --c-brand-100:#e5e7eb; --c-brand-200:#d1d5db; --c-brand-500:#4b5563; --c-brand-600:#374151; --c-brand-700:#1f2937}
+:root[data-brand="blue"][data-theme="dark"]{--accent:#7aa2ff; --accent-strong:#a3c0ff; --accent-weak:#13204d; --accent-ink:#a3c0ff; --info-ink:#a3c0ff; --info-bg:#13204d; --btn-primary:#2f5fe8; --btn-primary-hover:#2149c4; --btn-primary-active:#193a9c}
+:root[data-brand="teal"][data-theme="dark"]{--accent:#3fc4b8; --accent-strong:#7be0d6; --accent-weak:#0d2e2b; --accent-ink:#7be0d6; --info-ink:#7be0d6; --info-bg:#0d2e2b; --btn-primary:#0a7f78; --btn-primary-hover:#076a64; --btn-primary-active:#055651}
+:root[data-brand="green"][data-theme="dark"]{--accent:#4cc573; --accent-strong:#84dca1; --accent-weak:#0f2d1a; --accent-ink:#84dca1; --info-ink:#84dca1; --info-bg:#0f2d1a; --btn-primary:#1b7f3b; --btn-primary-hover:#146830; --btn-primary-active:#0f5224}
+:root[data-brand="slate"][data-theme="dark"]{--accent:#9aa4b2; --accent-strong:#c5ccd6; --accent-weak:#22262d; --accent-ink:#c5ccd6; --info-ink:#c5ccd6; --info-bg:#22262d; --btn-primary:#4b5563; --btn-primary-hover:#374151; --btn-primary-active:#1f2937}
+@media (prefers-color-scheme: dark){
+  :root[data-brand="blue"][data-theme="auto"]{--accent:#7aa2ff; --accent-strong:#a3c0ff; --accent-weak:#13204d; --accent-ink:#a3c0ff; --info-ink:#a3c0ff; --info-bg:#13204d; --btn-primary:#2f5fe8; --btn-primary-hover:#2149c4; --btn-primary-active:#193a9c}
+  :root[data-brand="teal"][data-theme="auto"]{--accent:#3fc4b8; --accent-strong:#7be0d6; --accent-weak:#0d2e2b; --accent-ink:#7be0d6; --info-ink:#7be0d6; --info-bg:#0d2e2b; --btn-primary:#0a7f78; --btn-primary-hover:#076a64; --btn-primary-active:#055651}
+  :root[data-brand="green"][data-theme="auto"]{--accent:#4cc573; --accent-strong:#84dca1; --accent-weak:#0f2d1a; --accent-ink:#84dca1; --info-ink:#84dca1; --info-bg:#0f2d1a; --btn-primary:#1b7f3b; --btn-primary-hover:#146830; --btn-primary-active:#0f5224}
+  :root[data-brand="slate"][data-theme="auto"]{--accent:#9aa4b2; --accent-strong:#c5ccd6; --accent-weak:#22262d; --accent-ink:#c5ccd6; --info-ink:#c5ccd6; --info-bg:#22262d; --btn-primary:#4b5563; --btn-primary-hover:#374151; --btn-primary-active:#1f2937}
+}
+.brand-sw{display:inline-block;width:18px;height:18px;border-radius:var(--radius-full);background:var(--c-brand-500);border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line-2);flex:0 0 auto}
 /* density: Compact tightens table rows and KPI tiles (controls keep their size, so targets stay usable) */
 :root[data-density="compact"]{--cell-y:6px;--head-y:6px;--tile-y:10px}
 /* print: light theme on white (AppShell switches it on beforeprint), no chrome, no inner scrolling, tables break between rows */
@@ -659,9 +677,9 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .focus-ring:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 24%,transparent)}
 /* ============================ SHELL: notifications, shortcuts, bell ============================ */
 .nbell{position:relative}
-.nbadge{position:absolute;top:-3px;inset-inline-end:-3px;min-width:16px;height:16px;padding:0 4px;border-radius:var(--radius-full);background:var(--bad-ink);color:#fff;font-size:10px;line-height:16px;font-weight:600;text-align:center;font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px var(--bg)}
+.nbadge{position:absolute;top:-3px;inset-inline-end:-3px;min-width:16px;height:16px;padding:0 4px;border-radius:var(--radius-full);background:var(--bad-ink);color:var(--surface);font-size:10px;line-height:16px;font-weight:600;text-align:center;font-variant-numeric:tabular-nums;box-shadow:0 0 0 2px var(--bg)}
 .nt-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
-.nt-n{font-variant-numeric:tabular-nums;opacity:.75;margin-inline-start:2px}
+.nt-n{font-variant-numeric:tabular-nums;margin-inline-start:2px}
 .nt-sum{margin:10px 2px 0;font-size:12px;color:var(--muted)}
 .nt-g{margin:16px 2px 6px;font-size:11px;line-height:14px;font-weight:500;letter-spacing:.6px;text-transform:uppercase;color:var(--faint)}
 .nt-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
@@ -690,7 +708,7 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 /* data table */
 .dt{position:relative;display:flex;flex-direction:column;min-width:0}
 .dt-tabs{padding:12px 14px 0}
-.dt-n{font-variant-numeric:tabular-nums;opacity:.75;margin-inline-start:2px}
+.dt-n{font-variant-numeric:tabular-nums;margin-inline-start:2px}
 .dt-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px}
 .dt-bar .fchip b{font-weight:600;color:var(--ink)}
 .dt-spacer{flex:1 1 auto}

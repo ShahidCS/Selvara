@@ -34,6 +34,7 @@
 
 | Package | Used for | Declared | Installed |
 | --- | --- | --- | --- |
+| `@axe-core/playwright` | Runs the axe accessibility rules against rendered pages in the end-to-end suite (development only; MPL-2.0 is allowed for dev dependencies) | `4.14.0` | `4.14.0` |
 | `@playwright/test` | End-to-end browser tests (Chromium) | `1.65.0` | `1.65.0` |
 | `@tailwindcss/postcss` | Runs Tailwind as a PostCSS plugin; its production optimiser also adds vendor prefixes, so autoprefixer is not used | `4.3.4` | `4.3.4` |
 | `@types/node` | Type definitions for Node.js APIs | `22.20.5` | `22.20.5` |

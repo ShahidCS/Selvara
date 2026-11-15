@@ -60,7 +60,7 @@ function VendorsList() {
         {VENDOR_TIERS.map((t) => {
           const vs = DATA.vendors.filter((v) => v.tier === t); const due = vs.filter((v) => /Overdue/.test(v.due)).length;
           return <KpiCard key={t} icon="vendors" label={`${t} tier`} value={vs.length} sub={due ? `${due} overdue` : "On schedule"} subTone={due ? "bad" : "flat"} pressed={vt === t}
-            name={`${t} tier: ${vs.length} vendors. ${vt === t ? "Clear filter" : "Filter the list"}`} onClick={() => setTier(vt === t ? "All" : t)} />;
+            onClick={() => setTier(vt === t ? "All" : t)} />;
         })}
       </div>
       {VENDOR_REQS.length && canManage ? (

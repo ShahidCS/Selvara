@@ -12,11 +12,13 @@ const KEYS: [string, string][] = [
 /** Keyboard shortcut reference (Ctrl instead of ⌘ on Windows and Linux). */
 export function openShortcuts(L: LayerApi) {
   L.openModal("Keyboard shortcuts", (
+    <>
     <dl className="sc-list">
       {KEYS.map(([k, d]) => (
         <div key={k} className="sc-row"><dt>{k.split(" ").map((x) => <kbd key={x} className="sc-key">{x}</kbd>)}</dt><dd>{d}</dd></div>
       ))}
-      <p className="field help" style={{ margin: "10px 0 0" }}>On Windows and Linux use Ctrl in place of ⌘.</p>
     </dl>
+    <p className="field help" style={{ margin: "10px 0 0" }}>On Windows and Linux use Ctrl in place of ⌘.</p>
+    </>
   ));
 }

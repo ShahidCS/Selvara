@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Icon } from "@/components/ui";
+import { Icon, Segmented } from "@/components/ui";
+import { isBrand, type BrandId } from "@/lib/brand";
 import { useLayer } from "@/hooks/useLayer";
 import { wsLog } from "@/lib/audit";
 import { bumpData } from "@/lib/store";
@@ -23,6 +24,11 @@ export function SettingsTab({ manage }: { manage: boolean }) {
   const save = async () => {
     try { await svc.saveSettings(); wsLog("team.settings.saved", "review cycles & SLAs", "System"); L.toast("Settings saved"); } catch { L.toast("Could not save the settings", false); }
   };
+  const pickBrand = async (id: BrandId) => {
+    if (!manage || id === T.brand) return;
+    try { await svc.setBrand(id); L.toast("Workspace colour: " + (svc.BRAND_CHOICES.find((b) => b.id === id)?.label ?? id)); } catch { L.toast("Could not change the colour", false); }
+  };
+  const brand: BrandId = isBrand(T.brand) ? T.brand : "violet";
   const enter = (key: "controlSla" | "critSla", v: string) => (e: React.KeyboardEvent) => { if (e.key === "Enter") commit(key, v); };
   return (
     <div style={{ maxWidth: 640 }}>
@@ -33,6 +39,12 @@ export function SettingsTab({ manage }: { manage: boolean }) {
         <div className="field"><label htmlFor="ts-sla">Standard remediation SLA</label><input className="input" id="ts-sla" maxLength={40} readOnly={!manage} value={sla} onChange={(e) => setSla(e.target.value)} onBlur={() => commit("controlSla", sla)} onKeyDown={enter("controlSla", sla)} /></div>
         <div className="field"><label htmlFor="ts-crit">Critical remediation SLA</label><input className="input" id="ts-crit" maxLength={40} readOnly={!manage} value={crit} onChange={(e) => setCrit(e.target.value)} onBlur={() => commit("critSla", crit)} onKeyDown={enter("critSla", crit)} /></div>
       </div>
+      <div className="sectitle" style={{ marginTop: 20 }}>Workspace colour</div>
+      <p className="field help" style={{ margin: "0 0 8px", maxWidth: "62ch" }}>The accent colour of this workspace (buttons, links, selected items). Only the listed colours can be chosen: each is checked for readable text in the light and dark themes. Status colours, the Admin Console and the vendor portal do not change.</p>
+      {manage ? (
+        <Segmented<BrandId> label="Workspace colour" value={brand} onChange={pickBrand}
+          options={svc.BRAND_CHOICES.map((b) => ({ value: b.id, text: b.label, label: <><span className="brand-sw" data-brand={b.id} aria-hidden="true" />{b.label}</> }))} />
+      ) : <p style={{ margin: 0 }}><span className="brand-sw" data-brand={brand} aria-hidden="true" /> {svc.BRAND_CHOICES.find((b) => b.id === brand)?.label}. Only an admin can change it.</p>}
       <CredentialPolicy manage={manage} />
       {manage ? <button className="btn btn-primary sm" style={{ marginTop: 10 }} onClick={save}><Icon name="check" />Save settings</button> : <p className="field help" style={{ marginTop: 10 }}>Read-only for your role.</p>}
     </div>

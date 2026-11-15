@@ -31,7 +31,7 @@ export default function PublishedPolicies() {
                   <div className="sub" style={{ fontSize: 12 }}>v{p.ver} · Owner {p.owner} · Approved {approvedOn(p.id)}</div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <Chip cls={a ? "ok" : "warn"}>{a ? `Acknowledged ${a.at}` : "Not acknowledged"}</Chip>
-                    <button className={`btn sm ${a ? "btn-secondary" : "btn-primary"}`} disabled={!!a} onClick={() => ack(p.id, p.name)} aria-label={a ? `${p.name}: done` : `Read and acknowledge ${p.name}`}>{a ? "Done" : "Read & acknowledge"}</button>
+                    <button className={`btn sm ${a ? "btn-secondary" : "btn-primary"}`} disabled={!!a} onClick={() => ack(p.id, p.name)} aria-label={a ? `${p.name}: done` : `Read & acknowledge ${p.name}`}>{a ? "Done" : "Read & acknowledge"}</button>
                   </div>
                 </div>
               );
