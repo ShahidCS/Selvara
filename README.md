@@ -202,7 +202,36 @@ Twelve demo personas cover nine roles. Second personas exist so that dual contro
 | External Auditor | Workspace | Audits, controls, evidence, policies, frameworks (read-only) |
 | Vendor Contact, Trust Center Visitor | Workspace (restricted) | Questionnaires and Trust Center only |
 
-Use the account menu (top right) to switch persona. Role switching is a demonstration stand-in for real authentication.
+### Signing in (demo accounts)
+
+The app opens on a sign-in page. There is no role switcher: sign out from the account menu (top right) and sign in as another persona.
+
+**Two kinds of account, kept apart.**
+- **Real accounts** are created through **Request to join** and approved by a company admin. They have their own password and an authenticator app (TOTP), added at the first sign-in and required every time, plus 10 single-use recovery codes.
+- **Demo accounts** (below) exist only in the demonstration build, where there is no backend and the browser runs the checks (`front-end/src/lib/session.ts`). They are limited: labelled as demo, sessions end after one hour, the second step shows its code on screen, and the shared password cannot be changed or reset.
+
+A production build (`NEXT_PUBLIC_API_MODE=http`) has no demo accounts: sign-in, MFA, reset and sessions go to the server (contract in [docs/security/CONTROLS.md](docs/security/CONTROLS.md)), which must enforce every rule. Nothing in the demonstration build is an authentication control.
+
+Every demo account uses the password `selvara-demo`.
+
+| Persona | Role | Email |
+|---|---|---|
+| Dana Whitfield | Platform Super Admin | `dana.whitfield@demo.selvara.test` |
+| Riley Quinn | Platform Super Admin | `riley.quinn@demo.selvara.test` |
+| Sam Hayes | Platform Support | `sam.hayes@demo.selvara.test` |
+| Jordan Avery | Company Admin | `jordan.avery@demo.selvara.test` |
+| Casey Morgan | Company Admin | `casey.morgan@demo.selvara.test` |
+| Owen Hart | Control, Policy and Risk Owner | `owen.hart@demo.selvara.test` |
+| Taylor Reed | Control, Policy and Risk Owner | `taylor.reed@demo.selvara.test` |
+| Priya Nair | Employee | `priya.nair@demo.selvara.test` |
+| Morgan Blake | External Auditor | `morgan.blake@demo.selvara.test` |
+| Sam Lee | Risk Analyst | `sam.lee@demo.selvara.test` |
+| Grace Lin | Vendor Contact | `grace.lin@demo.selvara.test` |
+| Lee Park | Trust Center Visitor | `lee.park@demo.selvara.test` |
+
+**Request to join.** Anyone can ask to join from the sign-in page with a name, work email and a password that meets the policy. The request waits until a company admin approves it (Team, Members, "Requests to join", with a reason, audited); the person then signs in as an Employee under their own name. Requests are kept in this browser only. The answer to a request never says whether an email is already known, sign-in errors are generic, and five failures lock that email for five minutes. Ten failures from one network address within 15 minutes block that address for every account, for longer each time (5 minutes, 30 minutes, 2 hours, 24 hours, then permanently); only an elevated platform super admin can lift a block (Admin Console, Platform security). In this demo the address is a synthetic one per browser; if you block your own browser, sign in from another browser or clear this site's data.
+
+After 3 failures a short "Quick check" (a proof-of-work calculation in the browser) comes before the next try. **Forgot password?** (real accounts) shows, in a box marked demo, the link the email would carry; the reset also needs the authenticator or a recovery code. **Sign-in & security** (account menu) opens **Your account**: last sign-in, active sessions with Sign out other sessions, change password, new recovery codes (password confirmed first) and security activity. Company admins set the account lockout (Standard, Strict, PCI DSS v4) and trusted office networks in Team, Review cycles & SLAs.
 
 ## Screens at a glance
 
@@ -239,7 +268,7 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:3000>. You land on the persona's home screen (the default persona is a platform super admin, so you start in the admin console; switch to **Company Admin** to explore the workspace).
+Open <http://localhost:3000> and sign in with a demo account (see [Signing in](#signing-in-demo-accounts)). `jordan.avery@demo.selvara.test` (Company Admin) is a good start for the workspace; `dana.whitfield@demo.selvara.test` opens the admin console.
 
 Other commands:
 

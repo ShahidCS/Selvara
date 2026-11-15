@@ -1,0 +1,152 @@
+# Security control register
+
+**Status: DRAFT for compliance, security and management review.** Nothing here is a compliance determination. Every mapping to a standard is a mapping, not a certification, and must be checked against the primary text by qualified staff before it is relied on (organisation policy: regulated content is draft until reviewed). Classification: Internal.
+
+This register lists every security control in Selvara, where it is enforced, what it writes to the audit log, and the automated tests that prove it. It is the reference for audits and the index for evidence. The detailed rules live in [SOD_MATRIX.md](SOD_MATRIX.md) (segregation of duties, privileged access, credentials, sign-in), [SECURITY.md](SECURITY.md) (front-end controls, limitations, test log), [PIPELINE.md](PIPELINE.md) (CI/CD) and [EXCEPTIONS.md](EXCEPTIONS.md) (accepted deviations).
+
+## How to read it
+
+- **Mode.** The app runs in two modes, set at build time.
+  - **Demo** (`NEXT_PUBLIC_API_MODE` unset or `mock`, the public demonstration): no backend; the browser holds synthetic data and runs the checks so they can be shown and tested.
+  - **Production** (`NEXT_PUBLIC_API_MODE=http` with `NEXT_PUBLIC_API_BASE_URL`): every rule is the server's; the browser only displays. The column "Production" says what the server must do. A control marked *server-required* is not effective until the server implements it.
+- **Enforced in** is the file that refuses the action (deny by default, `SodError`). UI gating is never the control.
+- **Evidence** names the automated tests (`front-end/tests/unit/*.test.ts` run by Vitest, `front-end/e2e/*.spec.ts` run by Playwright in Chromium). They run on every pull request and must pass before merge (see "Producing evidence").
+- **Standards** cited: OWASP ASVS 5.0 (V2 validation and anti-automation, V6 authentication, V7 sessions), NIST SP 800-63B (rev 4 wording not verified, see open items), PCI DSS v4.0.1 requirement 8, OWASP cheat sheets (Authentication, Credential Stuffing Prevention, Forgot Password), OWASP ASVS 4.0 where the earlier mapping in SECURITY.md used it.
+
+## 1. Identity and authentication (AUTH)
+
+| ID | Control | Standard | Enforced in | Demo | Production | Audit events | Evidence |
+|---|---|---|---|---|---|---|---|
+| AUTH-01 | Sign-in with email and password; errors never reveal whether an account exists ("Email or password is incorrect.") | ASVS 6.3.8; Authentication CS | `lib/session.ts` `signIn`; `services/authApi.ts` | Browser compares salted SHA-256 | Server, Argon2id hashes, same generic messages (401 mapped to the same text) | `auth.signed_in`, `auth.signed_out` (workspace or admin log by space) | unit `session.test.ts` "gives the same message for a wrong password and an unknown email"; `authProduction.test.ts` "sends the first step to the server..."; e2e `login.spec.ts` "signed out, the workspace sends you to sign in..." |
+| AUTH-02 | Account lockout by company preset: Standard 5 failures / 5 min, Strict 5 / 30 min, PCI DSS v4 10 / 30 min; platform accounts always Strict; owner alerted | ASVS 6.3.1 (anti-automation); PCI DSS v4.0.1 8.3.4; NIST 800-63B rate limiting | `lib/session.ts` `fail`, `lockoutFor`; `services/team.ts` `setLockoutPreset` (admin only) | Yes | Server keeps the counter per account | `team.lockout.changed` | unit `accountSecurity.test.ts` "only a company admin changes it, audited; PCI DSS needs 10 failures...", "platform accounts are always strict"; e2e `account-security.spec.ts` "a company admin sets the PCI DSS lockout..." |
+| AUTH-03 | Progressive network blocking: 10 failures from one address in 15 min (any accounts, including attempts on a locked account) block it for 5 min, 30 min, 2 h, 24 h, then permanently; resets after 30 days without a block | Credential Stuffing CS; ASVS 6.3.1 | `lib/ipGuard.ts` `recordIpFailure`, `ipBlockMessage` | Synthetic per-browser address (198.51.100.0/24); state in local storage | Server, real client address behind trusted proxies only | `auth.ip.blocked` (actor "Sign-in protection") | unit `ipGuard.test.ts` (whole file: threshold, window, ladder, reset, cross-account, locked-account attempts); e2e `login.spec.ts` "repeated failures from one browser block its network address..." |
+| AUTH-04 | Only an elevated platform super admin lifts a block, with a reason of at least 15 characters; the level resets; support sees blocks read-only | Least privilege; SOD_MATRIX §2 | `services/ipBlocks.ts` `unblockAddress` | Yes | Server | `auth.ip.unblocked` (reason, elevation ticket) | unit `ipGuard.test.ts` "only an elevated super admin, with a reason..."; e2e `login.spec.ts` "platform support sees blocked addresses read-only; an elevated super admin lifts a permanent block" |
+| AUTH-05 | Challenge step (proof of work) after 3 recent failures on the account or address, and always from hosting, VPN or proxy addresses; single use, 2 minutes; a missing answer is not counted as a failure | Credential Stuffing CS ("CAPTCHA", "degradation"); ASVS 6.3.1 | `lib/accountSecurity.ts` `issueChallenge`, `verifyChallenge`; `lib/session.ts` `challengeNeeded` | Browser issues and verifies | Server issues the seed (`POST /auth/challenge`) and verifies (428 asks for it) | none (not a failure) | unit `accountSecurity.test.ts` "challenge step before blocking" (3 tests); `authProduction.test.ts` (428 mapping); e2e `account-security.spec.ts` "after three failures a quick check appears..." (with axe scan) |
+| AUTH-06 | Address reputation: hosting, VPN and proxy ranges blocked after 5 failures instead of 10 and always challenged | Credential Stuffing CS ("IP mitigation and intelligence") | `lib/ipGuard.ts` `REPUTATION`, `thresholdFor` | Synthetic documentation ranges | *Server-required*: an IP intelligence feed | none | unit `accountSecurity.test.ts` "blocks a hosting address after half the failures"; e2e `account-security.spec.ts` (ranges listed in Platform security) |
+| AUTH-07 | Trusted office networks: an address or one /24, requested by a company admin and approved by a different admin (four-eyes); never network-blocked and never challenged; accounts still lock and MFA still applies; removal immediate | Credential Stuffing CS (allow-listing trusted ranges); SOD_MATRIX §1 | `services/team.ts` `requestTrustedNet`, `removeTrustedNet`, kind `team-network`; `lib/ipGuard.ts` `isTrusted` | Yes | Server | `team.network.requested`, `team.network.trusted`, `team.network.removed`, `team.network.rejected/expired` | unit `accountSecurity.test.ts` "a trusted network is never blocked, but the account still locks", "adding one needs a different company admin..."; e2e `account-security.spec.ts` "a company admin ... requests a trusted office network" |
+| AUTH-08 | Multi-factor authentication for real accounts: an authenticator app (TOTP, RFC 6238, HMAC-SHA1, 30 s, 6 digits, one step of drift, no code reuse) added at the first sign-in and required at every sign-in; nobody is signed in before the second step | ASVS 6.3.3 (L2+ MFA); NIST 800-63B AAL2; PCI DSS 8.4 | `lib/totp.ts`; `lib/session.ts` `signIn` (step one), `completeSignIn` (step two) | Secret kept in browser storage | Secret generated, encrypted and verified on the server only (`POST /auth/sign-in/verify`) | `auth.signed_in` after step two only | unit `totp.test.ts` (RFC 4226 and RFC 6238 vectors, drift, replay); `accountSecurity.test.ts` "two-step verification" (4 tests); `authProduction.test.ts` "the second step is verified by the server..."; e2e `login.spec.ts` "a new person asks to join..." (adds an authenticator with a real TOTP code) |
+| AUTH-09 | Recovery codes: 10 single-use codes issued when an authenticator is added, kept only as salted hashes, shown once; usable at sign-in and reset; owner alerted on use; regenerating needs the password within 5 minutes | ASVS 6.4 (recovery); Authentication CS | `lib/accountSecurity.ts` `hashCodes`, `redeemRecoveryCode`; `lib/session.ts` `regenerateRecoveryCodes` | Yes | Server | `recovery.codes.regenerated` | unit `accountSecurity.test.ts` "a code cannot be used twice, and a recovery code works once", "new recovery codes need the password confirmed..."; e2e `account-security.spec.ts` "a real account: a recovery code signs in once..." |
+| AUTH-10 | A correct password followed by a wrong second-factor code: counts as a failed sign-in (account and address), alerts the owner once, five wrong codes end the attempt | ASVS 6.3.5; Credential Stuffing CS ("notify users") | `lib/session.ts` `completeSignIn` | Yes | Server | owner alert | unit `accountSecurity.test.ts` "a correct password followed by a wrong code alerts the owner once..." |
+| AUTH-11 | Password policy: 12 to 128 characters, no composition rules, breached and common passwords refused (k-anonymity range lookup in production), no personal context, NFKC, no expiry | NIST 800-63B §3.1.1; ASVS 6.2 | `lib/credentials.ts` `checkPassword`; `services/auth.ts` `checkBreached` | Local blocklist | Server re-checks and runs the breach lookup | none | unit `credentials.test.ts`; e2e `password.spec.ts` |
+| AUTH-12 | Change password needs the current password; refuses weak or unchanged passwords; ends every other session; owner alerted | ASVS 6.2.3, 7.4.3 | `lib/session.ts` `changePassword` | Real accounts only | Server (`POST /me/password`) | `auth.password.changed` | unit `accountSecurity.test.ts` "changing the password needs the current one..."; e2e `account-security.spec.ts` |
+| AUTH-13 | Password reset: same answer whether or not the account exists; single-use link valid 15 minutes, a new link replaces the old; the second factor (authenticator or recovery code) is also required, 5 wrong codes end the link; every session ends; nobody is signed in; owner alerted; 3 requests per address and per account per hour; never locks the account | ASVS 6.4.3, 6.4.4; Forgot Password CS | `lib/session.ts` `requestReset`, `completeReset` | The link is shown on screen (no email) | Server emails the link; the page shows no link (`authProduction.test.ts`) | `auth.password.reset_requested`, `auth.password.reset` | unit `accountSecurity.test.ts` "password reset" (5 tests); `authProduction.test.ts` "a reset request shows no link"; e2e `account-security.spec.ts` "a real account ... forgot password needs the link and the second factor..." |
+| AUTH-14 | Self-service sign-up is a request to join: name, work email, policy-compliant password; same answer for known emails; 3 per address per hour; a company admin approves or rejects with a reason (nobody decides their own); joins as Employee only | ASVS 6.3.8; SOD_MATRIX §1 | `lib/session.ts` `requestToJoin`; `services/joinRequests.ts` `decideJoin` | Requests kept in this browser | Server (`POST /auth/join-requests`) | `team.join.requested`, `team.join.approved`, `team.join.rejected` | unit `session.test.ts` "request to join" (4 tests); `ipGuard.test.ts` "limits requests to join from one address"; e2e `login.spec.ts` "a new person asks to join..." |
+| AUTH-15 | Demo accounts kept separate and limited: exist only in demo mode; labelled in the account menu and on the account page; one-hour sessions; the second step shows its code on screen; the shared password cannot be changed or reset; no recovery codes | Separation of demo from production data and credentials | `lib/session.ts` `DEMO_ENABLED`, `accountOf`, `isDemoAccount`; `lib/accountSecurity.ts` `SESSION_MS` | Yes | **Absent**: a production build has no demo accounts | `auth.signed_in` | unit `authProduction.test.ts` "has no demo accounts", "a demo account email is just an unknown email to the server"; `accountSecurity.test.ts` "demo accounts are limited..."; e2e `account-security.spec.ts` "demo accounts are labelled and limited..." |
+
+## 2. Sessions (SESS)
+
+| ID | Control | Standard | Enforced in | Production | Audit events | Evidence |
+|---|---|---|---|---|---|---|
+| SESS-01 | Every sign-in is a session (device, address, start, end); listed on Your account | ASVS 7.5.2 | `lib/accountSecurity.ts` `startSession`, `activeSessions` | Server sessions, Secure HttpOnly SameSite=Strict cookie | — | unit `accountSecurity.test.ts` "lists sessions and signs out the others..." |
+| SESS-02 | Sign out other sessions (safe direction, no re-authentication); a session ended elsewhere signs out on its next load | ASVS 7.4.3, 7.5.2 | `lib/session.ts` `signOutOtherSessions`, `restoreSession` | Server revokes tokens | `session.others.revoked` | same unit test; e2e `account-security.spec.ts` "demo accounts are labelled and limited; sessions and sign out the others" |
+| SESS-03 | Absolute session lifetime: 12 hours (real accounts), 1 hour (demo); checked on load and every 30 seconds | ASVS 7.3.2 | `lib/accountSecurity.ts` `SESSION_MS`; `components/shell/AppShell.tsx` | Server enforces (`GET /auth/session` on load) | — | unit `accountSecurity.test.ts` "demo accounts are limited..."; `authProduction.test.ts` "a session the server no longer knows signs out on load" |
+| SESS-04 | Re-authentication before sensitive changes: password confirmed within 5 minutes for new recovery codes; current password for a password change; a wrong password counts as a failure | ASVS 7.5.1 | `lib/session.ts` `reauthenticate`; `lib/accountSecurity.ts` `hasRecentAuth` | Server (`POST /me/reauth`) | — | unit `accountSecurity.test.ts` "new recovery codes need the password confirmed..." |
+| SESS-05 | Signing out ends any active elevation | SOD_MATRIX §2 | `lib/session.ts` `signOut` | Server | `admin.elevation.ended` (admin log) | unit `session.test.ts` "ends an active elevation when the super admin signs out" |
+| SESS-06 | Last sign-in (time, address, device) and failed attempts since, shown after sign-in and on Your account | Credential Stuffing CS | `lib/accountSecurity.ts` `welcomeText`; `components/shell/AppShell.tsx` | Server returns it | — | unit `accountSecurity.test.ts` "reports the previous sign-in and failed attempts since..."; e2e `account-security.spec.ts` "after three failures a quick check appears..." |
+| SESS-07 | Security alerts to the account owner (locked, signed in after failures, blocked address, wrong second factor, password changed or reset, reset requested, recovery code used, sessions ended, authenticator added); in the bell and cannot be switched off | ASVS 6.3.5, 6.3.7 | `lib/accountSecurity.ts` `notify`; `lib/notifications.ts`; `lib/notifPrefs.ts` (`security` locked) | Server sends them (and email) | — | unit `accountSecurity.test.ts` (alerts asserted in several tests); `notifPrefs.test.ts` |
+
+## 3. Access control and segregation of duties (ACC)
+
+| ID | Control | Standard | Enforced in | Audit events | Evidence |
+|---|---|---|---|---|---|
+| ACC-01 | Role-based access, deny by default: each role reaches only its modules and spaces; unknown role or state is refused | ASVS 8.1, 8.2 (4.0: V4.1) | `lib/rbac.ts`, `data/roles.json`, `components/shell/AppShell.tsx` guard | — | e2e `rbac.spec.ts` (role × route matrix, not vacuous); `readonly.spec.ts` |
+| ACC-02 | Services re-check the role on every mutation (`assertRole`, `SodError`); UI gating is never the control | ASVS 8.3.1 | `lib/sod.ts` and every `services/*` | per action | unit `sod.test.ts`; e2e `readonly.spec.ts` |
+| ACC-03 | No self-approval and four-eyes for high-impact actions (requester, author, owner or subject can never approve; a different authorised person with a reason) | SOD_MATRIX §1, §3 | `lib/approvals.ts`, `lib/approvalFlow.ts`, `lib/approvalKit.ts` | `approval.<kind>.<approved/rejected>`, `approval.<kind>.on_behalf` | unit `approvals.test.ts`, `inboxApprovals.test.ts`; e2e `inbox-approvals.spec.ts` |
+| ACC-04 | Platform super admins: admin space only, no standing privilege; every console change needs a time-boxed elevation (reason ≥ 15 characters, ticket reference, at most 60 minutes, hardware key in production) | SOD_MATRIX §2; least privilege | `lib/elevation.ts` | `admin.elevated`, `admin.elevation.ended`, `admin.elevation.expired` | unit `elevation.test.ts`; e2e `privileged.spec.ts` |
+| ACC-05 | Support: browse and request only, never elevate or approve; customer content only through a customer-approved, expiring, read-only support grant | SOD_MATRIX §2 | `lib/elevation.ts`, `services/customers.ts` | — | e2e `privileged.spec.ts` "support cannot approve an MFA reset" |
+| ACC-06 | MFA reset of a member or admin: identity checks and a second approver; expires after 24 hours | SOD_MATRIX §3, §4 | `services/mfa.ts` | `mfa.reset.requested`, `mfa.reset.approved` and outcomes | e2e `privileged.spec.ts`; unit `approvals.test.ts` |
+| ACC-07 | Delegation of a named approver slot: admin or owner to admin or owner, 1–14 whole days, a reason, no re-delegation, never for platform approvals, no deciding what they raised or are the subject of, revocable | SOD_MATRIX §9 (draft) | `lib/delegation.ts`, `services/delegation.ts` | `delegation.created`, `.revoked`, `.expired`, `approval.<kind>.on_behalf` | unit `delegation.test.ts`; e2e `delegation.spec.ts` |
+| ACC-08 | Decisions from the notifications panel only for kinds decided through the shared four-eyes path, with the same reason and second-person rules | SOD_MATRIX §8 | `lib/inboxApprovals.ts` | as the module | unit `inboxApprovals.test.ts`; e2e `inbox-approvals.spec.ts` |
+| ACC-09 | Invitations and privileged role changes need a second company admin; invitations expire after 72 hours | SOD_MATRIX §3 | `services/team.ts` | `member.invite.requested`, `member.invited`, `member.invitation.expired/revoked`, `member.role.requested`, `member.role.changed` | unit `approvals.test.ts`; e2e `settings-pages.spec.ts` "team: members are a table, invite is a page..." |
+| ACC-10 | Approved artefacts are never edited in place (new version, approval again) | SOD_MATRIX §1.5, §5 | `features/policies/services/policies.ts` | `policy.created`, `policy.approved`, `policy.acknowledged` and others | e2e `policies.spec.ts` |
+
+## 4. AI agents (AI)
+
+| ID | Control | Enforced in | Audit events | Evidence |
+|---|---|---|---|---|
+| AI-01 | Every new agent starts at "Suggests only"; enabling or resuming an agent and granting MCP access need a second admin or owner (not the creator) | `features/assistant/services/assistant.ts` | `assistant.agent.enabled`, `assistant.mcp.granted` | unit `autonomy.test.ts` "starts every new agent on the lowest rung" |
+| AI-02 | Raising autonomy: one rung, a track record (company setting 3, 2 or Off), a reason, a different approver who is not the creator; two approvers for a service-account agent; re-checked at decision time | `features/assistant/lib/autonomy.ts`, `services/assistant.ts` | `assistant.agent.autonomy_requested`, `.autonomy_raised`, `team.agent_track_record.changed` | unit `autonomy.test.ts` (whole file); e2e `autonomy.spec.ts` |
+| AI-03 | Lowering is immediate; rejecting a change an acting agent applied lowers it automatically and counts against its record | same | `assistant.agent.autonomy_lowered`, `assistant.run.rejected_after_applying` | unit `autonomy.test.ts` "rejecting a change an acting agent applied"; e2e `autonomy.spec.ts` |
+| AI-04 | Acting agents hold a 90-day certification; recertification is four-eyes with an attestation; a lapsed agent drops to "Suggests only" before its next run; a 30-day transition for agents acting before the ladder | same | `assistant.agent.recertify_requested`, `.recertified` | unit `autonomy.test.ts` "certification of acting agents"; e2e `autonomy.spec.ts` |
+| AI-05 | AI output is a draft that needs review; no model output triggers an action without the approval gate | `services/assistant.ts` | `assistant.draft.*` | e2e `ai-pages.spec.ts` |
+
+## 5. Input, output and data (DATA)
+
+| ID | Control | Standard | Enforced in | Evidence |
+|---|---|---|---|---|
+| DATA-01 | Output encoding: React text only; no `dangerouslySetInnerHTML` or `eval`; generated documents escape values | ASVS 5.3 (4.0) | all modules; `features/overview/lib/boardPack.ts` | e2e `injection.spec.ts`; `vendor-portal.spec.ts` "free text with markup is inert" |
+| DATA-02 | Safe links: only http(s), mailto and in-app paths | ASVS 5.1.5 | `lib/security.ts` `safeHref` | unit `security.test.ts` "safeHref" |
+| DATA-03 | File uploads: extension allow-list, size limit, safe file names | ASVS 12 (4.0) | `lib/security.ts` `validateUpload`, `safeFileName` | unit `security.test.ts`; e2e `vendor-portal.spec.ts` "upload gate" |
+| DATA-04 | CSV and spreadsheet formula injection neutralised on export | OWASP CSV injection | `lib/format.ts` `csvCell` | e2e `injection.spec.ts` "framework gap export neutralises formula cells" |
+| DATA-05 | Input length limits (`clampText`) and email validation | ASVS 2.2 | `lib/security.ts` | unit `security.test.ts` |
+| DATA-06 | Synthetic data only; no secrets, tokens or real personal data in the repository; demo addresses from documentation ranges | Organisation policy | repository; `.gitleaks.toml` | pipeline gate PIPE-04 |
+| DATA-07 | Browser storage holds only UI preferences and, in demo mode, the demo's synthetic accounts; never a plain password or recovery code | ASVS 8.2 (4.0) | `lib/store.ts`, `lib/accountSecurity.ts`, `lib/session.ts` | unit `session.test.ts` "...only a salted hash is kept"; `accountSecurity.test.ts` "...only salted hashes are kept" |
+
+## 6. Logging (LOG)
+
+| ID | Control | Enforced in | Production | Evidence |
+|---|---|---|---|---|
+| LOG-01 | Workspace audit log: every mutation writes who, what, when, category; hash-chained to show tampering | `lib/audit.ts` | Append-only, HMAC or WORM storage, streamed to a SIEM (the FNV-1a chain is a demonstration, SECURITY.md limitation 4) | unit tests assert entries throughout (search `WS_AUDIT`) |
+| LOG-02 | Admin console log: read-only for everyone, with basis, categories and synthetic address | `lib/adminAudit.ts` | as above | unit `ipGuard.test.ts`, `session.test.ts` (search `ADMIN_AUDIT`) |
+| LOG-03 | Events with nobody signed in (reset, request to join) name the person, not whoever used the browser last | `lib/audit.ts` `wsLog(..., actor)` | Server knows the identity | unit `accountSecurity.test.ts` "...`auth.password.reset` ... actor" |
+
+## 7. Platform and delivery (HDR, PIPE)
+
+| ID | Control | Enforced in | Evidence |
+|---|---|---|---|
+| HDR-01 | Security headers: CSP (frame-ancestors), X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, COOP, HSTS. Exception EX-05: `script-src 'unsafe-inline'` until a nonce CSP | `front-end/next.config.js`, `front-end/vercel.json` | e2e `headers.spec.ts`; deployment smoke test `.github/scripts/smoke-headers.sh` |
+| PIPE-01 | Typecheck, lint (0 warnings), unit tests, build, end-to-end suite block merge and deploy | `ci.yml` | every pull request's checks |
+| PIPE-02 | Static analysis (CodeQL, High/Critical fail), Trivy, ZAP baseline against the built app | `security.yml`, `.github/scripts/check-sarif.mjs`, `zap-gate.mjs` | pull request checks |
+| PIPE-03 | Dependency audit (High and above), dependency review, licence policy, OSV report; Dependabot manages versions | `ci.yml`, `security.yml`, `.github/license-policy.json` | pull request checks |
+| PIPE-04 | Secret scanning of the full history (Gitleaks) | `security.yml`, `.gitleaks.toml` | pull request checks |
+| PIPE-05 | Workflow policy: actions pinned to full SHAs, least permissions, no `pull_request_target`, no persisted credentials, timeouts | `.github/scripts/check-workflows.mjs`, `verify-pins.sh` | pull request checks |
+| PIPE-06 | Releases only from a signed, annotated `vX.Y.Z` tag on `main` whose version matches `package.json`; tags immutable | `release.yml`, `.github/scripts/verify-tag.sh`, rulesets | release run log |
+| PIPE-07 | Protected `main`: pull requests only, required checks, signed commits | `.github/rulesets/` | repository settings; EX-01, EX-08 |
+
+## Authentication API contract (production)
+
+The server must implement these and enforce every rule in section 1 and 2 itself. All requests carry the session cookie (`credentials: "include"`); all mutations need CSRF protection.
+
+| Method and path | Purpose | Response |
+|---|---|---|
+| `POST /auth/challenge` | Issue a proof-of-work seed | `{ seed, digits }` |
+| `POST /auth/sign-in` | Step one: email, password, optional challenge answer | `{ step: "mfa", ticket, method: "totp" }` or `{ step: "enroll", ticket, secret, uri }`; 401 wrong credentials, 423/429 locked, 403 blocked address, 428 challenge needed |
+| `POST /auth/sign-in/verify` | Step two: ticket, code, `recovery` flag | `{ roleId, who, person, previous, failedSince, recoveryCodes? }` and the session cookie |
+| `GET /auth/session` | Confirm the session on load | `{ roleId, who }` or 401 |
+| `POST /auth/sign-out` | End this session | 204 |
+| `POST /auth/join-requests` | Request to join | 202, same for every email |
+| `POST /auth/password/reset-request` | Email a reset link | 202, same for every email |
+| `GET /auth/password/reset/{token}` | Check a link | `{ valid }` |
+| `POST /auth/password/reset` | Token, second-factor or recovery code, new password | 204 |
+| `GET /me/security` | Your account: sign-ins, sessions, alerts, MFA status | `AccountView` (`services/authApi.ts`) |
+| `POST /me/reauth`, `POST /me/password`, `POST /me/recovery-codes`, `POST /me/sessions/revoke-others` | Sensitive changes | 204, or `{ codes }` once |
+
+Evidence that the client uses this contract and never the demo path in production: unit `authProduction.test.ts` (6 tests).
+
+## Producing evidence
+
+1. **Per change:** each pull request runs the gates in section 7. The run page lists every check and its log; the end-to-end job lists every test by name.
+2. **On demand, locally** (from `front-end/`): `npm ci --ignore-scripts`, then `npm run ci` (typecheck, unit tests, build) and `PW_CHROMIUM_PATH=... npx playwright test --trace off`. To keep a report: `npx vitest run --reporter=junit --outputFile=evidence/unit.xml` and `npx playwright test --reporter=junit` (write outside the repository; do not commit reports).
+3. **Audit trail:** Audit Logs (workspace) and Admin Log (console) export to CSV. In demo mode they reset with the browser; in production they come from the server's append-only store.
+4. **Reviews:** the test log in SECURITY.md records each manual review; add the reviewer, date and scope there.
+
+## Open items and limitations
+
+| Item | Owner | Notes |
+|---|---|---|
+| Permanent network blocks | Compliance | OWASP prefers temporary blocks; mitigated now by trusted networks and the challenge step. Keep, or cap at 24 hours? |
+| NIST SP 800-63B rev 4 wording | Compliance | Not verified from the primary source (network policy blocked nist.gov during research). |
+| Regulator-specific values (SBP, SECP, CBUAE, DFSA) | Compliance | None found for lockout; CBUAE notice on SMS/email OTP phase-out from secondary sources only. |
+| Phishing-resistant MFA (passkeys / FIDO2) for admins | Engineering | Policy lists it; the demo implements TOTP. Required for ASVS L3 and preferred for platform super admins (hardware key). |
+| Server implementation | Engineering | Every production column marked server-side. Nothing in demo mode is a control. |
+| CSP nonce, CSRF tokens, cryptographic audit chain | Engineering | SECURITY.md limitations 2–4; EX-05. |
+| Agent and notification policy periods | Compliance | SOD_MATRIX §10, §11 open questions. |
+
+## Review and sign-off
+
+| Role | Name | Date | Scope | Result |
+|---|---|---|---|---|
+| Security reviewer | | | | |
+| Compliance reviewer | | | | |
+| Engineering owner | | | | |
+| Management approval | | | | |

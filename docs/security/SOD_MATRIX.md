@@ -21,7 +21,7 @@ Every decision below writes an audit entry (`wsLog`, and `adminLog` for platform
 |---|---|
 | Space access | `super`/`super2`: admin space only (no `ws`). `support`: admin space subset per ROLE_MODS. Workspace content only via a customer-approved support grant (read-only, expiring), shown in Elevated Access. |
 | Elevation | Required for EVERY mutation in `/admin/*` (customers, billing, rates, MFA reset requests/approvals). Browsing stays read-only. `useElevation()`/`elevationActive()` in `src/lib/elevation.ts`. Buttons are disabled with the exact text "Elevate to make changes"; services refuse without an active elevation (`SodError("Elevation required")`). |
-| Elevation request | super only; reason (>= 15 chars) + ticket reference (pattern `[A-Z]{2,6}-\d{1,6}`); max 60 minutes; ends on role switch, timeout or "End elevation"; audited start/end/expiry. |
+| Elevation request | super only; reason (>= 15 chars) + ticket reference (pattern `[A-Z]{2,6}-\d{1,6}`); max 60 minutes; ends on sign-out, timeout or "End elevation" (a different person never inherits it); audited start/end/expiry. |
 | Admin-log | Read-only for everyone; never editable. Export needs elevation not required (read) but is audited. |
 
 ## 3. Four-eyes actions
@@ -125,4 +125,30 @@ Decision (2026-11, designed from the existing agent behaviour, draft for review)
 | Open for review | The periods (90-day certification, 30-day transition, due-soon 14 days) and whether they should be company settings. |
 
 Enforced in `src/features/assistant/lib/autonomy.ts` (rungs and track record) and `src/features/assistant/services/assistant.ts` (`raiseBlockReason`, `requestRaise`, `lowerAutonomy`, the approval handler, and `createAgent`, which pins new agents to the lowest rung).
+
+## 12. Sign-in, MFA and requests to join
+Decision (2026-11). The role switcher is gone: people sign in. Demo accounts are synthetic, one per persona (README.md); this is not an authentication control and the real API must authenticate on the server.
+
+| Rule | Detail |
+|---|---|
+| Two kinds of account | Real accounts (approved requests to join) and demo accounts (one per persona, demonstration build only). A production build has no demo accounts and the server runs every rule (`services/authApi.ts`). Demo accounts are limited: labelled, one-hour sessions, the second step shows its code, the shared password cannot be changed or reset, no recovery codes. |
+| Two-step verification | Real accounts add an authenticator app (TOTP, RFC 6238) at the first sign-in and enter a code at every sign-in; nobody is signed in before the second step; a code is never accepted twice; 10 recovery codes, single use, kept only as salted hashes. A correct password followed by a wrong code counts as a failure and alerts the owner; 5 wrong codes end the attempt. A reset needs the authenticator or a recovery code. |
+| Sign-in | Email and password. Errors are generic ("Email or password is incorrect."), so they never reveal whether an account exists. Five failures lock that email for five minutes. Audited as `auth.signed_in` and `auth.signed_out` in the log of the person's space. |
+| Network blocking | 10 failed sign-ins from one address within 15 minutes, across any accounts (attempts on a locked account count too), block that address for every account. A repeat block within 30 days lasts longer: 5 minutes, 30 minutes, 2 hours, 24 hours, then permanent; after 30 days without a block it starts again at 5 minutes. Temporary blocks end on their own. Only an elevated platform super admin can lift a block early or end a permanent one (Admin Console, Platform security), with a reason of at least 15 characters; the level then resets. Platform support sees the list read-only. Audited as `auth.ip.blocked` (by "Sign-in protection") and `auth.ip.unblocked` (with reason and elevation ticket). In the demo the address is a synthetic documentation-range IP per browser. |
+| Challenge step | After 3 recent failures from the address or on the account, and always from hosting, VPN or proxy addresses, the next sign-in first needs a proof-of-work answer (single use, 2 minutes; the browser spends a moment hashing). A missing or wrong answer is refused and is not counted as a failure. Never asked on a trusted office network. |
+| Address reputation | Hosting, VPN and proxy ranges (synthetic in the demo; an IP intelligence feed in production) are blocked after 5 failures instead of 10 and always get the challenge step. Listed read-only in Platform security. |
+| Trusted office networks | A company admin lists an address or one /24 network (Team, Review cycles & SLAs); a different company admin approves it (`team-network`, four-eyes); removing is immediate. A trusted address is never network-blocked and skips the challenge step; accounts still lock and MFA still applies. Audited as `team.network.requested`, `.trusted`, `.removed`. |
+| Account lockout preset | Company setting (admin only, audited `team.lockout.changed`): Standard (5 failures, 5 minutes), Strict (5, 30 minutes) or PCI DSS v4 (10, 30 minutes; PCI DSS v4.0.1 req 8.3.4). Platform accounts always use Strict. |
+| Alerts to the owner | Shown in the bell (cannot be switched off) and on the account page: account locked, signed in after 3 or more failed attempts, attempts from a blocked address, password changed or reset, a reset requested, other sessions ended. |
+| Last sign-in | After signing in, the time, address and device of the previous sign-in and the failed attempts since are shown, and kept on the account page. |
+| Sessions | Every sign-in is a session (device, address, start). The account page lists them; "Sign out other sessions" ends the rest at once (audited `session.others.revoked`). A session ended elsewhere signs out on its next load. |
+| Re-authentication | Changing the password needs the current one. New recovery codes need the password confirmed within the last 5 minutes (a fresh sign-in counts). A wrong password counts as a failed attempt. A password change ends every other session. |
+| Password reset | Same answer whether or not the account exists. The link works once, for 15 minutes; a new link replaces the old one. The second factor is also required (5 wrong codes end the link). On success every session ends, the person is not signed in, and the owner is alerted (`auth.password.reset`). Limited to 3 requests per address and 3 per account per hour; requests never lock the account. In the demo the page shows what the email and the authenticator would show. |
+| Open for review | Whether permanent network blocks should remain now that trusted networks and the challenge step exist (OWASP prefers temporary blocks); the challenge difficulty; phishing-resistant MFA (passkeys) for platform super admins. |
+| Request to join | Name, work email and a password that meets the credential policy (`lib/credentials.ts`). The answer is the same whether or not the email is known; duplicates and demo-domain emails are ignored. Limited to 3 per address per hour; a blocked address cannot send one. Only a salted hash of the password is kept. |
+| Approval | A company admin approves or rejects, with a reason of at least 10 characters (`team.join.approved`, `team.join.rejected`). Nobody decides their own request. A pending or rejected person cannot sign in. |
+| Role | An approved person joins as Employee under their own name (audit entries and separation-of-duties checks use it). Any other role is a separate role change with its own approval. |
+| Sign-out | Ends any active elevation. A stored session for someone who is no longer an active member is signed out on load. |
+
+Enforced in `src/lib/session.ts`, `src/lib/ipGuard.ts`, `src/services/ipBlocks.ts`, `src/services/joinRequests.ts` and `src/components/shell/AppShell.tsx` (signed-out routes go to `/login`).
 

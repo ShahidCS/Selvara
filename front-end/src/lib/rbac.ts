@@ -10,7 +10,16 @@ export interface NavGroup { g: string; items: NavItem[] }
 export const NAV = navJson.NAV as unknown as Record<"ws" | "admin", NavGroup[]>;
 export const TITLE = navJson.TITLE as unknown as Record<string, [string, string]>;
 
-export const roleOf = (id: string): Role => ROLES.find((r) => r.id === id) || ROLES[0];
+/** The signed-in person when they are not one of the seeded personas (an approved join request, `lib/session.ts`). They hold the role's permissions
+ *  unchanged; only the name and initials differ, so audit entries and separation-of-duties checks name the real person. */
+let PERSON: { roleId: string; person: string; initials: string } | null = null;
+export function setSessionPerson(p: { roleId: string; person: string } | null): void {
+  PERSON = p ? { roleId: p.roleId, person: p.person, initials: p.person.split(/\s+/).map((w) => w[0] || "").join("").slice(0, 2).toUpperCase() } : null;
+}
+export const roleOf = (id: string): Role => {
+  const r = ROLES.find((x) => x.id === id) || ROLES[0];
+  return PERSON && PERSON.roleId === r.id ? { ...r, person: PERSON.person, initials: PERSON.initials } : r;
+};
 export const allowedSpaces = (roleId: string) => roleOf(roleId).spaces;
 export function modAllowed(roleId: string, space: string, key: string): boolean {
   const m = (ROLE_MODS[roleId] || {})[space];

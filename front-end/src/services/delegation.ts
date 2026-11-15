@@ -46,7 +46,8 @@ export function createDelegation(input: NewDelegation) {
     if (givenBy(me.name)) throw new SodError("You already have an active delegation. End it before starting another.");
     // no loops: if they delegated to you, you cannot delegate back while that is live
     if (liveDelegations().some((d) => isSamePerson(d.from, to.person) && isSamePerson(d.to, me.name))) throw new SodError("That person has delegated to you. End that delegation first.");
-    const d: Delegation = { id: "DG-" + (101 + delegations.get().list.length), from: me.name, fromRoleId: me.roleId, to: to.person, toRoleId: to.id, reason, createdAt: Date.now(), until: Date.now() + days * DAY_MS };
+    const now = Date.now(); // one clock read: the length is exactly the days asked for
+    const d: Delegation = { id: "DG-" + (101 + delegations.get().list.length), from: me.name, fromRoleId: me.roleId, to: to.person, toRoleId: to.id, reason, createdAt: now, until: now + days * DAY_MS };
     delegations.set((s) => ({ list: [d, ...s.list] }));
     wsLog("delegation.created", `${d.id}: ${d.from} → ${d.to} until ${fmt(d.until)}; reason: ${reason}`, "Approval"); bumpData();
     return d;

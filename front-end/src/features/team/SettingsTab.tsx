@@ -7,6 +7,7 @@ import { bumpData } from "@/lib/store";
 import { clampText } from "@/lib/security";
 import * as svc from "@/services/team";
 import { CredentialPolicy } from "./CredentialPolicy";
+import { SignInProtection } from "./SignInProtection";
 
 /** Prototype: "settings" view. Selects apply immediately (with a toast); text fields apply on change (blur/Enter); "Save settings" only logs. */
 export function SettingsTab({ manage }: { manage: boolean }) {
@@ -55,6 +56,7 @@ export function SettingsTab({ manage }: { manage: boolean }) {
         <Segmented<string> label="AI agent track record" value={String(T.agentTrackRecord)} onChange={pickTrack}
           options={svc.TRACK_RECORD_CHOICES.map((c) => ({ value: String(c.value), label: c.label }))} />
       ) : <p style={{ margin: 0 }}>{svc.TRACK_RECORD_CHOICES.find((c) => c.value === T.agentTrackRecord)?.label ?? "3 suggestions"}. Only an admin can change it.</p>}
+      <SignInProtection manage={manage} />
       <CredentialPolicy manage={manage} />
       {manage ? <button className="btn btn-primary sm" style={{ marginTop: 10 }} onClick={save}><Icon name="check" />Save settings</button> : <p className="field help" style={{ marginTop: 10 }}>Read-only for your role.</p>}
     </div>

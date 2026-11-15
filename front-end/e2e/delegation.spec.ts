@@ -1,12 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect, type Page } from "@playwright/test";
-import { gotoModule, nextPush, openAs } from "./helpers";
+import { gotoModule, nextPush, openAs, switchTo } from "./helpers";
 
 /* Phase 5, step 2: delegation of a named approver slot. One session throughout, because delegations and policies live in memory. */
-async function switchTo(p: Page, person: string) {
-  await p.getByRole("button", { name: /^Account:/ }).click();
-  await p.getByRole("menuitem", { name: new RegExp(person) }).click();
-}
 const card = (p: Page) => p.getByRole("region", { name: "Delegate your approvals" });
 
 test("an admin delegates the approver slot; the delegate approves a policy on their behalf, recorded as such", async ({ browser }, ti) => {

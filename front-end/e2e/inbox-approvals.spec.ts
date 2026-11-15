@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect, type Page } from "@playwright/test";
-import { gotoModule, nextPush, openAs } from "./helpers";
+import { gotoModule, nextPush, openAs, switchTo } from "./helpers";
 
 /* Phase 5, step 1: decide from the notifications panel. One session throughout, because approvals live in memory. */
 async function raiseWriteKey(p: Page, label: string) {
@@ -10,10 +10,6 @@ async function raiseWriteKey(p: Page, label: string) {
   await p.getByLabel("Scope").selectOption("Read/Write");
   await p.getByRole("button", { name: "Create key" }).click();
   await expect(p).toHaveURL(/\/ws\/api$/);
-}
-async function switchTo(p: Page, person: string) {
-  await p.getByRole("button", { name: /^Account:/ }).click();
-  await p.getByRole("menuitem", { name: new RegExp(person) }).click();
 }
 const panel = (p: Page) => p.getByRole("dialog", { name: "Notifications" }); // the page behind it has its own Approve buttons with the same labels
 const bell = (p: Page) => p.getByRole("button", { name: /^Notifications/ });

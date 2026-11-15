@@ -31,10 +31,10 @@ test("approvals in the bell cannot be switched off, and the panel passes axe", a
   expect(bad, bad.join("\n")).toEqual([]);
 });
 
-test("a vendor sees only the approvals row", async ({ browser }, ti) => {
+test("a vendor sees only the security and approvals rows", async ({ browser }, ti) => {
   const s = await openAs(browser, ti, "vendor"); const p = s.page;
   await gotoModule(p, "/ws/trust");
   await bell(p).click();
   await panel(p).getByRole("button", { name: "Settings" }).click();
-  await expect(panel(p).getByRole("group")).toHaveCount(1);
+  await expect(panel(p).getByRole("group")).toHaveCount(2);
 });

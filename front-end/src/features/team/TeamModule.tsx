@@ -1,4 +1,5 @@
 import { Chip, DataTable, Icon, Page, StatusChip, Table, type DTColumn } from "@/components/ui";
+import { JoinRequests } from "./JoinRequests";
 import { DATA } from "@/lib/data";
 import { SOD } from "@/lib/sod";
 import { ROLES, ROLE_MODS } from "@/lib/rbac";
@@ -59,6 +60,7 @@ function TeamTabs() {
           {view === "members" ? (
             <>
             <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+              <JoinRequests manage={manage} />
               <PendingApprovals kinds={svc.KINDS} title="Pending approvals (privileged roles and invitations)" subjectLabel="Subject" />
               {svc.INVITATIONS.length ? (
                 <div className="card" style={{ boxShadow: "none" }}>

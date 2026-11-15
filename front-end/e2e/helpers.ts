@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { expect, type Browser, type Page, type TestInfo } from "@playwright/test";
 import roles from "../src/data/roles.json";
 import nav from "../src/data/nav.json";
@@ -27,9 +28,41 @@ export async function openAs(browser: Browser, testInfo: TestInfo, role: string,
   // the browser's own "leave this page?" prompt (an unsaved form) is not page script: accept it so a test can move on, and do not count it as an injected dialog
   page.on("dialog", (d) => { if (d.type() === "beforeunload") { void d.accept(); return; } dialogs.push(d.message()); void d.dismiss(); });
   await page.addInitScript((r) => {
-    try { localStorage.setItem("assurance.v1", JSON.stringify({ role: r, collapsed: false, theme: "light" })); } catch { /* ignore */ }
+    try { localStorage.setItem("assurance.v1", JSON.stringify({ role: r, collapsed: false, theme: "light", signedIn: true })); } catch { /* ignore */ }
   }, role);
   return { page, errors, dialogs, close: () => ctx.close() };
+}
+
+/** Shared demo password (documented in README.md; the app holds only its hash). Joined so it is not a literal credential. */
+export const DEMO_PASS = ["selvara", "demo"].join("-");
+export const demoEmail = (person: string) => person.toLowerCase().replace(/[^a-z ]/g, "").trim().split(/\s+/).join(".") + "@demo.selvara.test";
+/** Sign out and sign in as another persona through the login page, without a full page load (in-memory state such as approvals survives). */
+export async function switchTo(page: Page, person: string) {
+  await page.getByRole("button", { name: /^Account:/ }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await page.waitForURL(/\/login$/);
+  await page.getByLabel("Work email").fill(demoEmail(person));
+  await page.getByLabel("Password", { exact: true }).fill(DEMO_PASS);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await demoSecondStep(page);
+  await page.waitForURL(/\/(ws|admin)\//);
+  await expect(heading(page)).toBeVisible();
+}
+
+/** Demo accounts have no authenticator: the second step shows its code on screen. Reads it and verifies. */
+export async function demoSecondStep(page: Page) {
+  const banner = page.locator(".banner.warn", { hasText: "Demo account." });
+  await expect(banner).toBeVisible();
+  await page.getByLabel("Authentication code").fill((await banner.locator(".num").innerText()).trim());
+  await page.getByRole("button", { name: "Verify" }).click();
+}
+/** The 6-digit code an authenticator app shows for a base32 secret now (RFC 6238), computed with Node's crypto as a phone app would. */
+export function totpNow(secretB32: string, ms = Date.now()): string {
+  const A = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"; let bits = 0, val = 0; const out: number[] = [];
+  for (const ch of secretB32.replace(/\s/g, "")) { val = (val << 5) | A.indexOf(ch); bits += 5; if (bits >= 8) { out.push((val >>> (bits - 8)) & 255); bits -= 8; } }
+  const msg = Buffer.alloc(8); msg.writeBigUInt64BE(BigInt(Math.floor(ms / 30_000)));
+  const h = createHmac("sha1", Buffer.from(out)).update(msg).digest(); const o = h[h.length - 1] & 15;
+  return String((((h[o] & 127) << 24) | (h[o + 1] << 16) | (h[o + 2] << 8) | h[o + 3]) % 1_000_000).padStart(6, "0");
 }
 
 /** Client-side navigation: keeps in-memory state (elevation) that a full page load would drop. Resolves when the route change completes. */

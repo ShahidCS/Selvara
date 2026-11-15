@@ -28,7 +28,7 @@ test("density: Compact tightens table rows, is saved, and Comfortable restores i
 test("print: no rail, bar or buttons, no inner scrolling, and the dark theme prints light", async ({ browser }, ti) => {
   const s = await openAs(browser, ti, "admin");
   const p = s.page;
-  await p.addInitScript(() => { try { localStorage.setItem("assurance.v1", JSON.stringify({ role: "admin", collapsed: false, theme: "dark" })); } catch { /* ignore */ } });
+  await p.addInitScript(() => { try { localStorage.setItem("assurance.v1", JSON.stringify({ role: "admin", collapsed: false, theme: "dark", signedIn: true })); } catch { /* ignore */ } });
   await gotoModule(p, "/ws/issues");
   await expect(p.locator("html")).toHaveAttribute("data-theme", "dark");
   await p.emulateMedia({ media: "print" });

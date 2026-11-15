@@ -120,7 +120,7 @@ test.describe("create forms", () => {
   test("framework gap export neutralises formula cells", async ({ browser }, ti) => {
     const ctx = await browser.newContext({ baseURL: ti.project.use.baseURL, acceptDownloads: true });
     const page = await ctx.newPage();
-    await page.addInitScript(() => localStorage.setItem("assurance.v1", JSON.stringify({ role: "admin", collapsed: false, theme: "light" })));
+    await page.addInitScript(() => localStorage.setItem("assurance.v1", JSON.stringify({ role: "admin", collapsed: false, theme: "light", signedIn: true })));
     await page.goto("/ws/frameworks");
     await page.getByRole("searchbox", { name: "Search Frameworks" }).fill("ISO/IEC 27001:2022");
     await page.getByRole("button", { name: "Details for ISO/IEC 27001:2022" }).click();

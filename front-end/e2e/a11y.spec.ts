@@ -31,7 +31,7 @@ for (const theme of ["light", "dark"] as const) {
 
 /* public pages carry no role */
 for (const theme of ["light", "dark"] as const) {
-  for (const path of ["/vendor-portal", "/auth"]) {
+  for (const path of ["/vendor-portal", "/login"]) {
     test(`a11y ${theme}: ${path} (signed out)`, async ({ browser }, ti) => {
       const s = await openAs(browser, ti, "admin");
       const p = s.page;

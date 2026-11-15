@@ -2,6 +2,8 @@
 
 Status: living document. Generated code needs technical, security and management review before any deployment.
 
+> **The full control register, with standards, audit events and test evidence, is [CONTROLS.md](CONTROLS.md).** This page keeps the front-end notes and the review log.
+
 ## Controls in place (ASVS v4 mapping)
 | Area | Control | Where |
 |---|---|---|
@@ -15,7 +17,7 @@ Status: living document. Generated code needs technical, security and management
 | Dialog a11y / focus | Focus trap, Escape, focus restore | `LayerProvider.tsx` |
 
 ## Known limitations (need server-side or follow-up work)
-1. **RBAC is UI-only.** Role switching and module access are a demo. A real API must enforce authorization (ASVS 4.1.1); the UI must never be the only control.
+1. **RBAC is UI-only.** In the demonstration build, sign-in and MFA (`src/lib/session.ts`, `src/lib/totp.ts`: synthetic demo accounts, real accounts with TOTP, all kept in browser storage) and module access are a demo. Production (`NEXT_PUBLIC_API_MODE=http`) has no demo accounts and calls the server (`src/services/authApi.ts`, contract in CONTROLS.md). A real API must authenticate (server-side sessions, a slow password hash such as Argon2id, rate limits, MFA) and enforce authorization (ASVS 4.1.1); the UI must never be the only control.
 2. **No authentication/session.** `apiFetch` uses `credentials: "include"` for a future cookie session. CSRF protection (SameSite cookies + anti-CSRF token) must be added server-side when sessions exist (ASVS 4.2.2, 3.4).
 3. **CSP uses `script-src 'unsafe-inline'`** because the Pages Router injects inline bootstrap scripts. Move to a nonce-based CSP via middleware before production.
 4. **Audit log hash is FNV-1a**, a demo of chaining, not a cryptographic control. Use server-side HMAC/append-only storage in production.
