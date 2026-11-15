@@ -4,7 +4,7 @@ import { LayerFoot, useLayer } from "@/components/shell/LayerProvider";
 import { wsLog } from "@/lib/audit";
 import { bumpData, setModState } from "@/lib/store";
 import * as svc from "@/features/assistant/services/assistant";
-import { AUTONOMY, RUNG_HELP, nextRung, trackRecord, type Rung } from "@/features/assistant/lib/autonomy";
+import { AUTONOMY, REJECTED_AFTER, RUNG_HELP, nextRung, trackRecord, type Rung } from "@/features/assistant/lib/autonomy";
 import { getApproval } from "@/lib/approvals";
 import { WhyNot, attempt } from "@/components/kit/sodKit";
 
@@ -58,7 +58,7 @@ export function AgentsTab({ manage }: { manage: boolean }) {
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <p className="field help" style={{ margin: 0 }}>Agents run on triggers with least-privilege access. Creating or resuming an agent needs approval from a different admin or owner. Every agent starts at &quot;Suggests only&quot;, where a person approves each change. It can be raised to &quot;Acts (logged)&quot; after {AUTONOMY.TRACK_MIN} approved suggestions and no recent rejection, with approval from a different admin or owner; lowering is immediate.</p>
+      <p className="field help" style={{ margin: 0 }}>Agents run on triggers with least-privilege access. Creating or resuming an agent needs approval from a different admin or owner. Every agent starts at &quot;Suggests only&quot;, where a person approves each change. It can be raised to &quot;Acts (logged)&quot; after {svc.trackSetting() ? `${svc.trackSetting()} approved suggestions and no recent rejection` : "approval (no track record is required in this workspace)"}, with approval from a different admin or owner (two for an agent that runs as a service account). Lowering is immediate, and rejecting a change an agent applied lowers it automatically.</p>
       <DataTable<Agent> id="agents" label="Agents" rows={svc.ASST.agents} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.name} ${a.trigger} ${a.runsAs}`}
         tabs={["Active", "Pending approval", "Paused"].map((st) => ({ key: st, label: st, match: (a: Agent) => a.status === st }))} exportName="agents" />
     </div>
@@ -70,7 +70,7 @@ function RaiseForm({ id }: { id: string }) {
   const L = useLayer(); const a = svc.findAgent(id);
   const [reason, setReason] = useState(""); const [err, setErr] = useState("");
   if (!a) return <p className="field help">Agent not found.</p>;
-  const to = nextRung(a.autonomy); const t = trackRecord(a, svc.ASST.runs); const why = svc.raiseBlockReason(a);
+  const to = nextRung(a.autonomy); const n = svc.trackSetting(); const t = trackRecord(a, svc.ASST.runs, n); const why = svc.raiseBlockReason(a); const need = svc.raiseApprovers(a);
   const go = () => attempt(L, async () => {
     if (reason.trim().length < AUTONOMY.REASON_MIN) { setErr(`Give a reason of at least ${AUTONOMY.REASON_MIN} characters.`); return; }
     const r = await svc.requestRaise(id, reason); if (!r) { L.toast("Agent not found", false); return; }
@@ -82,16 +82,40 @@ function RaiseForm({ id }: { id: string }) {
         <dl className="meta-grid">
           <dt>Now</dt><dd>{a.autonomy}: {RUNG_HELP[a.autonomy as Rung] ?? ""}</dd>
           <dt>Raise to</dt><dd>{to ? `${to}: ${RUNG_HELP[to]}` : "Already at the highest level"}</dd>
-          <dt>Approved suggestions</dt><dd>{t.approved} of {AUTONOMY.TRACK_MIN} needed</dd>
-          <dt>Recent rejection</dt><dd>{t.recentRejection ? `Yes, in its last ${AUTONOMY.CLEAN_LAST}` : "None"}</dd>
+          {n ? <><dt>Approved suggestions</dt><dd>{t.approved} of {n} needed</dd>
+          <dt>Recent rejection</dt><dd>{t.recentRejection ? `Yes, in its last ${n}` : "None"}</dd></> : <><dt>Track record</dt><dd>Not required in this workspace</dd></>}
+          <dt>Approvers needed</dt><dd>{need === 2 ? "Two (it runs as a service account)" : "One"}</dd>
         </dl>
         {why ? <p className="field help" id="ra-why" style={{ color: "var(--bad-ink)", marginTop: 10 }}>{why}</p> : (
           <div className="field" style={{ marginTop: 10 }}><label htmlFor="ra-reason">Reason <span style={{ color: "var(--bad-ink)" }}>*</span></label><textarea className="input" id="ra-reason" data-focus rows={3} maxLength={300} style={{ resize: "vertical" }} value={reason} onChange={(e) => { setReason(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "ra-err" : undefined} /></div>
         )}
         <p className="field help" id="ra-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
-        <p className="field help">A different admin or owner, not the agent&apos;s creator, must approve. Any admin or owner can lower it again at once.</p>
+        <p className="field help">{need === 2 ? "Two different admins or owners" : "A different admin or owner"}, not you and not the agent&apos;s creator, must approve. Any admin or owner can lower it again at once.</p>
       </div>
       <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><button className="btn btn-primary" disabled={!!why} aria-describedby={why ? "ra-why" : undefined} onClick={go}>Request approval</button></LayerFoot>
+    </>
+  );
+}
+
+/** Reject a change an acting agent already applied. The agent drops to "Suggests only" at once; the change itself is reversed where it was made. */
+function RejectAppliedForm({ id }: { id: string }) {
+  const L = useLayer(); const r = svc.ASST.runs.find((x) => x.id === id);
+  const [reason, setReason] = useState(""); const [err, setErr] = useState("");
+  if (!r) return <p className="field help">Run not found.</p>;
+  const go = () => attempt(L, async () => {
+    if (reason.trim().length < AUTONOMY.REASON_MIN) { setErr(`Give a reason of at least ${AUTONOMY.REASON_MIN} characters.`); return; }
+    const out = await svc.rejectApplied(id, reason); if (!out) { L.toast("Run not found", false); return; }
+    L.closeLayer(); L.toast(out.lowered ? `Change rejected; ${out.lowered.name} now suggests only` : "Change rejected"); bumpData();
+  });
+  return (
+    <>
+      <div>
+        <dl className="meta-grid"><dt>Agent</dt><dd>{r.agent}</dd><dt>Applied change</dt><dd>{r.change}</dd></dl>
+        <div className="field" style={{ marginTop: 10 }}><label htmlFor="rj-reason">Reason <span style={{ color: "var(--bad-ink)" }}>*</span></label><textarea className="input" id="rj-reason" data-focus rows={3} maxLength={300} style={{ resize: "vertical" }} value={reason} onChange={(e) => { setReason(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "rj-err" : undefined} /></div>
+        <p className="field help" id="rj-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
+        <p className="field help">The agent moves back to &quot;Suggests only&quot; at once and the rejection counts against its record. Reverse the change itself where it was made. Recorded in the audit log with your name.</p>
+      </div>
+      <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><button className="btn btn-danger" onClick={go}>Confirm rejection</button></LayerFoot>
     </>
   );
 }
@@ -125,13 +149,15 @@ function DecideRunForm({ id, decision }: { id: string; decision: "Approved & app
 export function RunLogTab({ manage }: { manage: boolean }) {
   const L = useLayer();
   const waiting = svc.ASST.runs.filter((r) => r.decision === "Waiting").length;
+  const flag = (r: Run) => L.openModal(`Reject applied change: ${r.agent}`, () => <RejectAppliedForm id={r.id} />);
   const open = (id: string, decision: "Approved & applied" | "Rejected") => L.openModal(decision === "Rejected" ? "Reject proposed change" : "Approve proposed change", () => <DecideRunForm id={id} decision={decision} />);
   const cols: DTColumn<Run>[] = [
     { key: "when", header: "When", value: (r) => r.when, render: (r) => <span style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{r.when}</span> },
     { key: "agent", header: "Agent", value: (r) => r.agent, locked: true, render: (r) => <span className="strong">{r.agent}{r.requestedBy ? <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 400 }}>run by {r.requestedBy}</div> : null}</span> },
     { key: "change", header: "Proposed change", value: (r) => r.change, render: (r) => r.change },
-    { key: "decision", header: "Decision", value: (r) => r.decision, render: (r) => (<>{r.decision === "Waiting" ? <Chip cls="warn" icon="clock">Waiting</Chip> : r.decision === "Rejected" ? <Chip cls="bad" icon="x">Rejected</Chip> : <Chip cls="ok" icon="check">{r.decision}</Chip>}{r.decidedBy ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>by {r.decidedBy}</div> : null}</>) },
+    { key: "decision", header: "Decision", value: (r) => r.decision, render: (r) => (<>{r.decision === "Waiting" ? <Chip cls="warn" icon="clock">Waiting</Chip> : r.decision === "Rejected" || r.decision === REJECTED_AFTER ? <Chip cls="bad" icon="x">{r.decision}</Chip> : <Chip cls="ok" icon="check">{r.decision}</Chip>}{r.decidedBy ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>by {r.decidedBy}</div> : null}</>) },
     { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (r) => {
+      if (manage && r.decision === "Auto-applied") return <button className="btn btn-ghost sm" aria-label={`Reject applied change: ${r.change}`} onClick={() => flag(r)}><Icon name="x" />Reject applied change</button>;
       const why = manage && r.decision === "Waiting" ? svc.runBlockReason(r) : null;
       return manage && r.decision === "Waiting" ? (
         <>
@@ -152,7 +178,7 @@ export function RunLogTab({ manage }: { manage: boolean }) {
         </div>
       ) : null}
       <DataTable<Run> id="agent-runs" label="Agent runs" rows={svc.ASST.runs} rowKey={(r) => r.id} columns={cols} searchText={(r) => `${r.agent} ${r.change} ${r.requestedBy || ""}`}
-        tabs={["Waiting", "Approved & applied", "Rejected"].map((d) => ({ key: d, label: d, match: (r: Run) => r.decision === d }))} exportName="agent-runs" />
+        tabs={["Waiting", "Approved & applied", "Rejected"].map((d) => ({ key: d, label: d, match: (r: Run) => (d === "Rejected" ? r.decision === d || r.decision === REJECTED_AFTER : r.decision === d) }))} exportName="agent-runs" />
     </div>
   );
 }

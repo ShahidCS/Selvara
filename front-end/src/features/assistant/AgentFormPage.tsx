@@ -8,7 +8,6 @@ import { useGo } from "@/lib/route";
 import { clampText } from "@/lib/security";
 import { FAIL_MSG, uiMessage } from "@/lib/grcSod";
 import * as svc from "@/features/assistant/services/assistant";
-import { AUTONOMY } from "@/features/assistant/lib/autonomy";
 
 /** `/ws/assistant/new`: create an agent. It stays disabled until a different admin or owner approves enabling it. Selects are checked against their allow-lists in the service. */
 export function AgentFormPage() {
@@ -44,7 +43,7 @@ export function AgentFormPage() {
             <div className="field"><label htmlFor="ag-auto">Autonomy</label><input className="input" id="ag-auto" readOnly value={svc.AGENT_AUTONOMY[0]} /></div>
             <div className="field"><label htmlFor="ag-runs">Runs as</label><select className="select" id="ag-runs" value={runs} onChange={(e) => setRuns(e.target.value)}>{svc.AGENT_RUNS_AS.map((x) => <option key={x}>{x}</option>)}</select></div>
           </div>
-          <p className="field help">A person approves each change it suggests. After {AUTONOMY.TRACK_MIN} approved suggestions with no recent rejection, it can be raised to &quot;Acts (logged)&quot;, where it acts within its scope and records every action to the audit log; a different admin or owner must approve that.</p>
+          <p className="field help">A person approves each change it suggests. After a track record of approved suggestions (set by a company admin in Team &amp; Settings), it can be raised to &quot;Acts (logged)&quot;, where it acts within its scope and records every action to the audit log; a different admin or owner must approve that.</p>
         </FormSection>
         {err ? <FormMessage id="ag-err">{err}</FormMessage> : null}
         <FormActions><button type="button" className="btn btn-secondary" onClick={() => go("/ws/assistant")}>Cancel</button><button type="submit" className="btn btn-primary" disabled={busy}>Create agent</button></FormActions>

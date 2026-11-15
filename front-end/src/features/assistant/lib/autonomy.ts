@@ -8,12 +8,14 @@ export const RUNG_HELP: Record<Rung, string> = {
   "Acts (logged)": "Applies changes within its scope at once and records each one in the audit log.",
 };
 export const AUTONOMY = {
-  /** Approved suggestions needed before an agent may be raised. */
-  TRACK_MIN: 3,
-  /** None of its most recent decided suggestions may have been rejected. */
-  CLEAN_LAST: 3,
+  /** Default track record: approved suggestions needed, and none of that many latest decided ones rejected. A company admin can set 3, 2 or 0 (off). */
+  TRACK_DEFAULT: 3,
   REASON_MIN: 10,
+  /** Agents that run as this identity need two approvers to be raised. */
+  TWO_APPROVERS_FOR: "Service account",
 };
+/** A change an acting agent applied that a person rejected afterwards. It counts as a rejection and lowers the agent. */
+export const REJECTED_AFTER = "Rejected after applying";
 export const rungOf = (v: string): number => LADDER.indexOf(v as Rung);
 export const isRung = (v: unknown): v is Rung => LADDER.includes(v as Rung);
 export const nextRung = (v: string): Rung | null => { const i = rungOf(v); return i >= 0 && i < LADDER.length - 1 ? LADDER[i + 1] : null; };
@@ -21,11 +23,12 @@ export const nextRung = (v: string): Rung | null => { const i = rungOf(v); retur
 export interface RunLike { agent: string; agentId?: string; decision: string }
 const APPROVED = new Set(["Approved & applied", "Applied after review"]);
 /** Track record from the run log: suggestions a person approved, and whether one of the latest decided ones was rejected. Runs are newest first. */
-export function trackRecord(agent: { id: string; name: string }, runs: RunLike[]) {
+export function trackRecord(agent: { id: string; name: string }, runs: RunLike[], window = AUTONOMY.TRACK_DEFAULT) {
   const mine = runs.filter((r) => (r.agentId ? r.agentId === agent.id : r.agent === agent.name));
-  const decided = mine.filter((r) => APPROVED.has(r.decision) || r.decision === "Rejected");
+  const rejected = (r: RunLike) => r.decision === "Rejected" || r.decision === REJECTED_AFTER;
+  const decided = mine.filter((r) => APPROVED.has(r.decision) || rejected(r));
   return {
     approved: decided.filter((r) => APPROVED.has(r.decision)).length,
-    recentRejection: decided.slice(0, AUTONOMY.CLEAN_LAST).some((r) => r.decision === "Rejected"),
+    recentRejection: window > 0 && decided.slice(0, window).some(rejected),
   };
 }

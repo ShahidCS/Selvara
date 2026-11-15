@@ -10,7 +10,8 @@ import { getApproval, requestApproval } from "@/lib/approvals";
 import { payloadStr, registerApprovalHandler } from "@/lib/approvalKit";
 import { assertNotSelf, assertRole, getActor, hasRole, SodError } from "@/lib/sod";
 import { wsLog } from "@/lib/audit";
-import { AUTONOMY, LADDER, isRung, nextRung, rungOf, trackRecord } from "@/features/assistant/lib/autonomy";
+import { AUTONOMY, LADDER, REJECTED_AFTER, isRung, nextRung, rungOf, trackRecord } from "@/features/assistant/lib/autonomy";
+import { TEAM_SETTINGS } from "@/services/team";
 import { clampText } from "@/lib/security";
 import { apiFetch, viaApi } from "@/services/http";
 
@@ -167,10 +168,15 @@ export function toggleMcp(i: number) {
 }
 
 /* Autonomy ladder (features/assistant/lib/autonomy.ts; docs/security/SOD_MATRIX.md section 11). */
+/** The company's track-record setting (3, 2 or 0 = off). Anything else falls back to the default. */
+export function trackSetting(): number { const n = TEAM_SETTINGS.agentTrackRecord; return n === 0 || n === 2 || n === 3 ? n : AUTONOMY.TRACK_DEFAULT; }
+/** Approvers a raise needs: two for an agent that runs as a service account, otherwise one. */
+export const raiseApprovers = (a: Agent): 1 | 2 => (a.runsAs === AUTONOMY.TWO_APPROVERS_FOR ? 2 : 1);
 function recordBlock(a: Agent): string | null {
-  const t = trackRecord(a, ASST.runs);
-  if (t.recentRejection) return `A person rejected one of its last ${AUTONOMY.CLEAN_LAST} suggestions. It needs a clean record before it can act on its own.`;
-  if (t.approved < AUTONOMY.TRACK_MIN) return `It needs ${AUTONOMY.TRACK_MIN} approved suggestions before it can act on its own (it has ${t.approved}).`;
+  const n = trackSetting(); if (n === 0) return null;
+  const t = trackRecord(a, ASST.runs, n);
+  if (t.recentRejection) return `A person rejected one of its last ${n} changes. It needs a clean record before it can act on its own.`;
+  if (t.approved < n) return `It needs ${n} approved suggestions before it can act on its own (it has ${t.approved}).`;
   return null;
 }
 /** Why the signed-in person cannot ask to raise this agent (null = may). Shared with the UI so the button shows the same reason. */
@@ -190,7 +196,7 @@ export function requestRaise(id: string, reason: string) {
     const why = raiseBlockReason(a); if (why) throw new SodError(why);
     const r = clampText(reason, 300); if (r.length < AUTONOMY.REASON_MIN) throw new SodError(`Give a reason of at least ${AUTONOMY.REASON_MIN} characters.`);
     const to = nextRung(a.autonomy) as string;
-    const ap = requestApproval({ kind: "assistant.agent.autonomy", title: `Raise agent ${clampText(a.name, 80)} to ${to} (runs as ${a.runsAs})`, subject: a.id, payload: { id: a.id, from: a.autonomy, to, reason: r }, needs: 1, approverRoles: APPROVERS, forbid: [a.createdBy].filter(Boolean) });
+    const ap = requestApproval({ kind: "assistant.agent.autonomy", title: `Raise agent ${clampText(a.name, 80)} to ${to} (runs as ${a.runsAs})`, subject: a.id, payload: { id: a.id, from: a.autonomy, to, reason: r }, needs: raiseApprovers(a), approverRoles: APPROVERS, forbid: [a.createdBy].filter(Boolean) });
     a.pendingAutonomy = ap.id;
     wsLog("assistant.agent.autonomy_requested", `${a.name}: ${a.autonomy} → ${to} (${ap.id}; reason: ${r})`, "System");
     return { agent: a, approvalId: ap.id };
@@ -207,4 +213,30 @@ export function lowerAutonomy(id: string) {
     wsLog("assistant.agent.autonomy_lowered", `${a.name}: ${from} → ${a.autonomy} by ${getActor().name}`, "System");
     return a;
   }, () => post<Agent | null>(`/assistant/agents/${enc(id)}/autonomy/lower`, {}));
+}
+/** Why the signed-in person cannot reject a change an acting agent already applied (null = may). */
+export function flagBlockReason(r: AgentRun): string | null {
+  if (!hasRole(getActor().roleId, "admin", "owner")) return "Only an admin or owner can reject an applied change.";
+  if (r.decision !== "Auto-applied") return "Only a change the agent applied on its own can be rejected afterwards.";
+  return null;
+}
+/** Reject a change an acting agent applied. Safe direction, so anyone allowed may do it, including whoever ran it; a reason is required.
+ *  The agent drops to the lowest rung at once (audited), and the rejection counts against its track record. */
+export function rejectApplied(id: string, reason: string) {
+  return viaApi<{ run: AgentRun; lowered: Agent | null } | null>(() => {
+    gate("rejecting an applied agent change");
+    const r = ASST.runs.find((x) => x.id === id); if (!r) return null;
+    const why = flagBlockReason(r); if (why) throw new SodError(why);
+    const text = clampText(reason, 300); if (text.length < AUTONOMY.REASON_MIN) throw new SodError(`Give a reason of at least ${AUTONOMY.REASON_MIN} characters.`);
+    const me = getActor().name;
+    r.decision = REJECTED_AFTER; r.decidedBy = me; r.decidedReason = text;
+    wsLog("assistant.run.rejected_after_applying", `${r.agent}: ${r.change} (reason: ${text})`, "System");
+    const a = r.agentId ? findAgent(r.agentId) : ASST.agents.find((x) => x.name === r.agent);
+    let lowered: Agent | null = null;
+    if (a && rungOf(a.autonomy) > 0) {
+      const from = a.autonomy; a.autonomy = LADDER[0]; lowered = a;
+      wsLog("assistant.agent.autonomy_lowered", `${a.name}: ${from} → ${a.autonomy} automatically, after ${me} rejected an applied change`, "System");
+    }
+    return { run: r, lowered };
+  }, () => post<{ run: AgentRun; lowered: Agent | null } | null>(`/assistant/runs/${enc(id)}/reject-applied`, { reason }));
 }
