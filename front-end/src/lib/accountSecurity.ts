@@ -3,6 +3,7 @@
    The real service keeps all of this server-side; nothing here is a control on its own. Rules: docs/security/SOD_MATRIX.md section 12. */
 import { secureHex, randInt } from "./security";
 import { bumpData } from "./store";
+import type { StoredPasskey } from "./webauthn";
 
 const MIN = 60_000;
 export async function sha256(s: string): Promise<string> {
@@ -42,12 +43,14 @@ interface State {
   /** Reset requests per account (times), for the per-account limit. */
   asks: Record<string, number[]>;
   mfa: Record<string, Factor>;
+  /** Passkeys per account (public keys only). */
+  passkeys: Record<string, StoredPasskey[]>;
   current: string | null;
   lockout: LockoutPreset;
   custom: { attempts: number; minutes: number };
 }
 const KEY = "selvara.demo.account";
-const fresh = (): State => ({ pw: {}, sessions: [], notices: [], resets: [], last: {}, failedSince: {}, asks: {}, mfa: {}, current: null, lockout: "standard", custom: { attempts: 5, minutes: 30 } });
+const fresh = (): State => ({ pw: {}, sessions: [], notices: [], resets: [], last: {}, failedSince: {}, asks: {}, mfa: {}, passkeys: {}, current: null, lockout: "standard", custom: { attempts: 5, minutes: 30 } });
 let S: State | null = null;
 export function acct(): State {
   if (S) return S;
@@ -155,7 +158,7 @@ export function welcomeText(w: Welcome): string {
 
 /* ---------- second step of sign-in ---------- */
 /** Between a correct password and the second factor. Bound to one account, 5 minutes, 5 tries; nothing is signed in until it completes. */
-export interface Ticket { id: string; email: string; method: "totp" | "enroll" | "demo"; expires: number; tries: number; secret?: string; demoCode?: string; alerted?: boolean; challengeOk?: boolean }
+export interface Ticket { id: string; email: string; method: "totp" | "enroll" | "demo" | "passkey"; expires: number; tries: number; secret?: string; demoCode?: string; alerted?: boolean; challengeOk?: boolean; /** Passkey step: the challenge to sign, and whether a passkey is being added. */ webauthn?: { challenge: string; register: boolean } }
 export const MFA = { TICKET_MS: 5 * MIN, TRIES: 5, RECOVERY_CODES: 10 };
 const tickets = new Map<string, Ticket>();
 export function newTicket(t: Omit<Ticket, "id" | "expires" | "tries">): Ticket {

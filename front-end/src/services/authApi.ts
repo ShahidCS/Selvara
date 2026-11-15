@@ -5,6 +5,8 @@
 import * as local from "@/lib/session";
 import { ChallengeRequired, SIGNIN_FAILED, type SignInResult, type SignInStep } from "@/lib/session";
 import { acct, activeSessions, issueChallenge, noticesFor, solveChallenge } from "@/lib/accountSecurity";
+import { appStore as store } from "@/lib/store";
+import { createPasskey } from "@/lib/webauthn";
 import { THROTTLED_MSG } from "@/lib/credentials";
 import { API_BASE, API_MODE, ApiError, apiFetch } from "./http";
 
@@ -37,6 +39,13 @@ export async function completeSignIn(ticket: string, code: string, opts: { recov
     local.applyServerSession(r.roleId, r.who); return r;
   });
 }
+/** Passkey step (super admins). Production: POST /auth/sign-in/passkey; the server holds the challenge and the public keys. */
+export async function completePasskey(ticket: string, p: Parameters<typeof local.completePasskey>[1]): Promise<SignInResult> {
+  return mode(() => local.completePasskey(ticket, p), async () => {
+    const r = await call(() => post<SignInResult & { who: string | null }>("/auth/sign-in/passkey", { ticket, ...p }));
+    local.applyServerSession(r.roleId, r.who); return r;
+  });
+}
 export const requestToJoin = (input: local.JoinInput) => mode(() => local.requestToJoin(input), () => call(() => post<void>("/auth/join-requests", input)));
 export const requestReset = (email: string) => mode(() => local.requestReset(email), () => call(() => post<void>("/auth/password/reset-request", { email })).then(() => ({ token: null })));
 export const resetLinkValid = (token: string) => mode(() => local.resetLinkValid(token), () => call(() => apiFetch<{ valid: boolean }>(`/auth/password/reset/${encodeURIComponent(token)}`)).then((r) => r.valid));
@@ -63,6 +72,8 @@ export interface AccountView {
   sessions: { id: string; device: string; ip: string; startedAt: number; current: boolean; expiresAt?: number }[];
   notices: { id: string; at: number; text: string }[];
   mfa: { enrolledAt: number; codesLeft: number } | null;
+  passkeys: { id: string; label: string; createdAt: number }[];
+  passkeyRequired: boolean;
 }
 export function accountView(): Promise<AccountView | null> {
   return mode(() => {
@@ -73,6 +84,15 @@ export function accountView(): Promise<AccountView | null> {
       sessions: activeSessions(me.email).map((x) => ({ id: x.id, device: x.device, ip: x.ip, startedAt: x.startedAt, current: x.id === a.current, expiresAt: x.expiresAt })),
       notices: noticesFor(me.email).slice(0, 20).map((n) => ({ id: n.id, at: n.at, text: n.text })),
       mfa: f ? { enrolledAt: f.enrolledAt, codesLeft: f.codes.filter((c) => !c.used).length } : null,
+      passkeys: (a.passkeys[me.email] || []).map((k) => ({ id: k.id, label: k.label, createdAt: k.createdAt })), passkeyRequired: local.needsPasskey(store.get().role),
     };
   }, () => call(() => apiFetch<AccountView>("/me/security")));
 }
+/** Add a passkey from the account page (password confirmed within 5 minutes). Production: POST /me/passkeys/options then POST /me/passkeys. */
+export async function addPasskey(): Promise<void> {
+  return mode(async () => { const o = local.startAddPasskey(); local.finishAddPasskey(await createPasskey(o)); }, async () => {
+    const o = await call(() => post<{ challenge: string; rpId: string; exclude: string[]; email: string; name: string }>("/me/passkeys/options", {}));
+    const reg = await createPasskey(o); await call(() => post<void>("/me/passkeys", reg));
+  });
+}
+export const removePasskey = (id: string) => mode(() => local.removePasskey(id), () => call(() => apiFetch<void>(`/me/passkeys/${encodeURIComponent(id)}`, { method: "DELETE" })));

@@ -208,6 +208,7 @@ The app opens on a sign-in page. There is no role switcher: sign out from the ac
 
 **Two kinds of account, kept apart.**
 - **Real accounts** are created through **Request to join** and approved by a company admin. They have their own password and an authenticator app (TOTP), added at the first sign-in and required every time, plus 10 single-use recovery codes.
+- **Platform super admins** sign in with a **passkey** (fingerprint, face, PIN or a security key), added at the first sign-in. In the demonstration build, a device without passkeys can use a labelled on-screen code instead.
 - **Demo accounts** (below) exist only in the demonstration build, where there is no backend and the browser runs the checks (`front-end/src/lib/session.ts`). They are limited: labelled as demo, sessions end after one hour, the second step shows its code on screen, and the shared password cannot be changed or reset.
 
 A production build (`NEXT_PUBLIC_API_MODE=http`) has no demo accounts: sign-in, MFA, reset and sessions go to the server (contract in [docs/security/CONTROLS.md](docs/security/CONTROLS.md)), which must enforce every rule. Nothing in the demonstration build is an authentication control.

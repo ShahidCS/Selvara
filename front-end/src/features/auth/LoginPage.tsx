@@ -6,6 +6,7 @@ import { landingPath, ROLES } from "@/lib/rbac";
 import { ChallengeRequired, DEMO_DOMAIN, DEMO_ENABLED, DEMO_RESET_NOTE, RESET_SENT, restoreSession, type SignInStep } from "@/lib/session";
 import { loadPersisted, useApp } from "@/lib/store";
 import * as auth from "@/services/authApi";
+import { createPasskey, getAssertion, passkeysSupported } from "@/lib/webauthn";
 
 const full = { width: "100%" } as const;
 const msg = (e: unknown, fallback: string) => (e instanceof Error && e.message ? e.message : fallback);
@@ -89,6 +90,48 @@ function SignInForm({ onJoin, onForgot, onHold }: { onJoin: () => void; onForgot
 
 /** The second step: the authenticator code (or a recovery code), adding an authenticator at the first sign-in, or the demo code. */
 function SecondStep({ step, onHold, onCodes, onRestart }: { step: SignInStep; onHold: (v: boolean) => void; onCodes: (c: string[]) => void; onRestart: () => void }) {
+  if (step.step === "passkey") return <PasskeyStep step={step} onRestart={onRestart} />;
+  return <CodeStep step={step} onHold={onHold} onCodes={onCodes} onRestart={onRestart} />;
+}
+
+/** Platform super admins: a passkey on this device or a security key. The first sign-in adds one. The on-screen code is a demonstration-build fallback only. */
+function PasskeyStep({ step, onRestart }: { step: Extract<SignInStep, { step: "passkey" }>; onRestart: () => void }) {
+  const [err, setErr] = useState(""); const [busy, setBusy] = useState(false); const [useCode, setUseCode] = useState(false); const [code, setCode] = useState("");
+  const btn = useRef<HTMLButtonElement>(null); const codeRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { (useCode ? codeRef.current : btn.current)?.focus(); }, [useCode]);
+  const supported = passkeysSupported();
+  const go = async () => {
+    if (busy) return; setBusy(true); setErr("");
+    try {
+      if (step.register) await auth.completePasskey(step.ticket, { register: await createPasskey({ email: step.email, name: step.name, challenge: step.challenge, rpId: step.rpId, exclude: [] }) });
+      else await auth.completePasskey(step.ticket, { assertion: await getAssertion({ challenge: step.challenge, rpId: step.rpId, allow: step.allow }) });
+    } catch (x) { const m = x instanceof DOMException ? "The passkey request was cancelled or timed out. Try again." : msg(x, "Could not verify the passkey."); setErr(m); if (/Start again|expired/.test(m)) setTimeout(onRestart, 1500); }
+    setBusy(false);
+  };
+  const submitCode = async (e: React.FormEvent) => { e.preventDefault(); setErr(""); try { await auth.completeSignIn(step.ticket, code); } catch (x) { setErr(msg(x, "Could not verify the code.")); setCode(""); } };
+  return (
+    <>
+      <h1 className="auth-h" style={{ fontSize: 20 }}>{step.register ? "Add a passkey" : "Use your passkey"}</h1>
+      <p className="sub" style={{ margin: "0 0 12px" }}>{step.register ? "Platform administrators sign in with a passkey: your device's fingerprint, face or PIN, or a security key. It cannot be phished. Add one now; you will use it at every sign-in." : "Confirm with the passkey on this device or your security key."}</p>
+      {!useCode ? <>
+        {supported ? null : <p className="banner warn" style={{ margin: "0 0 12px", fontSize: 13 }}>This browser cannot use passkeys. Use a current version of Chrome, Edge, Safari or Firefox.</p>}
+        <button ref={btn} type="button" className="btn btn-primary" style={full} disabled={busy || !supported} onClick={go}>{busy ? "Waiting for your passkey…" : step.register ? "Add a passkey" : "Use passkey"}</button>
+        <ErrP id="pk-err" msg={err} />
+      </> : (
+        <form onSubmit={submitCode} noValidate>
+          <div className="banner warn" style={{ margin: "0 0 12px", fontSize: 13 }}><b>Demo only.</b> Platform administrators must use a passkey. For this demonstration the code is shown here: <span className="num" style={{ fontWeight: 600 }}>{step.demoCode}</span>.</div>
+          <div className="field"><label htmlFor="pk-code">Authentication code</label><input ref={codeRef} className="input num" id="pk-code" inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(codeInput(e.target.value))} aria-invalid={!!err} aria-describedby={err ? "pk-cerr" : undefined} /></div>
+          <ErrP id="pk-cerr" msg={err} />
+          <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }}>Verify</button>
+        </form>
+      )}
+      {step.demoCode ? <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}><button type="button" className="linkbtn" onClick={() => { setUseCode((v) => !v); setErr(""); }}>{useCode ? "Use a passkey" : "No passkey on this device? Demo code"}</button></div> : null}
+      <div style={{ textAlign: "center", marginTop: 8, fontSize: 13 }}><button type="button" className="linkbtn" onClick={onRestart}>Start again</button></div>
+    </>
+  );
+}
+
+function CodeStep({ step, onHold, onCodes, onRestart }: { step: Exclude<SignInStep, { step: "passkey" }>; onHold: (v: boolean) => void; onCodes: (c: string[]) => void; onRestart: () => void }) {
   const [code, setCode] = useState(""); const [recovery, setRecovery] = useState(false); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => { ref.current?.focus(); }, [recovery]);
