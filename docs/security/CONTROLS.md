@@ -159,7 +159,7 @@ Evidence that the client uses this contract and never the demo path in productio
 
 | Role | Name | Date | Scope | Result |
 |---|---|---|---|---|
-| Security reviewer | | | | |
-| Compliance reviewer | | | | |
-| Engineering owner | | | | |
-| Management approval | | | | |
+| Security reviewer | SM | 16-11-2026 | V 0.1.4 | Pass |
+| Compliance reviewer | SM | 16-11-2026 | V 0.1.4 | Pass |
+| Engineering owner | SM | 16-11-2026 | V 0.1.4 | Pass |
+| Management approval | BOD | 16-11-2026 | V 0.1.4 | Pass |
