@@ -113,6 +113,7 @@ This register lists every security control in Selvara, where it is enforced, wha
 | PIPE-05 | Workflow policy: actions pinned to full SHAs, least permissions, no `pull_request_target`, no persisted credentials, timeouts | `.github/scripts/check-workflows.mjs`, `verify-pins.sh` | pull request checks |
 | PIPE-06 | Releases only from a signed, annotated `vX.Y.Z` tag on `main` whose version matches `package.json`; tags immutable | `release.yml`, `.github/scripts/verify-tag.sh`, rulesets | release run log |
 | PIPE-07 | Protected `main`: pull requests only, required checks, signed commits | `.github/rulesets/` | repository settings; EX-01, EX-08 |
+| PIPE-08 | What ships is checked before every deploy: no `node_modules`, native addons or sharp/libvips; server code only from reviewed functions (the authentication API), each bundled file checked, no secret files, permissive licences only | `.github/scripts/check-shipped-artifact.mjs` (deploy action and `ci.yml`) | staging and release run logs; EX-02 |
 
 ## Authentication API contract (production)
 

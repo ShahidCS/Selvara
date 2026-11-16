@@ -48,13 +48,19 @@ on in an audit of a bank or critical-infrastructure deployment.
 **What.** Next.js lists the sharp image library's prebuilt libvips binaries as optional dependencies. They are LGPL-3.0
 and the policy otherwise denies LGPL.
 
-**Evidence they are not distributed.** The product is a static site with no `next/image` use. The CI step
+**Evidence they are not distributed.** The product does not use `next/image`. The CI step
 `check-shipped-artifact.mjs` fails the build if the shipped output (`.next/static`, `.next/server`, `.vercel/output`)
-contains sharp or libvips files or references, any `node_modules` directory, native addons (`.node`), or serverless
-function bundles. On 2026-11-09 the Vercel build output was inspected: static files only.
+contains sharp or libvips files or references, any `node_modules` directory or native addons (`.node`). Since v0.1.5 the
+output also holds one server function, the authentication API (`api/[...path].func`). The check allows only that
+reviewed function and applies the same rules to every file its bundle points to (`filePathMap`, which Vercel uploads
+with it), refuses secret files (`.env`, `.env.*` except `.env.example`) and requires every bundled package to be MIT,
+Apache-2.0, BSD, ISC or 0BSD. Any other function fails the build until it is reviewed. On 2026-11-09 the Vercel build
+output was inspected: static files only. On 2026-11-16 the function bundle was inspected: 256 files from next, react,
+react-dom, styled-jsx, client-only, `@swc/helpers`, tslib, iceberg-js and `@supabase/*` (MIT, Apache-2.0, 0BSD), with
+no native addons, no sharp or libvips and no secrets.
 
-**What still needs doing (owner action).** Nothing for a static deployment. **Before** you ever (a) ship a server or
-container image that includes `node_modules`, (b) enable `next/image` optimisation, or (c) hand the built artefact to a
+**What still needs doing (owner action).** Nothing while the check passes (sharp is not in the function bundle). **Before** you ever (a) ship a
+server or container image that includes sharp or all of `node_modules`, (b) enable `next/image` optimisation, or (c) hand the built artefact to a
 customer for self-hosting, get legal sign-off: LGPL-3.0 then requires licence text, source offer and the ability for
 the user to replace the library. The simplest remedy is to remove the optional binaries (`npm install --omit=optional`
 or `overrides`), which the exception's check makes easy to verify.
