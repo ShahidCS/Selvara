@@ -1,6 +1,6 @@
 /* Server-only. Supabase Auth and Postgres behind the AuthProvider and Store interfaces. Two clients: the public (anon) key for password sign-in,
    TOTP and reset emails as the user; the service key for admin actions and the tables. The service key never reaches the browser: this file is
-   imported only by pages/api. Schema: supabase/migrations/0001_selvara_auth.sql and 0002_service_role_grants.sql. */
+   imported only by pages/api. Schema: supabase/migrations/0001_selvara_auth.sql to 0004_company_sessions.sql. */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { upstream } from "./errors";
 import type { AuthProvider, NoticeRow, PasskeyRow, Profile, RecoveryRow, SessionRow, Store, AuditRow } from "./types";
@@ -47,10 +47,10 @@ export class SupabaseAuth implements AuthProvider {
 }
 
 const P = (r: Record<string, unknown>): Profile => ({ id: String(r.id), email: String(r.email), person: String(r.person), role: String(r.role), status: r.status as Profile["status"], requestedAt: Number(r.requested_ms), decidedBy: (r.decided_by as string) ?? undefined, reason: (r.reason as string) ?? undefined });
-const S = (r: Record<string, unknown>): SessionRow => ({ idHash: String(r.id_hash), userId: String(r.user_id), device: String(r.device), ip: String(r.ip), createdAt: Number(r.created_ms), lastSeen: Number(r.last_seen_ms), expiresAt: Number(r.expires_ms), revokedAt: r.revoked_ms == null ? undefined : Number(r.revoked_ms), revokedWhy: (r.revoked_why as string) ?? undefined });
+const S = (r: Record<string, unknown>): SessionRow => ({ idHash: String(r.id_hash), userId: String(r.user_id), device: String(r.device), ip: String(r.ip), createdAt: Number(r.created_ms), lastSeen: Number(r.last_seen_ms), expiresAt: Number(r.expires_ms), revokedAt: r.revoked_ms == null ? undefined : Number(r.revoked_ms), revokedWhy: (r.revoked_why as string) ?? undefined, tenantId: (r.tenant_id as string | null) ?? null });
 const snake = (o: Record<string, unknown>, map: Record<string, string>) => Object.fromEntries(Object.entries(o).filter(([k, v]) => k in map && v !== undefined).map(([k, v]) => [map[k], v]));
 const PMAP = { id: "id", email: "email", person: "person", role: "role", status: "status", requestedAt: "requested_ms", decidedBy: "decided_by", reason: "reason" };
-const SMAP = { idHash: "id_hash", userId: "user_id", device: "device", ip: "ip", createdAt: "created_ms", lastSeen: "last_seen_ms", expiresAt: "expires_ms", revokedAt: "revoked_ms", revokedWhy: "revoked_why" };
+const SMAP = { idHash: "id_hash", userId: "user_id", device: "device", ip: "ip", createdAt: "created_ms", lastSeen: "last_seen_ms", expiresAt: "expires_ms", revokedAt: "revoked_ms", revokedWhy: "revoked_why", tenantId: "tenant_id" };
 /** Unwraps a database result; a failure carries the table and Supabase's code and status (see errors.ts). */
 const check = <X,>(r: { data: X; error: unknown; status?: number }, table = "?"): X => { if (r.error) throw upstream(`db.${table}`, r.error, r.status); return r.data; };
 
@@ -71,12 +71,12 @@ export class SupabaseStore implements Store {
   async sessionsOf(u: string) { return (check(await this.db.from("sessions").select("*").eq("user_id", u).order("last_seen_ms", { ascending: false }).limit(50), "sessions") ?? []).map(S); }
   async insertNotice(n: NoticeRow) { check(await this.db.from("notices").insert({ id: n.id, user_id: n.userId, at_ms: n.at, text: n.text }), "notices"); }
   async noticesOf(u: string, limit: number) { return (check(await this.db.from("notices").select("*").eq("user_id", u).order("at_ms", { ascending: false }).limit(limit), "notices") ?? []).map((r) => ({ id: String(r.id), userId: u, at: Number(r.at_ms), text: String(r.text) })); }
-  async audit(a: AuditRow) { check(await this.db.from("audit_log").insert({ at_ms: a.at, actor: a.actor, action: a.action, target: a.target, cat: a.cat, space: a.space, ip: a.ip }), "audit_log"); }
+  async audit(a: AuditRow) { check(await this.db.from("audit_log").insert({ at_ms: a.at, actor: a.actor, action: a.action, target: a.target, cat: a.cat, space: a.space, ip: a.ip, tenant_id: a.tenantId ?? null, actor_id: a.actorId ?? null }), "audit_log"); }
   async passkeysOf(u: string) { return (check(await this.db.from("passkeys").select("*").eq("user_id", u), "passkeys") ?? []).map((r) => ({ id: String(r.id), userId: u, publicKey: String(r.public_key), signCount: Number(r.sign_count), createdAt: Number(r.created_ms), label: String(r.label) })); }
   async insertPasskey(p: PasskeyRow) { check(await this.db.from("passkeys").insert({ id: p.id, user_id: p.userId, public_key: p.publicKey, sign_count: p.signCount, created_ms: p.createdAt, label: p.label }), "passkeys"); }
   async updatePasskey(id: string, patch: Partial<PasskeyRow>) { if (patch.signCount !== undefined) check(await this.db.from("passkeys").update({ sign_count: patch.signCount }).eq("id", id), "passkeys"); }
   async deletePasskey(id: string) { check(await this.db.from("passkeys").delete().eq("id", id), "passkeys"); }
   async recoveryOf(u: string) { return (check(await this.db.from("recovery_codes").select("*").eq("user_id", u), "recovery_codes") ?? []).map((r) => ({ userId: u, salt: String(r.salt), hash: String(r.hash), usedAt: r.used_ms == null ? undefined : Number(r.used_ms) })); }
-  async replaceRecovery(u: string, rows: RecoveryRow[]) { check(await this.db.from("recovery_codes").delete().eq("user_id", u), "recovery_codes"); check(await this.db.from("recovery_codes").insert(rows.map((r) => ({ user_id: u, salt: r.salt, hash: r.hash }), "recovery_codes"))); }
+  async replaceRecovery(u: string, rows: RecoveryRow[]) { check(await this.db.from("recovery_codes").delete().eq("user_id", u), "recovery_codes"); check(await this.db.from("recovery_codes").insert(rows.map((r) => ({ user_id: u, salt: r.salt, hash: r.hash }))), "recovery_codes"); }
   async markRecoveryUsed(u: string, hash: string) { const d = check(await this.db.from("recovery_codes").update({ used_ms: this.now() }).eq("user_id", u).eq("hash", hash).is("used_ms", null).select("hash"), "recovery_codes"); return (d ?? []).length === 1; }
 }

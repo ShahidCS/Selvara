@@ -32,8 +32,11 @@ In **each** project (staging and production separately), open SQL Editor → New
 1. [`supabase/migrations/0001_selvara_auth.sql`](../../supabase/migrations/0001_selvara_auth.sql): the tables and their rules.
 2. [`supabase/migrations/0002_service_role_grants.sql`](../../supabase/migrations/0002_service_role_grants.sql): table access for the server's role only. Some projects do not grant it automatically, and every request then fails.
 3. [`supabase/migrations/0003_tenancy_foundation.sql`](../../supabase/migrations/0003_tenancy_foundation.sql): companies, memberships, approvals, elevation, the hash-chained audit log, and the `selvara_app` database role bound by row level security ([design](../architecture/BACKEND_FOUNDATION.md)).
+4. [`supabase/migrations/0004_company_sessions.sql`](../../supabase/migrations/0004_company_sessions.sql): per-company sign-in settings, joining a company by its code, platform staff, and the `bootstrap_company` function for the first company (section 5b).
 
-All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `3`.
+All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `4`.
+
+Supabase may warn that a script contains destructive operations: the `drop ... if exists` lines only remove the script's own triggers and policies to recreate them. No data is deleted.
 
 The script:
 - creates the tables;
@@ -62,16 +65,16 @@ Set these in Vercel → Project → Settings → Environment Variables. Use the 
 | `SITE_URL` | the deployment's address, for example `https://selvara.example.com` (its origin is checked on every write, and it is the passkey relying party) | no |
 | `SERVER_SECRET` | 48 random bytes, for example from `openssl rand -base64 48` (encrypts sign-in tickets) | **yes** |
 
-Without all five, `/api` answers 503 and the public demonstration is unaffected.
+Without all five, and from v0.1.8 also `DATABASE_URL` and `DATABASE_CA_CERT` (section 4b), `/api` answers 503 and the public demonstration is unaffected.
 
 Also set Vercel → Settings → Functions → **Function Region** to **Frankfurt (fra1)**, next to the database (EU processing, low latency). Check: the `x-vercel-id` response header contains `fra1`.
 
-### 4b. Database connection for the module APIs (you, per project)
+### 4b. Database connection (you, per project; required from v0.1.8)
 
-Sign-in works without this. The module APIs (from the next slice on) need it, and it can be set up now. The server connects as `selvara_app`, a role that row level security binds to the signed-in person's company.
+From v0.1.8 the API needs this too: a person's company and role come from their membership, which the server reads as `selvara_app`, a role that row level security binds to the signed-in person's company. Without `DATABASE_URL` the whole API answers 503.
 
-1. **Give the role a login.** Create a long random password on your own machine (`openssl rand -base64 32`). In SQL Editor → New query, run `alter role selvara_app with login password '<that password>';`, then delete that query from the editor's history so the password is not kept there.
-2. **Connection string.** Supabase → **Connect** → **Transaction pooler** (port 6543). Copy it and change the user from `postgres.<ref>` to **`selvara_app.<ref>`** and the password to yours. Do not add `sslmode`; the server always verifies TLS.
+1. **Give the role a login.** Create a long random password on your own machine with `openssl rand -hex 32` (hex, because `+`, `/` and `=` from base64 break the connection string). In SQL Editor → New query, run `alter role selvara_app with login password '<that password>';`, then clear the query (replace it with `select 1;` and run that) and delete it if it was saved, so the password is not kept there.
+2. **Connection string.** Supabase → **Connect** → **Transaction pooler** (port 6543). Copy it exactly as shown (the host looks like `aws-0-eu-central-1.pooler.supabase.com`), then change two things and nothing else: the user from `postgres.<ref>` to **`selvara_app.<ref>`** (keep the dot and your ref), and `[YOUR-PASSWORD]` to your password, without the brackets. Do not add `sslmode`; the server always verifies TLS. Never use the `postgres` user here: it bypasses row level security.
 3. **CA certificate.** Project Settings → **Database** → **SSL Configuration** → **Download certificate**. Open the file and copy its whole text (from `-----BEGIN CERTIFICATE-----` to `-----END CERTIFICATE-----`).
 4. In Vercel, for the matching environment:
 
@@ -86,7 +89,7 @@ Sign-in works without this. The module APIs (from the next slice on) need it, an
 
 ## 5. First accounts (you, per project)
 
-Requests to join need a company admin to approve them, so create the first admins by hand.
+Requests to join need a company admin to approve them, so create the first admin by hand (5a), then their company (5b).
 
 1. In Authentication → Users → Add user, add the person with **Auto Confirm** on and a strong temporary password.
 2. Copy their user id, then in SQL Editor run:
@@ -96,7 +99,20 @@ insert into public.profiles (id, email, person, role, status, requested_ms)
 values ('<user id>', '<email>', '<Full Name>', 'admin', 'Active', (extract(epoch from now()) * 1000)::bigint);
 ```
 
-Type the email exactly as Supabase shows it under Authentication → Users, in lower case: sign-in needs the profile's email to match the login's email. Use `'super'` instead of `'admin'` for a platform super admin. Their first sign-in asks them to add a passkey. Everyone else adds an authenticator app at their first sign-in.
+Type the email exactly as Supabase shows it under Authentication → Users, in lower case: sign-in needs the profile's email to match the login's email. For a platform super admin use `'super'` instead of `'admin'` and also run `insert into public.platform_staff (user_id, role, created_ms) values ('<user id>', 'super', (extract(epoch from now()) * 1000)::bigint);`. Their first sign-in asks them to add a passkey. Everyone else adds an authenticator app at their first sign-in.
+
+### 5b. The first company (you, once per company, from v0.1.8)
+
+From v0.1.8 a person works inside a company, with the role their membership there gives them, and someone with no active membership cannot sign in. Create the company and make its first admin in one step (it fails safely if the code is taken, the email has no active profile, or the person is platform staff):
+
+```sql
+select public.bootstrap_company('<company code>', '<company name>', '<admin email>');
+```
+
+- **Company code**: 3 to 40 lower-case letters, digits and hyphens, for example `acme-eu`. People type it when they ask to join, so the admin shares it with their colleagues. It is not a secret, but the join form answers the same whether or not a code exists.
+- **Admin email**: the email of an active profile from 5a.
+
+Check: `select t.ref, t.name, m.role, m.status from public.memberships m join public.tenants t on t.id = m.tenant_id;` shows the admin as `admin`, `Active`. Do this **before** deploying v0.1.8 to that environment, or the admin cannot sign in.
 
 ## Troubleshooting
 
@@ -121,8 +137,19 @@ Database connection (`GET /api/system/ready`):
 
 | Answer | Meaning |
 |---|---|
-| 503 "The database is not configured." | `DATABASE_URL` is missing, unreadable, or `DATABASE_CA_CERT` is missing |
-| 503 "The database is not ready." | See the `api.error` line: step `db.connect` (host, port, user `selvara_app.<ref>` or password wrong; code `28P01` is a wrong password), `db.schema` with `SCHEMA_OUTDATED` (run the missing migrations in this project), or a certificate error (wrong `DATABASE_CA_CERT`) |
+| 503 "The server is not configured." | From v0.1.8: `DATABASE_URL` is missing, or `DATABASE_CA_CERT` is missing for a remote database |
+| 503 "The database is not ready." | See the `api.error` line and the table below |
+
+| `api.error` step and code | Fix |
+|---|---|
+| `db.connect` · `EINVAL` or `ENOTFOUND` | The host in `DATABASE_URL` is wrong: copy it exactly from **Connect** → **Transaction pooler** |
+| `db.connect` · `28P01` for user `"postgres"` | The user part is still `postgres.<ref>`: change it to `selvara_app.<ref>` |
+| `db.connect` · `28P01` for user `"selvara_app"` | The password differs from the one set with `alter role selvara_app ... password`: set it again |
+| `db.connect` · `XX000` "Tenant or user not found" | The user is not `selvara_app.<ref>` with this project's ref |
+| `db.connect` · `SELF_SIGNED_CERT_IN_CHAIN` or `UNABLE_TO_GET_ISSUER_CERT` | `DATABASE_CA_CERT` is not this project's full certificate text |
+| `db.schema` · `SCHEMA_OUTDATED` | Run the missing migrations in this project |
+
+Sign-in answers 409 "not an active member of any company": run section 5b for this person's company, or approve their request to join.
 
 ## 6. Before real customer data
 
@@ -131,7 +158,7 @@ Database connection (`GET /api/system/ready`):
 | **Pro plan for production** | The Free plan has no backups, pauses after 7 days without activity, and has no leaked-password protection. A regulated customer will ask about backups and availability. |
 | **Your own SMTP** (Resend, Postmark, Amazon SES or Microsoft 365) | Built-in email reaches only your Supabase team, at 2 emails per hour. |
 | **Data processing agreement and security report** | Sign Supabase's DPA. Supabase's SOC 2 report is offered on higher plans, so check which plan you need for your vendor-risk file. |
-| **The remaining module APIs** | Only authentication is on the server today. |
+| **The remaining module APIs** | Authentication, companies, join requests, lockout settings and the member list are on the server; the other modules are not yet. |
 | **Human security review** | Review `front-end/src/server` before go-live. |
 
 ## What I need from you
@@ -139,7 +166,7 @@ Database connection (`GET /api/system/ready`):
 You don't need to send anything secret. Tell me when you have:
 
 1. created both projects and run the SQL;
-2. set the five variables in Vercel for Preview (staging);
+2. set the variables from sections 4 and 4b in Vercel for Preview (staging);
 3. created one company admin in staging.
 
 I can then help you test the staging `/api` end to end (sign-in, authenticator, reset, join approval) without using any keys myself.

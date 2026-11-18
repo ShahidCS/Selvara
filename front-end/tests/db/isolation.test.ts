@@ -1,5 +1,6 @@
-/* Database tests for the backend foundation (migration 0003, docs/architecture/BACKEND_FOUNDATION.md): tenant isolation by row level security,
-   the approvals guard, the audit hash chain and the schema check, against a real Postgres.
+/* Database tests for the backend foundation (migrations 0003 and 0004, docs/architecture/BACKEND_FOUNDATION.md): tenant isolation by row level
+   security, the approvals guard, the audit hash chain, the schema check, and the company directory the server uses for sessions and roles
+   (src/server/directory.ts), against a real Postgres.
 
    Run: TEST_DATABASE_URL=postgres://postgres:<password>@localhost:5432/selvara_test npm run test:db
    The URL must name a THROWAWAY database and a superuser: the tests drop and recreate its schemas. Never point it at Supabase. */
@@ -10,6 +11,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Client } from "pg";
 import { Db, SCHEMA_VERSION, dbFromEnv } from "@/server/db";
 import { UpstreamError } from "@/server/errors";
+import { PgDirectory } from "@/server/directory";
+import type { AuditRow } from "@/server/types";
 
 const URL_ = process.env.TEST_DATABASE_URL;
 const ROOT = path.resolve(__dirname, "../../..");
@@ -140,6 +143,83 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
     });
   });
 
+  describe("company directory (migration 0004, src/server/directory.ts)", () => {
+    let dir: PgDirectory;
+    const entry = (tenantId: string, actorId: string, action: string): AuditRow => ({ at: now, actor: "Someone", actorId, tenantId, action, target: "target", cat: "Access", space: "ws", ip: "198.51.100.7" });
+    beforeAll(async () => {
+      dir = new PgDirectory(app);
+      await admin.query(`insert into public.tenant_settings (tenant_id, lockout, updated_ms) values ($1, '{"preset":"pci"}', $3), ($2, '{"preset":"custom","custom":{"attempts":3,"minutes":60}}', $3)`, [A, B, now]);
+    });
+
+    it("a person sees only the companies and settings of their active memberships, and codes resolve only active companies", async () => {
+      expect((await dir.companiesOf(alex)).map((c) => c.company.ref)).toEqual(["cust-a"]);
+      expect((await dir.companiesOf(casey)).map((c) => [c.company.ref, c.role])).toEqual([["cust-b", "admin"]]);
+      expect(await dir.lockoutsOf(alex)).toEqual([{ preset: "pci" }]);
+      expect(await app.tx({ tenantId: null, userId: alex }, (q) => q.query("select tenant_id from tenant_settings"))).toEqual([{ tenant_id: A }]);
+      expect(await app.tx({ tenantId: null, userId: alex }, (q) => q.query("select ref from tenants"))).toEqual([{ ref: "cust-a" }]);
+      expect(await app.tx(ctxA(), (q) => q.query("update tenant_settings set lockout = '{}' where tenant_id = $1 returning tenant_id", [B]))).toEqual([]);
+      expect(await code(app.tx(ctxA(), (q) => q.query("insert into tenant_settings (tenant_id, updated_ms) values ($1, $2) on conflict (tenant_id) do update set version = 9", [B, now])))).toBe("42501");
+      expect(await dir.companyByCode(" CUST-B ")).toBe(B);
+      expect(await dir.companyByCode("cust-zz")).toBeNull();
+      await admin.query("update public.tenants set status = 'Suspended' where id = $1", [B]);
+      expect(await dir.companyByCode("cust-b")).toBeNull();
+      expect(await dir.companiesOf(casey)).toEqual([]);
+      await admin.query("update public.tenants set status = 'Active' where id = $1", [B]);
+    });
+
+    it("joining, deciding and settings changes stay in their company and write their audit entry in the same transaction", async () => {
+      const fay = randomUUID();
+      await admin.query("insert into auth.users (id, email) values ($1, 'fay@a.example.test')", [fay]);
+      await admin.query("insert into public.profiles (id, email, person, role, status, requested_ms) values ($1, 'fay@a.example.test', 'Fay Lund', 'employee', 'Pending', $2)", [fay, now]);
+      expect(await dir.requestToJoin(A, fay, now, entry(A, fay, "team.join.requested"))).toBe(true);
+      expect(await dir.requestToJoin(A, fay, now, entry(A, fay, "team.join.requested"))).toBe(false);
+      expect((await dir.members(A, alex, "Pending")).map((m) => m.person)).toEqual(["Fay Lund"]);
+      expect(await dir.members(B, casey, "Pending")).toEqual([]);
+      expect(await dir.membership(B, fay)).toBeNull();
+      // a pending member sees no company and no settings yet
+      expect(await dir.companiesOf(fay)).toEqual([]);
+      expect(await app.tx({ tenantId: null, userId: fay }, async (q) => [...await q.query("select id from tenants"), ...await q.query("select tenant_id from tenant_settings")])).toEqual([]);
+      expect(await dir.decide(B, casey, fay, "Active", "Approving from the wrong company", now, entry(B, casey, "team.join.approved"))).toBe(false);
+      expect(await dir.decide(A, alex, fay, "Active", "Joined the team this week", now, entry(A, alex, "team.join.approved"))).toBe(true);
+      expect(await dir.decide(A, alex, fay, "Removed", "Deciding a second time", now, entry(A, alex, "team.join.rejected"))).toBe(false);
+      expect((await dir.membership(A, fay))!.status).toBe("Active");
+      await dir.setLockout(A, alex, { preset: "strict" }, now, entry(A, alex, "team.lockout.changed"));
+      expect((await admin.query("select lockout, version, updated_by from public.tenant_settings where tenant_id = $1", [A])).rows[0]).toEqual({ lockout: { preset: "strict" }, version: 2, updated_by: alex });
+      const log = (await admin.query("select action, tenant_id from public.audit_log where action like 'team.%' order by seq")).rows;
+      expect(log).toEqual([{ action: "team.join.requested", tenant_id: A }, { action: "team.join.approved", tenant_id: A }, { action: "team.lockout.changed", tenant_id: A }]);
+      await expect(dir.setLockout(A, alex, { preset: "strict" }, now, { ...entry(A, alex, "x"), cat: null as unknown as string })).rejects.toThrow(); // audit fails ...
+      expect((await admin.query("select version from public.tenant_settings where tenant_id = $1", [A])).rows[0].version).toBe(2); // ... so the change is undone
+    });
+
+    it("bootstrap_company is for the owner only, validates its input, and the functions are not exposed to the public API roles", async () => {
+      expect(await code(app.tx(ctxA(), (q) => q.query("select public.bootstrap_company('new-co', 'New Test Co', 'alex@a.example.test')")))).toBe("42501");
+      for (const [role, fn] of [["anon", "tenant_id_by_ref(text)"], ["authenticated", "tenant_id_by_ref(text)"], ["anon", "audit_verify(text)"], ["authenticated", "audit_verify(text)"],
+        ["selvara_app", "bootstrap_company(text,text,text)"], ["service_role", "bootstrap_company(text,text,text)"], ["anon", "bootstrap_company(text,text,text)"]])
+        expect([role, fn, (await admin.query(`select has_function_privilege($1, 'public.${fn}', 'execute') as ok`, [role])).rows[0].ok]).toEqual([role, fn, false]);
+      const pgCode = async (sql: string) => { try { await admin.query(sql); return "ok"; } catch (e) { return (e as { code?: string }).code; } };
+      expect(await pgCode("select public.bootstrap_company('No Caps', 'New Test Co', 'alex@a.example.test')")).toBe("22023");
+      expect(await pgCode("select public.bootstrap_company('cust-a', 'New Test Co', 'alex@a.example.test')")).toBe("23505");
+      expect(await pgCode("select public.bootstrap_company('new-co', 'New Test Co', 'nobody@a.example.test')")).toBe("22023");
+      expect(await pgCode("select public.bootstrap_company('new-co', 'New Test Co', 'drew@platform.example.test')")).toBe("22023");
+      const id = (await admin.query("select public.bootstrap_company(' New-Co ', 'New Test Co', 'ALEX@a.example.test') as id")).rows[0].id as string;
+      expect((await dir.companiesOf(alex)).map((c) => [c.company.ref, c.role])).toEqual([["cust-a", "admin"], ["new-co", "admin"]]);
+      expect(await dir.lockoutsOf(alex)).toEqual(expect.arrayContaining([{ preset: "standard" }]));
+      expect((await admin.query("select public.audit_verify($1) as bad", [id])).rows[0].bad).toBeNull();
+      expect((await admin.query("select count(*)::int as n from public.audit_log where tenant_id = $1 and action = 'tenant.created'", [id])).rows[0].n).toBe(1);
+    });
+
+    it("moves old platform roles to platform staff, and running 0004 again changes nothing else", async () => {
+      const gale = randomUUID();
+      await admin.query("insert into auth.users (id, email) values ($1, 'gale@platform.example.test')", [gale]);
+      await admin.query("insert into public.profiles (id, email, person, role, status, requested_ms) values ($1, 'gale@platform.example.test', 'Gale Orr', 'super2', 'Active', $2)", [gale, now]);
+      const before = (await admin.query("select count(*)::int as n from public.tenants")).rows[0].n;
+      await admin.query(readFileSync(path.join(MIGRATIONS, "0004_company_sessions.sql"), "utf8"));
+      expect(await dir.platformRole(gale)).toBe("super");
+      expect(await dir.platformRole(alex)).toBeNull();
+      expect((await admin.query("select count(*)::int as n from public.tenants")).rows[0].n).toBe(before);
+    });
+  });
+
   describe("schema check and request context", () => {
     it("works at the current schema and fails closed when the database is older than the code", async () => {
       expect(await app.schemaVersion()).toBe(SCHEMA_VERSION);
@@ -147,7 +227,7 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
       const stale = dbFromEnv(appUrl); // a new server instance: the check is cached per instance
       expect(await code(stale.ensureSchema())).toBe("SCHEMA_OUTDATED");
       await stale.close();
-      await admin.query("insert into public.schema_version (version, name, applied_ms) values ($1, '0003_tenancy_foundation', $2)", [SCHEMA_VERSION, now]);
+      await admin.query("insert into public.schema_version (version, name, applied_ms) values ($1, 'restored by the test', $2)", [SCHEMA_VERSION, now]);
     });
     it("refuses a tenant or user id that is not a uuid (no injection through the context)", async () => {
       expect(await code(app.tx({ tenantId: "x' or true --", userId: null }, (q) => q.query("select 1")))).toBe("BAD_CONTEXT");

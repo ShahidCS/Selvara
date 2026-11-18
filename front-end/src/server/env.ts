@@ -2,20 +2,22 @@
 import type { Deps } from "./types";
 import { SupabaseAuth, SupabaseStore } from "./supabase";
 import { dbFromEnv } from "./db";
+import { PgDirectory } from "./directory";
 
 let cached: Deps | null | undefined;
-/** Names of the variables the API needs. Values are secrets except the URLs. DATABASE_URL (with DATABASE_CA_CERT for TLS) is optional for
- *  now: sign-in works without it, the module APIs need it (docs/guides/SUPABASE.md). */
-export const REQUIRED_ENV = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SITE_URL", "SERVER_SECRET"] as const;
+/** Names of the variables the API needs. Values are secrets except the URLs. DATABASE_URL (as selvara_app, with DATABASE_CA_CERT for TLS) is
+ *  required since sessions belong to a company: roles come from memberships, which only the database role bound by row level security reads
+ *  (docs/guides/SUPABASE.md section 4b). Without it, or with a value that does not parse, the whole API answers 503 (fails closed). */
+export const REQUIRED_ENV = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SITE_URL", "SERVER_SECRET", "DATABASE_URL"] as const;
 export function deps(): Deps | null {
   if (cached !== undefined) return cached;
   const e = process.env;
   if (REQUIRED_ENV.some((k) => !e[k]) || String(e.SERVER_SECRET).length < 32) { cached = null; return cached; }
   const site = new URL(String(e.SITE_URL));
   const env = { url: String(e.SUPABASE_URL), anonKey: String(e.SUPABASE_ANON_KEY), serviceKey: String(e.SUPABASE_SERVICE_ROLE_KEY) };
-  let db: Deps["db"];
-  try { db = e.DATABASE_URL ? dbFromEnv(String(e.DATABASE_URL), e.DATABASE_CA_CERT) : undefined; } catch { db = undefined; } // a bad value leaves the database off; /api/system/ready reports it
-  cached = { auth: new SupabaseAuth(env), store: new SupabaseStore(env), site: { origin: site.origin, rpId: site.hostname }, secret: String(e.SERVER_SECRET), now: Date.now, db };
+  let db: NonNullable<Deps["db"]>;
+  try { db = dbFromEnv(String(e.DATABASE_URL), e.DATABASE_CA_CERT); } catch { cached = null; return cached; } // e.g. no CA certificate for a remote database
+  cached = { auth: new SupabaseAuth(env), store: new SupabaseStore(env), dir: new PgDirectory(db), site: { origin: site.origin, rpId: site.hostname }, secret: String(e.SERVER_SECRET), now: Date.now, db };
   return cached;
 }
 /** The client address: from Vercel's own header when running on Vercel (a trusted proxy), otherwise the socket. Never from a header a client can set elsewhere. */

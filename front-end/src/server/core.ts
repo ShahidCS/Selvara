@@ -2,7 +2,9 @@
    enforced here: generic errors, account lockout presets, network blocking (24 hours at most), the proof-of-work challenge, address reputation,
    trusted office networks, TOTP through Supabase Auth, recovery codes, passkeys for platform super admins, sessions (HttpOnly cookie, idle and
    absolute limits), re-authentication, password reset with the second factor, requests to join with admin approval, owner alerts and an
-   append-only audit log. Handlers take a plain request and return a plain response, so they are tested without a network. */
+   append-only audit log. Since slice 2a (docs/architecture/BACKEND_FOUNDATION.md) a session belongs to one company and the person's role comes
+   from their membership there (or from platform staff), checked again on every request; join requests, lockout settings and the member list are
+   per company. Handlers take a plain request and return a plain response, so they are tested without a network. */
 import { CHALLENGE, CUSTOM_BOUNDS, LOCKOUT, MFA, REAUTH_MS, RESET, type LockoutRule } from "@/lib/accountSecurity";
 import { checkPassword, POLICY } from "@/lib/credentials";
 import { IP_POLICY, LEVEL_LABEL, REPUTATION } from "@/lib/ipGuard";
@@ -11,6 +13,7 @@ import { isEmail } from "@/lib/security";
 import { checkRegistration, verifyAssertion } from "@/lib/webauthn";
 import { randomId, same, seal, sha256Hex, unseal } from "./crypto";
 import { logFailure } from "./errors";
+import type { Company, Lockout } from "./directory";
 import type { Deps, Profile, SessionRow } from "./types";
 
 export interface Req { method: string; path: string[]; body: Record<string, unknown>; headers: Record<string, string | undefined>; cookies: Record<string, string>; ip: string }
@@ -18,19 +21,41 @@ export interface Res { status: number; body?: unknown; cookies?: string[] }
 const ok = (body?: unknown, cookies?: string[]): Res => ({ status: body === undefined ? 204 : 200, body, cookies });
 const err = (status: number, error: string): Res => ({ status, body: { error } });
 export const SIGNIN_FAILED = "Email or password is incorrect.";
+export const NO_COMPANY = "Your account is not an active member of any company yet. Ask a company admin to approve your request to join.";
 const THROTTLED = "Too many attempts. Wait a few minutes, then try again.";
 export const COOKIE = "__Host-sv";
 const MIN = 60_000;
 const s = (v: unknown, max = 300) => String(v ?? "").slice(0, max);
 const norm = (e: unknown) => s(e, 254).trim().toLowerCase();
-const PRIVILEGED = new Set(["admin", "admin2", "super", "super2", "support"]);
-const base = (role: string) => role.replace(/2$/, "");
-const isSuper = (role: string) => base(role) === "super";
+const PRIVILEGED = new Set(["admin", "super", "support"]);
+
+/* ---------- access: which company and role a person works with ---------- */
+/** What a session may do: a company role (in `company`) or a platform role (no company). Never taken from the request. */
+export interface Access { role: string; platform: boolean; company: Company | null }
+/** At sign-in: platform staff work on the platform; everyone else in the company they used last, or the first of their active companies. */
+async function accessAtSignIn(d: Deps, userId: string): Promise<Access | null> {
+  const pr = await d.dir.platformRole(userId); if (pr) return { role: pr, platform: true, company: null };
+  const list = await d.dir.companiesOf(userId); if (!list.length) return null;
+  const last = await d.store.kvGet<string>("lastCompany", userId);
+  const pick = list.find((c) => c.company.id === last) || list[0];
+  return { role: pick.role, platform: false, company: pick.company };
+}
+/** For a running session: the membership must still be active (a removed or suspended person loses access at their next request). */
+async function accessOf(d: Deps, userId: string, tenantId: string | null | undefined): Promise<Access | null> {
+  if (!tenantId) { const pr = await d.dir.platformRole(userId); return pr ? { role: pr, platform: true, company: null } : null; }
+  const m = await d.dir.membership(tenantId, userId);
+  return m && m.status === "Active" ? { role: m.role, platform: false, company: m.company } : null;
+}
+const isSuper = (a: Access) => a.platform && a.role === "super";
+const companyView = (c: Company | null) => (c ? { ref: c.ref, name: c.name } : null);
 
 /* ---------- audit and alerts ---------- */
-async function audit(d: Deps, r: Req, actor: string, action: string, target: string, role = "employee") {
-  await d.store.audit({ at: d.now(), actor, action, target, cat: "Access", space: base(role) === "super" || base(role) === "support" ? "admin" : "ws", ip: r.ip });
-}
+/** Who did it, for the audit log: workspace events go to the company's log, platform events to the platform log. */
+interface Actor { name: string; id?: string; tenantId?: string | null; platform?: boolean }
+const actorOf = (p: Profile, a: Access | null): Actor => ({ name: p.person, id: p.id, tenantId: a?.company?.id ?? null, platform: !!a?.platform });
+const entry = (d: Deps, r: Req, a: Actor, action: string, target: string, cat = "Access") =>
+  ({ at: d.now(), actor: a.name, actorId: a.id ?? null, tenantId: a.tenantId ?? null, action, target, cat, space: a.platform ? "admin" as const : "ws" as const, ip: r.ip });
+async function audit(d: Deps, r: Req, a: Actor, action: string, target: string) { await d.store.audit(entry(d, r, a, action, target)); }
 const notify = (d: Deps, userId: string, text: string) => d.store.insertNotice({ id: randomId(9), userId, at: d.now(), text });
 
 /* ---------- network guard ---------- */
@@ -61,15 +86,20 @@ async function allow(d: Deps, ip: string, act: string, max: number, windowMs: nu
 const BLOCKED_MSG = "Sign-in from your network is blocked for a while after repeated failed attempts.";
 
 /* ---------- account lockout ---------- */
-async function lockRule(d: Deps, role: string): Promise<LockoutRule> {
-  if (base(role) === "super" || base(role) === "support") return LOCKOUT.strict;
-  const st = await d.store.kvGet<{ preset: string; custom?: { attempts: number; minutes: number } }>("settings", "lockout");
+const ruleOf = (st: Lockout | null | undefined): LockoutRule => {
   if (st?.preset === "custom" && st.custom) return { label: "Custom", attempts: st.custom.attempts, lockMs: st.custom.minutes * MIN, note: "" };
   return LOCKOUT[(st?.preset as keyof typeof LOCKOUT) || "standard"] || LOCKOUT.standard;
+};
+/** Platform staff: strict. Everyone else: the strictest lockout of the companies they belong to (fewest attempts, then the longest lock). */
+async function lockRule(d: Deps, p: Profile | null): Promise<LockoutRule> {
+  if (!p) return LOCKOUT.standard;
+  if (await d.dir.platformRole(p.id)) return LOCKOUT.strict;
+  const rules = (await d.dir.lockoutsOf(p.id)).map(ruleOf);
+  return rules.reduce((a, b) => (b.attempts < a.attempts || (b.attempts === a.attempts && b.lockMs > a.lockMs) ? b : a), rules[0] ?? LOCKOUT.standard);
 }
 async function locked(d: Deps, email: string) { const f = await d.store.kvGet<{ n: number; until: number }>("lock", email); return !!f && f.until > d.now(); }
 async function accountFail(d: Deps, email: string, p: Profile | null) {
-  const rule = await lockRule(d, p?.role || "employee");
+  const rule = await lockRule(d, p);
   const f = (await d.store.kvGet<{ n: number; until: number }>("lock", email)) || { n: 0, until: 0 }; f.n += 1;
   if (f.n >= rule.attempts) { f.until = d.now() + rule.lockMs; f.n = 0; if (p) await notify(d, p.id, `Your account was locked for ${rule.lockMs / MIN} minutes after ${rule.attempts} failed sign-in attempts.`); }
   await d.store.kvSet("lock", email, f, 24 * 60 * MIN);
@@ -104,25 +134,30 @@ async function finish(d: Deps, r: Req, ticketId: string, t: Ticket, extra: Recor
   const rec = await ipRec(d, r.ip); rec.fails = []; await d.store.kvSet("ip", r.ip, rec, IP_POLICY.RESET_MS);
   await d.auth.signOut({ access: t.access, refresh: t.refresh }); // the Supabase session was only for the MFA step
   const p = await d.store.profileById(t.userId) as Profile;
+  const acc = await accessAtSignIn(d, p.id); if (!acc) return err(409, NO_COMPANY);
   const previous = await d.store.kvGet<{ at: number; ip: string; device: string }>("last", p.id); const failedSince = (await d.store.kvGet<number>("failedSince", p.id)) || 0;
   await d.store.kvSet("last", p.id, { at: d.now(), ip: r.ip, device: device(r) }); await d.store.kvSet("failedSince", p.id, 0);
   if (failedSince >= CHALLENGE.AFTER_FAILS) await notify(d, p.id, `Signed in after ${failedSince} failed attempts since your last sign-in. If you did not make them, change your password.`);
   const sid = randomId(32); const now = d.now(); const absolute = POLICY.absoluteHours * 60 * MIN;
-  await d.store.insertSession({ idHash: await sha256Hex(sid), userId: p.id, device: device(r), ip: r.ip, createdAt: now, lastSeen: now, expiresAt: now + absolute });
+  await d.store.insertSession({ idHash: await sha256Hex(sid), userId: p.id, device: device(r), ip: r.ip, createdAt: now, lastSeen: now, expiresAt: now + absolute, tenantId: acc.company?.id ?? null });
   await d.store.kvSet("reauth", await sha256Hex(sid), now, REAUTH_MS);
-  await audit(d, r, p.person, "auth.signed_in", p.person, p.role);
-  return ok({ roleId: p.role, who: p.person, person: p.person, previous, failedSince, ...extra }, [cookie(sid, absolute / 1000)]);
+  await audit(d, r, actorOf(p, acc), "auth.signed_in", p.person);
+  return ok({ roleId: acc.role, who: p.person, person: p.person, company: companyView(acc.company), previous, failedSince, ...extra }, [cookie(sid, absolute / 1000)]);
 }
-/** The signed-in session and person, enforcing the idle limit (15 minutes for privileged roles, 30 otherwise) and the absolute limit. */
-export async function current(d: Deps, r: Req): Promise<{ s: SessionRow; p: Profile } | null> {
+/** The signed-in session, person and access, enforcing the idle limit (15 minutes for privileged roles, 30 otherwise), the absolute limit and the
+ *  membership: a session whose person is no longer an active member of its company (or no longer platform staff) ends. */
+export async function current(d: Deps, r: Req): Promise<Ctx | null> {
   const sid = r.cookies[COOKIE]; if (!sid || sid.length > 100) return null;
   const h = await sha256Hex(sid); const row = await d.store.sessionByHash(h); if (!row || row.revokedAt) return null;
   const p = await d.store.profileById(row.userId); if (!p || p.status !== "Active") return null;
-  const idle = (PRIVILEGED.has(p.role) ? POLICY.idleMinutesPrivileged : POLICY.idleMinutes) * MIN;
+  const a = await accessOf(d, p.id, row.tenantId);
+  if (!a) { await d.store.updateSession(h, { revokedAt: d.now(), revokedWhy: "Access removed" }); return null; }
+  const idle = (PRIVILEGED.has(a.role) ? POLICY.idleMinutesPrivileged : POLICY.idleMinutes) * MIN;
   if (row.expiresAt <= d.now() || d.now() - row.lastSeen > idle) { await d.store.updateSession(h, { revokedAt: d.now(), revokedWhy: "Expired" }); return null; }
   await d.store.updateSession(h, { lastSeen: d.now() }); row.lastSeen = d.now();
-  return { s: row, p };
+  return { s: row, p, a };
 }
+export interface Ctx { s: SessionRow; p: Profile; a: Access }
 const recentAuth = async (d: Deps, s: SessionRow) => { const at = await d.store.kvGet<number>("reauth", s.idHash); return !!at && d.now() - at < REAUTH_MS; };
 
 /* ---------- handlers ---------- */
@@ -139,8 +174,9 @@ const signIn: H = async (d, r) => {
   if (!p || !res) { await ipFail(d, r); await accountFail(d, email, p); return (await blocked(d, r.ip)) ? err(403, BLOCKED_MSG) : err(401, SIGNIN_FAILED); }
   if (p.status === "Pending") { await d.auth.signOut(res); return err(409, "Your request to join is waiting for a company admin to approve it."); }
   if (p.status === "Rejected") { await d.auth.signOut(res); return err(409, "Your request to join was not approved. Ask a company admin."); }
+  const acc = await accessAtSignIn(d, p.id); if (!acc) { await d.auth.signOut(res); return err(409, NO_COMPANY); }
   const tid = randomId(24); const t: Ticket = { userId: p.id, email, access: res.access, refresh: res.refresh, method: "totp", tries: 0, expires: d.now() + MFA.TICKET_MS };
-  if (isSuper(p.role)) {
+  if (isSuper(acc)) {
     const keys = await d.store.passkeysOf(p.id); t.method = "passkey"; t.challenge = randomId(32); t.register = keys.length === 0;
     await saveTicket(d, tid, t);
     return ok({ step: "passkey", ticket: tid, register: t.register, challenge: t.challenge, rpId: d.site.rpId, allow: keys.map((k) => k.id), email, name: p.person });
@@ -194,7 +230,7 @@ const passkeyStep: H = async (d, r) => {
   if (reg) {
     if (!t.register || typeof reg.id !== "string" || typeof reg.publicKey !== "string" || !checkRegistration(s(reg.clientDataJSON, 4096), { challenge: t.challenge, origin: d.site.origin })) return wrongSecond(d, r, tid, t);
     await d.store.insertPasskey({ id: s(reg.id, 512), userId: t.userId, publicKey: s(reg.publicKey, 1024), signCount: 0, createdAt: d.now(), label: device(r) });
-    await notify(d, t.userId, `A passkey was added to your account (${device(r)}).`); await audit(d, r, p.person, "auth.passkey.added", p.person, p.role);
+    await notify(d, t.userId, `A passkey was added to your account (${device(r)}).`); await audit(d, r, actorOf(p, await accessAtSignIn(d, p.id)), "auth.passkey.added", p.person);
     return finish(d, r, tid, t);
   }
   if (!as) return wrongSecond(d, r, tid, t);
@@ -210,27 +246,38 @@ const ready: H = async (d, r) => {
   try { await d.db.ensureSchema(); return ok({ ready: true }); }
   catch (e) { logFailure("GET system/ready", e, r.headers["x-vercel-id"]); return err(503, "The database is not ready."); }
 };
-const sessionInfo: H = async (d, r) => { const c = await current(d, r); return c ? ok({ roleId: c.p.role, who: c.p.person }) : err(401, "Signed out."); };
+/** The session's person, role and company, and the other companies they may switch to. */
+const sessionInfo: H = async (d, r) => {
+  const c = await current(d, r); if (!c) return err(401, "Signed out.");
+  const companies = c.a.platform ? [] : (await d.dir.companiesOf(c.p.id)).map((x) => ({ ...companyView(x.company), role: x.role }));
+  return ok({ roleId: c.a.role, who: c.p.person, company: companyView(c.a.company), companies });
+};
 const signOut: H = async (d, r) => {
   const c = await current(d, r);
-  if (c) { await d.store.updateSession(c.s.idHash, { revokedAt: d.now(), revokedWhy: "Signed out" }); await audit(d, r, c.p.person, "auth.signed_out", c.p.person, c.p.role); }
+  if (c) { await d.store.updateSession(c.s.idHash, { revokedAt: d.now(), revokedWhy: "Signed out" }); await audit(d, r, actorOf(c.p, c.a), "auth.signed_out", c.p.person); }
   return ok(undefined, [cookie("", 0)]);
 };
+/** A request to join names the company by its code. The answer is the same whether or not the email or the code is known, so neither can be
+ *  probed. A new person's account stays unconfirmed in Supabase (it cannot sign in) until an admin of that company approves; a person who is
+ *  already active elsewhere keeps their password and gets a pending membership. Platform staff cannot join a company this way. */
 const join: H = async (d, r) => {
-  const name = s(r.body.name, 80).trim(); const email = norm(r.body.email); const password = s(r.body.password, 1024);
+  const name = s(r.body.name, 80).trim(); const email = norm(r.body.email); const password = s(r.body.password, 1024); const code = s(r.body.company, 40).trim().toLowerCase();
   if (name.length < 2) return err(400, "Enter your full name.");
   if (!isEmail(email)) return err(400, "Enter a valid work email address.");
+  if (!/^[a-z0-9][a-z0-9-]{2,39}$/.test(code)) return err(400, "Enter your company code. Your company admin can tell you what it is.");
   const pw = checkPassword(password, { email, name }); if (!pw.ok) return err(400, pw.errors[0] || "Choose a stronger password.");
   if (await blocked(d, r.ip)) return err(403, BLOCKED_MSG);
   if (!(await allow(d, r.ip, "join", IP_POLICY.JOIN_MAX, IP_POLICY.JOIN_WINDOW_MS))) return err(429, "Too many requests to join from your network. Try again in an hour.");
+  const tenantId = await d.dir.companyByCode(code); if (!tenantId) return { status: 202 };
   const existing = await d.store.profileByEmail(email);
+  let userId = existing?.id;
   if (!existing || existing.status === "Rejected") {
-    // unconfirmed in Supabase until an admin approves, so Supabase refuses its sign-in too
     if (existing) { await d.auth.setPassword(existing.id, password); await d.store.updateProfile(existing.id, { status: "Pending", requestedAt: d.now(), person: name }); }
-    else { const id = await d.auth.createUser(email, password, name); await d.store.insertProfile({ id, email, person: name, role: "employee", status: "Pending", requestedAt: d.now() }); }
-    await audit(d, r, `${name} (not signed in)`, "team.join.requested", `${name} <${email}>`);
-  }
-  return { status: 202 }; // the same answer whether or not the email was known
+    else { userId = await d.auth.createUser(email, password, name); await d.store.insertProfile({ id: userId, email, person: name, role: "employee", status: "Pending", requestedAt: d.now() }); }
+  } else if (await d.dir.platformRole(existing.id)) return { status: 202 };
+  const who = existing && existing.status === "Active" ? existing.person : name;
+  await d.dir.requestToJoin(tenantId, userId as string, d.now(), entry(d, r, { name: `${who} (not signed in)`, id: userId, tenantId }, "team.join.requested", `${who} <${email}>`));
+  return { status: 202 };
 };
 const resetRequest: H = async (d, r) => {
   const email = norm(r.body.email); if (!isEmail(email)) return err(400, "Enter a valid work email address.");
@@ -240,7 +287,7 @@ const resetRequest: H = async (d, r) => {
   if (p && p.status === "Active" && (await allow(d, "acct:" + p.id, "reset", RESET.MAX_PER_HOUR, 60 * MIN))) {
     await d.auth.sendResetEmail(email, `${d.site.origin}/login`);
     await notify(d, p.id, "A password reset was requested for your account. If this was not you, you can ignore it: your password has not changed.");
-    await audit(d, r, p.person, "auth.password.reset_requested", p.person, p.role);
+    await audit(d, r, actorOf(p, await accessAtSignIn(d, p.id)), "auth.password.reset_requested", p.person);
   }
   return { status: 202 };
 };
@@ -269,13 +316,13 @@ const resetDo: H = async (d, r) => {
   let ended = 0; for (const x of await d.store.sessionsOf(p.id)) if (!x.revokedAt) { ended++; await d.store.updateSession(x.idHash, { revokedAt: d.now(), revokedWhy: "Password reset" }); }
   await d.store.kvDel("lock", p.email);
   await notify(d, p.id, `Your password was reset${ended ? ` and ${ended} session${ended === 1 ? " was" : "s were"} signed out` : ""}. If this was not you, contact your administrator now.`);
-  await audit(d, r, p.person, "auth.password.reset", p.person, p.role);
+  await audit(d, r, actorOf(p, await accessAtSignIn(d, p.id)), "auth.password.reset", p.person);
   return ok();
 };
 
 /* ---------- signed-in endpoints ---------- */
-const signed = (h: (d: Deps, r: Req, c: { s: SessionRow; p: Profile }) => Promise<Res>): H => async (d, r) => { const c = await current(d, r); return c ? h(d, r, c) : err(401, "Sign in first."); };
-const security = signed(async (d, r, { s: me, p }) => {
+const signed = (h: (d: Deps, r: Req, c: Ctx) => Promise<Res>): H => async (d, r) => { const c = await current(d, r); return c ? h(d, r, c) : err(401, "Sign in first."); };
+const security = signed(async (d, r, { s: me, p, a }) => {
   const sessions = (await d.store.sessionsOf(p.id)).filter((x) => !x.revokedAt && x.expiresAt > d.now());
   const recovery = await d.store.recoveryOf(p.id); const mfa = await d.store.kvGet<{ enrolledAt: number }>("mfa", p.id);
   return ok({
@@ -283,7 +330,7 @@ const security = signed(async (d, r, { s: me, p }) => {
     sessions: sessions.map((x) => ({ id: x.idHash.slice(0, 16), device: x.device, ip: x.ip, startedAt: x.createdAt, current: x.idHash === me.idHash, expiresAt: x.expiresAt })),
     notices: (await d.store.noticesOf(p.id, 20)).map((n) => ({ id: n.id, at: n.at, text: n.text })),
     mfa: mfa ? { enrolledAt: mfa.enrolledAt, codesLeft: recovery.filter((x) => !x.usedAt).length } : null,
-    passkeys: (await d.store.passkeysOf(p.id)).map((k) => ({ id: k.id, label: k.label, createdAt: k.createdAt })), passkeyRequired: isSuper(p.role),
+    passkeys: (await d.store.passkeysOf(p.id)).map((k) => ({ id: k.id, label: k.label, createdAt: k.createdAt })), passkeyRequired: isSuper(a),
   });
 });
 const reauth = signed(async (d, r, { s: me, p }) => {
@@ -292,7 +339,7 @@ const reauth = signed(async (d, r, { s: me, p }) => {
   if (!res) { await ipFail(d, r); await accountFail(d, p.email, p); return err(400, "That password is not correct."); }
   await d.auth.signOut(res); await d.store.kvSet("reauth", me.idHash, d.now(), REAUTH_MS); return ok();
 });
-const changePassword = signed(async (d, r, { s: me, p }) => {
+const changePassword = signed(async (d, r, { s: me, p, a }) => {
   const res = await d.auth.signInWithPassword(p.email, s(r.body.current, 1024));
   if (!res) { await ipFail(d, r); await accountFail(d, p.email, p); return err(400, "That password is not correct."); }
   await d.auth.signOut(res);
@@ -301,63 +348,85 @@ const changePassword = signed(async (d, r, { s: me, p }) => {
   await d.auth.setPassword(p.id, next); await d.store.kvSet("reauth", me.idHash, d.now(), REAUTH_MS);
   let ended = 0; for (const x of await d.store.sessionsOf(p.id)) if (!x.revokedAt && x.idHash !== me.idHash) { ended++; await d.store.updateSession(x.idHash, { revokedAt: d.now(), revokedWhy: "Password changed" }); }
   await notify(d, p.id, `Your password was changed${ended ? ` and ${ended} other session${ended === 1 ? " was" : "s were"} signed out` : ""}. If this was not you, reset it now.`);
-  await audit(d, r, p.person, "auth.password.changed", p.person, p.role); return ok();
+  await audit(d, r, actorOf(p, a), "auth.password.changed", p.person); return ok();
 });
-const newCodes = signed(async (d, r, { s: me, p }) => {
+const newCodes = signed(async (d, r, { s: me, p, a }) => {
   if (!(await recentAuth(d, me))) return err(403, "Confirm your password first.");
   if (!(await d.store.kvGet("mfa", p.id))) return err(400, "Add an authenticator app first.");
   const codes = generateRecoveryCodes(MFA.RECOVERY_CODES); await storeRecovery(d, p.id, codes);
-  await notify(d, p.id, "New recovery codes were issued. The old ones no longer work."); await audit(d, r, p.person, "recovery.codes.regenerated", p.person, p.role);
+  await notify(d, p.id, "New recovery codes were issued. The old ones no longer work."); await audit(d, r, actorOf(p, a), "recovery.codes.regenerated", p.person);
   return ok({ codes });
 });
-const revokeOthers = signed(async (d, r, { s: me, p }) => {
+const revokeOthers = signed(async (d, r, { s: me, p, a }) => {
   let n = 0; for (const x of await d.store.sessionsOf(p.id)) if (!x.revokedAt && x.idHash !== me.idHash) { n++; await d.store.updateSession(x.idHash, { revokedAt: d.now(), revokedWhy: "Signed out from another session" }); }
   if (n) await notify(d, p.id, `${n} other session${n === 1 ? " was" : "s were"} signed out from ${device(r)}.`);
-  await audit(d, r, p.person, "session.others.revoked", p.person, p.role); return ok(n);
+  await audit(d, r, actorOf(p, a), "session.others.revoked", p.person); return ok(n);
 });
 const passkeyOptions = signed(async (d, r, { s: me, p }) => {
   if (!(await recentAuth(d, me))) return err(403, "Confirm your password first.");
   const challenge = randomId(32); await d.store.kvSet("pkadd", me.idHash, challenge, 5 * MIN);
   return ok({ challenge, rpId: d.site.rpId, exclude: (await d.store.passkeysOf(p.id)).map((k) => k.id), email: p.email, name: p.person });
 });
-const passkeyAdd = signed(async (d, r, { s: me, p }) => {
+const passkeyAdd = signed(async (d, r, { s: me, p, a }) => {
   const challenge = await d.store.kvGet<string>("pkadd", me.idHash); await d.store.kvDel("pkadd", me.idHash);
   if (!challenge || !checkRegistration(s(r.body.clientDataJSON, 4096), { challenge, origin: d.site.origin })) return err(400, "That passkey could not be verified.");
   await d.store.insertPasskey({ id: s(r.body.id, 512), userId: p.id, publicKey: s(r.body.publicKey, 1024), signCount: 0, createdAt: d.now(), label: device(r) });
-  await notify(d, p.id, `A passkey was added to your account (${device(r)}).`); await audit(d, r, p.person, "auth.passkey.added", p.person, p.role); return ok();
+  await notify(d, p.id, `A passkey was added to your account (${device(r)}).`); await audit(d, r, actorOf(p, a), "auth.passkey.added", p.person); return ok();
 });
-const passkeyDelete = signed(async (d, r, { s: me, p }) => {
+const passkeyDelete = signed(async (d, r, { s: me, p, a }) => {
   if (!(await recentAuth(d, me))) return err(403, "Confirm your password first.");
   const keys = await d.store.passkeysOf(p.id); const id = s(r.path[2], 512);
   if (!keys.some((k) => k.id === id)) return err(404, "Passkey not found.");
-  if (isSuper(p.role) && keys.length <= 1) return err(400, "Platform super admins must keep at least one passkey.");
-  await d.store.deletePasskey(id); await notify(d, p.id, "A passkey was removed from your account."); await audit(d, r, p.person, "auth.passkey.removed", p.person, p.role); return ok();
+  if (isSuper(a) && keys.length <= 1) return err(400, "Platform super admins must keep at least one passkey.");
+  await d.store.deletePasskey(id); await notify(d, p.id, "A passkey was removed from your account."); await audit(d, r, actorOf(p, a), "auth.passkey.removed", p.person); return ok();
 });
 
-/* ---------- company admin endpoints ---------- */
-const admin = (h: (d: Deps, r: Req, c: { s: SessionRow; p: Profile }) => Promise<Res>) => signed(async (d, r, c) => (base(c.p.role) === "admin" ? h(d, r, c) : err(403, "Not permitted.")));
-const joinList = admin(async (d) => ok((await d.store.pendingProfiles()).map((x) => ({ id: x.id, name: x.person, email: x.email, requestedAt: x.requestedAt }))));
-const joinDecide = admin(async (d, r, { p: me }) => {
+/** Switches the session to another company the person is an active member of (D1: one company per session). Platform staff reach a company
+ *  only through an elevated session, never this way. Audited in the company switched to. */
+const switchCompany = signed(async (d, r, { s: me, p, a }) => {
+  if (a.platform) return err(403, "Platform staff open a company workspace only through an elevated session.");
+  const code = s(r.body.company, 40).trim().toLowerCase();
+  const to = (await d.dir.companiesOf(p.id)).find((x) => x.company.ref === code); if (!to) return err(404, "Company not found.");
+  await d.store.updateSession(me.idHash, { tenantId: to.company.id }); await d.store.kvSet("lastCompany", p.id, to.company.id);
+  const next: Access = { role: to.role, platform: false, company: to.company };
+  await audit(d, r, actorOf(p, next), "auth.company.switched", `${a.company?.ref ?? "none"} → ${to.company.ref}`);
+  return ok({ roleId: next.role, company: companyView(next.company) });
+});
+
+/* ---------- company admin endpoints (the session's company only) ---------- */
+type AdminCtx = Ctx & { company: Company };
+const admin = (h: (d: Deps, r: Req, c: AdminCtx) => Promise<Res>) => signed(async (d, r, c) => (c.a.role === "admin" && !c.a.platform && c.a.company ? h(d, r, { ...c, company: c.a.company }) : err(403, "Not permitted.")));
+const memberList = admin(async (d, _r, { p: me, company }) => ok((await d.dir.members(company.id, me.id)).filter((m) => m.status !== "Removed")
+  .map((m) => ({ id: m.userId, name: m.person, email: m.email, role: m.role, status: m.status, since: m.since }))));
+const joinList = admin(async (d, _r, { p: me, company }) => ok((await d.dir.members(company.id, me.id, "Pending")).map((x) => ({ id: x.userId, name: x.person, email: x.email, requestedAt: x.since }))));
+const joinDecide = admin(async (d, r, { p: me, a, company }) => {
   const id = s(r.path[2], 100); const decision = r.path[3]; const why = s(r.body.reason).trim();
   if (decision !== "approve" && decision !== "reject") return err(404, "Not found.");
   if (why.length < 10) return err(400, "Give a reason of at least 10 characters.");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return err(404, "Request not found.");
+  if (id === me.id) return err(403, "Segregation of duties: you cannot decide your own request to join.");
+  const m = await d.dir.membership(company.id, id); if (!m) return err(404, "Request not found."); // another company's person: not found, never forbidden
+  if (m.status !== "Pending") return err(409, "That request has already been decided.");
   const p = await d.store.profileById(id); if (!p) return err(404, "Request not found.");
-  if (p.status !== "Pending") return err(409, "That request has already been decided.");
-  if (p.email === me.email) return err(403, "Segregation of duties: you cannot decide your own request to join.");
-  if (decision === "approve") await d.auth.confirmUser(p.id);
-  await d.store.updateProfile(p.id, { status: decision === "approve" ? "Active" : "Rejected", decidedBy: me.person, reason: why });
-  await audit(d, r, me.person, decision === "approve" ? "team.join.approved" : "team.join.rejected", `${p.person} <${p.email}> as Employee; reason: ${why}`, me.role);
-  return ok({ id: p.id, status: decision === "approve" ? "Active" : "Rejected" });
+  const approve = decision === "approve";
+  const done = await d.dir.decide(company.id, me.id, id, approve ? "Active" : "Removed", why, d.now(),
+    entry(d, r, actorOf(me, a), approve ? "team.join.approved" : "team.join.rejected", `${p.person} <${p.email}> as Employee; reason: ${why}`));
+  if (!done) return err(409, "That request has already been decided.");
+  // A new person's account becomes usable with their first approval; a rejection leaves it unconfirmed (it still cannot sign in).
+  if (approve && p.status !== "Active") { await d.auth.confirmUser(p.id); await d.store.updateProfile(p.id, { status: "Active", decidedBy: me.person, reason: why }); }
+  return ok({ id, status: approve ? "Active" : "Rejected" });
 });
-const lockoutSet = admin(async (d, r, { p: me }) => {
+const lockoutSet = admin(async (d, r, { p: me, a, company }) => {
   const preset = s(r.body.lockout, 20); const custom = r.body.custom as { attempts?: unknown; minutes?: unknown } | undefined;
   if (!["standard", "strict", "pci", "custom"].includes(preset)) return err(400, "Choose one of the listed presets.");
+  let value: Lockout = { preset };
   if (preset === "custom") {
-    const a = Number(custom?.attempts), m = Number(custom?.minutes);
-    if (!Number.isInteger(a) || !Number.isInteger(m) || a < CUSTOM_BOUNDS.attempts[0] || a > CUSTOM_BOUNDS.attempts[1] || m < CUSTOM_BOUNDS.minutes[0] || m > CUSTOM_BOUNDS.minutes[1]) return err(400, "Custom lockout: 3 to 10 attempts and 15 to 60 minutes.");
-    await d.store.kvSet("settings", "lockout", { preset, custom: { attempts: a, minutes: m } });
-  } else await d.store.kvSet("settings", "lockout", { preset });
-  await audit(d, r, me.person, "team.lockout.changed", preset, me.role); return ok();
+    const n = Number(custom?.attempts), m = Number(custom?.minutes);
+    if (!Number.isInteger(n) || !Number.isInteger(m) || n < CUSTOM_BOUNDS.attempts[0] || n > CUSTOM_BOUNDS.attempts[1] || m < CUSTOM_BOUNDS.minutes[0] || m > CUSTOM_BOUNDS.minutes[1]) return err(400, "Custom lockout: 3 to 10 attempts and 15 to 60 minutes.");
+    value = { preset, custom: { attempts: n, minutes: m } };
+  }
+  await d.dir.setLockout(company.id, me.id, value, d.now(), entry(d, r, actorOf(me, a), "team.lockout.changed", preset === "custom" ? `custom: ${value.custom!.attempts} attempts, ${value.custom!.minutes} minutes` : preset));
+  return ok();
 });
 
 /** Method + path -> handler. Paths are relative to /api. */
@@ -365,7 +434,7 @@ export const ROUTES: Record<string, H> = {
   "POST auth/challenge": challenge, "POST auth/sign-in": signIn, "POST auth/sign-in/verify": verify, "POST auth/sign-in/passkey": passkeyStep,
   "GET system/ready": ready, "GET auth/session": sessionInfo, "POST auth/sign-out": signOut, "POST auth/join-requests": join,
   "POST auth/password/reset-request": resetRequest, "GET auth/password/reset/:token": resetCheck, "POST auth/password/reset": resetDo,
-  "GET me/security": security, "POST me/reauth": reauth, "POST me/password": changePassword, "POST me/recovery-codes": newCodes,
+  "GET me/security": security, "POST auth/company": switchCompany, "GET team/members": memberList, "POST me/reauth": reauth, "POST me/password": changePassword, "POST me/recovery-codes": newCodes,
   "POST me/sessions/revoke-others": revokeOthers, "POST me/passkeys/options": passkeyOptions, "POST me/passkeys": passkeyAdd, "DELETE me/passkeys/:id": passkeyDelete,
   "GET team/join-requests": joinList, "POST team/join-requests/:id/:decision": joinDecide, "POST team/settings": lockoutSet,
 };

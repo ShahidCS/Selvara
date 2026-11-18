@@ -62,7 +62,8 @@ export const joinRequests = (): JoinRequest[] => members();
 /** Test helper: forget every join request (memory and storage). */
 export function resetMembers() { MEMBERS = []; try { localStorage.removeItem(KEY); } catch { /* ignore */ } }
 
-export interface JoinInput { name: string; email: string; password: string }
+/** `company`: the company code; production only (the server needs it to know which company's admins decide). The demonstration has one company. */
+export interface JoinInput { name: string; email: string; password: string; company?: string }
 /** Ask to join as an Employee. The answer never says whether the email is already known (no account enumeration); a duplicate is ignored. */
 export async function requestToJoin(input: JoinInput): Promise<void> {
   const name = clampText(input.name, 80); const email = norm(input.email);
