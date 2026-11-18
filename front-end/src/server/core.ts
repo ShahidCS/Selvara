@@ -204,6 +204,12 @@ const passkeyStep: H = async (d, r) => {
   await d.store.updatePasskey(key.id, { signCount: count });
   return finish(d, r, tid, t);
 };
+/** Readiness of the module database: 200 when DATABASE_URL works and the schema is current, 503 otherwise (the reason goes to the log only). */
+const ready: H = async (d, r) => {
+  if (!d.db) return err(503, "The database is not configured.");
+  try { await d.db.ensureSchema(); return ok({ ready: true }); }
+  catch (e) { logFailure("GET system/ready", e, r.headers["x-vercel-id"]); return err(503, "The database is not ready."); }
+};
 const sessionInfo: H = async (d, r) => { const c = await current(d, r); return c ? ok({ roleId: c.p.role, who: c.p.person }) : err(401, "Signed out."); };
 const signOut: H = async (d, r) => {
   const c = await current(d, r);
@@ -357,7 +363,7 @@ const lockoutSet = admin(async (d, r, { p: me }) => {
 /** Method + path -> handler. Paths are relative to /api. */
 export const ROUTES: Record<string, H> = {
   "POST auth/challenge": challenge, "POST auth/sign-in": signIn, "POST auth/sign-in/verify": verify, "POST auth/sign-in/passkey": passkeyStep,
-  "GET auth/session": sessionInfo, "POST auth/sign-out": signOut, "POST auth/join-requests": join,
+  "GET system/ready": ready, "GET auth/session": sessionInfo, "POST auth/sign-out": signOut, "POST auth/join-requests": join,
   "POST auth/password/reset-request": resetRequest, "GET auth/password/reset/:token": resetCheck, "POST auth/password/reset": resetDo,
   "GET me/security": security, "POST me/reauth": reauth, "POST me/password": changePassword, "POST me/recovery-codes": newCodes,
   "POST me/sessions/revoke-others": revokeOthers, "POST me/passkeys/options": passkeyOptions, "POST me/passkeys": passkeyAdd, "DELETE me/passkeys/:id": passkeyDelete,

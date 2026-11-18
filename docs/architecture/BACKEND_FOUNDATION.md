@@ -1,6 +1,6 @@
 # Backend foundation (design, draft for review)
 
-Status: **design accepted by the owner on 2026-11-18** (all six decisions in [section 12](#12-decisions-needed) as recommended). Still a draft for security and compliance review; nothing here is built yet.
+Status: **design accepted by the owner on 2026-11-18** (all six decisions in [section 12](#12-decisions-needed) as recommended). Still a draft for security and compliance review. **Slice 1 is built** (v0.1.7): migration `0003_tenancy_foundation.sql`, `src/server/db.ts` and the database tests in `tests/db`; sessions are not yet bound to a company and no module API uses it yet (slice 2).
 
 ## 1. Goal
 

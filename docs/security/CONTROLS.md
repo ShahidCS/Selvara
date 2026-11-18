@@ -60,6 +60,8 @@ This register lists every security control in Selvara, where it is enforced, wha
 | ACC-08 | Decisions from the notifications panel only for kinds decided through the shared four-eyes path, with the same reason and second-person rules | SOD_MATRIX §8 | `lib/inboxApprovals.ts` | as the module | unit `inboxApprovals.test.ts`; e2e `inbox-approvals.spec.ts` |
 | ACC-09 | Invitations and privileged role changes need a second company admin; invitations expire after 72 hours | SOD_MATRIX §3 | `services/team.ts` | `member.invite.requested`, `member.invited`, `member.invitation.expired/revoked`, `member.role.requested`, `member.role.changed` | unit `approvals.test.ts`; e2e `settings-pages.spec.ts` "team: members are a table, invite is a page..." |
 | ACC-10 | Approved artefacts are never edited in place (new version, approval again) | SOD_MATRIX §1.5, §5 | `features/policies/services/policies.ts` | `policy.created`, `policy.approved`, `policy.acknowledged` and others | e2e `policies.spec.ts` |
+| ACC-11 | Tenant isolation in the database (built for the module APIs, slice 1): the server's role `selvara_app` cannot bypass row level security; every transaction sets the company and person from the session; every company table refuses other companies' rows on read and write; no delete is granted; the sign-in tables are out of its reach; a non-uuid context is refused | BACKEND_FOUNDATION §6; ASVS 8.2, 8.4 (multi-tenant) | `supabase/migrations/0003_tenancy_foundation.sql`, `src/server/db.ts` | — | db tests `tests/db/isolation.test.ts` (real Postgres, in CI); mutation-checked: weakening a policy fails 5 tests |
+| ACC-12 | Four-eyes in the database: the requester and the people in `forbid` can never vote, one vote per person, a vote only as the signed-in person, a reason of at least 10 characters | SOD_MATRIX §1, §3 | `0003` `approval_vote_guard`, `approval_votes` keys and checks | — | db tests "four-eyes approvals" |
 
 ## 4. AI agents (AI)
 
@@ -101,6 +103,7 @@ This register lists every security control in Selvara, where it is enforced, wha
 | LOG-02 | Admin console log: read-only for everyone, with basis, categories and synthetic address | `lib/adminAudit.ts` | as above | unit `ipGuard.test.ts`, `session.test.ts` (search `ADMIN_AUDIT`) |
 | LOG-03 | Events with nobody signed in (reset, request to join) name the person, not whoever used the browser last | `lib/audit.ts` `wsLog(..., actor)` | Server knows the identity | unit `accountSecurity.test.ts` "...`auth.password.reset` ... actor" |
 | LOG-04 | Server failures are diagnosable without leaking data: a 500 shows the person a generic message and writes one structured line to the function log (route pattern, failing step, Supabase code and status, request id), never request bodies, keys, tokens, cookies, email addresses or quoted values | `src/server/errors.ts`, `core.ts` `handle` | Ship the function logs to the SIEM with the audit log | unit `server.test.ts` "failure logging" |
+| LOG-05 | Audit log hash chain per company in the database (SHA-256, serialised per company so the order has no gaps or forks), append-only, and `audit_verify` names the first entry that no longer verifies, including after tampering by a database administrator | ASVS 16 (log integrity) | `0003` `audit_log_chain`, `audit_verify` | — | db tests "audit log hash chain" |
 
 ## 7. Platform and delivery (HDR, PIPE)
 
@@ -115,6 +118,7 @@ This register lists every security control in Selvara, where it is enforced, wha
 | PIPE-06 | Releases only from a signed, annotated `vX.Y.Z` tag on `main` whose version matches `package.json`; tags immutable | `release.yml`, `.github/scripts/verify-tag.sh`, rulesets | release run log |
 | PIPE-07 | Protected `main`: pull requests only, required checks, signed commits | `.github/rulesets/` | repository settings; EX-01, EX-08 |
 | PIPE-08 | What ships is checked before every deploy: no `node_modules`, native addons or sharp/libvips; server code only from reviewed functions (the authentication API), each bundled file checked, no secret files, permissive licences only | `.github/scripts/check-shipped-artifact.mjs` (deploy action and `ci.yml`) | staging and release run logs; EX-02 |
+| PIPE-09 | Database tests run in CI against a digest-pinned Postgres; a missing database fails the run instead of skipping. The server refuses a database older than its code (`schema_version`, 503) and verifies TLS to the database against the Supabase CA | `ci.yml`, `src/server/db.ts` | CI run log; db tests "schema check" |
 
 ## Authentication API contract (production)
 

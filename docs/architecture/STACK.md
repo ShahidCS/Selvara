@@ -13,7 +13,7 @@
 | Node.js used by CI, builds and releases | 22 |
 | CI runner image | `ubuntu-latest` |
 | Package manager | npm (`package-lock.json`; installs use `--ignore-scripts`) |
-| Application name / version | `assurance-grc-front-end` 0.1.6 (private, not published) |
+| Application name / version | `assurance-grc-front-end` 0.1.7 (private, not published) |
 | TypeScript `strict` | **off** (`front-end/tsconfig.json`); `noImplicitAny`: off |
 | TypeScript target / module resolution | `es2020` / `bundler` |
 | Browser support (`browserslist`) | `last 2 Chrome versions`, `last 2 Edge versions`, `last 2 Firefox versions`, `last 2 Safari versions`, `last 2 iOS versions` |
@@ -24,8 +24,9 @@
 
 | Package | Used for | Declared | Installed |
 | --- | --- | --- | --- |
-| `@supabase/supabase-js` | Server-side client for Supabase Auth and Postgres, used only by the authentication API in src/server (never shipped to the browser) | `2.118.0` | `2.118.0` |
+| `@supabase/supabase-js` | Server-side client for Supabase Auth (and the sign-in tables), used only by the authentication API in src/server (never shipped to the browser) | `2.118.0` | `2.118.0` |
 | `next` | Web framework: Pages Router, server rendering, build and dev server | `^16.4.5` | `16.4.5` |
+| `pg` | Server-side Postgres driver for the module APIs, connecting as the row-level-security-bound selvara_app role (src/server/db.ts; never shipped to the browser) | `8.23.1` | `8.23.1` |
 | `react` | UI library | `^19.3.1` | `19.3.1` |
 | `react-dom` | React renderer for the browser | `^19.3.1` | `19.3.1` |
 
@@ -39,6 +40,7 @@
 | `@playwright/test` | End-to-end browser tests (Chromium) | `1.65.0` | `1.65.0` |
 | `@tailwindcss/postcss` | Runs Tailwind as a PostCSS plugin; its production optimiser also adds vendor prefixes, so autoprefixer is not used | `4.3.4` | `4.3.4` |
 | `@types/node` | Type definitions for Node.js APIs | `22.20.5` | `22.20.5` |
+| `@types/pg` | Type definitions for pg (development only) | `8.20.0` | `8.20.0` |
 | `@types/react` | Type definitions for React | `^19.3.0` | `19.3.0` |
 | `@types/react-dom` | Type definitions for React DOM | `^19.3.0` | `19.3.0` |
 | `eslint` | Linting (flat config; see the lint script for the warning limit) | `^10.14.0` | `10.14.0` |

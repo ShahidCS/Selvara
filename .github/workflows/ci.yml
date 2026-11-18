@@ -29,6 +29,18 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
+    # A throwaway Postgres for the database tests (row level security, approvals guard, audit chain). Pinned by digest; it lives only
+    # inside this job, holds only synthetic test rows and is reachable only from the runner, so it uses trust authentication (no password).
+    services:
+      postgres:
+        image: postgres:16.15@sha256:f9a7b9ebf6f56201f949db745e47bc423c0f0f8294bafe991cc10bf74b029657
+        env:
+          POSTGRES_DB: selvara_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 12
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -56,6 +68,12 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      # Tenant isolation is proven against a real database, not only against in-memory stand-ins (docs/architecture/BACKEND_FOUNDATION.md).
+      - name: Database tests
+        run: npm run test:db
+        env:
+          TEST_DATABASE_URL: postgres://postgres@localhost:5432/selvara_test
 
       - name: Build
         run: npm run build

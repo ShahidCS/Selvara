@@ -47,4 +47,5 @@ export interface Store {
   replaceRecovery(userId: string, rows: RecoveryRow[]): Promise<void>;
   markRecoveryUsed(userId: string, hash: string): Promise<boolean>;
 }
-export interface Deps { auth: AuthProvider; store: Store; site: { origin: string; rpId: string }; secret: string; now: () => number }
+/** `db` is the tenant-scoped Postgres access (db.ts); absent until DATABASE_URL is set, and only the module APIs need it. */
+export interface Deps { auth: AuthProvider; store: Store; site: { origin: string; rpId: string }; secret: string; now: () => number; db?: import("./db").Db }

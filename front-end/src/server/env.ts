@@ -1,9 +1,11 @@
 /* Server-only. Reads the server configuration from the environment (set in Vercel, never in the repository). Missing values -> the API is off (503). */
 import type { Deps } from "./types";
 import { SupabaseAuth, SupabaseStore } from "./supabase";
+import { dbFromEnv } from "./db";
 
 let cached: Deps | null | undefined;
-/** Names of the variables the API needs. Values are secrets except the URLs. */
+/** Names of the variables the API needs. Values are secrets except the URLs. DATABASE_URL (with DATABASE_CA_CERT for TLS) is optional for
+ *  now: sign-in works without it, the module APIs need it (docs/guides/SUPABASE.md). */
 export const REQUIRED_ENV = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SITE_URL", "SERVER_SECRET"] as const;
 export function deps(): Deps | null {
   if (cached !== undefined) return cached;
@@ -11,7 +13,9 @@ export function deps(): Deps | null {
   if (REQUIRED_ENV.some((k) => !e[k]) || String(e.SERVER_SECRET).length < 32) { cached = null; return cached; }
   const site = new URL(String(e.SITE_URL));
   const env = { url: String(e.SUPABASE_URL), anonKey: String(e.SUPABASE_ANON_KEY), serviceKey: String(e.SUPABASE_SERVICE_ROLE_KEY) };
-  cached = { auth: new SupabaseAuth(env), store: new SupabaseStore(env), site: { origin: site.origin, rpId: site.hostname }, secret: String(e.SERVER_SECRET), now: Date.now };
+  let db: Deps["db"];
+  try { db = e.DATABASE_URL ? dbFromEnv(String(e.DATABASE_URL), e.DATABASE_CA_CERT) : undefined; } catch { db = undefined; } // a bad value leaves the database off; /api/system/ready reports it
+  cached = { auth: new SupabaseAuth(env), store: new SupabaseStore(env), site: { origin: site.origin, rpId: site.hostname }, secret: String(e.SERVER_SECRET), now: Date.now, db };
   return cached;
 }
 /** The client address: from Vercel's own header when running on Vercel (a trusted proxy), otherwise the socket. Never from a header a client can set elsewhere. */
