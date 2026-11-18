@@ -25,6 +25,6 @@
 * Product items from the spec boards: vendor tiers/cadence (4 vs 3), compliance status bands (85/75/65/50 vs 80/65/50), policy status names, role names (Member vs Employee), employee landing page, vendor question-set size and CAIQ/SIG mapping, `.xls` in the import picker.
 
 ## Backend (cannot be solved in the front-end)
-Design for the server foundation (tenants, isolation, server-side rules, approvals, audit), with the decisions it needs: [BACKEND_FOUNDATION.md](BACKEND_FOUNDATION.md) (draft for review).
+Design for the server foundation (tenants, isolation, server-side rules, approvals, audit), with the decisions it needs: [BACKEND_FOUNDATION.md](BACKEND_FOUNDATION.md) (design accepted by the owner on 2026-11-18, all six decisions as recommended; security and compliance review pending).
 
 Authentication/session/CSRF, server-side RBAC and tenant isolation, user-id based SoD (the demo compares names), server-persisted approvals and elevation records, rate limiting, upload scanning, real MFA and recovery codes, signed expiring links, server-side audit (HMAC/append-only), money arithmetic, trusted clock. See `SECURITY.md`.

@@ -1,6 +1,6 @@
 # Backend foundation (design, draft for review)
 
-Status: **draft for owner, security and compliance review**, 2026-11-18. Nothing here is built yet. The decisions in [section 12](#12-decisions-needed) need an answer before the first slice starts.
+Status: **design accepted by the owner on 2026-11-18** (all six decisions in [section 12](#12-decisions-needed) as recommended). Still a draft for security and compliance review; nothing here is built yet.
 
 ## 1. Goal
 
@@ -47,7 +47,7 @@ tenants ──< memberships >── profiles (person) ──── auth.users (S
 | `memberships` | `tenant_id`, `user_id`, `role`, `status` (Pending, Active, Suspended, Removed), `invited_by`, `decided_by`, `reason`, timestamps | Primary key `(tenant_id, user_id)`. Roles: `admin`, `owner`, `analyst`, `employee`, `auditor`, `vendor`, `viewer` (the demo's `admin2`/`owner2` are only second personas; the server has base roles) |
 | `platform_staff` | `user_id`, `role` (`super`, `support`), `status` | Platform people have **no membership**. They reach a workspace only through an elevated session (decision 2 in `DECISIONS.md`) |
 
-A person may belong to **several tenants** (an external auditor firm, a consultant). A session is bound to **one active tenant**; switching re-checks the membership and is audited. See decision D1.
+A person may belong to **several tenants** (an external auditor firm, a consultant). A session is bound to **one active tenant**; switching re-checks the membership and is audited. Decided (D1).
 
 Requests to join (built) gain a tenant: the join form names the company by an invitation link or company code, and the request is a `Pending` membership that the company's admin decides.
 
@@ -75,7 +75,7 @@ interface Ctx { userId: string; tenantId: string | null; role: string; platformR
 
 Repository functions take `ctx` and always scope by `ctx.tenantId`; no handler reads a tenant id from the request.
 
-**Layer 2, database (recommended: direct Postgres with row level security).** `supabase-js` uses the service key, which bypasses row level security and cannot run a transaction. The recommendation (decision D2):
+**Layer 2, database (recommended: direct Postgres with row level security).** `supabase-js` uses the service key, which bypasses row level security and cannot run a transaction. The recommendation (decision D2, decided):
 
 - the server connects to Postgres through Supabase's pooler (Supavisor, transaction mode) with the `pg` driver (MIT) as a dedicated role **`selvara_app`** that does **not** bypass row level security;
 - every request runs in one transaction that first sets `set local app.tenant_id = '<ctx.tenantId>'` and `app.user_id`;
@@ -139,9 +139,11 @@ A decision runs in **one transaction**: lock the approval (`for update`), check 
 - **Database tests in CI** need a Postgres service in `ci.yml`, a protected workflow file (decision D5).
 - **Rules:** the shared pure rule functions are tested once and used by both sides.
 
-## 12. Decisions needed
+## 12. Decisions
 
-| # | Question | Recommendation |
+All six were decided by the owner on 2026-11-18 as recommended. D3 and D5 include the owner's approval to change the protected files they name.
+
+| # | Question | Decision |
 |---|---|---|
 | D1 | Can a person belong to more than one company? | **Yes**, one active company per session (external auditors and consultants need it) |
 | D2 | How does the server talk to the database? | **Direct Postgres (`pg`, MIT, new dependency) as a non-bypass role with row level security per tenant**, Supabase Auth unchanged. New secret `DATABASE_URL` |
