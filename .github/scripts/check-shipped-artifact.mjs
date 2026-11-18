@@ -19,6 +19,8 @@ const ALLOWED_FUNCTIONS = new Set([
   // Production authentication API (front-end/src/pages/api/[...path].ts). Reviewed 2026-11-16: 256 files from next,
   // react, react-dom, styled-jsx, client-only, @swc/helpers, tslib, iceberg-js and @supabase/* (MIT, Apache-2.0, 0BSD);
   // no native addons, no sharp/libvips, no secrets. See docs/security/EXCEPTIONS.md EX-02.
+  // Re-reviewed 2026-11-18 for v0.1.7: adds pg, pg-pool, pg-protocol, pg-types, pg-connection-string, pg-int8, pg-cloudflare, pgpass,
+  // postgres-array, postgres-bytea, postgres-date, postgres-interval, split2 and xtend (MIT or ISC; 374 files); still no native addons.
   "api/[...path].func",
 ]);
 /** Licences a package inside a shipped function bundle may carry (permissive only). */
