@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { COOKIE, handle, type Req, type Res } from "@/server/core";
 import { MemoryAuth, MemoryStore } from "@/server/memory";
 import { sha256Hex } from "@/server/crypto";
 import type { Deps } from "@/server/types";
 import { totpAt } from "@/lib/totp";
 import { toB64u } from "@/lib/webauthn";
+import { safeMessage, upstream } from "@/server/errors";
 
 /* The production auth API (src/server), run through `handle` exactly as /api does, against in-memory stand-ins for Supabase Auth and Postgres. */
 const ORIGIN = "https://app.example.test";
@@ -184,5 +185,46 @@ describe("account endpoints", () => {
     expect(res.status).toBe(200); expect((res.body as { roleId: string }).roleId).toBe("super");
     expect((await call("POST", "auth/sign-in/verify", { ticket: st2.ticket, code: "123456" })).status).toBe(400); // no code path for super admins
     expect(store.auditLog.find((e) => e.action === "auth.signed_in" && e.actor === "Dana Whitfield")!.space).toBe("admin");
+  });
+});
+
+describe("failure logging (a 500 can be diagnosed from the function logs, without leaking values)", () => {
+  afterEach(() => vi.restoreAllMocks());
+  const logged = (spy: { mock: { calls: unknown[][] } }) => spy.mock.calls.map((c) => JSON.parse(String(c[0])) as Record<string, unknown>);
+
+  it("logs the route, the failing step and Supabase's code and status, and the person still sees a generic message", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    store.kvSet = async () => { throw upstream("db.kv", { code: "42501", message: 'permission denied for table kv' }, 403); };
+    const r: Req = { method: "POST", path: ["auth", "challenge"], body: {}, ip: "198.51.100.7", cookies: {}, headers: { origin: ORIGIN, "content-type": "application/json", "x-vercel-id": "fra1::abc-123" } };
+    const res = await handle(d, r);
+    expect(res).toEqual(expect.objectContaining({ status: 500, body: { error: "Something went wrong. Please try again." } }));
+    expect(logged(spy)).toEqual([{ level: "error", event: "api.error", route: "POST auth/challenge", step: "db.kv", code: "42501", status: 403, message: "permission denied for table kv", requestId: "fra1::abc-123" }]);
+  });
+
+  it("logs the route pattern, never the real path, so an identifier in the URL stays out of the logs", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    store.sessionByHash = async () => { throw upstream("db.sessions", { code: "PGRST205", message: "Could not find the table 'public.sessions' in the schema cache" }, 404); };
+    const id = "pk_" + "Q".repeat(40);
+    expect((await call("DELETE", `me/passkeys/${id}`, {}, { cookie: "c".repeat(43) })).status).toBe(500);
+    const out = JSON.stringify(logged(spy));
+    expect(out).toContain('"route":"DELETE me/passkeys/:id"');
+    expect(out).toContain('"code":"PGRST205"');
+    expect(out).not.toContain(id);
+    expect(out).not.toContain("c".repeat(43));
+  });
+
+  it("removes values Postgres quotes back, email addresses and anything shaped like a key or token", () => {
+    expect(safeMessage('invalid input syntax for type uuid: "alex.kim@example.test"')).toBe('invalid input syntax for type uuid: "[redacted]"');
+    expect(safeMessage("User alex.kim@example.test already registered")).toBe("User [email] already registered");
+    expect(safeMessage("bad key sb_secret_AbCdEf123 and eyJhbGciOiJIUzI1NiJ9.e30.sig")).toBe("bad key [token] and [token]");
+    expect(safeMessage("x".repeat(500))!.length).toBeLessThanOrEqual(160);
+    expect(upstream("auth.create-user", { code: "email_exists", status: 422, message: "A user with this email address has already been registered" })).toEqual(expect.objectContaining({ step: "auth.create-user", code: "email_exists", status: 422 }));
+  });
+
+  it("an unexpected bug is logged as internal with its type, not its data", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    store.kvSet = async () => { throw new TypeError("Cannot read properties of undefined (reading 'x')"); };
+    await call("POST", "auth/challenge");
+    expect(logged(spy)[0]).toEqual(expect.objectContaining({ route: "POST auth/challenge", step: "internal", message: "TypeError: Cannot read properties of undefined (reading 'x')" }));
   });
 });

@@ -10,6 +10,7 @@ import { generateRecoveryCodes } from "@/lib/me";
 import { isEmail } from "@/lib/security";
 import { checkRegistration, verifyAssertion } from "@/lib/webauthn";
 import { randomId, same, seal, sha256Hex, unseal } from "./crypto";
+import { logFailure } from "./errors";
 import type { Deps, Profile, SessionRow } from "./types";
 
 export interface Req { method: string; path: string[]; body: Record<string, unknown>; headers: Record<string, string | undefined>; cookies: Record<string, string>; ip: string }
@@ -363,19 +364,22 @@ export const ROUTES: Record<string, H> = {
   "GET team/join-requests": joinList, "POST team/join-requests/:id/:decision": joinDecide, "POST team/settings": lockoutSet,
 };
 /** Finds the handler for a request; `:name` segments match anything. */
-export function route(method: string, path: string[]): H | null {
+export function route(method: string, path: string[]): H | null { return match(method, path)?.[1] ?? null; }
+function match(method: string, path: string[]): [string, H] | null {
   for (const [k, h] of Object.entries(ROUTES)) {
     const [m, p] = k.split(" "); const parts = p.split("/");
-    if (m === method && parts.length === path.length && parts.every((x, i) => x.startsWith(":") || x === path[i])) return h;
+    if (m === method && parts.length === path.length && parts.every((x, i) => x.startsWith(":") || x === path[i])) return [k, h];
   }
   return null;
 }
 /** Origin check for every state-changing request (the cookie is SameSite=Strict too): a request from another site is refused. */
 export async function handle(d: Deps, r: Req): Promise<Res> {
-  const h = route(r.method, r.path); if (!h) return err(404, "Not found.");
+  const found = match(r.method, r.path); if (!found) return err(404, "Not found.");
+  const [key, h] = found;
   if (r.method !== "GET") {
     if (r.headers.origin !== d.site.origin) return err(403, "Cross-site request refused.");
     if (!/^application\/json/.test(r.headers["content-type"] || "")) return err(415, "Send JSON.");
   }
-  try { return await h(d, r); } catch { return err(500, "Something went wrong. Please try again."); }
+  // The person sees a generic message; the function log gets the route pattern, the failing step and Supabase's code (errors.ts), never values.
+  try { return await h(d, r); } catch (e) { logFailure(key, e, r.headers["x-vercel-id"]); return err(500, "Something went wrong. Please try again."); }
 }
