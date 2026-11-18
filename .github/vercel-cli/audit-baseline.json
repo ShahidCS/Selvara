@@ -100,6 +100,16 @@
       "reason": "Transitive dependency of Vercel's builders for other frameworks (Python, Express, Hono, Remix, Node functions) and of the CLI's HTTP client. This project builds a static Next.js site, so those builders do not run and the vulnerable code is not reachable with our inputs; the class is denial of service or ReDoS. No patched release exists within the major version the CLI pins, and forcing a different major is untested and could break deployments. Assessed 2026-11-09.",
       "owner": "@ShahidCS",
       "review_by": "2027-02-09"
+    },
+    {
+      "id": "GHSA-FC5Q-39XC-VJPF",
+      "package": "picomatch",
+      "severity": "high",
+      "title": "picomatch vulnerable to ReDoS through single-branch repeated extglobs",
+      "vulnerable_range": "<=4.0.7",
+      "reason": "Transitive dependency of the Vercel CLI (vercel -> @vercel/backends -> @vercel/nft and @rollup/pluginutils -> picomatch 4.0.7; ts-morph -> fast-glob -> micromatch -> picomatch 2.3.2). It runs only on ephemeral GitHub Actions runners while building and deploying our own output; the glob patterns it evaluates come from Vercel builders and this repository, never from users, so an attacker cannot supply the pattern the ReDoS needs. The class is denial of service of a build job. No patched release exists (4.0.7 is the latest), so no override is possible. Short review: replace with an override as soon as a fixed picomatch ships. Accepted by the owner 2026-11-18.",
+      "owner": "@ShahidCS",
+      "review_by": "2026-12-18"
     }
   ]
 }
