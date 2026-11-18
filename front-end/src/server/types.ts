@@ -1,8 +1,8 @@
 /* Server-only. Interfaces the auth handlers depend on, so they run against Supabase in production and against an in-memory stand-in in tests. */
 export interface Profile { id: string; email: string; person: string; role: string; status: "Pending" | "Active" | "Rejected"; requestedAt: number; decidedBy?: string; reason?: string }
-export interface SessionRow { idHash: string; userId: string; device: string; ip: string; createdAt: number; lastSeen: number; expiresAt: number; revokedAt?: number; revokedWhy?: string }
+export interface SessionRow { idHash: string; userId: string; device: string; ip: string; createdAt: number; lastSeen: number; expiresAt: number; revokedAt?: number; revokedWhy?: string; /** The company this session works in (null for platform staff). */ tenantId?: string | null }
 export interface NoticeRow { id: string; userId: string; at: number; text: string }
-export interface AuditRow { at: number; actor: string; action: string; target: string; cat: string; space: "ws" | "admin"; ip: string }
+export interface AuditRow { at: number; actor: string; action: string; target: string; cat: string; space: "ws" | "admin"; ip: string; /** Company log (null: platform log). */ tenantId?: string | null; actorId?: string | null }
 export interface PasskeyRow { id: string; userId: string; publicKey: string; signCount: number; createdAt: number; label: string }
 export interface RecoveryRow { userId: string; salt: string; hash: string; usedAt?: number }
 
@@ -47,5 +47,6 @@ export interface Store {
   replaceRecovery(userId: string, rows: RecoveryRow[]): Promise<void>;
   markRecoveryUsed(userId: string, hash: string): Promise<boolean>;
 }
-/** `db` is the tenant-scoped Postgres access (db.ts); absent until DATABASE_URL is set, and only the module APIs need it. */
-export interface Deps { auth: AuthProvider; store: Store; site: { origin: string; rpId: string }; secret: string; now: () => number; db?: import("./db").Db }
+/** `dir` holds companies, memberships and platform staff (directory.ts); `db` is the company-scoped Postgres access (db.ts) behind it, absent in
+ *  the in-memory tests. */
+export interface Deps { auth: AuthProvider; store: Store; dir: import("./directory").Directory; site: { origin: string; rpId: string }; secret: string; now: () => number; db?: import("./db").Db }

@@ -24,7 +24,7 @@ export class MemoryAuth implements AuthProvider {
     u.factor.lastStep = step; u.factor.verified = true; return true;
   }
   async signOut(t: { access: string }) { this.tokens.delete(t.access); }
-  async createUser(email: string, password: string, _person?: string) { void _person; const id = randomId(12); const salt = randomId(8); this.users.set(id, { id, email, salt, hash: await sha256Hex(salt + password), confirmed: false }); return id; }
+  async createUser(email: string, password: string, _person?: string) { void _person; const id = crypto.randomUUID(); /* a uuid, as Supabase Auth issues */ const salt = randomId(8); this.users.set(id, { id, email, salt, hash: await sha256Hex(salt + password), confirmed: false }); return id; }
   async confirmUser(id: string) { const u = this.users.get(id); if (u) u.confirmed = true; }
   async setPassword(id: string, password: string) { const u = this.users.get(id); if (u) u.hash = await sha256Hex(u.salt + password); }
   async sendResetEmail(email: string) { const u = this.byEmail(email); if (u) { const t = this.tok(u.id, true); this.outbox.push({ email, token: Buffer.from(JSON.stringify(t)).toString("base64url") }); } }

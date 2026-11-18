@@ -275,7 +275,7 @@ function ResetForm({ token, onBack }: { token: string; onBack: () => void }) {
 }
 
 function JoinForm({ onBack }: { onBack: () => void }) {
-  const [name, setName] = useState(""); const [em, setEm] = useState(""); const [pw, setPw] = useState("");
+  const [name, setName] = useState(""); const [em, setEm] = useState(""); const [pw, setPw] = useState(""); const [company, setCompany] = useState("");
   const [err, setErr] = useState(""); const [forced, setForced] = useState(false); const [busy, setBusy] = useState(false); const [sent, setSent] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null); const emRef = useRef<HTMLInputElement>(null); const doneRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => { (sent ? doneRef.current : nameRef.current)?.focus(); }, [sent]);
@@ -283,7 +283,7 @@ function JoinForm({ onBack }: { onBack: () => void }) {
     e.preventDefault(); if (busy) return;
     if (!emailValid(em)) { setForced(true); emRef.current?.focus(); return; }
     setBusy(true); setErr("");
-    try { await auth.requestToJoin({ name, email: em, password: pw }); setPw(""); setSent(true); } catch (x) { setErr(msg(x, "Could not send the request.")); }
+    try { await auth.requestToJoin({ name, email: em, password: pw, ...(DEMO_ENABLED ? {} : { company }) }); setPw(""); setSent(true); } catch (x) { setErr(msg(x, "Could not send the request.")); }
     setBusy(false);
   };
   if (sent) return (
@@ -300,6 +300,11 @@ function JoinForm({ onBack }: { onBack: () => void }) {
       <form onSubmit={submit} noValidate>
         <div className="field"><label htmlFor="jn-name">Full name</label><input ref={nameRef} className="input" id="jn-name" autoComplete="name" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} /></div>
         <EmailField ref={emRef} id="jn-email" label="Work email" value={em} onChange={setEm} forced={forced} onTouch={() => setForced(false)} />
+        {!DEMO_ENABLED && (
+          <div className="field"><label htmlFor="jn-co">Company code</label>
+            <input className="input" id="jn-co" autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={40} aria-describedby="jn-co-help" value={company} onChange={(e) => setCompany(e.target.value)} />
+            <p className="field help" id="jn-co-help" style={{ margin: "4px 0 0" }}>Your company admin can tell you your company code.</p></div>
+        )}
         <PwField id="jn-pw" label="Password" ac="new-password" value={pw} onChange={setPw} invalid={!!err} describedBy={err ? "jn-err jn-help" : "jn-help"} />
         <p className="field help" id="jn-help" style={{ marginTop: -4 }}>Use {LENGTH_COPY}. Common and breached passwords are refused.</p>
         <ErrP id="jn-err" msg={err} />

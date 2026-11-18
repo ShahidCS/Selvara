@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { COOKIE, handle, type Req, type Res } from "@/server/core";
+import { COOKIE, NO_COMPANY, handle, type Req, type Res } from "@/server/core";
 import { MemoryAuth, MemoryStore } from "@/server/memory";
+import { MemoryDirectory } from "@/server/directory";
 import { sha256Hex } from "@/server/crypto";
 import type { Deps } from "@/server/types";
 import { totpAt } from "@/lib/totp";
@@ -9,8 +10,12 @@ import { safeMessage, upstream } from "@/server/errors";
 
 /* The production auth API (src/server), run through `handle` exactly as /api does, against in-memory stand-ins for Supabase Auth and Postgres. */
 const ORIGIN = "https://app.example.test";
-let clock = 1_800_000_000_000; let d: Deps; let auth: MemoryAuth; let store: MemoryStore;
-beforeEach(() => { clock = 1_800_000_000_000; auth = new MemoryAuth(() => clock); used.clear(); store = new MemoryStore(() => clock); d = { auth, store, site: { origin: ORIGIN, rpId: "app.example.test" }, secret: "x".repeat(40), now: () => clock }; });
+let clock = 1_800_000_000_000; let d: Deps; let auth: MemoryAuth; let store: MemoryStore; let dir: MemoryDirectory; let ACME = "";
+beforeEach(() => {
+  clock = 1_800_000_000_000; auth = new MemoryAuth(() => clock); used.clear(); store = new MemoryStore(() => clock); dir = new MemoryDirectory(store);
+  ACME = dir.addCompany("acme-eu", "Acme Test Co");
+  d = { auth, store, dir, site: { origin: ORIGIN, rpId: "app.example.test" }, secret: "x".repeat(40), now: () => clock };
+});
 const PW = "Lantern-orbit-Quince-71"; const NEW = "Copper-harbour-Violet-58";
 async function call(method: string, path: string, body: Record<string, unknown> = {}, o: { cookie?: string; ip?: string; origin?: string | null } = {}): Promise<Res> {
   const r: Req = { method, path: path.split("/").filter(Boolean), body, ip: o.ip ?? "198.51.100.7", cookies: o.cookie ? { [COOKIE]: o.cookie } : {},
@@ -25,9 +30,11 @@ async function code(email: string): Promise<string> { // the next unused authent
   used.set(email, Math.floor(clock / 30_000)); return totpAt(secret, clock);
 }
 /** An active account with an authenticator, signed in once; returns its session cookie and recovery codes. */
-async function account(email: string, role = "employee", person = "Alex Kim") {
+/** Company roles become an active membership of `company` (Acme by default); super and support become platform staff. */
+async function account(email: string, role = "employee", person = "Alex Kim", company?: string) {
   const id = await auth.createUser(email, PW, person); await auth.confirmUser(id);
   await store.insertProfile({ id, email, person, role, status: "Active", requestedAt: clock });
+  if (role === "super" || role === "support") dir.staff.set(id, role); else dir.addMember(company ?? ACME, id, role);
   const st = await call("POST", "auth/sign-in", { email, password: PW }); expect(st.body).toEqual(expect.objectContaining({ step: "enroll" }));
   const v = await call("POST", "auth/sign-in/verify", { ticket: (st.body as { ticket: string }).ticket, code: await code(email) });
   expect(v.status).toBe(200);
@@ -52,7 +59,7 @@ describe("sign-in with MFA", () => {
     const a = await account("alex.kim@company.example");
     expect(a.codes.length).toBe(10);
     const s = await call("GET", "auth/session", {}, { cookie: a.cookie });
-    expect(s.body).toEqual({ roleId: "employee", who: "Alex Kim" });
+    expect(s.body).toEqual({ roleId: "employee", who: "Alex Kim", company: { ref: "acme-eu", name: "Acme Test Co" }, companies: [{ ref: "acme-eu", name: "Acme Test Co", role: "employee" }] });
     const res = await signIn("alex.kim@company.example"); expect(res.cookies![0]).toMatch(/HttpOnly; Secure; SameSite=Strict/);
     expect([...store.sessions.values()].every((x) => x.idHash.length === 64 && x.idHash !== a.cookie)).toBe(true); // only a hash is stored
     expect(JSON.stringify(store.recovery)).not.toContain(a.codes[0]);
@@ -120,9 +127,9 @@ describe("anti-automation", () => {
 
 describe("requests to join and reset", () => {
   it("a request is answered the same way, cannot sign in until an admin approves, and the admin cannot approve their own", async () => {
-    expect((await call("POST", "auth/join-requests", { name: "Rae Fox", email: "rae.fox@company.example", password: PW })).status).toBe(202);
-    expect((await call("POST", "auth/join-requests", { name: "Rae Fox", email: "rae.fox@company.example", password: PW })).status).toBe(202);
-    expect((await call("POST", "auth/join-requests", { name: "Rae Fox", email: "rae.fox@company.example", password: "password1" })).status).toBe(400);
+    expect((await call("POST", "auth/join-requests", { name: "Rae Fox", email: "rae.fox@company.example", password: PW, company: "acme-eu" })).status).toBe(202);
+    expect((await call("POST", "auth/join-requests", { name: "Rae Fox", email: "rae.fox@company.example", password: PW, company: "acme-eu" })).status).toBe(202);
+    expect((await call("POST", "auth/join-requests", { name: "Rae Fox", email: "rae.fox@company.example", password: "password1", company: "acme-eu" })).status).toBe(400);
     expect((await call("POST", "auth/sign-in", { email: "rae.fox@company.example", password: PW })).status).toBe(401);
     const emp = await account("alex.kim@company.example");
     const id = (await store.profileByEmail("rae.fox@company.example"))!.id;
@@ -165,7 +172,7 @@ describe("account endpoints", () => {
   });
   it("a platform super admin's second step is a passkey, verified by the server", async () => {
     const id = await auth.createUser("dana@platform.example", PW, "Dana Whitfield"); await auth.confirmUser(id);
-    await store.insertProfile({ id, email: "dana@platform.example", person: "Dana Whitfield", role: "super", status: "Active", requestedAt: clock });
+    await store.insertProfile({ id, email: "dana@platform.example", person: "Dana Whitfield", role: "super", status: "Active", requestedAt: clock }); dir.staff.set(id, "super");
     const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
     const spki = new Uint8Array(await crypto.subtle.exportKey("spki", kp.publicKey)); const kid = toB64u(crypto.getRandomValues(new Uint8Array(16)));
     const st = (await call("POST", "auth/sign-in", { email: "dana@platform.example", password: PW })).body as { step: string; ticket: string; challenge: string; register: boolean };
@@ -185,6 +192,78 @@ describe("account endpoints", () => {
     expect(res.status).toBe(200); expect((res.body as { roleId: string }).roleId).toBe("super");
     expect((await call("POST", "auth/sign-in/verify", { ticket: st2.ticket, code: "123456" })).status).toBe(400); // no code path for super admins
     expect(store.auditLog.find((e) => e.action === "auth.signed_in" && e.actor === "Dana Whitfield")!.space).toBe("admin");
+  });
+});
+
+describe("companies: sessions belong to one company, roles come from memberships (slice 2a)", () => {
+  it("a person with no active membership cannot sign in, and a removed member's session ends at their next request", async () => {
+    const id = await auth.createUser("lee@company.example", PW, "Lee Park"); await auth.confirmUser(id);
+    await store.insertProfile({ id, email: "lee@company.example", person: "Lee Park", role: "employee", status: "Active", requestedAt: clock });
+    expect(await call("POST", "auth/sign-in", { email: "lee@company.example", password: PW })).toEqual(expect.objectContaining({ status: 409, body: { error: NO_COMPANY } }));
+    const a = await account("alex.kim@company.example");
+    dir.memberships.find((m) => m.userId === a.id)!.status = "Removed";
+    expect((await call("GET", "auth/session", {}, { cookie: a.cookie })).status).toBe(401);
+    expect([...store.sessions.values()].find((x) => x.userId === a.id)!.revokedWhy).toBe("Access removed");
+  });
+
+  it("a company admin sees and decides only their own company's requests and members, and another company's person is not found", async () => {
+    const GLOBEX = dir.addCompany("globex-uk", "Globex Test Ltd");
+    expect((await call("POST", "auth/join-requests", { name: "Rae Fox", email: "rae.fox@company.example", password: PW, company: "acme-eu" })).status).toBe(202);
+    const rae = (await store.profileByEmail("rae.fox@company.example"))!.id;
+    await account("alex.kim@company.example");
+    const acmeAdmin = await account("jordan@company.example", "admin", "Jordan Avery");
+    const globexAdmin = await account("casey@globex.example", "admin", "Casey Morgan", GLOBEX);
+    expect((await call("GET", "team/join-requests", {}, { cookie: globexAdmin.cookie })).body).toEqual([]);
+    expect(((await call("GET", "team/members", {}, { cookie: globexAdmin.cookie })).body as { name: string }[]).map((m) => m.name)).toEqual(["Casey Morgan"]);
+    expect((await call("POST", `team/join-requests/${rae}/approve`, { reason: "Joined the team this week" }, { cookie: globexAdmin.cookie })).status).toBe(404);
+    expect(((await call("GET", "team/members", {}, { cookie: acmeAdmin.cookie })).body as { name: string; status: string }[]).map((m) => `${m.name}:${m.status}`))
+      .toEqual(["Alex Kim:Active", "Jordan Avery:Active", "Rae Fox:Pending"]);
+    expect((await call("POST", `team/join-requests/${rae}/reject`, { reason: "Not a member of our staff" }, { cookie: acmeAdmin.cookie })).status).toBe(200);
+    expect((await call("POST", "auth/sign-in", { email: "rae.fox@company.example", password: PW })).status).toBe(401); // still unconfirmed
+    const e = store.auditLog.find((x) => x.action === "team.join.rejected")!;
+    expect([e.tenantId, e.actorId, e.space]).toEqual([ACME, acmeAdmin.id, "ws"]);
+  });
+
+  it("an unknown company code gets the same answer and creates nothing; platform staff cannot join a company", async () => {
+    expect((await call("POST", "auth/join-requests", { name: "Rae Fox", email: "rae.fox@company.example", password: PW, company: "no-such-co" })).status).toBe(202);
+    expect(await store.profileByEmail("rae.fox@company.example")).toBeNull();
+    expect(auth.users.size).toBe(0);
+    expect((await call("POST", "auth/join-requests", { name: "Rae Fox", email: "rae.fox@company.example", password: PW })).status).toBe(400);
+    const staff = await auth.createUser("sam@platform.example", PW, "Sam Hayes"); await auth.confirmUser(staff); dir.staff.set(staff, "support");
+    await store.insertProfile({ id: staff, email: "sam@platform.example", person: "Sam Hayes", role: "support", status: "Active", requestedAt: clock });
+    expect((await call("POST", "auth/join-requests", { name: "Sam Hayes", email: "sam@platform.example", password: NEW, company: "acme-eu" })).status).toBe(202);
+    expect(dir.memberships.some((m) => m.userId === staff)).toBe(false);
+  });
+
+  it("a member of two companies works in one at a time, switches with a fresh membership check, and keeps their password when joining another", async () => {
+    const GLOBEX = dir.addCompany("globex-uk", "Globex Test Ltd");
+    const a = await account("alex.kim@company.example", "admin");
+    expect((await call("POST", "auth/join-requests", { name: "Alex Kim", email: "alex.kim@company.example", password: NEW, company: "globex-uk" })).status).toBe(202);
+    expect(dir.memberships.find((m) => m.tenantId === GLOBEX && m.userId === a.id)!.status).toBe("Pending");
+    expect((await call("POST", "auth/company", { company: "globex-uk" }, { cookie: a.cookie })).status).toBe(404); // pending is not a member yet
+    dir.memberships.find((m) => m.tenantId === GLOBEX && m.userId === a.id)!.status = "Active";
+    const sw = await call("POST", "auth/company", { company: "globex-uk" }, { cookie: a.cookie });
+    expect(sw.body).toEqual({ roleId: "employee", company: { ref: "globex-uk", name: "Globex Test Ltd" } });
+    expect((await call("GET", "team/members", {}, { cookie: a.cookie })).status).toBe(403); // an employee in Globex, though an admin in Acme
+    expect(store.auditLog.find((x) => x.action === "auth.company.switched")!.tenantId).toBe(GLOBEX);
+    expect((await signIn("alex.kim@company.example", NEW)).status).toBe(401); // the join request did not change the password
+    const again = await signIn("alex.kim@company.example");
+    expect((again.body as { company: { ref: string } }).company.ref).toBe("globex-uk"); // the company used last
+  });
+
+  it("lockout settings are per company, and a person gets the strictest of their companies", async () => {
+    const GLOBEX = dir.addCompany("globex-uk", "Globex Test Ltd");
+    const globexAdmin = await account("casey@globex.example", "admin", "Casey Morgan", GLOBEX);
+    expect((await call("POST", "team/settings", { lockout: "custom", custom: { attempts: 3, minutes: 60 } }, { cookie: globexAdmin.cookie })).status).toBe(204);
+    expect(dir.lockouts.get(ACME)).toBeUndefined();
+    await account("alex.kim@company.example"); // Acme only: the standard preset (more than 3 attempts)
+    for (let i = 0; i < 3; i++) await call("POST", "auth/sign-in", { email: "alex.kim@company.example", password: "nope" }, { ip: `198.51.100.${60 + i}` });
+    expect((await call("POST", "auth/sign-in", { email: "alex.kim@company.example", password: PW }, { ip: "198.51.100.70" })).status).toBe(428); // not locked: only the challenge
+    await store.kvDel("lock", "alex.kim@company.example");
+    dir.addMember(GLOBEX, (await store.profileByEmail("alex.kim@company.example"))!.id, "viewer"); // now also in Globex: 3 attempts apply
+    for (let i = 0; i < 3; i++) await call("POST", "auth/sign-in", { email: "alex.kim@company.example", password: "nope" }, { ip: `198.51.100.${80 + i}` });
+    expect((await call("POST", "auth/sign-in", { email: "alex.kim@company.example", password: PW }, { ip: "198.51.100.90" })).status).toBe(423);
+    expect(store.auditLog.find((x) => x.action === "team.lockout.changed")).toEqual(expect.objectContaining({ tenantId: GLOBEX, target: "custom: 3 attempts, 60 minutes" }));
   });
 });
 
