@@ -9,7 +9,7 @@ Review the whole register at least quarterly and whenever a "Review when" trigge
 | EX-01 | Sole-maintainer review and approval | @ShahidCS | When a second maintainer joins |
 | EX-02 | LGPL-3.0 `@img/sharp-*` binaries in the lockfile | @ShahidCS | 2027-05-09 |
 | EX-03 | CC-BY-4.0 `caniuse-lite` data | @ShahidCS | 2027-05-09 |
-| EX-04 | Known advisories in the pinned Vercel CLI tree | @ShahidCS | 2027-02-09, and each CLI release |
+| EX-04 | Known advisories in the pinned Vercel CLI tree | @ShahidCS | 2026-12-18 (picomatch), 2027-02-09 (the rest), and each CLI release |
 | EX-05 | CSP `script-src 'unsafe-inline'` | @ShahidCS | Before production traffic |
 | EX-06 | Public Sigstore signing disabled | @ShahidCS | Repository visibility decision |
 | EX-07 | No GitHub Advanced Security (private repository, current plan) | @ShahidCS | If the repository moves to an organisation with Advanced Security, or becomes public |
@@ -76,7 +76,9 @@ link `THIRD_PARTY_NOTICES.md` from it.
 ## EX-04 Known advisories in the Vercel CLI tree
 
 **What.** The pinned Vercel CLI exact-pins vulnerable transitive packages. After targeted same-major overrides,
-no Critical remain and 10 High remain (listed in `.github/vercel-cli/audit-baseline.json`).
+no Critical remain and 11 High remain (listed in `.github/vercel-cli/audit-baseline.json`). The 11th, `picomatch`
+GHSA-fc5q-39xc-vjpf (ReDoS, added 2026-11-18), has no patched release at all; it is accepted for 30 days only, until
+2026-12-18, and is to be replaced by an override as soon as a fix ships.
 
 **Why acceptable.** The CLI runs on an ephemeral runner, only on our own build output, never serves traffic and never
 handles user input. The remaining issues are mostly denial of service and path handling in build tooling.

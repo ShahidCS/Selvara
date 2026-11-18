@@ -100,6 +100,7 @@ This register lists every security control in Selvara, where it is enforced, wha
 | LOG-01 | Workspace audit log: every mutation writes who, what, when, category; hash-chained to show tampering | `lib/audit.ts` | Append-only, HMAC or WORM storage, streamed to a SIEM (the FNV-1a chain is a demonstration, SECURITY.md limitation 4) | unit tests assert entries throughout (search `WS_AUDIT`) |
 | LOG-02 | Admin console log: read-only for everyone, with basis, categories and synthetic address | `lib/adminAudit.ts` | as above | unit `ipGuard.test.ts`, `session.test.ts` (search `ADMIN_AUDIT`) |
 | LOG-03 | Events with nobody signed in (reset, request to join) name the person, not whoever used the browser last | `lib/audit.ts` `wsLog(..., actor)` | Server knows the identity | unit `accountSecurity.test.ts` "...`auth.password.reset` ... actor" |
+| LOG-04 | Server failures are diagnosable without leaking data: a 500 shows the person a generic message and writes one structured line to the function log (route pattern, failing step, Supabase code and status, request id), never request bodies, keys, tokens, cookies, email addresses or quoted values | `src/server/errors.ts`, `core.ts` `handle` | Ship the function logs to the SIEM with the audit log | unit `server.test.ts` "failure logging" |
 
 ## 7. Platform and delivery (HDR, PIPE)
 

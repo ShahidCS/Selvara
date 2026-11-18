@@ -27,7 +27,12 @@ Decisions so far (2026-11):
 
 ## 2. Create the tables (you, or `supabase db push`)
 
-Open SQL Editor → New query, paste [`supabase/migrations/0001_selvara_auth.sql`](../../supabase/migrations/0001_selvara_auth.sql) and run it. Do this once per project.
+In **each** project (staging and production separately), open SQL Editor → New query and run these files in order, each as a whole:
+
+1. [`supabase/migrations/0001_selvara_auth.sql`](../../supabase/migrations/0001_selvara_auth.sql): the tables and their rules.
+2. [`supabase/migrations/0002_service_role_grants.sql`](../../supabase/migrations/0002_service_role_grants.sql): table access for the server's role only. Some projects do not grant it automatically, and every request then fails.
+
+Both are safe to run again. To check, `select count(*) from public.kv;` returns a number instead of an error.
 
 The script:
 - creates the tables;
@@ -73,6 +78,25 @@ values ('<user id>', '<email>', '<Full Name>', 'admin', 'Active', (extract(epoch
 ```
 
 Use `'super'` instead of `'admin'` for a platform super admin. Their first sign-in asks them to add a passkey. Everyone else adds an authenticator app at their first sign-in.
+
+## Troubleshooting
+
+Check the API with `curl -i -X POST https://<site>/api/auth/challenge -H "Origin: https://<site>" -H "Content-Type: application/json" -d '{}'` (the origin must equal `SITE_URL`). A 200 with a `seed` means the server reaches Supabase.
+
+| Answer | Meaning |
+|---|---|
+| 503 | A variable from section 4 is missing for this environment, or the deployment predates it (variables apply to new deployments only). |
+| 403 "Cross-site request refused." | The `Origin` differs from `SITE_URL`. |
+| 500 | Supabase refused or failed. Open Vercel → Project → **Logs**, filter for `api.error`. Each line names the route, the failing `step` (for example `db.kv` or `auth.create-user`), Supabase's `code` and `status`, and the `requestId` that matches the response's `x-vercel-id` header. It never contains keys, tokens, request bodies or email addresses. |
+
+Common codes in that line:
+
+| Code or message | Fix |
+|---|---|
+| `42P01` relation does not exist, or `PGRST205` table not in the schema cache | Run the migrations in this project (section 2). If they already ran, run `notify pgrst, 'reload schema';`. |
+| `42501` permission denied | Run `0002_service_role_grants.sql`; check that `SUPABASE_SERVICE_ROLE_KEY` holds the secret key, not the publishable one. |
+| status 401, "Invalid API key" | A key is from the other project, truncated, or swapped between the two variables. |
+| "fetch failed" with no code | `SUPABASE_URL` is wrong (it must be `https://<ref>.supabase.co`), or the project is paused. |
 
 ## 6. Before real customer data
 

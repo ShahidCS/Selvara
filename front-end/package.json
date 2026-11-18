@@ -1,6 +1,6 @@
 {
   "name": "assurance-grc-front-end",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "description": "Assurance GRC Portal: React / Next.js (Pages Router) migration of the HTML prototype",
   "scripts": {
