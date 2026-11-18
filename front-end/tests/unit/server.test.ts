@@ -228,3 +228,18 @@ describe("failure logging (a 500 can be diagnosed from the function logs, withou
     expect(logged(spy)[0]).toEqual(expect.objectContaining({ route: "POST auth/challenge", step: "internal", message: "TypeError: Cannot read properties of undefined (reading 'x')" }));
   });
 });
+
+describe("database readiness (GET /api/system/ready)", () => {
+  afterEach(() => vi.restoreAllMocks());
+  it("is 503 when the database is not configured, and does not need a session", async () => {
+    expect(await call("GET", "system/ready")).toEqual(expect.objectContaining({ status: 503, body: { error: "The database is not configured." } }));
+  });
+  it("is 200 when the schema is current, and 503 with the reason only in the log when it is not", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    d.db = { ensureSchema: async () => {} } as unknown as Deps["db"];
+    expect(await call("GET", "system/ready")).toEqual(expect.objectContaining({ status: 200, body: { ready: true } }));
+    d.db = { ensureSchema: async () => { throw upstream("db.schema", { code: "SCHEMA_OUTDATED", message: "database schema 2, this server needs 3: run the missing migrations" }, 503); } } as unknown as Deps["db"];
+    expect(await call("GET", "system/ready")).toEqual(expect.objectContaining({ status: 503, body: { error: "The database is not ready." } }));
+    expect(JSON.stringify(spy.mock.calls)).toContain("SCHEMA_OUTDATED");
+  });
+});

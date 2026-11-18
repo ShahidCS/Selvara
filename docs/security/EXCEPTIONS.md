@@ -57,7 +57,9 @@ with it), refuses secret files (`.env`, `.env.*` except `.env.example`) and requ
 Apache-2.0, BSD, ISC or 0BSD. Any other function fails the build until it is reviewed. On 2026-11-09 the Vercel build
 output was inspected: static files only. On 2026-11-16 the function bundle was inspected: 256 files from next, react,
 react-dom, styled-jsx, client-only, `@swc/helpers`, tslib, iceberg-js and `@supabase/*` (MIT, Apache-2.0, 0BSD), with
-no native addons, no sharp or libvips and no secrets.
+no native addons, no sharp or libvips and no secrets. On 2026-11-18 (v0.1.7) it was inspected again after adding the Postgres driver: 374 files, adding `pg` and its helpers
+(pg-pool, pg-protocol, pg-types, pg-connection-string, pg-int8, pg-cloudflare, pgpass, postgres-array, postgres-bytea, postgres-date,
+postgres-interval, split2, xtend; MIT or ISC), still no native addons (the optional `pg-native` is not installed).
 
 **What still needs doing (owner action).** Nothing while the check passes (sharp is not in the function bundle). **Before** you ever (a) ship a
 server or container image that includes sharp or all of `node_modules`, (b) enable `next/image` optimisation, or (c) hand the built artefact to a

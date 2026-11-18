@@ -1,6 +1,6 @@
 {
   "name": "assurance-grc-front-end",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "description": "Assurance GRC Portal: React / Next.js (Pages Router) migration of the HTML prototype",
   "scripts": {
@@ -10,6 +10,7 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:db": "vitest run --config vitest.db.config.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "ci": "npm run typecheck && npm test && npm run build"
@@ -17,6 +18,7 @@
   "dependencies": {
     "@supabase/supabase-js": "2.118.0",
     "next": "^16.4.5",
+    "pg": "8.23.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
@@ -25,6 +27,7 @@
     "@playwright/test": "1.65.0",
     "@tailwindcss/postcss": "4.3.4",
     "@types/node": "22.20.5",
+    "@types/pg": "8.20.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "eslint": "^10.14.0",

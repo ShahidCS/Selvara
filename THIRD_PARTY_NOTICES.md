@@ -25,7 +25,7 @@ project does not use (no `next/image`). They are not modified, are dynamically l
 sharp or libvips file or reference appears in what is shipped. Licence and source: https://github.com/lovell/sharp and
 https://github.com/libvips/libvips.
 
-## Production dependencies (70)
+## Production dependencies (84)
 
 | Package | Version | Licence | Optional |
 |---|---|---|---|
@@ -82,16 +82,29 @@ https://github.com/libvips/libvips.
 | iceberg-js | 0.8.1 | MIT |  |
 | nanoid | 3.3.20 | MIT |  |
 | next | 16.4.5 | MIT |  |
+| pg | 8.23.1 | MIT |  |
+| pg-cloudflare | 1.4.1 | MIT | yes |
+| pg-connection-string | 2.14.1 | MIT |  |
+| pg-int8 | 1.0.1 | ISC |  |
+| pg-pool | 3.14.0 | MIT |  |
+| pg-protocol | 1.16.1 | MIT |  |
+| pg-types | 2.2.0 | MIT |  |
+| pgpass | 1.0.5 | MIT |  |
 | picocolors | 1.1.1 | ISC |  |
 | playwright | 1.65.0 | Apache-2.0 |  |
 | playwright-core | 1.65.0 | Apache-2.0 |  |
 | postcss | 8.5.23 | MIT |  |
+| postgres-array | 2.0.0 | MIT |  |
+| postgres-bytea | 1.0.1 | MIT |  |
+| postgres-date | 1.0.7 | MIT |  |
+| postgres-interval | 1.2.0 | MIT |  |
 | react | 19.3.1 | MIT |  |
 | react-dom | 19.3.1 | MIT |  |
 | scheduler | 0.28.0 | MIT |  |
 | semver | 7.8.6 | ISC |  |
 | sharp | 0.35.5 | Apache-2.0 | yes |
 | source-map-js | 1.2.2 | BSD-3-Clause |  |
+| split2 | 4.2.0 | ISC |  |
 | styled-jsx | 5.1.6 | MIT |  |
 | tslib | 2.8.1 | 0BSD |  |
 | tslib | 2.8.1 | 0BSD |  |
@@ -99,3 +112,4 @@ https://github.com/libvips/libvips.
 | tslib | 2.8.1 | 0BSD |  |
 | tslib | 2.8.1 | 0BSD |  |
 | tslib | 2.9.1 | 0BSD |  |
+| xtend | 4.0.2 | MIT |  |

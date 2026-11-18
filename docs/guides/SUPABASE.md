@@ -31,8 +31,9 @@ In **each** project (staging and production separately), open SQL Editor → New
 
 1. [`supabase/migrations/0001_selvara_auth.sql`](../../supabase/migrations/0001_selvara_auth.sql): the tables and their rules.
 2. [`supabase/migrations/0002_service_role_grants.sql`](../../supabase/migrations/0002_service_role_grants.sql): table access for the server's role only. Some projects do not grant it automatically, and every request then fails.
+3. [`supabase/migrations/0003_tenancy_foundation.sql`](../../supabase/migrations/0003_tenancy_foundation.sql): companies, memberships, approvals, elevation, the hash-chained audit log, and the `selvara_app` database role bound by row level security ([design](../architecture/BACKEND_FOUNDATION.md)).
 
-Both are safe to run again. To check, `select count(*) from public.kv;` returns a number instead of an error.
+All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `3`.
 
 The script:
 - creates the tables;
@@ -63,6 +64,24 @@ Set these in Vercel → Project → Settings → Environment Variables. Use the 
 
 Without all five, `/api` answers 503 and the public demonstration is unaffected.
 
+Also set Vercel → Settings → Functions → **Function Region** to **Frankfurt (fra1)**, next to the database (EU processing, low latency). Check: the `x-vercel-id` response header contains `fra1`.
+
+### 4b. Database connection for the module APIs (you, per project)
+
+Sign-in works without this. The module APIs (from the next slice on) need it, and it can be set up now. The server connects as `selvara_app`, a role that row level security binds to the signed-in person's company.
+
+1. **Give the role a login.** Create a long random password on your own machine (`openssl rand -base64 32`). In SQL Editor → New query, run `alter role selvara_app with login password '<that password>';`, then delete that query from the editor's history so the password is not kept there.
+2. **Connection string.** Supabase → **Connect** → **Transaction pooler** (port 6543). Copy it and change the user from `postgres.<ref>` to **`selvara_app.<ref>`** and the password to yours. Do not add `sslmode`; the server always verifies TLS.
+3. **CA certificate.** Project Settings → **Database** → **SSL Configuration** → **Download certificate**. Open the file and copy its whole text (from `-----BEGIN CERTIFICATE-----` to `-----END CERTIFICATE-----`).
+4. In Vercel, for the matching environment:
+
+| Name | Value | Secret |
+|---|---|---|
+| `DATABASE_URL` | the connection string from step 2 | **yes** |
+| `DATABASE_CA_CERT` | the certificate text from step 3 (public, but keep it with the URL) | no |
+
+5. Deploy (re-run the Production job), then check: `curl https://<site>/api/system/ready` answers `{"ready":true}`.
+
 **Do not set `NEXT_PUBLIC_API_MODE=http` yet.** That switch moves the whole app to the API, and only authentication exists on the server so far. The other modules (controls, risks, policies and so on) still need their APIs. Until then, keep the demonstration mode and test `/api` directly against staging.
 
 ## 5. First accounts (you, per project)
@@ -77,7 +96,7 @@ insert into public.profiles (id, email, person, role, status, requested_ms)
 values ('<user id>', '<email>', '<Full Name>', 'admin', 'Active', (extract(epoch from now()) * 1000)::bigint);
 ```
 
-Use `'super'` instead of `'admin'` for a platform super admin. Their first sign-in asks them to add a passkey. Everyone else adds an authenticator app at their first sign-in.
+Type the email exactly as Supabase shows it under Authentication → Users, in lower case: sign-in needs the profile's email to match the login's email. Use `'super'` instead of `'admin'` for a platform super admin. Their first sign-in asks them to add a passkey. Everyone else adds an authenticator app at their first sign-in.
 
 ## Troubleshooting
 
@@ -97,6 +116,13 @@ Common codes in that line:
 | `42501` permission denied | Run `0002_service_role_grants.sql`; check that `SUPABASE_SERVICE_ROLE_KEY` holds the secret key, not the publishable one. |
 | status 401, "Invalid API key" | A key is from the other project, truncated, or swapped between the two variables. |
 | "fetch failed" with no code | `SUPABASE_URL` is wrong (it must be `https://<ref>.supabase.co`), or the project is paused. |
+
+Database connection (`GET /api/system/ready`):
+
+| Answer | Meaning |
+|---|---|
+| 503 "The database is not configured." | `DATABASE_URL` is missing, unreadable, or `DATABASE_CA_CERT` is missing |
+| 503 "The database is not ready." | See the `api.error` line: step `db.connect` (host, port, user `selvara_app.<ref>` or password wrong; code `28P01` is a wrong password), `db.schema` with `SCHEMA_OUTDATED` (run the missing migrations in this project), or a certificate error (wrong `DATABASE_CA_CERT`) |
 
 ## 6. Before real customer data
 
