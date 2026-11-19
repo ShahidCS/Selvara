@@ -57,23 +57,23 @@ https://github.com/libvips/libvips.
 | @img/sharp-win32-arm64 | 0.35.5 | Apache-2.0 AND LGPL-3.0-or-later | yes |
 | @img/sharp-win32-ia32 | 0.35.5 | Apache-2.0 AND LGPL-3.0-or-later | yes |
 | @img/sharp-win32-x64 | 0.35.5 | Apache-2.0 AND LGPL-3.0-or-later | yes |
-| @next/env | 16.4.5 | MIT |  |
-| @next/swc-darwin-arm64 | 16.4.5 | MIT | yes |
-| @next/swc-darwin-x64 | 16.4.5 | MIT | yes |
-| @next/swc-linux-arm64-gnu | 16.4.5 | MIT | yes |
-| @next/swc-linux-arm64-musl | 16.4.5 | MIT | yes |
-| @next/swc-linux-x64-gnu | 16.4.5 | MIT | yes |
-| @next/swc-linux-x64-musl | 16.4.5 | MIT | yes |
-| @next/swc-win32-arm64-msvc | 16.4.5 | MIT | yes |
-| @next/swc-win32-x64-msvc | 16.4.5 | MIT | yes |
+| @next/env | 16.4.6 | MIT |  |
+| @next/swc-darwin-arm64 | 16.4.6 | MIT | yes |
+| @next/swc-darwin-x64 | 16.4.6 | MIT | yes |
+| @next/swc-linux-arm64-gnu | 16.4.6 | MIT | yes |
+| @next/swc-linux-arm64-musl | 16.4.6 | MIT | yes |
+| @next/swc-linux-x64-gnu | 16.4.6 | MIT | yes |
+| @next/swc-linux-x64-musl | 16.4.6 | MIT | yes |
+| @next/swc-win32-arm64-msvc | 16.4.6 | MIT | yes |
+| @next/swc-win32-x64-msvc | 16.4.6 | MIT | yes |
 | @playwright/test | 1.65.0 | Apache-2.0 |  |
-| @supabase/auth-js | 2.118.0 | MIT |  |
-| @supabase/functions-js | 2.118.0 | MIT |  |
+| @supabase/auth-js | 2.119.0 | MIT |  |
+| @supabase/functions-js | 2.119.0 | MIT |  |
 | @supabase/phoenix | 0.4.5 | MIT |  |
-| @supabase/postgrest-js | 2.118.0 | MIT |  |
-| @supabase/realtime-js | 2.118.0 | MIT |  |
-| @supabase/storage-js | 2.118.0 | MIT |  |
-| @supabase/supabase-js | 2.118.0 | MIT |  |
+| @supabase/postgrest-js | 2.119.0 | MIT |  |
+| @supabase/realtime-js | 2.119.0 | MIT |  |
+| @supabase/storage-js | 2.119.0 | MIT |  |
+| @supabase/supabase-js | 2.119.0 | MIT |  |
 | @swc/helpers | 0.5.23 | Apache-2.0 |  |
 | baseline-browser-mapping | 2.11.35 | Apache-2.0 |  |
 | caniuse-lite | 1.0.30001823 | CC-BY-4.0 |  |
@@ -81,7 +81,7 @@ https://github.com/libvips/libvips.
 | detect-libc | 2.1.2 | Apache-2.0 |  |
 | iceberg-js | 0.8.1 | MIT |  |
 | nanoid | 3.3.20 | MIT |  |
-| next | 16.4.5 | MIT |  |
+| next | 16.4.6 | MIT |  |
 | pg | 8.23.1 | MIT |  |
 | pg-cloudflare | 1.4.1 | MIT | yes |
 | pg-connection-string | 2.14.1 | MIT |  |
