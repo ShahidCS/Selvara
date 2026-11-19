@@ -24,8 +24,8 @@
 
 | Package | Used for | Declared | Installed |
 | --- | --- | --- | --- |
-| `@supabase/supabase-js` | Server-side client for Supabase Auth (and the sign-in tables), used only by the authentication API in src/server (never shipped to the browser) | `2.118.0` | `2.118.0` |
-| `next` | Web framework: Pages Router, server rendering, build and dev server | `^16.4.5` | `16.4.5` |
+| `@supabase/supabase-js` | Server-side client for Supabase Auth (and the sign-in tables), used only by the authentication API in src/server (never shipped to the browser) | `2.119.0` | `2.119.0` |
+| `next` | Web framework: Pages Router, server rendering, build and dev server | `^16.4.6` | `16.4.6` |
 | `pg` | Server-side Postgres driver for the module APIs, connecting as the row-level-security-bound selvara_app role (src/server/db.ts; never shipped to the browser) | `8.23.1` | `8.23.1` |
 | `react` | UI library | `^19.3.1` | `19.3.1` |
 | `react-dom` | React renderer for the browser | `^19.3.1` | `19.3.1` |
@@ -38,15 +38,15 @@
 | --- | --- | --- | --- |
 | `@axe-core/playwright` | Runs the axe accessibility rules against rendered pages in the end-to-end suite (development only; MPL-2.0 is allowed for dev dependencies) | `4.14.0` | `4.14.0` |
 | `@playwright/test` | End-to-end browser tests (Chromium) | `1.65.0` | `1.65.0` |
-| `@tailwindcss/postcss` | Runs Tailwind as a PostCSS plugin; its production optimiser also adds vendor prefixes, so autoprefixer is not used | `4.3.4` | `4.3.4` |
+| `@tailwindcss/postcss` | Runs Tailwind as a PostCSS plugin; its production optimiser also adds vendor prefixes, so autoprefixer is not used | `4.3.5` | `4.3.5` |
 | `@types/node` | Type definitions for Node.js APIs | `22.20.5` | `22.20.5` |
-| `@types/pg` | Type definitions for pg (development only) | `8.20.0` | `8.20.0` |
+| `@types/pg` | Type definitions for pg (development only) | `8.23.1` | `8.23.1` |
 | `@types/react` | Type definitions for React | `^19.3.0` | `19.3.0` |
 | `@types/react-dom` | Type definitions for React DOM | `^19.3.0` | `19.3.0` |
 | `eslint` | Linting (flat config; see the lint script for the warning limit) | `^10.14.0` | `10.14.0` |
-| `eslint-config-next` | Next.js, React and React Hooks lint rules | `^16.4.5` | `16.4.5` |
+| `eslint-config-next` | Next.js, React and React Hooks lint rules | `^16.4.6` | `16.4.6` |
 | `postcss` | CSS processing engine that the Tailwind plugin runs on | `8.5.32` | `8.5.32` |
-| `tailwindcss` | Utility CSS (v4), mapped to the original design tokens; utilities only, no reset (preflight is not imported) | `4.3.4` | `4.3.4` |
+| `tailwindcss` | Utility CSS (v4), mapped to the original design tokens; utilities only, no reset (preflight is not imported) | `4.3.5` | `4.3.5` |
 | `typescript` | Type checking (tsc --noEmit); the build does not emit with it | `5.9.3` | `5.9.3` |
 | `vitest` | Unit tests | `5.1.0` | `5.1.0` |
 
