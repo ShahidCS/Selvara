@@ -47,6 +47,16 @@ describe("production sign-in", () => {
     expect(await auth.requestReset("alex.kim@company.example")).toEqual({ token: null });
     expect(calls.at(-1)!.url).toBe("https://api.example.test/auth/password/reset-request");
   });
+  it("the session carries the company and the companies to switch to; switching takes the role the server returns", async () => {
+    reply = () => ({ status: 200, json: { roleId: "admin", who: "Alex Kim", company: { ref: "acme-eu", name: "Acme Test Co" }, companies: [{ ref: "acme-eu", name: "Acme Test Co", role: "admin" }, { ref: "globex-uk", name: "Globex Test Ltd", role: "employee" }] } });
+    expect(await auth.confirmSession()).toBe(true);
+    expect(store.appStore.get()).toEqual(expect.objectContaining({ role: "admin", company: { ref: "acme-eu", name: "Acme Test Co" } }));
+    expect(store.appStore.get().companies.map((c) => c.ref)).toEqual(["acme-eu", "globex-uk"]);
+    reply = () => ({ status: 200, json: { roleId: "employee", company: { ref: "globex-uk", name: "Globex Test Ltd" } } });
+    await auth.switchCompany("globex-uk");
+    expect(calls.at(-1)).toEqual(expect.objectContaining({ url: "https://api.example.test/auth/company", method: "POST", body: { company: "globex-uk" } }));
+    expect(store.appStore.get()).toEqual(expect.objectContaining({ role: "employee", company: { ref: "globex-uk", name: "Globex Test Ltd" } }));
+  });
   it("a session the server no longer knows signs out on load", async () => {
     reply = () => ({ status: 401 });
     expect(await auth.confirmSession()).toBe(false);

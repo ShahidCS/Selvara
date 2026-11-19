@@ -4,7 +4,8 @@ import { RetentionTab } from "./RetentionTab";
 import { JoinRequests } from "./JoinRequests";
 import { DATA } from "@/lib/data";
 import { SOD } from "@/lib/sod";
-import { ROLES, ROLE_MODS } from "@/lib/rbac";
+import { API_ON, ROLES, ROLE_MODS } from "@/lib/rbac";
+import { ApiTeam } from "./ApiTeam";
 import { useEffect } from "react";
 import { sodMessage, settle } from "@/lib/approvalFlow";
 import { memberRole } from "@/lib/teamRoles";
@@ -24,6 +25,7 @@ const VIEWS: [string, string][] = [["members", "Members"], ["settings", "Review 
 /** `/ws/team` shows the tab selected here; `/ws/team/invite` is a form page. */
 export default function TeamModule() {
   const { param } = useRoute();
+  if (API_ON) return <ApiTeam />; // production: the company's data from the server (decision D4)
   if (param === "invite") return <InviteFormPage />;
   return <TeamTabs />;
 }

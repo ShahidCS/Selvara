@@ -85,7 +85,15 @@ From v0.1.8 the API needs this too: a person's company and role come from their 
 
 5. Deploy (re-run the Production job), then check: `curl https://<site>/api/system/ready` answers `{"ready":true}`.
 
-**Do not set `NEXT_PUBLIC_API_MODE=http` yet.** That switch moves the whole app to the API, and only authentication exists on the server so far. The other modules (controls, risks, policies and so on) still need their APIs. Until then, keep the demonstration mode and test `/api` directly against staging.
+### 4c. Switch the app to live data (API mode; you, per environment, from v0.1.9)
+
+The site is built by GitHub Actions, not by Vercel, so a `NEXT_PUBLIC_API_MODE` variable in Vercel has **no effect**. The switch is a GitHub environment variable:
+
+1. Check first: 4b works (`/api/system/ready` answers `{"ready":true}`), your company exists (5b), and you can sign in through the API.
+2. GitHub → **Settings** → **Environments** → `production` → **Environment variables** → **Add variable**: name `API_MODE`, value `http`.
+3. Deploy: push the next release tag, or re-run the **Production** job of the latest release (the build runs again with the new value).
+
+What changes: the sign-in page uses your real account (no demo accounts), and only modules with a server API are shown (decision D4). Today that is **Team & Settings** for company admins (members, requests to join, account lockout) and **Your account** for everyone; other roles land on Your account. Each further module appears when its server slice ships. The Admin Console has no module on the server yet. To go back to the demonstration, set `API_MODE` to `mock` (or delete it) and deploy again.
 
 ## 5. First accounts (you, per project)
 

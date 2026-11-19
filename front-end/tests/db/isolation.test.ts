@@ -184,6 +184,7 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
       expect(await dir.decide(A, alex, fay, "Removed", "Deciding a second time", now, entry(A, alex, "team.join.rejected"))).toBe(false);
       expect((await dir.membership(A, fay))!.status).toBe("Active");
       await dir.setLockout(A, alex, { preset: "strict" }, now, entry(A, alex, "team.lockout.changed"));
+      expect(await dir.lockoutOf(A, alex)).toEqual({ preset: "strict" });
       expect((await admin.query("select lockout, version, updated_by from public.tenant_settings where tenant_id = $1", [A])).rows[0]).toEqual({ lockout: { preset: "strict" }, version: 2, updated_by: alex });
       const log = (await admin.query("select action, tenant_id from public.audit_log where action like 'team.%' order by seq")).rows;
       expect(log).toEqual([{ action: "team.join.requested", tenant_id: A }, { action: "team.join.approved", tenant_id: A }, { action: "team.lockout.changed", tenant_id: A }]);

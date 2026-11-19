@@ -24,8 +24,8 @@ export function JoinRequests({ manage }: { manage: boolean }) {
               <td><Chip cls="warn" icon="clock">Pending</Chip></td>
               <td className="r">{manage ? (
                 <div className="btngrp" style={{ justifyContent: "flex-end" }}>
-                  <button className="btn btn-ghost sm" aria-label={`Approve: ${m.name}`} onClick={() => L.openModal(`Approve request to join, ${m.name}`, (close) => <Decide id={m.id} decision="approve" close={close} />)}><Icon name="check" />Approve</button>
-                  <button className="btn btn-ghost sm" aria-label={`Reject: ${m.name}`} onClick={() => L.openModal(`Reject request to join, ${m.name}`, (close) => <Decide id={m.id} decision="reject" close={close} />)}><Icon name="x" />Reject</button>
+                  <button className="btn btn-ghost sm" aria-label={`Approve: ${m.name}`} onClick={() => L.openModal(`Approve request to join, ${m.name}`, (close) => <Decide id={m.id} name={m.name} decision="approve" close={close} />)}><Icon name="check" />Approve</button>
+                  <button className="btn btn-ghost sm" aria-label={`Reject: ${m.name}`} onClick={() => L.openModal(`Reject request to join, ${m.name}`, (close) => <Decide id={m.id} name={m.name} decision="reject" close={close} />)}><Icon name="x" />Reject</button>
                 </div>
               ) : null}</td>
             </tr>
@@ -36,14 +36,14 @@ export function JoinRequests({ manage }: { manage: boolean }) {
   );
 }
 
-function Decide({ id, decision, close }: { id: string; decision: "approve" | "reject"; close: () => void }) {
+function Decide({ id, name, decision, close }: { id: string; name: string; decision: "approve" | "reject"; close: () => void }) {
   const L = useLayer();
   const [reason, setReason] = useState(""); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   const go = async () => {
     if (busy) return;
     if (reason.trim().length < JOIN.REASON_MIN) { setErr(`Give a reason of at least ${JOIN.REASON_MIN} characters.`); return; }
     setBusy(true);
-    try { const m = await decideJoin(id, decision, reason); close(); L.toast(decision === "approve" ? `${m.name} can now sign in as an Employee` : "Request rejected"); }
+    try { await decideJoin(id, decision, reason); close(); L.toast(decision === "approve" ? `${name} can now sign in as an Employee` : "Request rejected"); }
     catch (e) { setErr(sodMessage(e, "Could not record the decision")); setBusy(false); }
   };
   return (

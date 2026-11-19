@@ -13,6 +13,7 @@ import { API_BASE, API_MODE, ApiError, apiFetch } from "./http";
 /** Mock mode runs `mock` (sync or async); production calls `real`. */
 const mode = <T,>(mock: () => T | Promise<T>, real: () => Promise<T>): Promise<T> => (API_MODE === "http" && API_BASE ? real() : Promise.resolve().then(mock));
 
+export interface Company { ref: string; name: string }
 const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
 /** Server answers are mapped to the same messages the demo shows; details stay on the server. */
 function mapError(e: unknown): never {
@@ -35,15 +36,15 @@ export const signIn = (email: string, password: string, challenge?: { seed: stri
   mode(() => local.signIn(email, password, challenge), () => call(() => post<SignInStep>("/auth/sign-in", { email, password, challenge })));
 export async function completeSignIn(ticket: string, code: string, opts: { recovery?: boolean } = {}): Promise<SignInResult> {
   return mode(() => local.completeSignIn(ticket, code, opts), async () => {
-    const r = await call(() => post<SignInResult & { who: string | null }>("/auth/sign-in/verify", { ticket, code, recovery: !!opts.recovery }));
-    local.applyServerSession(r.roleId, r.who); return r;
+    const r = await call(() => post<SignInResult & { who: string | null; company?: Company | null }>("/auth/sign-in/verify", { ticket, code, recovery: !!opts.recovery }));
+    local.applyServerSession(r.roleId, r.who, r.company ?? null); return r; // the shell then confirms the session, which also lists the companies
   });
 }
 /** Passkey step (super admins). Production: POST /auth/sign-in/passkey; the server holds the challenge and the public keys. */
 export async function completePasskey(ticket: string, p: Parameters<typeof local.completePasskey>[1]): Promise<SignInResult> {
   return mode(() => local.completePasskey(ticket, p), async () => {
-    const r = await call(() => post<SignInResult & { who: string | null }>("/auth/sign-in/passkey", { ticket, ...p }));
-    local.applyServerSession(r.roleId, r.who); return r;
+    const r = await call(() => post<SignInResult & { who: string | null; company?: Company | null }>("/auth/sign-in/passkey", { ticket, ...p }));
+    local.applyServerSession(r.roleId, r.who, r.company ?? null); return r;
   });
 }
 export const requestToJoin = (input: local.JoinInput) => mode(() => local.requestToJoin(input), () => call(() => post<void>("/auth/join-requests", input)));
@@ -60,9 +61,16 @@ export async function signOut(): Promise<void> {
 /** Production: confirms the server session on load (the cookie is HttpOnly, so only the server knows). False means signed out. */
 export async function confirmSession(): Promise<boolean> {
   return mode(() => true, async () => {
-    try { const r = await apiFetch<{ roleId: string; who: string | null }>("/auth/session"); local.applyServerSession(r.roleId, r.who); return true; }
+    try { const r = await apiFetch<{ roleId: string; who: string | null; company?: Company | null; companies?: (Company & { role: string })[] }>("/auth/session"); local.applyServerSession(r.roleId, r.who, r.company ?? null, r.companies ?? []); return true; }
     catch { local.signOut(false); return false; }
   });
+}
+
+/** Production: moves this session to another company the person is an active member of. The server checks the membership again and returns the
+ *  role there; the page then reloads so nothing from the previous company stays on screen. */
+export async function switchCompany(ref: string): Promise<void> {
+  const r = await apiFetch<{ roleId: string; company: Company }>("/auth/company", { method: "POST", body: JSON.stringify({ company: ref }) });
+  local.applyServerSession(r.roleId, store.get().who, r.company);
 }
 
 /** What the account page shows. Production: GET /me/security. */

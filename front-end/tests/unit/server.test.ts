@@ -245,6 +245,7 @@ describe("companies: sessions belong to one company, roles come from memberships
     const sw = await call("POST", "auth/company", { company: "globex-uk" }, { cookie: a.cookie });
     expect(sw.body).toEqual({ roleId: "employee", company: { ref: "globex-uk", name: "Globex Test Ltd" } });
     expect((await call("GET", "team/members", {}, { cookie: a.cookie })).status).toBe(403); // an employee in Globex, though an admin in Acme
+    expect((await call("GET", "team/settings", {}, { cookie: a.cookie })).status).toBe(403);
     expect(store.auditLog.find((x) => x.action === "auth.company.switched")!.tenantId).toBe(GLOBEX);
     expect((await signIn("alex.kim@company.example", NEW)).status).toBe(401); // the join request did not change the password
     const again = await signIn("alex.kim@company.example");
@@ -256,6 +257,7 @@ describe("companies: sessions belong to one company, roles come from memberships
     const globexAdmin = await account("casey@globex.example", "admin", "Casey Morgan", GLOBEX);
     expect((await call("POST", "team/settings", { lockout: "custom", custom: { attempts: 3, minutes: 60 } }, { cookie: globexAdmin.cookie })).status).toBe(204);
     expect(dir.lockouts.get(ACME)).toBeUndefined();
+    expect((await call("GET", "team/settings", {}, { cookie: globexAdmin.cookie })).body).toEqual({ lockout: { preset: "custom", custom: { attempts: 3, minutes: 60 } } });
     await account("alex.kim@company.example"); // Acme only: the standard preset (more than 3 attempts)
     for (let i = 0; i < 3; i++) await call("POST", "auth/sign-in", { email: "alex.kim@company.example", password: "nope" }, { ip: `198.51.100.${60 + i}` });
     expect((await call("POST", "auth/sign-in", { email: "alex.kim@company.example", password: PW }, { ip: "198.51.100.70" })).status).toBe(428); // not locked: only the challenge

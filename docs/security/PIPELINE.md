@@ -74,6 +74,7 @@ Policy: **High and Critical findings block; Medium and below are reported.**
    | `staging` (optional) | `STAGING_ALIAS` | variable | A stable staging hostname, for example `staging.example.com`. |
    | repository (Settings > Variables) | `DEPLOY_ENABLED` | variable | Set to `true` once the rows above exist. Until then pushes to `main` run CI and the security gates but skip the staging deployment. |
    | either (optional) | `ATTESTATIONS_ENABLED` | variable | Set to `false` to switch off provenance attestations (needed if your GitHub plan does not support them for private repositories). |
+   | either (optional) | `API_MODE` | variable | `http` builds the production app on live company data through `/api`; unset or `mock` builds the demonstration. Any other value fails the deploy. Public: it ends up in the browser code as `NEXT_PUBLIC_API_MODE`. Vercel's own variables of that name have no effect, because the build runs here. |
    | either (optional) | `COSIGN_ENABLED` | variable | **Off by default.** Set to `true` to add a keyless Sigstore signature, which publishes the repository name and workflow identity to the public Sigstore log. |
 
 4. **Set up commit signing** (see [Commit signing](#commit-signing)).

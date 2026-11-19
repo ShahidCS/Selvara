@@ -416,6 +416,8 @@ const joinDecide = admin(async (d, r, { p: me, a, company }) => {
   if (approve && p.status !== "Active") { await d.auth.confirmUser(p.id); await d.store.updateProfile(p.id, { status: "Active", decidedBy: me.person, reason: why }); }
   return ok({ id, status: approve ? "Active" : "Rejected" });
 });
+/** The company's lockout setting, for the Team & Settings page. */
+const lockoutGet = admin(async (d, _r, { p: me, company }) => ok({ lockout: await d.dir.lockoutOf(company.id, me.id) }));
 const lockoutSet = admin(async (d, r, { p: me, a, company }) => {
   const preset = s(r.body.lockout, 20); const custom = r.body.custom as { attempts?: unknown; minutes?: unknown } | undefined;
   if (!["standard", "strict", "pci", "custom"].includes(preset)) return err(400, "Choose one of the listed presets.");
@@ -436,7 +438,7 @@ export const ROUTES: Record<string, H> = {
   "POST auth/password/reset-request": resetRequest, "GET auth/password/reset/:token": resetCheck, "POST auth/password/reset": resetDo,
   "GET me/security": security, "POST auth/company": switchCompany, "GET team/members": memberList, "POST me/reauth": reauth, "POST me/password": changePassword, "POST me/recovery-codes": newCodes,
   "POST me/sessions/revoke-others": revokeOthers, "POST me/passkeys/options": passkeyOptions, "POST me/passkeys": passkeyAdd, "DELETE me/passkeys/:id": passkeyDelete,
-  "GET team/join-requests": joinList, "POST team/join-requests/:id/:decision": joinDecide, "POST team/settings": lockoutSet,
+  "GET team/join-requests": joinList, "POST team/join-requests/:id/:decision": joinDecide, "POST team/settings": lockoutSet, "GET team/settings": lockoutGet,
 };
 /** Finds the handler for a request; `:name` segments match anything. */
 export function route(method: string, path: string[]): H | null { return match(method, path)?.[1] ?? null; }

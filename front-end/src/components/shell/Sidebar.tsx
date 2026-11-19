@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { Icon } from "@/components/ui";
 import { appStore, getModState, persist, setModState, useApp, useData, useModVersion } from "@/lib/store";
-import { NAV, allowedSpaces, modAllowed, roleOf } from "@/lib/rbac";
+import { API_ON, NAV, allowedSpaces, modAllowed, roleOf } from "@/lib/rbac";
 import { countFor } from "@/lib/counts";
 import { SUBNAV } from "@/lib/subnav";
 import { useGo, useRoute } from "@/lib/route";
@@ -145,7 +145,7 @@ export function Sidebar() {
         ) : null}
         <nav ref={navRef} className="sb-nav scroll" aria-label={space === "admin" ? "Admin Console" : "Workspace"} onScroll={(e) => { scrollTop.current = (e.target as HTMLElement).scrollTop; }}>
           {groups.length === 0 ? (
-            <div className="empty" style={{ padding: "24px 12px" }}><div className="ei"><Icon name="shieldcheck" /></div><p>This role has no modules in this space.</p></div>
+            <div className="empty" style={{ padding: "24px 12px" }}><div className="ei"><Icon name="shieldcheck" /></div><p>{API_ON ? "Nothing to show here yet for your role. More of Selvara appears here as each part moves to live company data." : "This role has no modules in this space."}</p></div>
           ) : groups.map((g) => {
             const open = groupOpen(g);
             return (
@@ -153,7 +153,7 @@ export function Sidebar() {
                 <button className="grp-title" onClick={() => toggleGroup(g.g, open)} aria-expanded={open}>{g.g}<Icon name="chevd" className="chev" /></button>
                 <div className="grp-items">
                   {g.items.map(([key, label, icon]) => {
-                    const active = key === route.mod; const c = countFor(key); const sn = SUBNAV[key];
+                    const active = key === route.mod; const c = API_ON ? 0 : countFor(key); /* the counts come from the demonstration data */ const sn = SUBNAV[key];
                     if (sn) {
                       const opened = s.navOpen === key; const subId = "subnav-" + key; const curTab = getModState(sn.stateKey, sn.initial);
                       return (

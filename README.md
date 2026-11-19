@@ -211,7 +211,7 @@ The app opens on a sign-in page. There is no role switcher: sign out from the ac
 - **Platform super admins** sign in with a **passkey** (fingerprint, face, PIN or a security key), added at the first sign-in. In the demonstration build, a device without passkeys can use a labelled on-screen code instead.
 - **Demo accounts** (below) exist only in the demonstration build, where there is no backend and the browser runs the checks (`front-end/src/lib/session.ts`). They are limited: labelled as demo, sessions end after one hour, the second step shows its code on screen, and the shared password cannot be changed or reset.
 
-A production build (`NEXT_PUBLIC_API_MODE=http`) has no demo accounts: sign-in, MFA, reset and sessions go to the server routes in `front-end/src/server` (Supabase Auth and Postgres; setup in [docs/guides/SUPABASE.md](docs/guides/SUPABASE.md), contract in [docs/security/CONTROLS.md](docs/security/CONTROLS.md)). Only authentication is on the server so far, so keep the demonstration mode until the other module APIs exist. Nothing in the demonstration build is an authentication control.
+A production build (`NEXT_PUBLIC_API_MODE=http`) has no demo accounts: sign-in, MFA, reset and sessions go to the server routes in `front-end/src/server` (Supabase Auth and Postgres; setup in [docs/guides/SUPABASE.md](docs/guides/SUPABASE.md), contract in [docs/security/CONTROLS.md](docs/security/CONTROLS.md)). In that build, modules whose data is not on the server yet are hidden (decision D4): today a company admin sees Team & Settings and everyone sees their account page. The deploy builds it when the GitHub environment variable `API_MODE` is `http` ([docs/guides/SUPABASE.md](docs/guides/SUPABASE.md) section 4c). Nothing in the demonstration build is an authentication control.
 
 Every demo account uses the password `selvara-demo`.
 
@@ -294,8 +294,8 @@ Copy `front-end/.env.example` to `front-end/.env.local`. There are no secrets in
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `NEXT_PUBLIC_API_MODE` | `mock` | `mock` serves seeded synthetic data; `http` calls a real API |
-| `NEXT_PUBLIC_API_BASE_URL` | empty | Base URL of the GRC API (used only in `http` mode; also added to the CSP `connect-src`) |
+| `NEXT_PUBLIC_API_MODE` | `mock` | `mock` serves seeded synthetic data; `http` calls a real API. Deployed builds take it from the GitHub environment variable `API_MODE`, not from Vercel |
+| `NEXT_PUBLIC_API_BASE_URL` | empty | Base URL of the GRC API (used only in `http` mode; also added to the CSP `connect-src`). Deployed `http` builds use `/api` (same origin) |
 
 ## Testing and CI
 

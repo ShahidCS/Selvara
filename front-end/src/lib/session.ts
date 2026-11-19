@@ -402,8 +402,9 @@ export async function regenerateRecoveryCodes(): Promise<string[]> {
   return codes;
 }
 /** Production: after the server signs someone in, mirror who they are in the client (display and UI gating only; the server decides). */
-export function applyServerSession(roleId: string, person: string | null) {
+/** Production: the role, person and company come from the server (the company's membership decides the role). */
+export function applyServerSession(roleId: string, person: string | null, company?: { ref: string; name: string } | null, companies?: { ref: string; name: string; role: string }[]) {
   setSessionPerson(person ? { roleId, person } : null);
-  appStore.set({ role: roleId, who: person, signedIn: true, groupsOpen: {} }); persist();
+  appStore.set((s) => ({ role: roleId, who: person, signedIn: true, groupsOpen: {}, company: company === undefined ? s.company : company, companies: companies ?? s.companies })); persist();
 }
 
