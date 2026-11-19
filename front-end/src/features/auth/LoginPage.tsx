@@ -19,6 +19,7 @@ export function LoginPage() {
   const hydrated = useApp((s) => s.hydrated); const signedIn = useApp((s) => s.signedIn); const role = useApp((s) => s.role);
   const [mode, setMode] = useState<"signin" | "join" | "forgot" | "reset">("signin"); const [token, setToken] = useState("");
   const [hold, setHold] = useState(false); // keep the page while new recovery codes are on screen
+  const [invite, setInvite] = useState("");
   useEffect(() => {
     loadPersisted(ROLES.map((r) => r.id)); restoreSession();
     // production: the reset email from Supabase opens /login#access_token=…&refresh_token=…&type=recovery; take it out of the address at once
@@ -28,6 +29,12 @@ export function LoginPage() {
       window.history.replaceState(null, "", window.location.pathname);
       setToken(t); setMode("reset"); // eslint-disable-line react-hooks/set-state-in-effect -- one-time read of the address on arrival
     }
+    // production: an invitation link is /login#invite=<token>; the token stays out of server logs (a fragment is never sent) and out of the address
+    const inv = h.get("invite");
+    if (!DEMO_ENABLED && inv && /^[A-Za-z0-9_-]{43}$/.test(inv)) {
+      window.history.replaceState(null, "", window.location.pathname);
+      setInvite(inv); setMode("join");
+    }
   }, []);
   useEffect(() => { if (hydrated && signedIn && !hold) router.replace(landingPath(role, "ws")); }, [hydrated, signedIn, hold, role, router]);
   return (
@@ -36,7 +43,7 @@ export function LoginPage() {
         <div className="card"><div className="c-body" style={{ padding: 24 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 18 }}><span className="avatar" style={{ background: "var(--accent)", color: "var(--text-inverse)" }} aria-hidden="true">S</span><span style={{ fontWeight: 600, fontSize: 16 }}>Selvara</span></div>
           {mode === "signin" ? <SignInForm onJoin={() => setMode("join")} onForgot={() => setMode("forgot")} onHold={setHold} />
-            : mode === "join" ? <JoinForm onBack={() => setMode("signin")} />
+            : mode === "join" ? <JoinForm invite={invite} onBack={() => { setInvite(""); setMode("signin"); }} />
             : mode === "forgot" ? <ForgotForm onBack={() => setMode("signin")} onOpen={(t) => { setToken(t); setMode("reset"); }} />
             : <ResetForm token={token} onBack={() => setMode("signin")} />}
         </div></div>
@@ -274,7 +281,7 @@ function ResetForm({ token, onBack }: { token: string; onBack: () => void }) {
   );
 }
 
-function JoinForm({ onBack }: { onBack: () => void }) {
+function JoinForm({ onBack, invite = "" }: { onBack: () => void; invite?: string }) {
   const [name, setName] = useState(""); const [em, setEm] = useState(""); const [pw, setPw] = useState(""); const [company, setCompany] = useState("");
   const [err, setErr] = useState(""); const [forced, setForced] = useState(false); const [busy, setBusy] = useState(false); const [sent, setSent] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null); const emRef = useRef<HTMLInputElement>(null); const doneRef = useRef<HTMLHeadingElement>(null);
@@ -283,9 +290,16 @@ function JoinForm({ onBack }: { onBack: () => void }) {
     e.preventDefault(); if (busy) return;
     if (!emailValid(em)) { setForced(true); emRef.current?.focus(); return; }
     setBusy(true); setErr("");
-    try { await auth.requestToJoin({ name, email: em, password: pw, ...(DEMO_ENABLED ? {} : { company }) }); setPw(""); setSent(true); } catch (x) { setErr(msg(x, "Could not send the request.")); }
+    try { await auth.requestToJoin({ name, email: em, password: pw, ...(DEMO_ENABLED ? {} : invite ? { invite } : { company }) }); setPw(""); setSent(true); } catch (x) { setErr(msg(x, "Could not send the request.")); }
     setBusy(false);
   };
+  if (sent && invite) return (
+    <>
+      <h1 className="auth-h" style={{ fontSize: 20 }} tabIndex={-1} ref={doneRef}>Invitation sent</h1>
+      <p className="sub" style={{ margin: "0 0 16px" }}>If the invitation is valid for this email address, you can sign in now. You will set up an authenticator app at your first sign-in. If sign-in does not work, ask your company admin for a new invitation link.</p>
+      <button type="button" className="btn btn-primary" style={full} onClick={onBack}>Sign in</button>
+    </>
+  );
   if (sent) return (
     <>
       <h1 className="auth-h" style={{ fontSize: 20 }} tabIndex={-1} ref={doneRef}>Request sent</h1>
@@ -295,12 +309,12 @@ function JoinForm({ onBack }: { onBack: () => void }) {
   );
   return (
     <>
-      <h1 className="auth-h" style={{ fontSize: 20 }}>Request to join</h1>
-      <p className="sub" style={{ margin: "0 0 16px" }}>A company admin approves every new account. You join as an Employee.</p>
+      <h1 className="auth-h" style={{ fontSize: 20 }}>{invite ? "Accept your invitation" : "Request to join"}</h1>
+      <p className="sub" style={{ margin: "0 0 16px" }}>{invite ? "Use the email address the invitation was sent to. If you already have a Selvara account, enter its current password." : "A company admin approves every new account. You join as an Employee."}</p>
       <form onSubmit={submit} noValidate>
         <div className="field"><label htmlFor="jn-name">Full name</label><input ref={nameRef} className="input" id="jn-name" autoComplete="name" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} /></div>
         <EmailField ref={emRef} id="jn-email" label="Work email" value={em} onChange={setEm} forced={forced} onTouch={() => setForced(false)} />
-        {!DEMO_ENABLED && (
+        {!DEMO_ENABLED && !invite && (
           <div className="field"><label htmlFor="jn-co">Company code</label>
             <input className="input" id="jn-co" autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={40} aria-describedby="jn-co-help" value={company} onChange={(e) => setCompany(e.target.value)} />
             <p className="field help" id="jn-co-help" style={{ margin: "4px 0 0" }}>Your company admin can tell you your company code.</p></div>
@@ -308,7 +322,7 @@ function JoinForm({ onBack }: { onBack: () => void }) {
         <PwField id="jn-pw" label="Password" ac="new-password" value={pw} onChange={setPw} invalid={!!err} describedBy={err ? "jn-err jn-help" : "jn-help"} />
         <p className="field help" id="jn-help" style={{ marginTop: -4 }}>Use {LENGTH_COPY}. Common and breached passwords are refused.</p>
         <ErrP id="jn-err" msg={err} />
-        <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }} disabled={busy}>Send request</button>
+        <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }} disabled={busy}>{invite ? "Join" : "Send request"}</button>
       </form>
       <p style={{ textAlign: "center", marginTop: 14, fontSize: 13 }}>Already have an account? <button type="button" className="linkbtn" onClick={onBack}>Sign in</button></p>
     </>

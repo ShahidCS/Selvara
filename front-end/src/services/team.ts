@@ -11,7 +11,8 @@ import { registerKind, settle } from "@/lib/approvalFlow";
 import { approvals, requestApproval } from "@/lib/approvals";
 import { wsLog } from "@/lib/audit";
 import { clampText, isEmail, secureHex } from "@/lib/security";
-import { assertNotSelf, assertRole, getActor, hasRole, isSamePerson, SodError, SOD } from "@/lib/sod";
+import { roleChangeBlock, secondAdminBlock } from "@/lib/rules";
+import { assertRole, getActor, hasRole, isSamePerson, SodError, SOD } from "@/lib/sod";
 import { bumpData } from "@/lib/store";
 import { ADMIN_ROLE, adminCount, isPrivilegedRoleName, memberRole } from "@/lib/teamRoles";
 import { eligibleApprovers } from "./mfa";
@@ -148,13 +149,12 @@ export function changeMemberRole(personId: string, role: string) {
     settle();
     assertRole("change a member's role", "admin");
     const p = DATA.people.find((x) => x.id === personId); if (!p) throw new SodError("Person not found.");
-    assertNotSelf("nobody changes their own role", p.name);
-    if (!USER_ROLES.includes(role)) throw new SodError("Choose a valid role.");
-    const from = memberRole(p); if (from === role) throw new SodError("That is already their role.");
-    if (from === ADMIN_ROLE && role !== ADMIN_ROLE && adminCount() <= 1) throw new SodError("The last remaining admin cannot be demoted.");
+    const from = memberRole(p);
+    const why = roleChangeBlock({ self: isSamePerson(getActor().name, p.name), from, to: role, valid: USER_ROLES.includes(role), fromIsAdmin: from === ADMIN_ROLE, toIsAdmin: role === ADMIN_ROLE, admins: adminCount(),
+      pending: isPrivilegedRoleName(role) && approvals.get().list.some((a) => a.status === "Pending" && a.kind === "team-role" && isSamePerson(a.subject, p.name)) });
+    if (why) throw new SodError(why);
     if (isPrivilegedRoleName(role)) {
-      if (approvals.get().list.some((a) => a.status === "Pending" && a.kind === "team-role" && isSamePerson(a.subject, p.name))) throw new SodError("A role change is already pending for this person.");
-      if (!eligibleApprovers(["admin"], p.name).length) throw new SodError("No eligible second admin (not you, not the member).");
+      const none = secondAdminBlock(eligibleApprovers(["admin"], p.name).length); if (none) throw new SodError(none);
       const ap = requestApproval({ kind: "team-role", title: `Grant ${role} to ${p.name}`, subject: p.name, needs: 1, approverRoles: ["admin"], forbid: [p.name], ttlHours: 72, domain: "ws", payload: { personId: p.id, role, from } });
       wsLog("member.role.requested", `${p.name}: ${from} → ${role}; second admin approval required (${ap.id})`, "Access");
       return { name: p.name as string, pending: true };
@@ -183,7 +183,7 @@ export const lockoutPreset = () => acct().lockout;
 
 /* ---------- production (NEXT_PUBLIC_API_MODE=http): the company's data from the server ---------- */
 /** A member of the session's company. Production: GET /team/members (company admins only; the server scopes it to the session's company). */
-export interface MemberRow { id: string; name: string; email: string; role: string; status: "Pending" | "Active" | "Suspended"; since: number }
+export interface MemberRow { id: string; name: string; email: string; role: string; status: "Pending" | "Active" | "Suspended"; since: number; /** The signed-in admin's own row. */ me?: boolean }
 export const listMembers = () => apiFetch<MemberRow[]>("/team/members");
 /** The company's account lockout. Production: GET /team/settings. */
 export interface Lockout { preset: string; custom?: { attempts: number; minutes: number } }
@@ -226,3 +226,18 @@ registerKind("team-network", {
     wsLog("team.network." + a.status.toLowerCase(), `${a.payload.net}${a.decidedReason ? "; reason: " + a.decidedReason : ""}`, "Access");
   },
 });
+
+/* Role changes, invitations and the four-eyes requests behind them (production, slice 2c). The server decides every rule (lib/rules.ts) and
+   scopes everything to the session's company; these calls only carry the admin's choice. */
+/** Employee-level roles change at once; admin and owner create a request a second admin approves (`pending: true`). */
+export const changeRole = (memberId: string, role: string) => post<{ pending: boolean; id?: string }>(`/team/members/${encodeURIComponent(memberId)}/role`, { role });
+export interface ApprovalItem { id: string; kind: string; title: string; requestedBy: string; status: "Pending" | "Approved" | "Rejected" | "Withdrawn" | "Expired"; createdAt: number; expiresAt: number; reason: string | null; votes: { by: string; at: number; reason: string }[]; mine: boolean; /** Why you cannot decide it (null: you may). */ block: string | null }
+export const listApprovals = () => apiFetch<ApprovalItem[]>("/team/approvals");
+export const decideRequest = (id: string, decision: "approve" | "reject" | "withdraw", reason = "") => post<{ status: string }>(`/team/approvals/${encodeURIComponent(id)}/${decision}`, { reason });
+export interface InvitationItem { id: string; email: string; role: string; status: "Pending" | "Accepted" | "Revoked" | "Expired"; invitedBy: string; createdAt: number; expiresAt: number; linkAt?: number; approvalId?: string }
+export const listInvitations = () => apiFetch<InvitationItem[]>("/team/invitations");
+/** The link comes back once (only its hash is stored). Admin and owner invitations come back `pending` until a second admin approves them. */
+export const invite = (email: string, role: string) => post<{ pending: boolean; id: string; link?: string; expiresAt?: number }>("/team/invitations", { email, role });
+/** A new link for a pending invitation; the previous link stops working. */
+export const inviteLink = (id: string) => post<{ link: string; expiresAt: number }>(`/team/invitations/${encodeURIComponent(id)}/link`, {});
+export const revokeInvite = (id: string) => post<void>(`/team/invitations/${encodeURIComponent(id)}/revoke`, {});

@@ -4,7 +4,7 @@
 -- more than once.
 --
 -- After running it, the owner creates the first company and makes themselves its admin (docs/guides/SUPABASE.md section 5b):
---   select public.bootstrap_company('<company code>', '<company name>', '<your sign-in email>');
+--   select public.bootstrap_company('acme-eu', 'Acme Europe Ltd', 'your.sign-in@yourcompany.example')  -- your own values, no angle brackets;
 
 insert into public.schema_version (version, name, applied_ms) values (4, '0004_company_sessions', (extract(epoch from now()) * 1000)::bigint)
 on conflict (version) do nothing;
@@ -40,10 +40,15 @@ $$;
 
 -- ---------------------------------------------------------------------------------------------------------------------------------------
 -- Platform staff from the old global roles (profiles.role). Company roles move to memberships when the owner creates a company below.
-insert into public.platform_staff (user_id, role, created_ms)
-select id, case when role in ('super', 'super2') then 'super' else 'support' end, (extract(epoch from now()) * 1000)::bigint
-from public.profiles where role in ('super', 'super2', 'support') and status = 'Active'
-on conflict (user_id) do nothing;
+-- (Skipped once 0005 has dropped profiles.role, so this file stays safe to run again.)
+do $$ begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'role') then
+    execute $q$insert into public.platform_staff (user_id, role, created_ms)
+      select id, case when role in ('super', 'super2') then 'super' else 'support' end, (extract(epoch from now()) * 1000)::bigint
+      from public.profiles where role in ('super', 'super2', 'support') and status = 'Active'
+      on conflict (user_id) do nothing$q$;
+  end if;
+end $$;
 
 -- Creates a company with its settings and makes an existing, active person its admin. For the owner, once per company, in the SQL editor
 -- (it runs as the table owner). Company creation by platform staff with four-eyes approval replaces it in a later slice.

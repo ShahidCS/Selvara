@@ -3,6 +3,7 @@
 import { DATA } from "./data";
 import { ROLES } from "./rbac";
 import { isSamePerson } from "./sod";
+import { isPrivilegedRole } from "./rules";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const SEED_ROLES: Record<string, string> = { "U-01": "Company Admin", "U-05": "Company Admin", "U-02": "Control, Policy and Risk Owner" };
@@ -14,7 +15,7 @@ export function memberRole(p: any): string {
   return persona ? persona.name : p.contractor ? "Vendor Contact" : "Employee";
 }
 /** admin, owner and super-style roles need a second approver to be granted (SOD_MATRIX section 3, Team). */
-export const isPrivilegedRoleName = (name: string): boolean => /admin|owner|super/i.test(name);
+export const isPrivilegedRoleName = isPrivilegedRole;
 /** Access level that counts as privileged (Admin / Super admin). */
 export const isPrivilegedLevel = (level: unknown): boolean => /^(super\s*admin|admin)/i.test(String(level ?? "").trim());
 /** Systems treated as privileged regardless of the requested level. */

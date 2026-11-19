@@ -3,7 +3,7 @@
 -- bound by row level security. Run after 0001 and 0002, in each project. Safe to run more than once.
 --
 -- After running it, the owner gives the application role a login (never stored in the repository):
---   alter role selvara_app with login password '<a long random password>';
+--   alter role selvara_app with login password 'PASTE-A-LONG-RANDOM-HEX-PASSWORD-HERE';
 -- and sets DATABASE_URL in Vercel (docs/guides/SUPABASE.md).
 
 -- ---------------------------------------------------------------------------------------------------------------------------------------

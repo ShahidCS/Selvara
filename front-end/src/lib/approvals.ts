@@ -2,7 +2,8 @@
  * a DIFFERENT authorised person approves it, and only then does the module's service apply the change.
  * In-memory demo store; the real API must persist, authorise and audit this server-side. */
 import { createStore, bumpData } from "./store";
-import { getActor, hasRole, isSamePerson, SodError } from "./sod";
+import { baseRole, getActor, personKey, SodError } from "./sod";
+import { approvalBlock, reasonBlock, withdrawBlock, type Decider } from "./rules";
 import { wsLog } from "./audit";
 import { adminLog } from "./adminAudit";
 
@@ -37,21 +38,15 @@ export function sweepExpired(): void {
   approvals.get().list.forEach((a) => { if (a.status === "Pending" && a.expiresAt <= now) { a.status = "Expired"; audit(a, "expired", `${a.title} (${a.id})`); changed = true; } });
   if (changed) { approvals.set((s) => ({ list: [...s.list] })); bumpData(); }
 }
-/** Reason a given person cannot approve (null = may approve). Use for disabling buttons. */
+/** Reason a given person cannot approve (null = may approve). Use for disabling buttons. The rule itself is shared with the server (rules.ts). */
+const me = (): Decider => { const a = getActor(); return { key: personKey(a.name), base: baseRole(a.roleId) }; };
 export function whyCannotApprove(a: Approval): string | null {
-  const me = getActor();
-  if (a.status !== "Pending") return `Request is ${a.status.toLowerCase()}.`;
-  if (a.expiresAt <= Date.now()) return "Request has expired.";
-  if (!hasRole(me.roleId, ...a.approverRoles)) return `Only ${a.approverRoles.join(" / ")} can approve.`;
-  if (isSamePerson(me.name, a.requestedBy)) return "Segregation of duties: you cannot approve your own request.";
-  if (a.forbid.some((f) => isSamePerson(me.name, f))) return "Segregation of duties: you are the subject or owner of this request.";
-  if (a.approvals.some((x) => isSamePerson(x.by, me.name))) return "You have already approved this request.";
-  return null;
+  return approvalBlock(me(), { status: a.status, expiresAt: a.expiresAt, approverRoles: a.approverRoles, requestedBy: personKey(a.requestedBy), forbid: a.forbid.map(personKey), votes: a.approvals.map((x) => personKey(x.by)) }, Date.now());
 }
 export function approve(id: string, reason: string): Approval {
   sweepExpired(); const a = approvals.get().list.find((x) => x.id === id); if (!a) throw new SodError("Request not found.");
   const why = whyCannotApprove(a); if (why) throw new SodError(why);
-  const r = String(reason || "").trim(); if (r.length < 10) throw new SodError("Give a reason of at least 10 characters.");
+  const r = String(reason || "").trim(); const short = reasonBlock(r); if (short) throw new SodError(short);
   a.approvals.push({ by: getActor().name, at: new Date().toISOString(), reason: r.slice(0, 300) });
   if (a.approvals.length >= a.needs) a.status = "Approved";
   audit(a, a.status === "Approved" ? "approved" : "approval.recorded", `${a.title} (${a.id})`);
@@ -66,8 +61,7 @@ export function reject(id: string, reason: string): Approval {
 /** Only the requester can withdraw (this is NOT a rejection). */
 export function withdraw(id: string): Approval {
   const a = approvals.get().list.find((x) => x.id === id); if (!a) throw new SodError("Request not found.");
-  if (!isSamePerson(getActor().name, a.requestedBy)) throw new SodError("Only the requester can withdraw a request.");
-  if (a.status !== "Pending") throw new SodError(`Request is ${a.status.toLowerCase()}.`);
+  const why = withdrawBlock(me(), { status: a.status, requestedBy: personKey(a.requestedBy) }); if (why) throw new SodError(why);
   a.status = "Withdrawn"; audit(a, "withdrawn", `${a.title} (${a.id})`);
   approvals.set((s) => ({ list: [...s.list] })); bumpData(); return a;
 }

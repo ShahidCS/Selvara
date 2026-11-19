@@ -33,7 +33,7 @@ async function code(email: string): Promise<string> { // the next unused authent
 /** Company roles become an active membership of `company` (Acme by default); super and support become platform staff. */
 async function account(email: string, role = "employee", person = "Alex Kim", company?: string) {
   const id = await auth.createUser(email, PW, person); await auth.confirmUser(id);
-  await store.insertProfile({ id, email, person, role, status: "Active", requestedAt: clock });
+  await store.insertProfile({ id, email, person, status: "Active", requestedAt: clock });
   if (role === "super" || role === "support") dir.staff.set(id, role); else dir.addMember(company ?? ACME, id, role);
   const st = await call("POST", "auth/sign-in", { email, password: PW }); expect(st.body).toEqual(expect.objectContaining({ step: "enroll" }));
   const v = await call("POST", "auth/sign-in/verify", { ticket: (st.body as { ticket: string }).ticket, code: await code(email) });
@@ -172,7 +172,7 @@ describe("account endpoints", () => {
   });
   it("a platform super admin's second step is a passkey, verified by the server", async () => {
     const id = await auth.createUser("dana@platform.example", PW, "Dana Whitfield"); await auth.confirmUser(id);
-    await store.insertProfile({ id, email: "dana@platform.example", person: "Dana Whitfield", role: "super", status: "Active", requestedAt: clock }); dir.staff.set(id, "super");
+    await store.insertProfile({ id, email: "dana@platform.example", person: "Dana Whitfield", status: "Active", requestedAt: clock }); dir.staff.set(id, "super");
     const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
     const spki = new Uint8Array(await crypto.subtle.exportKey("spki", kp.publicKey)); const kid = toB64u(crypto.getRandomValues(new Uint8Array(16)));
     const st = (await call("POST", "auth/sign-in", { email: "dana@platform.example", password: PW })).body as { step: string; ticket: string; challenge: string; register: boolean };
@@ -198,7 +198,7 @@ describe("account endpoints", () => {
 describe("companies: sessions belong to one company, roles come from memberships (slice 2a)", () => {
   it("a person with no active membership cannot sign in, and a removed member's session ends at their next request", async () => {
     const id = await auth.createUser("lee@company.example", PW, "Lee Park"); await auth.confirmUser(id);
-    await store.insertProfile({ id, email: "lee@company.example", person: "Lee Park", role: "employee", status: "Active", requestedAt: clock });
+    await store.insertProfile({ id, email: "lee@company.example", person: "Lee Park", status: "Active", requestedAt: clock });
     expect(await call("POST", "auth/sign-in", { email: "lee@company.example", password: PW })).toEqual(expect.objectContaining({ status: 409, body: { error: NO_COMPANY } }));
     const a = await account("alex.kim@company.example");
     dir.memberships.find((m) => m.userId === a.id)!.status = "Removed";
@@ -230,7 +230,7 @@ describe("companies: sessions belong to one company, roles come from memberships
     expect(auth.users.size).toBe(0);
     expect((await call("POST", "auth/join-requests", { name: "Rae Fox", email: "rae.fox@company.example", password: PW })).status).toBe(400);
     const staff = await auth.createUser("sam@platform.example", PW, "Sam Hayes"); await auth.confirmUser(staff); dir.staff.set(staff, "support");
-    await store.insertProfile({ id: staff, email: "sam@platform.example", person: "Sam Hayes", role: "support", status: "Active", requestedAt: clock });
+    await store.insertProfile({ id: staff, email: "sam@platform.example", person: "Sam Hayes", status: "Active", requestedAt: clock });
     expect((await call("POST", "auth/join-requests", { name: "Sam Hayes", email: "sam@platform.example", password: NEW, company: "acme-eu" })).status).toBe(202);
     expect(dir.memberships.some((m) => m.userId === staff)).toBe(false);
   });
@@ -266,6 +266,129 @@ describe("companies: sessions belong to one company, roles come from memberships
     for (let i = 0; i < 3; i++) await call("POST", "auth/sign-in", { email: "alex.kim@company.example", password: "nope" }, { ip: `198.51.100.${80 + i}` });
     expect((await call("POST", "auth/sign-in", { email: "alex.kim@company.example", password: PW }, { ip: "198.51.100.90" })).status).toBe(423);
     expect(store.auditLog.find((x) => x.action === "team.lockout.changed")).toEqual(expect.objectContaining({ tenantId: GLOBEX, target: "custom: 3 attempts, 60 minutes" }));
+  });
+});
+
+describe("role changes, invitations and four-eyes requests (slice 2c)", () => {
+  const roleOf = (id: string, t = ACME) => dir.memberships.find((m) => m.tenantId === t && m.userId === id)?.role;
+  const list = async (cookie: string) => (await call("GET", "team/approvals", {}, { cookie })).body as { id: string; status: string; block: string | null; mine: boolean; title: string }[];
+
+  it("employee-level roles change at once; nobody changes their own; another company's member is not found; only known roles", async () => {
+    const GLOBEX = dir.addCompany("globex-uk", "Globex Test Ltd");
+    const admin = await account("jordan@company.example", "admin", "Jordan Avery");
+    const alex = await account("alex.kim@company.example");
+    const casey = await account("casey@globex.example", "employee", "Casey Morgan", GLOBEX);
+    expect((await call("POST", `team/members/${alex.id}/role`, { role: "analyst" }, { cookie: admin.cookie })).body).toEqual({ pending: false });
+    expect(roleOf(alex.id)).toBe("analyst");
+    expect(store.auditLog.find((x) => x.action === "member.role.changed")).toEqual(expect.objectContaining({ tenantId: ACME, actorId: admin.id, target: "Alex Kim: employee → analyst" }));
+    expect((await call("POST", `team/members/${admin.id}/role`, { role: "employee" }, { cookie: admin.cookie })).status).toBe(403);
+    expect((await call("POST", `team/members/${alex.id}/role`, { role: "super" }, { cookie: admin.cookie })).status).toBe(400);
+    expect((await call("POST", `team/members/${alex.id}/role`, { role: "analyst" }, { cookie: admin.cookie })).status).toBe(409);
+    expect((await call("POST", `team/members/${casey.id}/role`, { role: "analyst" }, { cookie: admin.cookie })).status).toBe(404);
+    expect((await call("POST", `team/members/${admin.id}/role`, { role: "admin" }, { cookie: alex.cookie })).status).toBe(403); // not an admin
+  });
+
+  it("granting admin or owner needs a second admin: never the requester or the member, and the change applies only on approval", async () => {
+    const jordan = await account("jordan@company.example", "admin", "Jordan Avery");
+    const alex = await account("alex.kim@company.example");
+    expect((await call("POST", `team/members/${alex.id}/role`, { role: "owner" }, { cookie: jordan.cookie })).body).toEqual({ error: "No eligible second admin (not you, not the member) to approve this." });
+    const casey = await account("casey@company.example", "admin", "Casey Morgan");
+    const req = await call("POST", `team/members/${alex.id}/role`, { role: "owner" }, { cookie: jordan.cookie });
+    expect(req.status).toBe(202); const id = (req.body as { id: string }).id;
+    expect(roleOf(alex.id)).toBe("employee"); // nothing changes on request
+    expect((await call("POST", `team/members/${alex.id}/role`, { role: "analyst" }, { cookie: jordan.cookie })).body).toEqual({ error: "A role change is already pending for this person." });
+    const mine = (await list(jordan.cookie)).find((x) => x.id === id)!;
+    expect([mine.mine, mine.block]).toEqual([true, "Segregation of duties: you cannot approve your own request."]);
+    expect((await call("POST", `team/approvals/${id}/approve`, { reason: "Owner of the ISMS from now on" }, { cookie: jordan.cookie })).status).toBe(403);
+    expect((await call("POST", `team/approvals/${id}/approve`, { reason: "short" }, { cookie: casey.cookie })).status).toBe(400);
+    expect((await list(casey.cookie)).find((x) => x.id === id)!.block).toBeNull();
+    expect((await call("POST", `team/approvals/${id}/approve`, { reason: "Owner of the ISMS from now on" }, { cookie: casey.cookie })).body).toEqual({ status: "Approved" });
+    expect(roleOf(alex.id)).toBe("owner");
+    expect(store.auditLog.find((x) => x.action === "member.role.changed")!.target).toBe("Alex Kim: employee → owner; requested by Jordan Avery, approved by Casey Morgan");
+    expect((await call("POST", `team/approvals/${id}/reject`, { reason: "Changed my mind about this" }, { cookie: casey.cookie })).status).toBe(409);
+  });
+
+  it("the subject cannot approve their own grant; only the requester withdraws; an expired request cannot be decided", async () => {
+    const jordan = await account("jordan@company.example", "admin", "Jordan Avery");
+    const casey = await account("casey@company.example", "admin", "Casey Morgan");
+    const alex = await account("alex.kim@company.example");
+    await account("riley@company.example", "admin", "Riley Quinn");
+    const id = ((await call("POST", `team/members/${alex.id}/role`, { role: "admin" }, { cookie: jordan.cookie })).body as { id: string }).id;
+    expect((await call("POST", `team/approvals/${id}/withdraw`, {}, { cookie: casey.cookie })).status).toBe(403);
+    expect((await call("POST", `team/approvals/${id}/withdraw`, {}, { cookie: jordan.cookie })).body).toEqual({ status: "Withdrawn" });
+    // a request about Casey herself: Casey may not approve it
+    const own = ((await call("POST", `team/members/${casey.id}/role`, { role: "owner" }, { cookie: jordan.cookie })).body as { id: string }).id;
+    expect((await call("POST", `team/approvals/${own}/approve`, { reason: "I agree with this change" }, { cookie: casey.cookie })).body).toEqual({ error: "Segregation of duties: you are the subject or owner of this request." });
+    clock += 73 * 3600_000;
+    const riley = await signIn("riley@company.example"); const rc = cookieOf(riley);
+    expect((await list(rc)).find((x) => x.id === own)!.status).toBe("Expired");
+    expect((await call("POST", `team/approvals/${own}/approve`, { reason: "Late but still agree" }, { cookie: rc })).body).toEqual({ error: "Request has expired." });
+    expect(roleOf(casey.id)).toBe("admin");
+    expect(store.auditLog.some((x) => x.action === "approval.team-role.expired")).toBe(true);
+  });
+
+  it("an invitation link admits the invited email once, with the invited role, and confirms a new account", async () => {
+    const jordan = await account("jordan@company.example", "admin", "Jordan Avery");
+    const res = await call("POST", "team/invitations", { email: "Rae.Fox@company.example", role: "analyst" }, { cookie: jordan.cookie });
+    expect(res.status).toBe(200);
+    const { link } = res.body as { link: string }; const token = link.split("#invite=")[1];
+    expect(link.startsWith(`${ORIGIN}/login#invite=`)).toBe(true);
+    expect(JSON.stringify(dir.invites)).not.toContain(token); // only the hash is stored
+    expect((await call("POST", "team/invitations", { email: "rae.fox@company.example", role: "employee" }, { cookie: jordan.cookie })).status).toBe(409);
+    // another email with the right link: nothing
+    expect((await call("POST", "auth/join-requests", { name: "Mallory Test", email: "mallory@company.example", password: PW, invite: token })).status).toBe(202);
+    expect(await store.profileByEmail("mallory@company.example")).toBeNull();
+    expect((await call("POST", "auth/join-requests", { name: "Rae Fox", email: "rae.fox@company.example", password: PW, invite: token })).status).toBe(202);
+    const rae = (await store.profileByEmail("rae.fox@company.example"))!;
+    expect([rae.status, roleOf(rae.id)]).toEqual(["Active", "analyst"]);
+    expect(((await call("POST", "auth/sign-in", { email: "rae.fox@company.example", password: PW })).body as { step: string }).step).toBe("enroll");
+    expect(((await call("GET", "team/invitations", {}, { cookie: jordan.cookie })).body as { status: string }[])[0].status).toBe("Accepted");
+    // used once
+    expect((await call("POST", "auth/join-requests", { name: "Rae Fox", email: "rae.fox@company.example", password: NEW, invite: token })).status).toBe(202);
+    expect((await signIn("rae.fox@company.example", NEW)).status).toBe(401);
+    expect(store.auditLog.find((x) => x.action === "member.invitation.accepted")).toEqual(expect.objectContaining({ tenantId: ACME, actorId: rae.id }));
+  });
+
+  it("a new link replaces the old one, a revoked or expired invitation admits nobody, and an existing account must prove its password", async () => {
+    const GLOBEX = dir.addCompany("globex-uk", "Globex Test Ltd");
+    const jordan = await account("jordan@company.example", "admin", "Jordan Avery");
+    const old = ((await call("POST", "team/invitations", { email: "casey@globex.example", role: "auditor" }, { cookie: jordan.cookie })).body as { link: string; id: string });
+    const fresh = (await call("POST", `team/invitations/${old.id}/link`, {}, { cookie: jordan.cookie })).body as { link: string };
+    await account("casey@globex.example", "employee", "Casey Morgan", GLOBEX);
+    const casey = (await store.profileByEmail("casey@globex.example"))!.id;
+    expect((await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: PW, invite: old.link.split("#invite=")[1] }, { ip: "203.0.113.1" })).status).toBe(202);
+    expect(roleOf(casey)).toBeUndefined(); // the replaced link
+    expect((await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: NEW, invite: fresh.link.split("#invite=")[1] }, { ip: "203.0.113.2" })).status).toBe(202);
+    expect(roleOf(casey)).toBeUndefined(); // wrong password for the existing account
+    expect((await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: PW, invite: fresh.link.split("#invite=")[1] }, { ip: "203.0.113.3" })).status).toBe(202);
+    expect([roleOf(casey), roleOf(casey, GLOBEX)]).toEqual(["auditor", "employee"]);
+    const other = ((await call("POST", "team/invitations", { email: "lee@company.example", role: "employee" }, { cookie: jordan.cookie })).body as { link: string; id: string });
+    expect((await call("POST", `team/invitations/${other.id}/revoke`, {}, { cookie: jordan.cookie })).status).toBe(204);
+    expect((await call("POST", "auth/join-requests", { name: "Lee Park", email: "lee@company.example", password: PW, invite: other.link.split("#invite=")[1] }, { ip: "203.0.113.4" })).status).toBe(202);
+    expect(await store.profileByEmail("lee@company.example")).toBeNull();
+    const late = ((await call("POST", "team/invitations", { email: "kim@company.example", role: "employee" }, { cookie: jordan.cookie })).body as { link: string });
+    clock += 73 * 3600_000;
+    expect((await call("POST", "auth/join-requests", { name: "Kim Lee", email: "kim@company.example", password: PW, invite: late.link.split("#invite=")[1] }, { ip: "203.0.113.5" })).status).toBe(202);
+    expect(await store.profileByEmail("kim@company.example")).toBeNull();
+  });
+
+  it("an admin invitation exists only after a second admin approves it; then an admin creates its link", async () => {
+    const jordan = await account("jordan@company.example", "admin", "Jordan Avery");
+    const casey = await account("casey@company.example", "admin", "Casey Morgan");
+    const req = await call("POST", "team/invitations", { email: "pat@company.example", role: "admin" }, { cookie: jordan.cookie });
+    expect([req.status, (req.body as { pending: boolean }).pending]).toEqual([202, true]);
+    expect(dir.invites.length).toBe(0);
+    expect((await call("POST", "team/invitations", { email: "pat@company.example", role: "employee" }, { cookie: casey.cookie })).status).toBe(409);
+    expect((await call("POST", `team/approvals/${(req.body as { id: string }).id}/approve`, { reason: "Pat leads security operations" }, { cookie: casey.cookie })).body).toEqual({ status: "Approved" });
+    const inv = ((await call("GET", "team/invitations", {}, { cookie: jordan.cookie })).body as { id: string; linkAt?: number; role: string }[])[0];
+    expect([inv.role, inv.linkAt]).toEqual(["admin", undefined]);
+    const { link } = (await call("POST", `team/invitations/${inv.id}/link`, {}, { cookie: jordan.cookie })).body as { link: string };
+    await call("POST", "auth/join-requests", { name: "Pat Lane", email: "pat@company.example", password: PW, invite: link.split("#invite=")[1] });
+    expect(roleOf((await store.profileByEmail("pat@company.example"))!.id)).toBe("admin");
+  });
+
+  it("names with markup are refused", async () => {
+    expect((await call("POST", "auth/join-requests", { name: "<jordan>", email: "x@company.example", password: PW, company: "acme-eu" })).body).toEqual({ error: "Enter your name without symbols such as < > { } or quotes." });
   });
 });
 

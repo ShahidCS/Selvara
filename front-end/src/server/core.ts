@@ -9,11 +9,12 @@ import { CHALLENGE, CUSTOM_BOUNDS, LOCKOUT, MFA, REAUTH_MS, RESET, type LockoutR
 import { checkPassword, POLICY } from "@/lib/credentials";
 import { IP_POLICY, LEVEL_LABEL, REPUTATION } from "@/lib/ipGuard";
 import { generateRecoveryCodes } from "@/lib/me";
+import { approvalBlock, INVITE_TTL_H, isAssignableRole, isPrivilegedRole, nameBlock, reasonBlock, ROLE_REQUEST_TTL_H, roleChangeBlock, secondAdminBlock } from "@/lib/rules";
 import { isEmail } from "@/lib/security";
 import { checkRegistration, verifyAssertion } from "@/lib/webauthn";
 import { randomId, same, seal, sha256Hex, unseal } from "./crypto";
 import { logFailure } from "./errors";
-import type { Company, Lockout } from "./directory";
+import type { Company, Lockout, Log, Outcome } from "./directory";
 import type { Deps, Profile, SessionRow } from "./types";
 
 export interface Req { method: string; path: string[]; body: Record<string, unknown>; headers: Record<string, string | undefined>; cookies: Record<string, string>; ip: string }
@@ -262,23 +263,43 @@ const signOut: H = async (d, r) => {
  *  already active elsewhere keeps their password and gets a pending membership. Platform staff cannot join a company this way. */
 const join: H = async (d, r) => {
   const name = s(r.body.name, 80).trim(); const email = norm(r.body.email); const password = s(r.body.password, 1024); const code = s(r.body.company, 40).trim().toLowerCase();
-  if (name.length < 2) return err(400, "Enter your full name.");
+  const invite = s(r.body.invite, 100).trim();
+  const bad = nameBlock(name); if (bad) return err(400, bad);
   if (!isEmail(email)) return err(400, "Enter a valid work email address.");
-  if (!/^[a-z0-9][a-z0-9-]{2,39}$/.test(code)) return err(400, "Enter your company code. Your company admin can tell you what it is.");
+  if (!invite && !/^[a-z0-9][a-z0-9-]{2,39}$/.test(code)) return err(400, "Enter your company code. Your company admin can tell you what it is.");
   const pw = checkPassword(password, { email, name }); if (!pw.ok) return err(400, pw.errors[0] || "Choose a stronger password.");
   if (await blocked(d, r.ip)) return err(403, BLOCKED_MSG);
   if (!(await allow(d, r.ip, "join", IP_POLICY.JOIN_MAX, IP_POLICY.JOIN_WINDOW_MS))) return err(429, "Too many requests to join from your network. Try again in an hour.");
+  if (invite) { await joinByInvite(d, r, { name, email, password, token: invite }); return { status: 202 }; }
   const tenantId = await d.dir.companyByCode(code); if (!tenantId) return { status: 202 };
   const existing = await d.store.profileByEmail(email);
   let userId = existing?.id;
   if (!existing || existing.status === "Rejected") {
     if (existing) { await d.auth.setPassword(existing.id, password); await d.store.updateProfile(existing.id, { status: "Pending", requestedAt: d.now(), person: name }); }
-    else { userId = await d.auth.createUser(email, password, name); await d.store.insertProfile({ id: userId, email, person: name, role: "employee", status: "Pending", requestedAt: d.now() }); }
+    else { userId = await d.auth.createUser(email, password, name); await d.store.insertProfile({ id: userId, email, person: name, status: "Pending", requestedAt: d.now() }); }
   } else if (await d.dir.platformRole(existing.id)) return { status: 202 };
   const who = existing && existing.status === "Active" ? existing.person : name;
   await d.dir.requestToJoin(tenantId, userId as string, d.now(), entry(d, r, { name: `${who} (not signed in)`, id: userId, tenantId }, "team.join.requested", `${who} <${email}>`));
   return { status: 202 };
 };
+/** Joining with an invitation link (slice 2c): the token's hash names one pending invitation, and the email must be the invited one. The answer
+ *  is the same 202 whatever happens, so neither the token nor the email nor a password can be tested this way. A new account is confirmed at
+ *  once (an admin invited it); a person who already has an active account proves it with their own password, which is never changed here. */
+async function joinByInvite(d: Deps, r: Req, i: { name: string; email: string; password: string; token: string }): Promise<void> {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(i.token)) return;
+  const inv = await d.dir.invitationByToken(await sha256Hex(i.token));
+  if (!inv || inv.email !== i.email || inv.expiresAt <= d.now()) return;
+  const existing = await d.store.profileByEmail(i.email);
+  if (existing && (await d.dir.platformRole(existing.id))) return;
+  let userId: string; let who = i.name;
+  if (existing?.status === "Active") {
+    const t = await d.auth.signInWithPassword(i.email, i.password); if (!t || t.userId !== existing.id) return;
+    await d.auth.signOut(t); userId = existing.id; who = existing.person;
+  } else if (existing) { userId = existing.id; await d.auth.setPassword(userId, i.password); await d.store.updateProfile(userId, { person: i.name }); }
+  else { userId = await d.auth.createUser(i.email, i.password, i.name); await d.store.insertProfile({ id: userId, email: i.email, person: i.name, status: "Pending", requestedAt: d.now() }); }
+  const done = await d.dir.acceptInvitation(inv.tenantId, userId, inv.id, d.now(), entry(d, r, { name: `${who} (not signed in)`, id: userId, tenantId: inv.tenantId }, "member.invitation.accepted", `${who} <${i.email}> as ${inv.role}`));
+  if (done && existing?.status !== "Active") { await d.auth.confirmUser(userId); await d.store.updateProfile(userId, { status: "Active", decidedBy: "Invitation", reason: "Accepted an invitation" }); }
+}
 const resetRequest: H = async (d, r) => {
   const email = norm(r.body.email); if (!isEmail(email)) return err(400, "Enter a valid work email address.");
   if (await blocked(d, r.ip)) return err(403, BLOCKED_MSG);
@@ -397,7 +418,7 @@ const switchCompany = signed(async (d, r, { s: me, p, a }) => {
 type AdminCtx = Ctx & { company: Company };
 const admin = (h: (d: Deps, r: Req, c: AdminCtx) => Promise<Res>) => signed(async (d, r, c) => (c.a.role === "admin" && !c.a.platform && c.a.company ? h(d, r, { ...c, company: c.a.company }) : err(403, "Not permitted.")));
 const memberList = admin(async (d, _r, { p: me, company }) => ok((await d.dir.members(company.id, me.id)).filter((m) => m.status !== "Removed")
-  .map((m) => ({ id: m.userId, name: m.person, email: m.email, role: m.role, status: m.status, since: m.since }))));
+  .map((m) => ({ id: m.userId, name: m.person, email: m.email, role: m.role, status: m.status, since: m.since, me: m.userId === me.id }))));
 const joinList = admin(async (d, _r, { p: me, company }) => ok((await d.dir.members(company.id, me.id, "Pending")).map((x) => ({ id: x.userId, name: x.person, email: x.email, requestedAt: x.since }))));
 const joinDecide = admin(async (d, r, { p: me, a, company }) => {
   const id = s(r.path[2], 100); const decision = r.path[3]; const why = s(r.body.reason).trim();
@@ -431,6 +452,94 @@ const lockoutSet = admin(async (d, r, { p: me, a, company }) => {
   return ok();
 });
 
+/* ---------- role changes, invitations and the four-eyes requests behind them (slice 2c) ---------- */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const HOUR = 3600_000;
+const inviteLink = (d: Deps, token: string) => `${d.site.origin}/login#invite=${token}`;
+const outcome = (o: Outcome): Res => ("error" in o ? err(o.code, o.error) : ok({ status: o.status }));
+const logFor = (d: Deps, r: Req, c: Ctx): Log => (action, target) => entry(d, r, actorOf(c.p, c.a), action, target);
+/** Grants or changes a member's role. Employee-level roles change at once; admin and owner need a second admin (SOD_MATRIX section 3, Team). */
+const roleChange = admin(async (d, r, c) => {
+  const { p: me, company } = c; const id = s(r.path[2], 100); const to = s(r.body.role, 20);
+  if (!UUID_RE.test(id)) return err(404, "Member not found.");
+  const m = await d.dir.membership(company.id, id); if (!m || m.status !== "Active") return err(404, "Member not found."); // another company's person: not found
+  const who = await d.store.profileById(id); if (!who) return err(404, "Member not found.");
+  const admins = await d.dir.admins(company.id, me.id);
+  const why = roleChangeBlock({ self: id === me.id, from: m.role, to, valid: isAssignableRole(to), fromIsAdmin: m.role === "admin", toIsAdmin: to === "admin", admins: admins.length,
+    pending: await d.dir.pendingApproval(company.id, me.id, "team-role", id, d.now()) });
+  if (why) return err(id === me.id ? 403 : isAssignableRole(to) ? 409 : 400, why);
+  if (!isPrivilegedRole(to)) {
+    const done = await d.dir.setRole(company.id, me.id, id, m.role, to, d.now(), entry(d, r, actorOf(me, c.a), "member.role.changed", `${who.person}: ${m.role} → ${to}`));
+    return done ? ok({ pending: false }) : err(409, "The member's role changed meanwhile, or no admin would remain. Reload and try again.");
+  }
+  const none = secondAdminBlock(admins.filter((x) => x !== me.id && x !== id).length); if (none) return err(409, none);
+  const title = `Grant ${to} to ${who.person}`;
+  const ap = await d.dir.requestApproval(company.id, me.id, { kind: "team-role", title, subject: id, payload: { userId: id, name: who.person, from: m.role, to }, needs: 1, approverRoles: ["admin"], forbid: [id], ttlMs: ROLE_REQUEST_TTL_H * HOUR },
+    d.now(), entry(d, r, actorOf(me, c.a), "approval.team-role.requested", title));
+  return { status: 202, body: { pending: true, id: ap } };
+});
+/** The company's four-eyes requests, with what the viewer may do on each (the shared rule explains a refusal before it happens). */
+const approvalList = admin(async (d, _r, { p: me, a, company }) => {
+  const now = d.now();
+  return ok((await d.dir.approvals(company.id, me.id)).filter((x) => x.kind.startsWith("team-")).map((x) => {
+    const status = x.status === "Pending" && x.expiresAt <= now ? "Expired" : x.status;
+    const block = status === "Pending" ? approvalBlock({ key: me.id, base: a.role }, { status, expiresAt: x.expiresAt, approverRoles: x.approverRoles, requestedBy: x.requestedBy, forbid: x.forbid, votes: x.votes.map((v) => v.by) }, now) : null;
+    return { id: x.id, kind: x.kind, title: x.title, requestedBy: x.requestedByName, status, createdAt: x.createdAt, expiresAt: x.expiresAt, reason: x.decidedReason ?? null,
+      votes: x.votes.map((v) => ({ by: v.byName, at: v.at, reason: v.reason })), mine: x.requestedBy === me.id, block };
+  }));
+});
+const approvalDecide = admin(async (d, r, c) => {
+  const id = s(r.path[2], 100); const decision = r.path[3];
+  if (!["approve", "reject", "withdraw"].includes(decision)) return err(404, "Not found.");
+  if (!UUID_RE.test(id)) return err(404, "Request not found.");
+  const actor = { id: c.p.id, role: c.a.role };
+  if (decision === "withdraw") { const o = await d.dir.withdrawApproval(c.company.id, actor, id, d.now(), logFor(d, r, c)); return outcome(o); }
+  const why = s(r.body.reason).trim(); const short = reasonBlock(why); if (short) return err(400, short);
+  const o = await d.dir.decideApproval(c.company.id, actor, id, decision === "approve", why, d.now(), logFor(d, r, c));
+  return outcome(o);
+});
+const inviteList = admin(async (d, _r, { p: me, company }) => {
+  const now = d.now();
+  return ok((await d.dir.invitations(company.id, me.id)).map((i) => ({ ...i, status: i.status === "Pending" && i.expiresAt <= now ? "Expired" : i.status })));
+});
+/** Invites a person by email. The link is shown once, to the admin, who sends it to the person; only its hash is stored. An admin or owner
+ *  invitation is created only when a second admin approves it, and then an admin creates its link. */
+const inviteCreate = admin(async (d, r, c) => {
+  const { p: me, company } = c; const email = norm(r.body.email); const role = s(r.body.role, 20); const now = d.now();
+  if (!isEmail(email)) return err(400, "Enter a valid email address.");
+  if (!isAssignableRole(role)) return err(400, "Choose a valid role.");
+  const ex = await d.store.profileByEmail(email);
+  if (ex && (await d.dir.membership(company.id, ex.id))?.status === "Active") return err(409, "That person is already a member.");
+  if ((await d.dir.pendingApproval(company.id, me.id, "team-invite", email, now)) || (await d.dir.invitations(company.id, me.id)).some((i) => i.email === email && i.status === "Pending" && i.expiresAt > now))
+    return err(409, "An invitation for this email is already pending.");
+  if (isPrivilegedRole(role)) {
+    const none = secondAdminBlock((await d.dir.admins(company.id, me.id)).filter((x) => x !== me.id).length); if (none) return err(409, none);
+    const title = `Invite ${email} as ${role}`;
+    const id = await d.dir.requestApproval(company.id, me.id, { kind: "team-invite", title, subject: email, payload: { email, role }, needs: 1, approverRoles: ["admin"], forbid: [], ttlMs: INVITE_TTL_H * HOUR },
+      now, entry(d, r, actorOf(me, c.a), "approval.team-invite.requested", title));
+    return { status: 202, body: { pending: true, id } };
+  }
+  const token = randomId(32);
+  const id = await d.dir.createInvitation(company.id, me.id, { email, role, tokenHash: await sha256Hex(token) }, now, entry(d, r, actorOf(me, c.a), "member.invited", `${email} (${role})`));
+  if (!id) return err(409, "An invitation for this email is already pending.");
+  return ok({ pending: false, id, link: inviteLink(d, token), expiresAt: now + INVITE_TTL_H * HOUR });
+});
+/** `link` replaces the invitation's link (the old one stops working) and shows the new one once; `revoke` ends the invitation. */
+const inviteAction = admin(async (d, r, c) => {
+  const id = s(r.path[2], 100); const action = r.path[3]; const now = d.now();
+  if (action !== "link" && action !== "revoke") return err(404, "Not found.");
+  if (!UUID_RE.test(id)) return err(404, "Invitation not found.");
+  const i = (await d.dir.invitations(c.company.id, c.p.id)).find((x) => x.id === id); if (!i) return err(404, "Invitation not found.");
+  if (i.status !== "Pending" || i.expiresAt <= now) return err(409, "This invitation is no longer pending.");
+  if (action === "revoke") {
+    const done = await d.dir.revokeInvitation(c.company.id, c.p.id, id, now, entry(d, r, actorOf(c.p, c.a), "member.invitation.revoked", `${i.email} (${i.role}); ${id}`));
+    return done ? ok() : err(409, "This invitation is no longer pending.");
+  }
+  const token = randomId(32);
+  const v = await d.dir.setInvitationLink(c.company.id, c.p.id, id, await sha256Hex(token), now, entry(d, r, actorOf(c.p, c.a), "member.invitation.link_created", `${i.email} (${i.role}); ${id}`));
+  return v ? ok({ link: inviteLink(d, token), expiresAt: v.expiresAt }) : err(409, "This invitation is no longer pending.");
+});
+
 /** Method + path -> handler. Paths are relative to /api. */
 export const ROUTES: Record<string, H> = {
   "POST auth/challenge": challenge, "POST auth/sign-in": signIn, "POST auth/sign-in/verify": verify, "POST auth/sign-in/passkey": passkeyStep,
@@ -439,6 +548,8 @@ export const ROUTES: Record<string, H> = {
   "GET me/security": security, "POST auth/company": switchCompany, "GET team/members": memberList, "POST me/reauth": reauth, "POST me/password": changePassword, "POST me/recovery-codes": newCodes,
   "POST me/sessions/revoke-others": revokeOthers, "POST me/passkeys/options": passkeyOptions, "POST me/passkeys": passkeyAdd, "DELETE me/passkeys/:id": passkeyDelete,
   "GET team/join-requests": joinList, "POST team/join-requests/:id/:decision": joinDecide, "POST team/settings": lockoutSet, "GET team/settings": lockoutGet,
+  "POST team/members/:id/role": roleChange, "GET team/approvals": approvalList, "POST team/approvals/:id/:decision": approvalDecide,
+  "GET team/invitations": inviteList, "POST team/invitations": inviteCreate, "POST team/invitations/:id/:action": inviteAction,
 };
 /** Finds the handler for a request; `:name` segments match anything. */
 export function route(method: string, path: string[]): H | null { return match(method, path)?.[1] ?? null; }

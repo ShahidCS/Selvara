@@ -21,7 +21,7 @@ const now = Date.now();
 
 let admin: Client; let app: Db; let appUrl = "";
 const A = randomUUID(), B = randomUUID();                       // two companies
-const alex = randomUUID(), blair = randomUUID(), casey = randomUUID(), drew = randomUUID(); // alex, blair in A; casey in B; drew platform
+const alex = randomUUID(), blair = randomUUID(), casey = randomUUID(), drew = randomUUID(), gale = randomUUID(); // alex, blair in A; casey in B; drew platform
 const ctxA = (userId = alex) => ({ tenantId: A, userId });
 const ctxB = (userId = casey) => ({ tenantId: B, userId });
 const code = async (p: Promise<unknown>) => { try { await p; return "ok"; } catch (e) { return e instanceof UpstreamError ? e.code : String(e); } };
@@ -31,12 +31,18 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
     admin = new Client({ connectionString: URL_ }); await admin.connect();
     await admin.query("drop schema if exists public cascade; drop schema if exists auth cascade; create schema public; grant usage on schema public to public;");
     await admin.query(readFileSync(path.join(__dirname, "bootstrap.sql"), "utf8"));
-    for (const f of readdirSync(MIGRATIONS).filter((x) => x.endsWith(".sql")).sort()) await admin.query(readFileSync(path.join(MIGRATIONS, f), "utf8"));
+    for (const f of readdirSync(MIGRATIONS).filter((x) => x.endsWith(".sql")).sort()) {
+      if (f.startsWith("0004")) { // a platform person with an old global role, from before companies existed (0004 moves it, 0005 drops the column)
+        await admin.query("insert into auth.users (id, email) values ($1, 'gale@platform.example.test')", [gale]);
+        await admin.query("insert into public.profiles (id, email, person, role, status, requested_ms) values ($1, 'gale@platform.example.test', 'Gale Orr', 'super2', 'Active', $2)", [gale, now]);
+      }
+      await admin.query(readFileSync(path.join(MIGRATIONS, f), "utf8"));
+    }
     const pw = randomBytes(24).toString("base64url");          // a throwaway login for this run only
     await admin.query(`alter role selvara_app with login password '${pw}'`);
     for (const [id, email, person] of [[alex, "alex@a.example.test", "Alex Kim"], [blair, "blair@a.example.test", "Blair Ng"], [casey, "casey@b.example.test", "Casey Ito"], [drew, "drew@platform.example.test", "Drew Platt"]]) {
       await admin.query("insert into auth.users (id, email) values ($1, $2)", [id, email]);
-      await admin.query("insert into public.profiles (id, email, person, role, status, requested_ms) values ($1, $2, $3, 'employee', 'Active', $4)", [id, email, person, now]);
+      await admin.query("insert into public.profiles (id, email, person, status, requested_ms) values ($1, $2, $3, 'Active', $4)", [id, email, person, now]);
     }
     await admin.query("insert into public.tenants (id, ref, name, created_ms) values ($1, 'cust-a', 'Company A', $3), ($2, 'cust-b', 'Company B', $3)", [A, B, now]);
     await admin.query("insert into public.memberships (tenant_id, user_id, role, status, created_ms) values ($1, $2, 'admin', 'Active', $5), ($1, $3, 'owner', 'Active', $5), ($4, $6, 'admin', 'Active', $5)", [A, alex, blair, B, now, casey]);
@@ -111,7 +117,7 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
     it("a vote is cast only as the signed-in person, once, with a reason of at least 10 characters", async () => {
       const other = randomUUID();
       await admin.query("insert into auth.users (id, email) values ($1, 'eden@a.example.test')", [other]);
-      await admin.query("insert into public.profiles (id, email, person, role, status, requested_ms) values ($1, 'eden@a.example.test', 'Eden Ra', 'employee', 'Active', $2)", [other, now]);
+      await admin.query("insert into public.profiles (id, email, person, status, requested_ms) values ($1, 'eden@a.example.test', 'Eden Ra', 'Active', $2)", [other, now]);
       await admin.query("insert into public.memberships (tenant_id, user_id, role, status, created_ms) values ($1, $2, 'admin', 'Active', $3)", [A, other, now]);
       expect(await code(app.tx(ctxA(other), (q) => q.query("insert into approval_votes (approval_id, by_user, at_ms, reason) values ($1, $2, $3, 'Voting as someone else')", [ap, casey, now])))).toBe("42501");
       expect(await code(app.tx(ctxA(other), (q) => q.query("insert into approval_votes (approval_id, by_user, at_ms, reason) values ($1, $2, $3, 'short')", [ap, other, now])))).toBe("23514");
@@ -170,7 +176,7 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
     it("joining, deciding and settings changes stay in their company and write their audit entry in the same transaction", async () => {
       const fay = randomUUID();
       await admin.query("insert into auth.users (id, email) values ($1, 'fay@a.example.test')", [fay]);
-      await admin.query("insert into public.profiles (id, email, person, role, status, requested_ms) values ($1, 'fay@a.example.test', 'Fay Lund', 'employee', 'Pending', $2)", [fay, now]);
+      await admin.query("insert into public.profiles (id, email, person, status, requested_ms) values ($1, 'fay@a.example.test', 'Fay Lund', 'Pending', $2)", [fay, now]);
       expect(await dir.requestToJoin(A, fay, now, entry(A, fay, "team.join.requested"))).toBe(true);
       expect(await dir.requestToJoin(A, fay, now, entry(A, fay, "team.join.requested"))).toBe(false);
       expect((await dir.members(A, alex, "Pending")).map((m) => m.person)).toEqual(["Fay Lund"]);
@@ -209,15 +215,95 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
       expect((await admin.query("select count(*)::int as n from public.audit_log where tenant_id = $1 and action = 'tenant.created'", [id])).rows[0].n).toBe(1);
     });
 
-    it("moves old platform roles to platform staff, and running 0004 again changes nothing else", async () => {
-      const gale = randomUUID();
-      await admin.query("insert into auth.users (id, email) values ($1, 'gale@platform.example.test')", [gale]);
-      await admin.query("insert into public.profiles (id, email, person, role, status, requested_ms) values ($1, 'gale@platform.example.test', 'Gale Orr', 'super2', 'Active', $2)", [gale, now]);
-      const before = (await admin.query("select count(*)::int as n from public.tenants")).rows[0].n;
-      await admin.query(readFileSync(path.join(MIGRATIONS, "0004_company_sessions.sql"), "utf8"));
+    it("moved old platform roles to platform staff; profiles.role is gone, and running 0004 and 0005 again changes nothing", async () => {
       expect(await dir.platformRole(gale)).toBe("super");
       expect(await dir.platformRole(alex)).toBeNull();
-      expect((await admin.query("select count(*)::int as n from public.tenants")).rows[0].n).toBe(before);
+      const before = (await admin.query("select (select count(*) from public.tenants)::int as t, (select count(*) from public.platform_staff)::int as s, (select count(*) from public.invitations)::int as i")).rows[0];
+      await admin.query(readFileSync(path.join(MIGRATIONS, "0004_company_sessions.sql"), "utf8"));
+      await admin.query(readFileSync(path.join(MIGRATIONS, "0005_team_changes.sql"), "utf8"));
+      expect((await admin.query("select (select count(*) from public.tenants)::int as t, (select count(*) from public.platform_staff)::int as s, (select count(*) from public.invitations)::int as i")).rows[0]).toEqual(before);
+      expect((await admin.query("select count(*)::int as n from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'role'")).rows[0].n).toBe(0);
+    });
+  });
+
+  describe("role changes, approvals and invitations (migration 0005, src/server/directory.ts)", () => {
+    let dir: PgDirectory;
+    const log = (tenantId: string, actorId: string) => (action: string, target: string): AuditRow => ({ at: now, actor: "Someone", actorId, tenantId, action, target, cat: "Access", space: "ws", ip: "198.51.100.7" });
+    const person = async (email: string, name: string) => {
+      const id = randomUUID();
+      await admin.query("insert into auth.users (id, email) values ($1, $2)", [id, email]);
+      await admin.query("insert into public.profiles (id, email, person, status, requested_ms) values ($1, $2, $3, 'Active', $4)", [id, email, name, now]);
+      return id;
+    };
+    const hash = (n: number) => String(n).repeat(64).slice(0, 64);
+    let gus = "", hal = "";
+    beforeAll(async () => {
+      dir = new PgDirectory(app);
+      gus = await person("gus@a.example.test", "Gus Lowe"); hal = await person("hal@a.example.test", "Hal Moss");
+      await admin.query("insert into public.memberships (tenant_id, user_id, role, status, created_ms) values ($1, $2, 'employee', 'Active', $4), ($1, $3, 'admin', 'Active', $4)", [A, gus, hal, now]);
+    });
+
+    it("an approved grant applies in the decision's transaction; the requester, the subject and another company cannot decide", async () => {
+      const id = await dir.requestApproval(A, alex, { kind: "team-role", title: "Grant owner to Gus Lowe", subject: gus, payload: { userId: gus, name: "Gus Lowe", from: "employee", to: "owner" }, needs: 1, approverRoles: ["admin"], forbid: [gus], ttlMs: 3600_000 }, now, log(A, alex)("approval.team-role.requested", "Grant owner to Gus Lowe"));
+      expect(await dir.pendingApproval(A, alex, "team-role", gus, now)).toBe(true);
+      expect(await dir.approvals(B, casey)).toEqual([]);
+      expect(await dir.decideApproval(B, { id: casey, role: "admin" }, id, true, "From the wrong company", now, log(B, casey))).toEqual({ ok: false, code: 404, error: "Request not found." });
+      expect(await dir.decideApproval(A, { id: alex, role: "admin" }, id, true, "Approving my own request", now, log(A, alex))).toEqual(expect.objectContaining({ ok: false, code: 403 }));
+      // the database refuses the requester's vote even if the server's check were skipped
+      expect(await code(app.tx(ctxA(), (q) => q.query("insert into approval_votes (approval_id, by_user, at_ms, reason) values ($1, $2, $3, 'bypassing the server')", [id, alex, now])))).toBe("42501");
+      expect(await dir.decideApproval(A, { id: hal, role: "admin" }, id, true, "Gus owns the ISMS now", now, log(A, hal))).toEqual({ ok: true, status: "Approved" });
+      expect((await dir.membership(A, gus))!.role).toBe("owner");
+      expect((await dir.approvals(A, alex))[0]).toEqual(expect.objectContaining({ status: "Approved", requestedByName: "Alex Kim", votes: [expect.objectContaining({ by: hal, byName: "Hal Moss" })] }));
+      const acts = (await admin.query("select action from public.audit_log where target like '%Gus Lowe%' order by seq")).rows.map((r) => r.action);
+      expect(acts).toEqual(["approval.team-role.requested", "approval.team-role.approved", "member.role.changed"]);
+    });
+
+    it("a grant that can no longer apply rolls back the vote too, and the last admin cannot be demoted even by two requests at once", async () => {
+      const id = await dir.requestApproval(A, alex, { kind: "team-role", title: "Grant admin to Gus Lowe", subject: gus, payload: { userId: gus, name: "Gus Lowe", from: "employee", to: "admin" }, needs: 1, approverRoles: ["admin"], forbid: [gus], ttlMs: 3600_000 }, now, log(A, alex)("approval.team-role.requested", "x"));
+      expect(await dir.decideApproval(A, { id: hal, role: "admin" }, id, true, "Gus is no longer employee", now, log(A, hal))).toEqual(expect.objectContaining({ ok: false, code: 409 }));
+      expect((await admin.query("select count(*)::int as n from public.approval_votes where approval_id = $1", [id])).rows[0].n).toBe(0);
+      expect((await dir.approvals(A, alex)).find((x) => x.id === id)!.status).toBe("Pending");
+      expect(await dir.withdrawApproval(A, { id: hal, role: "admin" }, id, now, log(A, hal))).toEqual(expect.objectContaining({ ok: false, code: 403 }));
+      expect(await dir.withdrawApproval(A, { id: alex, role: "admin" }, id, now, log(A, alex))).toEqual({ ok: true, status: "Withdrawn" });
+      // two admins left (alex, hal): demoting both at once must leave one
+      await admin.query("update public.memberships set role = 'employee' where tenant_id = $1 and role = 'admin' and user_id not in ($2, $3)", [A, alex, hal]);
+      const r = await Promise.all([dir.setRole(A, hal, alex, "admin", "employee", now, log(A, hal)("member.role.changed", "a")), dir.setRole(A, alex, hal, "admin", "employee", now, log(A, alex)("member.role.changed", "b"))]);
+      expect(r.filter(Boolean).length).toBe(1);
+      expect((await dir.admins(A, alex)).length).toBe(1);
+      const left = (await dir.admins(A, alex))[0]; const other = left === alex ? hal : alex;
+      await dir.setRole(A, left, other, "employee", "admin", now, log(A, left)("member.role.changed", "restore"));
+      expect((await dir.admins(A, alex)).sort()).toEqual([alex, hal].sort());
+    });
+
+    it("invitations stay in their company, are found only by their token's hash, and are used once", async () => {
+      const id = (await dir.createInvitation(A, alex, { email: "ivy@a.example.test", role: "analyst", tokenHash: hash(1) }, now, log(A, alex)("member.invited", "ivy")))!;
+      expect(await dir.createInvitation(A, alex, { email: "ivy@a.example.test", role: "employee", tokenHash: hash(2) }, now, log(A, alex)("member.invited", "ivy"))).toBeNull();
+      expect(await dir.invitations(B, casey)).toEqual([]);
+      expect(await app.tx(ctxB(), (q) => q.query("update invitations set role = 'admin' where id = $1 returning id", [id]))).toEqual([]);
+      expect(await app.tx({ tenantId: null, userId: null }, (q) => q.query("select id from invitations"))).toEqual([]);
+      expect(await dir.invitationByToken(hash(9))).toBeNull();
+      const found = (await dir.invitationByToken(hash(1)))!;
+      expect([found.id, found.tenantId, found.email, found.role]).toEqual([id, A, "ivy@a.example.test", "analyst"]);
+      expect((await dir.setInvitationLink(A, alex, id, hash(3), now, log(A, alex)("member.invitation.link_created", "ivy")))!.linkAt).toBe(now);
+      expect(await dir.invitationByToken(hash(1))).toBeNull();
+      const ivy = await person("ivy@a.example.test", "Ivy Ross");
+      expect(await dir.acceptInvitation(B, ivy, id, now, log(B, ivy)("member.invitation.accepted", "ivy"))).toBe(false);
+      expect(await dir.acceptInvitation(A, ivy, id, now, log(A, ivy)("member.invitation.accepted", "ivy"))).toBe(true);
+      expect(await dir.acceptInvitation(A, ivy, id, now, log(A, ivy)("member.invitation.accepted", "ivy"))).toBe(false);
+      expect((await dir.membership(A, ivy))!).toEqual(expect.objectContaining({ role: "analyst", status: "Active" }));
+      expect((await admin.query("select token_hash, status from public.invitations where id = $1", [id])).rows[0]).toEqual({ token_hash: null, status: "Accepted" });
+      expect(await code(app.tx({ tenantId: null, userId: null }, (q) => q.query("select public.add_company_admin('cust-a', 'ivy@a.example.test')")))).toBe("42501");
+    });
+
+    it("add_company_admin is for the owner only and needs an active member who is not platform staff", async () => {
+      await admin.query("select public.add_company_admin('cust-a', 'gus@a.example.test')");
+      expect((await dir.membership(A, gus))!.role).toBe("admin");
+      expect(await code(admin.query("select public.add_company_admin('cust-b', 'gus@a.example.test')"))).toMatch(/not an active member/);
+      expect(await code(admin.query("select public.add_company_admin('cust-a', 'drew@platform.example.test')"))).toMatch(/platform staff/);
+      expect((await admin.query("select count(*)::int as n from public.audit_log where tenant_id = $1 and action = 'member.role.changed' and actor = 'Platform owner'", [A])).rows[0].n).toBe(1);
+      const exposed = (await admin.query(`select r.rolname, p.proname from pg_proc p cross join (values ('anon'), ('authenticated'), ('service_role'), ('selvara_app')) r(rolname)
+        where p.proname in ('add_company_admin', 'invitation_by_token') and has_function_privilege(r.rolname, p.oid, 'execute')`)).rows.map((x) => `${x.rolname}:${x.proname}`);
+      expect(exposed).toEqual(["selvara_app:invitation_by_token"]);
     });
   });
 

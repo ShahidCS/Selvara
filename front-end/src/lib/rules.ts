@@ -1,0 +1,66 @@
+/* Shared rules (decision D3, docs/architecture/BACKEND_FOUNDATION.md section 7). Pure functions with no imports and no state: the server calls
+ * them to enforce, the browser calls them to explain (disabled buttons, the demonstration). One rule, two callers, no drift. People are compared
+ * by a key the caller chooses: the server passes user ids, the demonstration passes name keys (`personKey` in sod.ts). An empty key never
+ * matches anything. Contract: docs/security/SOD_MATRIX.md. */
+
+/** Reasons for approvals, rejections and decisions: at least this many characters. */
+export const REASON_MIN = 10;
+/** Invitations and requests about a member's role stay open this long. */
+export const INVITE_TTL_H = 72;
+export const ROLE_REQUEST_TTL_H = 72;
+
+/** Company roles a membership can hold (migration 0003, memberships.role). */
+export const COMPANY_ROLES = ["admin", "owner", "analyst", "employee", "auditor", "vendor", "viewer"] as const;
+export type CompanyRole = (typeof COMPANY_ROLES)[number];
+export const isCompanyRole = (r: unknown): r is CompanyRole => typeof r === "string" && (COMPANY_ROLES as readonly string[]).includes(r);
+/** Roles a company admin may grant or invite to (the Trust Center visitor is not a team role). */
+export const ASSIGNABLE_ROLES = ["admin", "owner", "analyst", "employee", "auditor", "vendor"] as const;
+export const isAssignableRole = (r: unknown): boolean => typeof r === "string" && (ASSIGNABLE_ROLES as readonly string[]).includes(r);
+export const ROLE_LABEL: Record<string, string> = { admin: "Company Admin", owner: "Control, Policy and Risk Owner", analyst: "Risk Analyst", employee: "Employee", auditor: "External Auditor", vendor: "Vendor Contact", viewer: "Trust Center Visitor" };
+/** Admin, owner and super roles need a second admin to be granted (SOD_MATRIX section 3, Team). Works for role ids and role names. */
+export const isPrivilegedRole = (role: string): boolean => /admin|owner|super/i.test(role);
+
+const same = (a: string | null | undefined, b: string | null | undefined) => !!a && !!b && a === b;
+
+export interface Decider { key: string; base: string }
+export interface ApprovalFacts { status: string; expiresAt: number; approverRoles: string[]; requestedBy: string; forbid: string[]; votes: string[] }
+/** Why this person cannot approve or reject this request, or null when they may. The requester, the people the request forbids (the subject,
+ *  the owner) and anyone who already voted never can. */
+export function approvalBlock(d: Decider, a: ApprovalFacts, now: number): string | null {
+  if (a.status !== "Pending") return `Request is ${a.status.toLowerCase()}.`;
+  if (a.expiresAt <= now) return "Request has expired.";
+  if (!a.approverRoles.includes(d.base)) return `Only ${a.approverRoles.join(" / ")} can approve.`;
+  if (same(d.key, a.requestedBy)) return "Segregation of duties: you cannot approve your own request.";
+  if (a.forbid.some((f) => same(d.key, f))) return "Segregation of duties: you are the subject or owner of this request.";
+  if (a.votes.some((v) => same(d.key, v))) return "You have already approved this request.";
+  return null;
+}
+/** Only the requester withdraws, and only while the request is pending. */
+export function withdrawBlock(d: Decider, a: Pick<ApprovalFacts, "status" | "requestedBy">): string | null {
+  if (!same(d.key, a.requestedBy)) return "Only the requester can withdraw a request.";
+  if (a.status !== "Pending") return `Request is ${a.status.toLowerCase()}.`;
+  return null;
+}
+export const reasonBlock = (reason: string): string | null => (reason.trim().length < REASON_MIN ? `Give a reason of at least ${REASON_MIN} characters.` : null);
+
+export interface RoleChange { self: boolean; from: string; to: string; valid: boolean; fromIsAdmin: boolean; toIsAdmin: boolean; admins: number; pending: boolean }
+/** Why a company admin cannot change this member's role, or null. Nobody changes their own role; the last admin cannot be demoted; one open
+ *  request per member. Whether a second admin must approve is `isPrivilegedRole(to)`. */
+export function roleChangeBlock(c: RoleChange): string | null {
+  if (c.self) return "Segregation of duties: nobody changes their own role.";
+  if (!c.valid) return "Choose a valid role.";
+  if (c.from === c.to) return "That is already their role.";
+  if (c.fromIsAdmin && !c.toIsAdmin && c.admins <= 1) return "The last remaining admin cannot be demoted.";
+  if (c.pending) return "A role change is already pending for this person.";
+  return null;
+}
+/** A privileged grant or invitation needs another admin who could approve it: not the requester and not the person concerned. */
+export const secondAdminBlock = (eligible: number): string | null => (eligible < 1 ? "No eligible second admin (not you, not the member) to approve this." : null);
+
+/** Names people type (join requests, profiles): letters and the usual punctuation, never markup. */
+export function nameBlock(name: string): string | null {
+  const n = name.trim();
+  if (n.length < 2) return "Enter your full name.";
+  if (/[<>"`{}[\]\\]/.test(n) || /\p{Cc}/u.test(n)) return "Enter your name without symbols such as < > { } or quotes.";
+  return null;
+}

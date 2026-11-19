@@ -1,19 +1,24 @@
 import { useEffect, useState } from "react";
-import { Chip, DataTable, Empty, Page, Segmented, StatusChip, type DTColumn } from "@/components/ui";
+import { Chip, DataTable, Empty, Icon, Page, Segmented, StatusChip, type DTColumn } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { CUSTOM_BOUNDS, LOCKOUT, type LockoutPreset } from "@/lib/accountSecurity";
-import { sodMessage } from "@/lib/approvalFlow";
-import { ROLES } from "@/lib/rbac";
-import { useApp, useData, useModState } from "@/lib/store";
+import { ASSIGNABLE_ROLES, isPrivilegedRole, REASON_MIN, ROLE_LABEL } from "@/lib/rules";
+import { SodError } from "@/lib/sod";
+import { bumpData, useApp, useData, useModState } from "@/lib/store";
+import { ApiError } from "@/services/http";
 import * as svc from "@/services/team";
 import { JoinRequests } from "./JoinRequests";
 
 /* Team & Settings in production (NEXT_PUBLIC_API_MODE=http): only what the server holds for the session's company. Members and requests to join
    come from the server, which scopes them to the company and decides who may see them; the account lockout is the company's own setting. Role
-   changes, invitations and the other settings move here when their server slice ships (docs/architecture/BACKEND_FOUNDATION.md). */
+   changes and invitations go through the server's four-eyes engine (slice 2c): admin and owner need a second admin's approval, shown under
+   Requests. The other settings move here when their server slice ships (docs/architecture/BACKEND_FOUNDATION.md). */
 
-const VIEWS: [string, string][] = [["members", "Members"], ["signin", "Sign-in protection"]];
-const roleName = (id: string) => ROLES.find((r) => r.id === id)?.name ?? id;
+const VIEWS: [string, string][] = [["members", "Members"], ["invitations", "Invitations"], ["requests", "Requests"], ["signin", "Sign-in protection"]];
+const roleName = (id: string) => ROLE_LABEL[id] ?? id;
+/** The server's own words for a refusal (it never sends internal details); anything else gets the fallback. */
+const why = (e: unknown, fallback: string) => (e instanceof ApiError && e.status > 0 && e.status < 500) || e instanceof SodError ? (e as Error).message : fallback;
+const utcMin = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace("T", " ") + " UTC";
 const utc = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 export function ApiTeam() {
@@ -27,7 +32,7 @@ export function ApiTeam() {
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head"><div className="seg" role="tablist">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className={`c-body ${view === "members" ? "flush" : ""} scroll`} style={view === "members" ? { padding: 0 } : undefined}>
-          {view === "members" ? <Members /> : <SignIn />}
+          {view === "members" ? <Members /> : view === "invitations" ? <Invitations /> : view === "requests" ? <Requests /> : <SignIn />}
         </div>
       </div>
     </Page>
@@ -37,13 +42,15 @@ export function ApiTeam() {
 function Members() {
   const v = useData();
   const [rows, setRows] = useState<svc.MemberRow[] | null>(null); const [err, setErr] = useState("");
-  useEffect(() => { let on = true; svc.listMembers().then((x) => { if (on) { setRows(x); setErr(""); } }, (e) => { if (on) setErr(sodMessage(e, "Could not load the members")); }); return () => { on = false; }; }, [v]);
+  const L = useLayer();
+  useEffect(() => { let on = true; svc.listMembers().then((x) => { if (on) { setRows(x); setErr(""); } }, (e) => { if (on) setErr(why(e, "Could not load the members")); }); return () => { on = false; }; }, [v]);
   const cols: DTColumn<svc.MemberRow>[] = [
     { key: "name", header: "Member", value: (m) => m.name, locked: true, render: (m) => <span className="strong">{m.name}</span> },
     { key: "email", header: "Work email", value: (m) => m.email, render: (m) => m.email },
     { key: "role", header: "Workspace role", value: (m) => roleName(m.role), render: (m) => roleName(m.role) },
     { key: "status", header: "Status", value: (m) => m.status, render: (m) => (m.status === "Pending" ? <Chip cls="warn" icon="clock">Pending</Chip> : <StatusChip s={m.status} />) },
     { key: "since", header: "Since", value: (m) => m.since, render: (m) => <span className="num">{utc(m.since)}</span> },
+    { key: "act", header: "", value: () => "", render: (m) => (m.status === "Active" && !m.me ? <button className="btn btn-ghost sm" aria-label={`Change role: ${m.name}`} onClick={() => L.openModal(`Change role, ${m.name}`, (close) => <RoleForm m={m} close={close} />)}><Icon name="edit" />Change role</button> : null) },
   ];
   return (
     <>
@@ -57,21 +64,164 @@ function Members() {
   );
 }
 
+function RoleForm({ m, close }: { m: svc.MemberRow; close: () => void }) {
+  const L = useLayer();
+  const [role, setRole] = useState(m.role); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const go = async () => {
+    if (busy) return; setBusy(true);
+    try {
+      const r = await svc.changeRole(m.id, role); close(); bumpData();
+      L.toast(r.pending ? `Request sent: a second admin approves ${roleName(role)} for ${m.name} (Requests)` : `${m.name} is now ${roleName(role)}`);
+    } catch (e) { setErr(why(e, "Could not change the role")); setBusy(false); }
+  };
+  return (
+    <>
+      <div className="field"><label htmlFor="rf-role">Workspace role</label>
+        <select className="input" id="rf-role" data-focus value={role} onChange={(e) => { setRole(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby="rf-help rf-err">
+          {ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{roleName(r)}</option>)}
+        </select></div>
+      <p className="field help" id="rf-help">{isPrivilegedRole(role) ? "Admin and owner roles need a second admin's approval. The change applies when they approve." : "Applies at once. Recorded in the audit log with your name."}</p>
+      <p className="field help" id="rf-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
+      <div className="btngrp" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+        <button className="btn btn-secondary" onClick={close}>Cancel</button>
+        <button className="btn btn-primary" disabled={busy || role === m.role} onClick={go}>{isPrivilegedRole(role) ? "Request change" : "Change role"}</button>
+      </div>
+    </>
+  );
+}
+
+/** Shows an invitation link once, to copy and send to the person through the company's own channel. */
+function LinkBox({ link, email, expiresAt }: { link: string; email: string; expiresAt: number }) {
+  const L = useLayer();
+  const copy = async () => { try { await navigator.clipboard.writeText(link); L.toast("Link copied"); } catch { L.toast("Select the link and copy it", false); } };
+  return (
+    <>
+      <p style={{ margin: "0 0 12px", lineHeight: 1.5 }}>Send this link to {email} yourself, for example by email. It works once, only with that email address, until {utcMin(expiresAt)}. It is shown only now: if it is lost, create a new link (the old one stops working).</p>
+      <div className="field"><label htmlFor="lb-link">Invitation link</label><input className="input num" id="lb-link" data-focus readOnly value={link} onFocus={(e) => e.currentTarget.select()} /></div>
+      <div className="btngrp" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+        <button className="btn btn-primary" onClick={copy}>Copy link</button>
+      </div>
+    </>
+  );
+}
+
+function Invitations() {
+  const v = useData(); const L = useLayer();
+  const [rows, setRows] = useState<svc.InvitationItem[] | null>(null); const [err, setErr] = useState("");
+  const [email, setEmail] = useState(""); const [role, setRole] = useState("employee"); const [ferr, setFerr] = useState(""); const [busy, setBusy] = useState(false);
+  useEffect(() => { let on = true; svc.listInvitations().then((x) => { if (on) { setRows(x); setErr(""); } }, (e) => { if (on) setErr(why(e, "Could not load the invitations")); }); return () => { on = false; }; }, [v]);
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault(); if (busy) return; setBusy(true); setFerr("");
+    try {
+      const r = await svc.invite(email, role); bumpData(); const to = email.trim().toLowerCase(); setEmail("");
+      if (r.pending || !r.link) L.toast(`Request sent: a second admin approves inviting ${to} as ${roleName(role)} (Requests)`);
+      else L.openModal(`Invitation for ${to}`, () => <LinkBox link={r.link!} email={to} expiresAt={r.expiresAt!} />);
+    } catch (x) { setFerr(why(x, "Could not create the invitation")); }
+    setBusy(false);
+  };
+  const newLink = async (i: svc.InvitationItem) => {
+    try { const r = await svc.inviteLink(i.id); bumpData(); L.openModal(`Invitation for ${i.email}`, () => <LinkBox link={r.link} email={i.email} expiresAt={r.expiresAt} />); }
+    catch (x) { L.toast(why(x, "Could not create a link"), false); }
+  };
+  const revoke = async (i: svc.InvitationItem) => { try { await svc.revokeInvite(i.id); bumpData(); L.toast(`Invitation for ${i.email} revoked`); } catch (x) { L.toast(why(x, "Could not revoke the invitation"), false); } };
+  const chip = (s: svc.InvitationItem["status"]) => (s === "Pending" ? <Chip cls="warn" icon="clock">Pending</Chip> : <StatusChip s={s} />);
+  const cols: DTColumn<svc.InvitationItem>[] = [
+    { key: "email", header: "Email", value: (i) => i.email, locked: true, render: (i) => <span className="strong">{i.email}</span> },
+    { key: "role", header: "Role", value: (i) => roleName(i.role), render: (i) => roleName(i.role) },
+    { key: "status", header: "Status", value: (i) => i.status, render: (i) => chip(i.status) },
+    { key: "by", header: "Invited by", value: (i) => i.invitedBy, render: (i) => i.invitedBy },
+    { key: "exp", header: "Expires", value: (i) => i.expiresAt, render: (i) => <span className="num">{utcMin(i.expiresAt)}</span> },
+    { key: "act", header: "", value: () => "", render: (i) => (i.status === "Pending" ? (
+      <div className="btngrp" style={{ justifyContent: "flex-end" }}>
+        <button className="btn btn-ghost sm" aria-label={`${i.linkAt ? "New link" : "Create link"}: ${i.email}`} onClick={() => newLink(i)}><Icon name="refresh" />{i.linkAt ? "New link" : "Create link"}</button>
+        <button className="btn btn-ghost sm" aria-label={`Revoke: ${i.email}`} onClick={() => revoke(i)}><Icon name="x" />Revoke</button>
+      </div>) : null) },
+  ];
+  return (
+    <>
+      <form onSubmit={send} noValidate style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr) auto", gap: 8, alignItems: "end", maxWidth: 720 }}>
+        <div className="field" style={{ margin: 0 }}><label htmlFor="iv-email">Work email</label><input className="input" id="iv-email" type="email" autoComplete="off" maxLength={254} value={email} onChange={(e) => { setEmail(e.target.value); setFerr(""); }} aria-invalid={!!ferr} aria-describedby="iv-help iv-err" /></div>
+        <div className="field" style={{ margin: 0 }}><label htmlFor="iv-role">Role</label><select className="input" id="iv-role" value={role} onChange={(e) => setRole(e.target.value)}>{ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{roleName(r)}</option>)}</select></div>
+        <button type="submit" className="btn btn-primary" disabled={busy}>Invite</button>
+      </form>
+      <p className="field help" id="iv-help" style={{ maxWidth: "70ch" }}>You get a link to send to the person yourself; Selvara does not email it. It works once, only for that email address, for 72 hours. {isPrivilegedRole(role) ? "Admin and owner invitations need a second admin's approval first; then create the link here." : ""}</p>
+      <p className="field help" id="iv-err" role="alert" style={{ color: "var(--bad-ink)", display: ferr ? "block" : "none" }}>{ferr}</p>
+      {err ? <p role="alert" style={{ color: "var(--bad-ink)" }}>{err}</p> : null}
+      {rows ? (rows.length ? <DataTable<svc.InvitationItem> id="team-invitations-api" label="Invitations" rows={rows} rowKey={(i) => i.id} columns={cols} searchText={(i) => `${i.email} ${roleName(i.role)} ${i.status}`} exportName="invitations" />
+        : <p style={{ color: "var(--muted)" }}>No invitations yet.</p>) : err ? null : <p style={{ color: "var(--muted)" }}>Loading invitations…</p>}
+    </>
+  );
+}
+
+function Requests() {
+  const v = useData(); const L = useLayer();
+  const [rows, setRows] = useState<svc.ApprovalItem[] | null>(null); const [err, setErr] = useState("");
+  useEffect(() => { let on = true; svc.listApprovals().then((x) => { if (on) { setRows(x); setErr(""); } }, (e) => { if (on) setErr(why(e, "Could not load the requests")); }); return () => { on = false; }; }, [v]);
+  const withdraw = async (a: svc.ApprovalItem) => { try { await svc.decideRequest(a.id, "withdraw"); bumpData(); L.toast("Request withdrawn"); } catch (x) { L.toast(why(x, "Could not withdraw the request"), false); } };
+  const chip = (s: svc.ApprovalItem["status"]) => (s === "Pending" ? <Chip cls="warn" icon="clock">Pending</Chip> : <StatusChip s={s} />);
+  const cols: DTColumn<svc.ApprovalItem>[] = [
+    { key: "title", header: "Request", value: (a) => a.title, locked: true, render: (a) => <span className="strong">{a.title}</span> },
+    { key: "by", header: "Requested by", value: (a) => a.requestedBy, render: (a) => a.requestedBy },
+    { key: "status", header: "Status", value: (a) => a.status, render: (a) => chip(a.status) },
+    { key: "when", header: "Requested", value: (a) => a.createdAt, render: (a) => <span className="num">{utcMin(a.createdAt)}</span> },
+    { key: "dec", header: "Decided by", value: (a) => a.votes.map((x) => x.by).join(", "), render: (a) => a.votes.map((x) => x.by).join(", ") || (a.reason ? `Rejected: ${a.reason}` : "") },
+    { key: "act", header: "", value: () => "", render: (a) => (a.status !== "Pending" ? null : a.mine ? (
+      <button className="btn btn-ghost sm" aria-label={`Withdraw: ${a.title}`} onClick={() => withdraw(a)}><Icon name="x" />Withdraw</button>
+    ) : a.block ? <span className="field help" style={{ margin: 0 }}>{a.block}</span> : (
+      <div className="btngrp" style={{ justifyContent: "flex-end" }}>
+        <button className="btn btn-ghost sm" aria-label={`Approve: ${a.title}`} onClick={() => L.openModal(`Approve: ${a.title}`, (close) => <DecideRequest a={a} decision="approve" close={close} />)}><Icon name="check" />Approve</button>
+        <button className="btn btn-ghost sm" aria-label={`Reject: ${a.title}`} onClick={() => L.openModal(`Reject: ${a.title}`, (close) => <DecideRequest a={a} decision="reject" close={close} />)}><Icon name="x" />Reject</button>
+      </div>)) },
+  ];
+  if (err) return <p role="alert" style={{ color: "var(--bad-ink)" }}>{err}</p>;
+  if (!rows) return <p style={{ color: "var(--muted)" }}>Loading requests…</p>;
+  return (
+    <>
+      <p className="field help" style={{ marginTop: 0, maxWidth: "70ch" }}>Granting or inviting an admin or owner needs a second admin. Nobody approves their own request or a request about themselves. A request expires after 72 hours.</p>
+      {rows.length ? <DataTable<svc.ApprovalItem> id="team-requests-api" label="Requests" rows={rows} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.title} ${a.requestedBy} ${a.status}`} exportName="requests" />
+        : <p style={{ color: "var(--muted)" }}>No requests yet.</p>}
+    </>
+  );
+}
+
+function DecideRequest({ a, decision, close }: { a: svc.ApprovalItem; decision: "approve" | "reject"; close: () => void }) {
+  const L = useLayer();
+  const [reason, setReason] = useState(""); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const go = async () => {
+    if (busy) return;
+    if (reason.trim().length < REASON_MIN) { setErr(`Give a reason of at least ${REASON_MIN} characters.`); return; }
+    setBusy(true);
+    try { await svc.decideRequest(a.id, decision, reason); close(); bumpData(); L.toast(decision === "approve" ? "Approved and applied" : "Request rejected"); }
+    catch (e) { setErr(why(e, "Could not record the decision")); setBusy(false); }
+  };
+  return (
+    <>
+      <p className="field help" style={{ marginTop: 0 }}>Requested by {a.requestedBy} on {utcMin(a.createdAt)}.</p>
+      <div className="field"><label htmlFor="dr-reason">Reason (at least {REASON_MIN} characters)</label><textarea className="input" id="dr-reason" data-focus rows={3} maxLength={300} style={{ resize: "vertical" }} value={reason} onChange={(e) => { setReason(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "dr-err" : undefined} /></div>
+      <p className="field help" id="dr-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
+      <div className="btngrp" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+        <button className="btn btn-secondary" onClick={close}>Cancel</button>
+        <button className={`btn ${decision === "approve" ? "btn-primary" : "btn-danger"}`} disabled={busy} onClick={go}>{decision === "approve" ? "Approve" : "Reject"}</button>
+      </div>
+    </>
+  );
+}
+
 const ruleNote = (l: svc.Lockout) => (l.preset === "custom" && l.custom ? `${l.custom.attempts} failed attempts lock the account for ${l.custom.minutes} minutes` : (LOCKOUT[l.preset as keyof typeof LOCKOUT] ?? LOCKOUT.standard).note);
 
 function SignIn() {
   const L = useLayer();
   const [cur, setCur] = useState<svc.Lockout | null>(null); const [shown, setShown] = useState<LockoutPreset>("standard");
   const [att, setAtt] = useState(String(CUSTOM_BOUNDS.attempts[0] + 2)); const [mins, setMins] = useState("30"); const [cerr, setCerr] = useState(""); const [err, setErr] = useState("");
-  const load = () => svc.getLockout().then((l) => { setCur(l); setShown(l.preset as LockoutPreset); if (l.custom) { setAtt(String(l.custom.attempts)); setMins(String(l.custom.minutes)); } setErr(""); }, (e) => setErr(sodMessage(e, "Could not load the setting")));
+  const load = () => svc.getLockout().then((l) => { setCur(l); setShown(l.preset as LockoutPreset); if (l.custom) { setAtt(String(l.custom.attempts)); setMins(String(l.custom.minutes)); } setErr(""); }, (e) => setErr(why(e, "Could not load the setting")));
   useEffect(() => { void load(); }, []);
   const pick = async (p: LockoutPreset) => {
     setShown(p); setCerr(""); if (p === "custom") return; // Custom applies on Save
-    try { await svc.setLockoutPreset(p); await load(); L.toast("Account lockout: " + LOCKOUT[p as keyof typeof LOCKOUT].label); } catch (e) { L.toast(sodMessage(e, "Could not change the lockout"), false); await load(); }
+    try { await svc.setLockoutPreset(p); await load(); L.toast("Account lockout: " + LOCKOUT[p as keyof typeof LOCKOUT].label); } catch (e) { L.toast(why(e, "Could not change the lockout"), false); await load(); }
   };
   const saveCustom = async (e: React.FormEvent) => {
     e.preventDefault(); setCerr("");
-    try { await svc.setLockoutPreset("custom", { attempts: Number(att), minutes: Number(mins) }); await load(); L.toast("Account lockout saved"); } catch (x) { setCerr(sodMessage(x, "Could not save the custom lockout")); }
+    try { await svc.setLockoutPreset("custom", { attempts: Number(att), minutes: Number(mins) }); await load(); L.toast("Account lockout saved"); } catch (x) { setCerr(why(x, "Could not save the custom lockout")); }
   };
   if (err) return <p role="alert" style={{ color: "var(--bad-ink)" }}>{err}</p>;
   if (!cur) return <p style={{ color: "var(--muted)" }}>Loading…</p>;
