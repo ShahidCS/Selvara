@@ -4,10 +4,17 @@ import { useLayer } from "@/hooks/useLayer";
 import { AUTH_TABS, type AuthView } from "./authLogic";
 import { AuthCard, Challenge, Create, Mfa, PanelApi, Reset, SetPassword, SignIn } from "./AuthPanels";
 import { YourAccount } from "./YourAccount";
+import { API_ON } from "@/lib/rbac";
 
 /** Sign-in & Security "experience gallery" (prototype: REND.auth). Standalone page /auth. DEMO ONLY: no backend, nothing is sent or stored.
  *  Every panel is its own component keyed by view, so password / OTP / phone state is discarded whenever the view changes or the page unmounts. */
 export default function AuthModule() {
+  // Production: only the person's own account (from the server). The other tabs preview the sign-in screens with demonstration logic.
+  if (API_ON) return <Page title="Your account" sub="Sign-in history, two-step verification, sessions and password"><div className="card" style={{ flex: "1 1 auto" }}><div className="c-body scroll"><YourAccount /></div></div></Page>;
+  return <Gallery />;
+}
+
+function Gallery() {
   const L = useLayer();
   const [view, setView] = useState<AuthView>("account"); const [mfa, setMfa] = useState<string | null>(null);
   const after = useRef<null | (() => void)>(null);

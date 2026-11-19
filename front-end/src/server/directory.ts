@@ -26,6 +26,8 @@ export interface Directory {
   members(tenantId: string, actorId: string, status?: MemberStatus): Promise<MemberRow[]>;
   /** Decides a pending membership. False when it is no longer pending. */
   decide(tenantId: string, actorId: string, userId: string, to: "Active" | "Removed", reason: string, at: number, entry: AuditRow): Promise<boolean>;
+  /** The company's own lockout setting (standard when none is stored). */
+  lockoutOf(tenantId: string, actorId: string): Promise<Lockout>;
   /** Lockout settings of every company the person is an active member of. */
   lockoutsOf(userId: string): Promise<Lockout[]>;
   setLockout(tenantId: string, actorId: string, lockout: Lockout, at: number, entry: AuditRow): Promise<void>;
@@ -78,6 +80,10 @@ export class PgDirectory implements Directory {
       if (r.length) await q.query(auditSql, auditArgs(entry));
       return r.length === 1;
     });
+  }
+  async lockoutOf(tenantId: string, actorId: string) {
+    const r = await this.db.tx({ tenantId, userId: actorId }, (q) => q.query<{ lockout: Lockout }>("select lockout from tenant_settings where tenant_id = $1", [tenantId]));
+    return r[0]?.lockout ?? { preset: "standard" };
   }
   async lockoutsOf(userId: string) {
     const r = await this.db.tx({ tenantId: null, userId }, (q) => q.query<{ lockout: Lockout }>(
@@ -133,6 +139,7 @@ export class MemoryDirectory implements Directory {
     const m = this.memberships.find((x) => x.tenantId === tenantId && x.userId === userId && x.status === "Pending"); if (!m) return false;
     Object.assign(m, { status: to, decidedBy: actorId, reason, decidedAt: at }); await this.store.audit(entry); return true;
   }
+  async lockoutOf(tenantId: string) { return this.lockouts.get(tenantId) ?? { preset: "standard" }; }
   async lockoutsOf(userId: string) { return (await this.companiesOf(userId)).map((c) => this.lockouts.get(c.company.id) ?? { preset: "standard" }); }
   async setLockout(tenantId: string, _actorId: string, lockout: Lockout, _at: number, entry: AuditRow) { this.lockouts.set(tenantId, lockout); await this.store.audit(entry); }
 }

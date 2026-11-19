@@ -24,5 +24,8 @@ export function decideJoin(id: string, decision: "approve" | "reject", reason: s
     saveJoinRequests();
     wsLog(decision === "approve" ? "team.join.approved" : "team.join.rejected", `${m.id}: ${m.name} <${m.email}> as Employee; reason: ${why}`, "Access"); bumpData();
     return m;
-  }, () => apiFetch<JoinRequest>(`/team/join-requests/${encodeURIComponent(id)}/${decision}`, { method: "POST", body: JSON.stringify({ reason }) }));
+  }, async () => { // production: the server decides and audits; the lists reload
+    const r = await apiFetch<{ id: string; status: string }>(`/team/join-requests/${encodeURIComponent(id)}/${decision}`, { method: "POST", body: JSON.stringify({ reason }) });
+    bumpData(); return r as unknown as JoinRequest;
+  });
 }

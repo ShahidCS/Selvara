@@ -31,9 +31,12 @@ export interface AppState {
   /** Demo sign-in (`lib/session.ts`). `who` is set only for a member who joined through a request (not a seeded persona). */
   signedIn: boolean;
   who: string | null;
+  /** Production only: the company this session works in, and the other companies the person may switch to (from the server; not persisted). */
+  company: { ref: string; name: string } | null;
+  companies: { ref: string; name: string; role: string }[];
 }
 export const appStore = createStore<AppState>({
-  role: "super", collapsed: false, theme: "auto", density: "comfortable", scope: "ISO 27001", groupsOpen: {}, navOpen: null, mobOpen: false, hydrated: false, signedIn: false, who: null,
+  role: "super", collapsed: false, theme: "auto", density: "comfortable", scope: "ISO 27001", groupsOpen: {}, navOpen: null, mobOpen: false, hydrated: false, signedIn: false, who: null, company: null, companies: [],
 });
 export function useApp<R>(sel: (s: AppState) => R): R {
   return useSyncExternalStore(appStore.subscribe, () => sel(appStore.get()), () => sel(appStore.get()));

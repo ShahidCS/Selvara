@@ -2,7 +2,8 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, 
 import { createPortal } from "react-dom";
 import { useRouter } from "next/router";
 import { Icon } from "@/components/ui";
-import { NAV } from "@/lib/rbac";
+import { NAV, modAllowed } from "@/lib/rbac";
+import { appStore } from "@/lib/store";
 import { useGo } from "@/lib/route";
 
 type Content = ReactNode | ((close: () => void) => ReactNode);
@@ -119,7 +120,8 @@ function Palette({ close }: { close: () => void }) {
   const { ref, on } = useDialog(true);
   const index = useMemo(() => {
     const out: { key: string; label: string; icon: string; space: string; group: string; path: string }[] = [];
-    (["ws", "admin"] as const).forEach((sp) => NAV[sp].forEach((g) => g.items.forEach(([key, label, icon]) => out.push({ key, label, icon, space: sp, group: g.g, path: `/${sp}/${key}` }))));
+    const role = appStore.get().role; // only the modules this role may open (and, in production, that have a server API)
+    (["ws", "admin"] as const).forEach((sp) => NAV[sp].forEach((g) => g.items.forEach(([key, label, icon]) => { if (modAllowed(role, sp, key)) out.push({ key, label, icon, space: sp, group: g.g, path: `/${sp}/${key}` }); })));
     return out;
   }, []);
   const ql = q.toLowerCase();

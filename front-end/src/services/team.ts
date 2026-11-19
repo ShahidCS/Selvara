@@ -180,6 +180,14 @@ export function setLockoutPreset(v: string, custom?: { attempts: number; minutes
   }, () => post<void>("/team/settings", { lockout: v, custom }));
 }
 export const lockoutPreset = () => acct().lockout;
+
+/* ---------- production (NEXT_PUBLIC_API_MODE=http): the company's data from the server ---------- */
+/** A member of the session's company. Production: GET /team/members (company admins only; the server scopes it to the session's company). */
+export interface MemberRow { id: string; name: string; email: string; role: string; status: "Pending" | "Active" | "Suspended"; since: number }
+export const listMembers = () => apiFetch<MemberRow[]>("/team/members");
+/** The company's account lockout. Production: GET /team/settings. */
+export interface Lockout { preset: string; custom?: { attempts: number; minutes: number } }
+export const getLockout = () => apiFetch<{ lockout: Lockout }>("/team/settings").then((r) => r.lockout);
 /** A trusted office network is never blocked for failed sign-ins (accounts still lock and MFA still applies). Adding one weakens a control, so a
  *  second company admin approves it; removing one is immediate. */
 export function requestTrustedNet(netIn: string, labelIn: string) {

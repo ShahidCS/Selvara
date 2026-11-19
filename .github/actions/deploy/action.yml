@@ -40,6 +40,12 @@ inputs:
     description: "'true' opts in to keyless Sigstore signing (public transparency log; off by default)"
     required: false
     default: "false"
+  api-mode:
+    description: >-
+      'http' builds the production app, which works on live company data through /api (NEXT_PUBLIC_API_MODE=http,
+      NEXT_PUBLIC_API_BASE_URL=/api, both public). Empty or 'mock' builds the demonstration. Anything else fails the build.
+    required: false
+    default: ""
 
 outputs:
   url:
@@ -55,12 +61,15 @@ runs:
         TARGET_ENV: ${{ inputs.environment }}
         VERCEL_ENV: ${{ inputs.vercel-environment }}
         LABEL: ${{ inputs.label }}
+        API_MODE: ${{ inputs.api-mode }}
         VERCEL_ORG_ID: ${{ inputs.org-id }}
         VERCEL_PROJECT_ID: ${{ inputs.project-id }}
       run: |
         [[ $TARGET_ENV =~ ^(staging|production)$ ]]   || { echo "invalid environment" >&2; exit 1; }
         [[ $VERCEL_ENV =~ ^(preview|production)$ ]]   || { echo "invalid vercel environment" >&2; exit 1; }
         [[ $LABEL =~ ^[A-Za-z0-9._-]{1,64}$ ]]        || { echo "invalid label" >&2; exit 1; }
+        [[ -z $API_MODE || $API_MODE =~ ^(mock|http)$ ]] || { echo "invalid api-mode: use mock or http (environment variable API_MODE)" >&2; exit 1; }
+        echo "### Build mode: ${API_MODE:-mock} ($([[ $API_MODE == http ]] && echo 'production app on /api' || echo 'demonstration'))" >> "$GITHUB_STEP_SUMMARY"
         [[ -n $VERCEL_ORG_ID && -n $VERCEL_PROJECT_ID ]] || { echo "VERCEL_ORG_ID / VERCEL_PROJECT_ID are not set for environment $TARGET_ENV" >&2; exit 1; }
 
     # Fails in seconds, with a clear message, instead of after a full build. It prints whether each credential is
@@ -100,7 +109,7 @@ runs:
     # The build needs NO credentials. Instead of `vercel pull` (which needs the token), the project link is written
     # from the environment's non-secret variables, with settings that mirror front-end/vercel.json. The Vercel CLI
     # and its builders therefore run without any secret in their environment; the token appears only in the final
-    # deploy step. Public build-time settings (NEXT_PUBLIC_*) would be passed explicitly as env: on the Build step.
+    # deploy step. Public build-time settings (NEXT_PUBLIC_*) are passed explicitly as env: on the Build step.
     - name: Write project link (no token)
       shell: bash
       env:
@@ -123,6 +132,9 @@ runs:
         VERCEL_ORG_ID: ${{ inputs.org-id }}
         VERCEL_PROJECT_ID: ${{ inputs.project-id }}
         VERCEL_BIN: ${{ github.workspace }}/.github/vercel-cli/node_modules/.bin/vercel
+        # Public, baked into the browser code (validated above). Not secrets.
+        NEXT_PUBLIC_API_MODE: ${{ inputs.api-mode == 'http' && 'http' || 'mock' }}
+        NEXT_PUBLIC_API_BASE_URL: ${{ inputs.api-mode == 'http' && '/api' || '' }}
       run: |
         args=()
         [[ $VERCEL_ENV == production ]] && args+=(--prod)

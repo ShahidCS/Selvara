@@ -64,3 +64,4 @@ jobs:
           staging-alias: ${{ vars.STAGING_ALIAS }}
           attestations: ${{ vars.ATTESTATIONS_ENABLED }}
           cosign: ${{ vars.COSIGN_ENABLED }}
+          api-mode: ${{ vars.API_MODE }}
