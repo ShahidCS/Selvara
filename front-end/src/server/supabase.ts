@@ -1,6 +1,6 @@
 /* Server-only. Supabase Auth and Postgres behind the AuthProvider and Store interfaces. Two clients: the public (anon) key for password sign-in,
    TOTP and reset emails as the user; the service key for admin actions and the tables. The service key never reaches the browser: this file is
-   imported only by pages/api. Schema: supabase/migrations/0001_selvara_auth.sql to 0004_company_sessions.sql. */
+   imported only by pages/api. Schema: supabase/migrations/0001_selvara_auth.sql to 0005_team_changes.sql. */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { upstream } from "./errors";
 import type { AuthProvider, NoticeRow, PasskeyRow, Profile, RecoveryRow, SessionRow, Store, AuditRow } from "./types";
@@ -46,10 +46,10 @@ export class SupabaseAuth implements AuthProvider {
   }
 }
 
-const P = (r: Record<string, unknown>): Profile => ({ id: String(r.id), email: String(r.email), person: String(r.person), role: String(r.role), status: r.status as Profile["status"], requestedAt: Number(r.requested_ms), decidedBy: (r.decided_by as string) ?? undefined, reason: (r.reason as string) ?? undefined });
+const P = (r: Record<string, unknown>): Profile => ({ id: String(r.id), email: String(r.email), person: String(r.person), status: r.status as Profile["status"], requestedAt: Number(r.requested_ms), decidedBy: (r.decided_by as string) ?? undefined, reason: (r.reason as string) ?? undefined });
 const S = (r: Record<string, unknown>): SessionRow => ({ idHash: String(r.id_hash), userId: String(r.user_id), device: String(r.device), ip: String(r.ip), createdAt: Number(r.created_ms), lastSeen: Number(r.last_seen_ms), expiresAt: Number(r.expires_ms), revokedAt: r.revoked_ms == null ? undefined : Number(r.revoked_ms), revokedWhy: (r.revoked_why as string) ?? undefined, tenantId: (r.tenant_id as string | null) ?? null });
 const snake = (o: Record<string, unknown>, map: Record<string, string>) => Object.fromEntries(Object.entries(o).filter(([k, v]) => k in map && v !== undefined).map(([k, v]) => [map[k], v]));
-const PMAP = { id: "id", email: "email", person: "person", role: "role", status: "status", requestedAt: "requested_ms", decidedBy: "decided_by", reason: "reason" };
+const PMAP = { id: "id", email: "email", person: "person", status: "status", requestedAt: "requested_ms", decidedBy: "decided_by", reason: "reason" };
 const SMAP = { idHash: "id_hash", userId: "user_id", device: "device", ip: "ip", createdAt: "created_ms", lastSeen: "last_seen_ms", expiresAt: "expires_ms", revokedAt: "revoked_ms", revokedWhy: "revoked_why", tenantId: "tenant_id" };
 /** Unwraps a database result; a failure carries the table and Supabase's code and status (see errors.ts). */
 const check = <X,>(r: { data: X; error: unknown; status?: number }, table = "?"): X => { if (r.error) throw upstream(`db.${table}`, r.error, r.status); return r.data; };

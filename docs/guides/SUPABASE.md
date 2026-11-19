@@ -33,8 +33,9 @@ In **each** project (staging and production separately), open SQL Editor → New
 2. [`supabase/migrations/0002_service_role_grants.sql`](../../supabase/migrations/0002_service_role_grants.sql): table access for the server's role only. Some projects do not grant it automatically, and every request then fails.
 3. [`supabase/migrations/0003_tenancy_foundation.sql`](../../supabase/migrations/0003_tenancy_foundation.sql): companies, memberships, approvals, elevation, the hash-chained audit log, and the `selvara_app` database role bound by row level security ([design](../architecture/BACKEND_FOUNDATION.md)).
 4. [`supabase/migrations/0004_company_sessions.sql`](../../supabase/migrations/0004_company_sessions.sql): per-company sign-in settings, joining a company by its code, platform staff, and the `bootstrap_company` function for the first company (section 5b).
+5. [`supabase/migrations/0005_team_changes.sql`](../../supabase/migrations/0005_team_changes.sql) (from v0.1.10): invitations, the `add_company_admin` function (section 5c), and it **drops the old `profiles.role` column** (roles come from memberships and platform staff since 0004). Run it just before you deploy v0.1.10: v0.1.10 refuses a database without it, and v0.1.9 cannot add new people once the column is gone.
 
-All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `4`.
+All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `5`.
 
 Supabase may warn that a script contains destructive operations: the `drop ... if exists` lines only remove the script's own triggers and policies to recreate them. No data is deleted.
 
@@ -73,7 +74,7 @@ Also set Vercel → Settings → Functions → **Function Region** to **Frankfur
 
 From v0.1.8 the API needs this too: a person's company and role come from their membership, which the server reads as `selvara_app`, a role that row level security binds to the signed-in person's company. Without `DATABASE_URL` the whole API answers 503.
 
-1. **Give the role a login.** Create a long random password on your own machine with `openssl rand -hex 32` (hex, because `+`, `/` and `=` from base64 break the connection string). In SQL Editor → New query, run `alter role selvara_app with login password '<that password>';`, then clear the query (replace it with `select 1;` and run that) and delete it if it was saved, so the password is not kept there.
+1. **Give the role a login.** Create a long random password on your own machine with `openssl rand -hex 32` (hex, because `+`, `/` and `=` from base64 break the connection string). In SQL Editor → New query, run `alter role selvara_app with login password 'PASTE-YOUR-HEX-PASSWORD-HERE';` with your password between the quotes (no angle brackets), then clear the query (replace it with `select 1;` and run that) and delete it if it was saved, so the password is not kept there.
 2. **Connection string.** Supabase → **Connect** → **Transaction pooler** (port 6543). Copy it exactly as shown (the host looks like `aws-0-eu-central-1.pooler.supabase.com`), then change two things and nothing else: the user from `postgres.<ref>` to **`selvara_app.<ref>`** (keep the dot and your ref), and `[YOUR-PASSWORD]` to your password, without the brackets. Do not add `sslmode`; the server always verifies TLS. Never use the `postgres` user here: it bypasses row level security.
 3. **CA certificate.** Project Settings → **Database** → **SSL Configuration** → **Download certificate**. Open the file and copy its whole text (from `-----BEGIN CERTIFICATE-----` to `-----END CERTIFICATE-----`).
 4. In Vercel, for the matching environment:
@@ -93,34 +94,57 @@ The site is built by GitHub Actions, not by Vercel, so a `NEXT_PUBLIC_API_MODE` 
 2. GitHub → **Settings** → **Environments** → `production` → **Environment variables** → **Add variable**: name `API_MODE`, value `http`.
 3. Deploy: push the next release tag, or re-run the **Production** job of the latest release (the build runs again with the new value).
 
-What changes: the sign-in page uses your real account (no demo accounts), and only modules with a server API are shown (decision D4). Today that is **Team & Settings** for company admins (members, requests to join, account lockout) and **Your account** for everyone; other roles land on Your account. Each further module appears when its server slice ships. The Admin Console has no module on the server yet. To go back to the demonstration, set `API_MODE` to `mock` (or delete it) and deploy again.
+What changes: the sign-in page uses your real account (no demo accounts), and only modules with a server API are shown (decision D4). Today that is **Team & Settings** for company admins (members and their roles, invitations, requests to join, the second-admin requests, account lockout) and **Your account** for everyone; other roles land on Your account. Each further module appears when its server slice ships. The Admin Console has no module on the server yet. To go back to the demonstration, set `API_MODE` to `mock` (or delete it) and deploy again.
 
 ## 5. First accounts (you, per project)
 
 Requests to join need a company admin to approve them, so create the first admin by hand (5a), then their company (5b).
 
+**In every SQL statement in this guide, replace the example values with your own, keep the single quotes, and type no angle brackets `< >`.** Whatever is between the quotes is stored exactly as typed: a name typed as `<Sam>` is shown as `<Sam>`. (From v0.1.10 the join form refuses names with `<`, `>`, braces or double quotes.)
+
 1. In Authentication → Users → Add user, add the person with **Auto Confirm** on and a strong temporary password.
-2. Copy their user id, then in SQL Editor run:
+2. Copy their user id (it looks like `3f2c9a1e-…`), then in SQL Editor run, with your own values:
 
 ```sql
-insert into public.profiles (id, email, person, role, status, requested_ms)
-values ('<user id>', '<email>', '<Full Name>', 'admin', 'Active', (extract(epoch from now()) * 1000)::bigint);
+insert into public.profiles (id, email, person, status, requested_ms)
+values ('3f2c9a1e-0000-4000-8000-000000000000', 'sam.admin@yourcompany.example', 'Sam Admin', 'Active', (extract(epoch from now()) * 1000)::bigint);
 ```
 
-Type the email exactly as Supabase shows it under Authentication → Users, in lower case: sign-in needs the profile's email to match the login's email. For a platform super admin use `'super'` instead of `'admin'` and also run `insert into public.platform_staff (user_id, role, created_ms) values ('<user id>', 'super', (extract(epoch from now()) * 1000)::bigint);`. Their first sign-in asks them to add a passkey. Everyone else adds an authenticator app at their first sign-in.
+Type the email exactly as Supabase shows it under Authentication → Users, in lower case: sign-in needs the profile's email to match the login's email. (Before 0005 the profile also had a `role` column; it is not used any more and 0005 removes it.)
+
+**A platform super admin** is a separate account from any company admin, with its own email address (platform staff can never be a member of a company). Create it as above, then also run, with the same user id:
+
+```sql
+insert into public.platform_staff (user_id, role, created_ms)
+values ('3f2c9a1e-0000-4000-8000-000000000000', 'super', (extract(epoch from now()) * 1000)::bigint);
+```
+
+Their first sign-in asks them to add a passkey. Everyone else adds an authenticator app at their first sign-in. Until the Admin Console's server slice ships, a platform super admin sees only Your account.
+
+**To correct a name** that was stored wrongly: `update public.profiles set person = 'Sam Admin' where email = 'sam.admin@yourcompany.example';` and reload the page.
 
 ### 5b. The first company (you, once per company, from v0.1.8)
 
 From v0.1.8 a person works inside a company, with the role their membership there gives them, and someone with no active membership cannot sign in. Create the company and make its first admin in one step (it fails safely if the code is taken, the email has no active profile, or the person is platform staff):
 
 ```sql
-select public.bootstrap_company('<company code>', '<company name>', '<admin email>');
+select public.bootstrap_company('acme-eu', 'Acme Europe Ltd', 'sam.admin@yourcompany.example');
 ```
 
 - **Company code**: 3 to 40 lower-case letters, digits and hyphens, for example `acme-eu`. People type it when they ask to join, so the admin shares it with their colleagues. It is not a secret, but the join form answers the same whether or not a code exists.
 - **Admin email**: the email of an active profile from 5a.
 
 Check: `select t.ref, t.name, m.role, m.status from public.memberships m join public.tenants t on t.id = m.tenant_id;` shows the admin as `admin`, `Active`. Do this **before** deploying v0.1.8 to that environment, or the admin cannot sign in.
+
+### 5c. A second company admin (you, once, from v0.1.10)
+
+Granting or inviting an admin or owner needs a second admin's approval, so a company with one admin cannot add a second one through the app. Once that person is an active member (they joined, or accepted an invitation, as an Employee), make them an admin in SQL Editor:
+
+```sql
+select public.add_company_admin('acme-eu', 'second.admin@yourcompany.example');
+```
+
+It refuses a person who is not an active member of that company and platform staff, and writes `member.role.changed` to the company's audit log as "Platform owner". From then on the two admins approve each other's privileged changes in Team & Settings → Requests.
 
 ## Troubleshooting
 

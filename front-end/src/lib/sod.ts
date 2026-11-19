@@ -2,6 +2,7 @@
  * UI gating is NOT a control: the same rules must be enforced by the API. Services call these helpers so the rule lives in one place. */
 import { appStore } from "./store";
 import { roleOf } from "./rbac";
+import { INVITE_TTL_H } from "./rules";
 
 export interface Actor { roleId: string; base: string; name: string; roleName: string }
 
@@ -46,5 +47,5 @@ export const SOD = {
   FINANCE_DUAL_USD: 1000,          // credits/refunds/write-offs above this need a second approver
   ELEVATION_MAX_MIN: 60,
   MFA_RESET_REQUEST_TTL_H: 24,
-  INVITE_TTL_H: 72,
+  INVITE_TTL_H,
 } as const;

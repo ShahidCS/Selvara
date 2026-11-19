@@ -1,5 +1,6 @@
 /* Server-only. Interfaces the auth handlers depend on, so they run against Supabase in production and against an in-memory stand-in in tests. */
-export interface Profile { id: string; email: string; person: string; role: string; status: "Pending" | "Active" | "Rejected"; requestedAt: number; decidedBy?: string; reason?: string }
+/** A person (profiles). Their access comes from memberships and platform_staff, never from the profile (profiles.role was dropped in 0005). */
+export interface Profile { id: string; email: string; person: string; status: "Pending" | "Active" | "Rejected"; requestedAt: number; decidedBy?: string; reason?: string }
 export interface SessionRow { idHash: string; userId: string; device: string; ip: string; createdAt: number; lastSeen: number; expiresAt: number; revokedAt?: number; revokedWhy?: string; /** The company this session works in (null for platform staff). */ tenantId?: string | null }
 export interface NoticeRow { id: string; userId: string; at: number; text: string }
 export interface AuditRow { at: number; actor: string; action: string; target: string; cat: string; space: "ws" | "admin"; ip: string; /** Company log (null: platform log). */ tenantId?: string | null; actorId?: string | null }
