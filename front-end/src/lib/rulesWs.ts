@@ -231,6 +231,14 @@ export function riskLadderBlock(by: string, residual: number): string | null {
   const need = RISK_ACCEPT_AUTH[riskBand(residual)];
   return RISK_ACCEPT_RANK[by] < RISK_ACCEPT_RANK[need] ? `Residual rating needs at least ${need} to accept.` : null;
 }
+/** The highest residual band a role may record an acceptance for (SOD_MATRIX: role rank at least the band's authority): analysts up to
+ *  Medium, owners and admins up to High. Above 15 only an admin records, with Board evidence. */
+export const RISK_ROLE_RANK: Record<string, number> = { analyst: 1, owner: 2, admin: 2 };
+export function riskAcceptRoleBlock(role: string, residual: number): string | null {
+  const need = RISK_ACCEPT_RANK[RISK_ACCEPT_AUTH[riskBand(residual)]];
+  return residual <= RISK_BOARD_THRESHOLD && (RISK_ROLE_RANK[role] ?? -1) < need ? `Not permitted: a ${riskBand(residual)} residual is accepted by an owner or admin.` : null;
+}
+export const riskCloseRoleBlock = (role: string) => roleBlock(role, "closing a risk", "admin", "owner");
 export const riskAcceptSodBlock = (isOwnerEditorOrSubmitter: boolean) =>
   isOwnerEditorOrSubmitter ? "Segregation of duties: you own, edited or submitted this risk, so a different person must record its acceptance." : null;
 /** Closing: no open treatment actions; never the last editor; never the owner when the risk has actions. */

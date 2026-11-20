@@ -11,11 +11,19 @@ import { approvalBlock, reasonBlock } from "@/lib/rules";
 import { validateAcceptExpiry, validateBoardEvidence } from "@/lib/riskBoard";
 import {
   RISK_BOARD_TTL_H, RISK_CATEGORIES, RISK_CAT_TEAM, RISK_IMPORT_MAX_ROWS, RISK_IMPORT_TTL_H, RISK_SCORES, RISK_TREATMENTS, isoDayOf,
-  riskAcceptSodBlock, riskBand, riskCloseBlock, riskDecideBlock, riskEditBlock, riskLadderBlock, riskScore, riskSubmitBlock, roleBlock,
+  riskAcceptRoleBlock, riskAcceptSodBlock, riskBand, riskCloseBlock, riskCloseRoleBlock, riskDecideBlock, riskEditBlock, riskLadderBlock, riskScore, riskSubmitBlock, roleBlock,
 } from "@/lib/rulesWs";
 import type { Deps } from "../types";
-import { approvalsView, invalid, memberRef, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
-import type { Actor, Rec, WsTx } from "./store";
+import { approvalsView, invalid, memberRef, membersOf, missing, modAllowed, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
+import { WsConflict, type Actor, type Rec, type WsTx } from "./store";
+
+/** A member who may own risk work: someone whose role opens the risk register or My Work (never a vendor or viewer account). */
+export async function workOwner(d: Deps, a: Actor, v: { id?: unknown; name?: unknown }, mod: string, fallbackSelf = true) {
+  const m = await memberRef(d, a, v, fallbackSelf);
+  const role = (await membersOf(d, a)).find((x) => x.id === m.id)?.role ?? "";
+  if (!modAllowed(role, mod) && !modAllowed(role, "work")) invalid("Choose a member whose role can work on this.");
+  return m;
+}
 
 export interface RiskAction { text: string; owner: string; ownerId?: string; due: string; done: boolean; cancelled?: boolean; cancelReason?: string; at?: string }
 export interface Acceptance {
@@ -188,11 +196,15 @@ export function riskRoutes(h: WsHelpers) {
     return tx(d, c, async (t) => { await sweepRisk(t); const rec = await load(t, r.path[2]); const out = await fn(d, t, rec, r.body, r.path); return ok({ ok: true, ...(out as object) }); });
   });
 
-  const data = wsRoute(h, "risk", async (d, _r, c) => ok(await tx(d, c, (t) => riskData(d, t))));
+  /* reading also records expiries; when two people load at the same moment one of them retries once instead of seeing a conflict */
+  const data = wsRoute(h, "risk", async (d, _r, c) => {
+    try { return ok(await tx(d, c, (t) => riskData(d, t))); }
+    catch (e) { if (!(e instanceof WsConflict)) throw e; return ok(await tx(d, c, (t) => riskData(d, t))); }
+  });
   const create = wsRoute(h, "risk", async (d, r, c) => {
     refuse(riskEditBlock(c.actor.role));
     const title = txt(r.body.title, 200); if (!title) invalid("Risk title is required.");
-    const owner = await memberRef(d, c.actor, { id: r.body.ownerId, name: r.body.owner });
+    const owner = await workOwner(d, c.actor, { id: r.body.ownerId, name: r.body.owner }, "risk");
     return tx(d, c, async (t) => {
       const id = await nextRiskId(t);
       const cat = (RISK_CATEGORIES as readonly string[]).includes(String(r.body.cat)) ? String(r.body.cat) : RISK_CATEGORIES[0];
@@ -230,7 +242,7 @@ export function riskRoutes(h: WsHelpers) {
   });
   const addAct = edit(async (d, t, rec, b) => {
     const r = rec.data; const text = txt(b.text, 300); if (!text) invalid("Action is required.");
-    const who = b.ownerId || b.owner ? await memberRef(d, t.actor, { id: b.ownerId, name: b.owner }, false) : null;
+    const who = b.ownerId || b.owner ? await workOwner(d, t.actor, { id: b.ownerId, name: b.owner }, "risk", false) : null;
     const due = txt(b.due, 10);
     (r.actions ??= []).push({ text, owner: who?.name ?? "", ownerId: who?.id, due: isIso(due) ? due : "", done: false });
     touch(t, r); log(t, r, "Action added: " + text); await save(t, rec);
@@ -277,6 +289,8 @@ export function riskRoutes(h: WsHelpers) {
     const r = rec.data; const me = t.actor;
     if (!isOpen(r)) invalid("This risk is already accepted or closed.");
     if (r.pendingAcceptance) invalid("An acceptance is already awaiting evidence verification.");
+    if (r.review === "Submitted") invalid("The risk is awaiting approval. Decide the review first.");
+    refuse(riskAcceptRoleBlock(me.role, sRes(r)));
     refuse(riskAcceptSodBlock([r.ownerId, r.lastEditedById, r.submittedById].includes(me.id)));
     const why = txt(b.why, 1000), comp = txt(b.comp, 500), until = txt(b.until, 10); const sc = sRes(r); const now = new Date(t.now);
     if (!why) invalid("A rationale is required.");
@@ -350,6 +364,8 @@ export function riskRoutes(h: WsHelpers) {
   const close = edit(async (_d, t, rec, b) => {
     const r = rec.data; const me = t.actor;
     if (!isOpen(r)) invalid(r.status === "Closed" ? "This risk is already closed." : "Reopen the accepted risk before closing it.");
+    refuse(riskCloseRoleBlock(me.role));
+    if (r.review === "Submitted") invalid("The risk is awaiting approval. Decide the review first.");
     refuse(riskCloseBlock({ openActions: openActions(r).length, isLastEditor: r.lastEditedById === me.id, isOwner: r.ownerId === me.id, hasActions: (r.actions ?? []).length > 0 }));
     const why = txt(b.reason, 300);
     if (r.pendingAcceptance) await cancelPending(t, r, "risk closed");

@@ -24,7 +24,7 @@ function WorkLive() {
   useData();
   const go = useGo(); const L = useLayer();
   const w = useSyncExternalStore(wsMeta.subscribe, () => wsMeta.get().work, () => wsMeta.get().work);
-  const canIssues = modAllowed(appStore.get().role, "ws", "issues");
+  const canIssues = modAllowed(appStore.get().role, "ws", "issues"); const canRisk = modAllowed(appStore.get().role, "ws", "risk");
   const k = w?.kpis ?? { assigned: 0, overdue: 0, dueWeek: 0, approvals: 0 };
   return (
     <Page mod="work" acts={
@@ -53,8 +53,8 @@ function WorkLive() {
                 </tr>
               ))}
               {(w?.actions ?? []).map((a, n) => (
-                <tr key={a.riskId + n} className="clickable" {...activate(() => go("/ws/risk"))}>
-                  <td className="strong num">{a.riskId}</td><td>{a.text}<div style={{ fontSize: 11, color: "var(--muted)" }}>Treatment action · {a.risk}</div></td><td>—</td>
+                <tr key={a.riskId + n} className={canRisk ? "clickable" : undefined} {...(canRisk ? activate(() => go("/ws/risk")) : {})}>
+                  <td className="strong num">{a.riskId}</td><td>{a.text}<div style={{ fontSize: 11, color: "var(--muted)" }}>Treatment action{a.risk ? " · " + a.risk : ""}</div></td><td>—</td>
                   <td>{a.due || "—"}</td>
                 </tr>
               ))}

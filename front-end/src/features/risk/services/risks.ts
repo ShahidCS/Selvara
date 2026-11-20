@@ -14,6 +14,9 @@ import {
   riskPriority, riskRevalidateAcceptance, sCur, sInh, sRes, todayIso,
 } from "@/lib/risk";
 import { API_ON } from "@/lib/rbac";
+import { riskAcceptRoleBlock, riskCloseRoleBlock } from "@/lib/rulesWs";
+/** Production only: the role and state rules the server adds for recording an acceptance (shown on the disabled form). */
+export const acceptRoleBlock = (r: any): string | null => (!API_ON ? null : r.review === "Submitted" ? "The risk is awaiting approval. Decide the review first." : riskAcceptRoleBlock(appStore.get().role.replace(/2$/, ""), sRes(r)));
 import { apiFetch, viaApi } from "@/services/http";
 import { wsPost } from "@/services/ws";
 
@@ -261,6 +264,7 @@ export function cancelAction(id: string, ai: number, whyIn: string): Promise<Res
 }
 /** Why the current person cannot close this risk (null = may close). Used by the UI and re-checked in closeRisk. */
 export function closeBlock(r: any): string | null {
+  if (API_ON) { const why = riskCloseRoleBlock(role().replace(/2$/, "")) || (r.review === "Submitted" ? "The risk is awaiting approval. Decide the review first." : null); if (why) return why; }
   const open = riskOpenActions(r);
   if (open.length) return "Close or cancel the open actions first.";
   if (r.lastEditedBy && isMe(r.lastEditedBy)) return "Segregation of duties: you last edited this risk, so a different person must close it.";

@@ -58,7 +58,7 @@ export default function OverviewModule() {
 
   const exportBoardPack = async () => {
     const html = boardPackHTML();
-    wsLog("overview.boardpack.exported", "Board & executive pack", "Report");
+    wsLog("overview.boardpack.exported", "Board & executive pack", "System");
     if (!(await exportedBoardPack())) { L.toast("Something went wrong. Please try again.", false); return; }
     let w: Window | null = null;
     try {
@@ -108,7 +108,7 @@ export default function OverviewModule() {
           <div className="c-body scroll flush" style={{ padding: "6px 14px" }}>
             <div className="sectitle" style={{ marginTop: 8 }}>Overdue</div>
             <div className="feed">
-              {!attn.length ? <p className="field help" style={{ margin: "4px 0 8px" }}>{API_ON && !can("issues") && M.openIssues ? `${DATA.issues.filter((i) => i.status !== "Closed" && /Overdue/.test(i.due)).length} overdue issues. Your role does not open Issues.` : "Nothing is overdue."}</p> : null}
+              {!attn.length ? <p className="field help" style={{ margin: "4px 0 8px" }}>{API_ON && !can("issues") && M.openIssues ? ((n) => `${n} overdue issue${n === 1 ? "" : "s"}. Your role does not open Issues.`)(DATA.issues.filter((i) => i.status !== "Closed" && /Overdue/.test(i.due)).length) : "Nothing is overdue."}</p> : null}
               {attn.map((a, i) => (
                 <div key={i} className="feed-item clickable" {...activate(() => go(API_ON && DATA.issues.some((x) => x.id === a.id) ? `/ws/issues/${encodeURIComponent(a.id)}` : "/ws/issues"))}>
                   <span className="dot" style={{ marginTop: 5, background: a.sev === "High" ? "var(--bad-ink)" : "var(--warn-ink)" }} />

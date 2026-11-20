@@ -112,7 +112,9 @@ describe("risk register", () => {
     expect((await call("POST", "ws/risks/RK-01/actions/0/toggle", {}, ana.cookie)).body).toEqual({ ok: true, done: true, text: "Revoke vendor accounts" });
     expect((await call("POST", "ws/risks/RK-01/actions/0/cancel", { reason: "No longer needed at all" }, ana.cookie)).body).toEqual({ error: "This action is already done or cancelled." });
     expect((await call("POST", "ws/risks/RK-01/actions/5/toggle", {}, ana.cookie)).status).toBe(404);
-    expect((await call("POST", "ws/risks/RK-01/close", {}, ana.cookie)).body).toEqual({ error: "Segregation of duties: you last edited this risk, so a different person must close it." });
+    expect((await call("POST", "ws/risks/RK-01/close", {}, ana.cookie)).body).toEqual({ error: "Not permitted: closing a risk requires admin or owner." }); // SOD_MATRIX: owner/admin
+    await call("POST", "ws/risks/RK-01/score", { field: "l", value: 3 }, casey.cookie);
+    expect((await call("POST", "ws/risks/RK-01/close", {}, casey.cookie)).body).toEqual({ error: "Segregation of duties: you last edited this risk, so a different person must close it." });
     expect((await call("POST", "ws/risks/RK-01/close", {}, owen.cookie)).body).toEqual({ error: "Segregation of duties: you own this risk, so a different person must close it." });
     expect((await call("POST", "ws/risks/RK-01/close", { reason: "Vendor removed" }, jordan.cookie)).status).toBe(200);
     expect((await call("POST", "ws/risks/RK-01/close", {}, casey.cookie)).body).toEqual({ error: "This risk is already closed." });
@@ -274,6 +276,29 @@ describe("issues", () => {
   });
 });
 
+describe("review findings (group 3 cross-check)", () => {
+  it("closes the gaps: severity cannot drop to bypass verification, acceptance needs the role's rank, no close or accept while submitted, owners are working roles, reassignment notifies", async () => {
+    const { jordan, casey, owen, ana, priya } = await team();
+    const vendor = await member("vee@acme.example", "vendor", "Vee Vendor");
+    expect((await call("POST", "ws/issues", { title: "x", ownerId: vendor.id }, ana.cookie)).body).toEqual({ error: "Choose a member whose role can work on this." });
+    expect((await call("POST", "ws/risks", { title: "x", ownerId: vendor.id }, ana.cookie)).status).toBe(400);
+    const id = body<{ id: string }>(await call("POST", "ws/issues", { title: "Open admin port", sev: "High", ownerId: ana.id }, jordan.cookie)).id;
+    expect((await call("POST", `ws/issues/${id}`, { title: "Open admin port", sev: "Low", ownerId: ana.id }, jordan.cookie)).body).toEqual({ error: "An open High or Critical issue keeps its severity until a different person verifies the fix." });
+    expect((await call("POST", `ws/issues/${id}`, { title: "Open admin port", sev: "Critical", ownerId: priya.id }, jordan.cookie)).status).toBe(200);
+    expect(store.notices.some((n) => n.userId === priya.id && /assigned you issue/.test(n.text))).toBe(true);
+    // residual 12 (High): an analyst may not record its acceptance; an owner may
+    await call("POST", "ws/risks", { title: "Legacy VPN", ownerId: jordan.id, l: 4, i: 4, rl: 3, ri: 4 }, casey.cookie);
+    const lee = await member("lee@acme.example", "analyst", "Lee Park");
+    expect((await call("POST", "ws/risks/RK-01/accept", { by: "CISO", why: "Accepted until replacement" }, lee.cookie)).body).toEqual({ error: "Not permitted: a High residual is accepted by an owner or admin." });
+    const cid = body<{ id: string }>(await call("POST", "ws/controls", { title: "VPN MFA" }, jordan.cookie)).id;
+    await call("POST", "ws/risks/RK-01/controls", { controlId: cid }, ana.cookie); await call("POST", "ws/risks/RK-01/submit", {}, ana.cookie);
+    expect((await call("POST", "ws/risks/RK-01/accept", { by: "CISO", why: "Accepted until replacement" }, owen.cookie)).body).toEqual({ error: "The risk is awaiting approval. Decide the review first." });
+    expect((await call("POST", "ws/risks/RK-01/close", {}, owen.cookie)).body).toEqual({ error: "The risk is awaiting approval. Decide the review first." });
+    await call("POST", "ws/risks/RK-01/approve", {}, jordan.cookie);
+    expect((await call("POST", "ws/risks/RK-01/accept", { by: "CISO", why: "Accepted until replacement" }, owen.cookie)).status).toBe(200);
+  });
+});
+
 describe("reports", () => {
   it("generates real packs, schedules internal recipients at once and external ones after a different admin", async () => {
     const { jordan, casey, owen, ana } = await team();
@@ -330,6 +355,12 @@ describe("my work and overview", () => {
     expect((await call("POST", "ws/vendor-requests", { name: "Northstar Analytics", reason: "Marketing attribution", crit: "Critical" }, priya.cookie)).body).toEqual({ id: "VR-01" });
     expect((await call("POST", "ws/vendor-requests", { name: "northstar analytics", reason: "Again" }, ana.cookie)).status).toBe(400);
     expect((await call("POST", "ws/overview/board-pack", {}, aud.cookie)).status).toBe(204);
-    expect(log("overview.boardpack.exported")[0].cat).toBe("Report");
+    expect(log("overview.boardpack.exported")[0].cat).toBe("System");
+    // the employee's figures carry no N/A reasons, names or custom requirement text
+    await call("POST", "ws/frameworks/iso27001/scope", { on: true }, jordan.cookie);
+    const fw = body<{ frameworks: { state: Record<string, { na: Record<string, unknown> }> } }>(await call("GET", "ws/data/overview", {}, priya.cookie)).frameworks;
+    expect(JSON.stringify(fw)).not.toMatch(/Jordan|byId/);
+    // a treatment action on a risk the employee cannot open shows no risk title
+    expect(body<{ actions: { risk: string }[] }>(await call("GET", "ws/data/work", {}, priya.cookie)).actions[0].risk).toBe("");
   });
 });

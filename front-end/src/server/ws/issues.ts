@@ -10,7 +10,8 @@ import {
   ISSUE_CLOSE_TTL_H, ISSUE_SEVERITIES, ISSUE_STATES, isHighSeverity, isoDayOf, issueCoreBlock, issueDeleteBlock, issueDueText, issueWriteBlock, roleBlock,
 } from "@/lib/rulesWs";
 import type { Deps } from "../types";
-import { approvalsView, invalid, memberRef, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
+import { approvalsView, invalid, membersOf, missing, modAllowed, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
+import { workOwner } from "./risk";
 import type { Actor, Rec, WsTx } from "./store";
 
 export interface Issue {
@@ -63,7 +64,7 @@ export function issueRoutes(h: WsHelpers) {
     refuse(issueWriteBlock(c.actor.role));
     const title = txt(r.body.title, 200); if (!title) invalid("Title is required.");
     const sev = (ISSUE_SEVERITIES as readonly string[]).includes(String(r.body.sev)) ? String(r.body.sev) : "High";
-    const owner = await memberRef(d, c.actor, { id: r.body.ownerId, name: r.body.owner });
+    const owner = await workOwner(d, c.actor, { id: r.body.ownerId, name: r.body.owner }, "issues");
     const dueDate = dueOf(r.body.due, d.now());
     return tx(d, c, async (t) => ok({ id: (await createIssueIn(t, { title, sev, owner, dueDate })).id }));
   });
@@ -75,20 +76,23 @@ export function issueRoutes(h: WsHelpers) {
       await sweepApprovals(t, ISSUE_KINDS);
       const rec = await load(t, r.path[2]); const x = rec.data;
       const sev = String(r.body.sev ?? x.sev); const dueDate = r.body.due === undefined ? x.dueDate : dueOf(r.body.due, t.now);
-      const ownerId = str(r.body.ownerId ?? x.ownerId, 100); const owner = ms.find((m) => m.id === ownerId);
+      const ownerId = str(r.body.ownerId ?? x.ownerId, 100); const owner = ms.find((m) => m.id === ownerId && (modAllowed(m.role, "issues") || modAllowed(m.role, "work")));
+      const prevOwner = x.ownerId;
       const core = sev !== x.sev || ownerId !== x.ownerId || dueDate !== x.dueDate;
       if (core) {
         refuse(issueCoreBlock(c.actor.role));
         if (await pendingOf(t, x)) invalid("Withdraw the pending closure before changing owner, due date or severity.");
         if (!(ISSUE_SEVERITIES as readonly string[]).includes(sev)) invalid("Unknown severity.");
-        if (!owner) invalid("Choose an active member of your company.");
+        if (!owner) invalid("Choose a member whose role can work on this.");
+        // four-eyes on closing High/Critical cannot be side-stepped by lowering the severity first
+        if (isHighSeverity(x.sev) && !isHighSeverity(sev) && x.status !== "Closed") invalid("An open High or Critical issue keeps its severity until a different person verifies the fix.");
       }
       if (!core && title === x.title) return ok(true);
       const was = `${x.sev}/${x.owner}/${x.dueDate}`;
       x.title = title; x.sev = sev; if (owner) { x.owner = owner.name; x.ownerId = owner.id; } x.dueDate = dueDate;
       await t.update("issue", rec.id, x, rec.version);
       await t.audit("issue.updated", `${x.id}` + (core ? ` core fields ${was} → ${x.sev}/${x.owner}/${x.dueDate} by ${c.actor.name}` : " title"), "Control");
-      if (owner && owner.id !== c.actor.id && ownerId !== rec.data.ownerId) await t.notify(owner.id, `${c.actor.name} assigned you issue ${x.id} ${x.title.slice(0, 80)}.`);
+      if (owner && owner.id !== c.actor.id && owner.id !== prevOwner) await t.notify(owner.id, `${c.actor.name} assigned you issue ${x.id} ${x.title.slice(0, 80)}.`);
       return ok(true);
     });
   });
