@@ -1,3 +1,4 @@
+import { API_ON } from "@/lib/rbac";
 import { useState } from "react";
 import { Empty } from "@/components/ui";
 import { useLayer, LayerFoot } from "@/hooks/useLayer";
@@ -27,7 +28,7 @@ export function OffboardForm({ id, close }: { id: string; close: () => void }) {
     <>
       <p style={{ margin: "0 0 8px" }}>Offboarding runs the leaver checklist: all access is revoked, the device is reclaimed, and ownership of controls and policies is transferred.</p>
       <div className="field"><label><input type="checkbox" id="ob-1" checked readOnly disabled /> Revoke {grants} access grant(s) (always)</label></div>
-      <div className="field"><label><input type="checkbox" id="ob-2" checked readOnly disabled /> Reclaim device and wipe (always)</label></div>
+      <div className="field"><label><input type="checkbox" id="ob-2" checked readOnly disabled /> {API_ON ? "Return the device (your IT team; no device integration is connected)" : "Reclaim device and wipe (always)"}</label></div>
       <div className="field"><label htmlFor="ob-xfer">Transfer owned items to</label><select className="select" id="ob-xfer" data-focus value={target} onChange={(e) => setXfer(e.target.value)}>{others.map((x) => <option key={x.id}>{x.name}</option>)}</select></div>
       {priv ? <p className="field help" role="status">This person holds privileged access. A second admin or owner (not you) must approve before offboarding completes.</p> : null}
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-danger" onClick={submit}>{priv ? "Request offboarding" : "Complete offboarding"}</button></LayerFoot>

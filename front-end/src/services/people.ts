@@ -11,12 +11,15 @@ import { clampText } from "@/lib/security";
 import { assertNotSelf, assertRole, isSamePerson, SodError, SOD } from "@/lib/sod";
 import { appStore, bumpData } from "@/lib/store";
 import { ADMIN_ROLE, adminCount, holdsPrivilegedAccess, isPrivilegedRoleName, memberRole } from "@/lib/teamRoles";
-import { apiFetch, viaApi } from "./http";
+import { viaApi } from "./http";
+import { wsPost } from "./ws";
+import { API_ON } from "@/lib/rbac";
 import { eligibleApprovers, KIND_MEMBER, validateResetFields } from "./mfa";
 import type { ResetFields } from "./mfa";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
+/** Production: the server decides and records it (under /api/ws), then the workspace reloads. */
+const post = <T,>(path: string, body: unknown) => wsPost<T>(`/ws${path}`, body);
 
 /** UI gate only. The prototype had no per-action gate beyond module access (people: super, admin, owner); deny by default otherwise. */
 export const canManagePeople = (roleId: string) => modAllowed(roleId, "ws", "people");
@@ -40,6 +43,8 @@ const pendingFor = (kind: string, subject: string) => approvals.get().list.some(
 
 /** MFA reset for a member (SOD_MATRIX 3 and 4). Raises an approval; the reset itself happens only on final approval (see handler below). */
 export function requestMemberMfaReset(input: ResetFields & { personId: string }) {
+  if (API_ON) return post<{ id: string; needs: number }>(`/people/${encodeURIComponent(input.personId)}/mfa-reset`, { checks: [input.checks?.callback, input.checks?.sponsor, input.checks?.idCheck], reason: input.reason, reasonText: input.reasonText, ticket: input.ticket, approver: input.approver })
+    .then((r) => ({ name: findPerson(input.personId)?.name ?? "", needs: r.needs, id: r.id }) as never);
   return Promise.resolve().then(() => {
     settle();
     assertRole("request a member MFA reset", "admin");
@@ -103,6 +108,8 @@ registerKind("offboard", {
 /** Offboarding. Accounts holding privileged access (Admin / Super admin grants or a privileged role) need a second approver; otherwise it completes now.
  *  Either way all of the person's access grants are revoked and logged when it completes. Transfer target must be a known person. */
 export function offboardPerson(id: string, transferTo: string) {
+  if (API_ON) return post<{ pending: boolean; revoked?: number; id?: string }>(`/people/${encodeURIComponent(id)}/offboard`, { transferTo })
+    .then((r) => ({ name: findPerson(id)?.name ?? "", pending: r.pending, revoked: r.revoked ?? 0 }) as never);
   return Promise.resolve().then(() => {
     settle();
     assertRole("offboard people", "admin", "owner");

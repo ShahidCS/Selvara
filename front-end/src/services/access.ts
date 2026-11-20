@@ -12,10 +12,12 @@ import { assertNotSelf, assertRole, getActor, hasRole, isMe, isSamePerson, SodEr
 import { bumpData } from "@/lib/store";
 import { isPrivilegedLevel, isPrivilegedSystem } from "@/lib/teamRoles";
 import { eligibleApprovers } from "./mfa";
-import { apiFetch, viaApi } from "./http";
+import { viaApi } from "./http";
+import { wsPost } from "./ws";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
+/** Production: the server decides and records it (under /api/ws), then the workspace reloads. */
+const post = <T,>(path: string, body: unknown) => wsPost<T>(`/ws${path}`, body);
 
 export const ACCESS_VIEWS: [string, string][] = [["inventory", "Account inventory"], ["requests", "Access requests"], ["reviews", "Access reviews"]];
 /** UI gate only. The source had no per-action gate beyond module access (access: super, admin, owner, employee); deny by default otherwise. */
@@ -110,7 +112,15 @@ export function decideRequest(id: string, d: AccessDecision, reason: string) {
     r.approvalId = ap.id; r.stage = "second"; r.firstApprover = me;
     wsLog("access.request.approval.first", `${r.user} → ${r.system} (${r.level}); first approver ${me}; reason: ${why}; second approver required (${ap.id})`, "Access"); bumpData();
     return { user: r.user as string, system: r.system as string, pending: true };
-  }, () => post<{ user: string; system: string; pending: boolean } | null>(`/access/requests/${encodeURIComponent(id)}/decision`, { decision: d, reason }));
+  }, async () => {
+    const r = ACCESS_REQUESTS.find((x) => x.id === id);
+    if (r?.stage === "second" && r.approvalId) { // the second approver decides the four-eyes request itself
+      await wsPost(`/ws/approvals/${encodeURIComponent(r.approvalId)}/${d === "Approved" ? "approve" : "reject"}`, { reason });
+      return { user: r.user, system: r.system, pending: false };
+    }
+    const out = await post<{ user: string; system: string; stage: string }>(`/access/requests/${encodeURIComponent(id)}/decision`, { decision: d, reason });
+    return { user: out.user, system: out.system, pending: out.stage === "second" };
+  });
 }
 
 const SEED_REVIEW_CREATOR = "Casey Morgan";

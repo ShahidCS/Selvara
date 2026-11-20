@@ -527,6 +527,10 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
       expect((await ws.tx(me(casey, B), Date.now(), (t) => t.approvals(["control.exception"])))).toEqual([]);
       expect(await ws.tx(me(casey, B), Date.now(), (t) => t.approval(ap.id, ["control.exception"]))).toBeNull();
     });
+    it("a request about a contractor (a non-uuid id) is stored: only member ids go into the uuid forbid list", async () => {
+      const ap = await ws.tx(me(alex, A, "Alex Kim"), Date.now(), (t) => t.request({ kind: "offboard", title: "Offboard Grace Lin", subject: "Grace Lin", payload: { personId: "PP-1" }, needs: 1, approverRoles: ["admin", "owner"], forbid: ["PP-1", blair], ttlMs: 3600_000 }));
+      expect(ap.forbid).toEqual([blair]);
+    });
     it("platform staff never write workspace records, and read them only in a support session", async () => {
       expect(await app.tx({ tenantId: A, userId: drew, platform: true }, (q) => q.query("select id from ws_records"))).toEqual([]);
       expect(await code(app.tx({ tenantId: A, userId: drew, platform: true }, (q) => q.query("insert into ws_records (tenant_id, kind, id, data, created_ms, updated_ms) values ($1, 'control', 'P-1', '{}', 1, 1)", [A])))).toBe("42501");
@@ -544,6 +548,26 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
         expect(await code(app.tx({ tenantId: A, userId: wes, platform: true }, (q) => q.query(sql, [A])))).toBe("42501");
       expect(await app.tx({ tenantId: A, userId: wes, platform: true }, (q) => q.query("update ws_records set data = '{}', version = version + 1 where tenant_id = $1 returning id", [A]))).toEqual([]);
       await sup.close(wes, "done", "198.51.100.7", Date.now(), log(wes, null));
+    });
+  });
+
+  describe("offboarding in the directory (production programme group 2)", () => {
+    it("removes an active member, never the last admin, and only in the actor's company", async () => {
+      const dir = new PgDirectory(app); const e = (action: string): AuditRow => ({ at: Date.now(), actor: "Someone", actorId: alex, tenantId: A, action, target: "x", cat: "Access", space: "ws", ip: "198.51.100.7" });
+      const lone = randomUUID();
+      await admin.query("insert into auth.users (id, email) values ($1, 'lone@b.example.test')", [lone]);
+      await admin.query("insert into public.profiles (id, email, person, status, requested_ms) values ($1, 'lone@b.example.test', 'Lone Admin', 'Active', $2)", [lone, now]);
+      const C = randomUUID(); await admin.query("insert into public.tenants (id, ref, name, created_ms) values ($1, 'cust-off', 'Company Off', $2)", [C, now]);
+      await admin.query("insert into public.memberships (tenant_id, user_id, role, status, created_ms) values ($1, $2, 'admin', 'Active', $3)", [C, lone, now]);
+      expect(await dir.removeMember(C, lone, lone, "test", Date.now(), { ...e("member.removed"), tenantId: C, actorId: lone })).toBe("last-admin");
+      expect(await dir.removeMember(A, alex, lone, "not here", Date.now(), e("member.removed"))).toBe("not-active"); // another company's member
+      const temp = randomUUID();
+      await admin.query("insert into auth.users (id, email) values ($1, 'temp@a.example.test')", [temp]);
+      await admin.query("insert into public.profiles (id, email, person, status, requested_ms) values ($1, 'temp@a.example.test', 'Temp Person', 'Active', $2)", [temp, now]);
+      await admin.query("insert into public.memberships (tenant_id, user_id, role, status, created_ms) values ($1, $2, 'employee', 'Active', $3)", [A, temp, now]);
+      expect(await dir.removeMember(A, alex, temp, "Leaver", Date.now(), e("member.removed"))).toBe("ok");
+      expect((await admin.query("select status, reason from public.memberships where tenant_id = $1 and user_id = $2", [A, temp])).rows[0]).toEqual({ status: "Removed", reason: "Leaver" });
+      expect(await dir.membership(A, temp)).toEqual(expect.objectContaining({ status: "Removed" }));
     });
   });
 

@@ -1,6 +1,7 @@
 /* Server-only. What every workspace module's routes share: which company roles may open which module (the same table the browser uses,
    data/roles.json), the acting person from the session, turning refusals into answers, and the company's members for owner pickers. */
 import roles from "@/data/roles.json";
+import { REAUTH_MS } from "@/lib/accountSecurity";
 import type { Ctx, Req, Res } from "../core";
 import type { Deps } from "../types";
 import { WsConflict, WsRefused, type Actor, type WsTx } from "./store";
@@ -50,6 +51,20 @@ export async function memberRef(d: Deps, a: Actor, v: { id?: unknown; name?: unk
   return invalid("Choose an active member of your company.");
 }
 
+/** Exactly one of `list`, by id or else by exact name; refuses when none matches or two share the name. */
+export function pickOne<T extends { id: string; name: string }>(list: T[], id: unknown, name: unknown, msg: string): T {
+  const i = str(id, 100); const n = txt(name, 100);
+  const hits = i ? list.filter((x) => x.id === i) : n ? list.filter((x) => x.name === n) : [];
+  if (hits.length > 1) invalid("Two people share this name. Ask a company admin to tell them apart.");
+  if (!hits.length) invalid(msg);
+  return hits[0];
+}
+/** Sensitive changes (MFA resets, offboarding) need the password confirmed in the last few minutes (POST /api/me/reauth). */
+export async function stepUp(d: Deps, c: { s: { idHash: string } }) {
+  const at = await d.store.kvGet<number>("reauth", c.s.idHash);
+  if (!at || d.now() - at >= REAUTH_MS) throw new WsRefused(STEP_UP, 403);
+}
+export const STEP_UP = "Confirm your password first.";
 /** Four-eyes requests as the browser's engine shows them (names, not ids). */
 export async function approvalsView(t: WsTx, kinds: string[], names: Map<string, string>) {
   return (await t.approvals(kinds)).map((x) => ({
@@ -60,5 +75,5 @@ export async function approvalsView(t: WsTx, kinds: string[], names: Map<string,
 }
 /** Marks pending requests of these kinds that ran out as Expired, once, with their audit entry. */
 export async function sweepApprovals(t: WsTx, kinds: string[]) {
-  for (const a of await t.approvals(kinds)) if (a.status === "Pending" && a.expiresAt <= t.now) { await t.setApproval(a.id, "Expired"); await t.audit(`approval.${a.kind}.expired`, `${a.title} (${a.id})`, "Approval"); }
+  for (const a of await t.approvals(kinds)) if (a.status === "Pending" && a.expiresAt <= t.now) { await t.setApproval(a.id, "Expired"); await t.audit(`approval.${a.kind}.expired`, `${a.title} (${a.id})`, "Approval", true); }
 }

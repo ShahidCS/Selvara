@@ -31,12 +31,14 @@ export function PersonDetail({ id }: { id: string }) {
       <div className="scroll rec-scroll">
         <div className="rec-grid">
           <div className="rec-main">
-            <div className="card"><div className="c-head"><h3>Device posture</h3><StatusChip s={p.device === "Compliant" ? "OK" : p.device === "At risk" ? "Needs evidence" : "Open"} /></div><div className="c-body">
+            <div className="card"><div className="c-head"><h3>Device posture</h3>{p.device === "Not connected" ? null : <StatusChip s={p.device === "Compliant" ? "OK" : p.device === "At risk" ? "Needs evidence" : "Open"} />}</div><div className="c-body">
+              {p.device === "Not connected" ? <p className="field help" style={{ margin: 0 }}>Not connected. Device posture appears here once a device management integration is connected.</p> : <>
               <Row k="Operating system" v={pz.os} ok={!/EOL/.test(pz.os)} />
               <Row k="Disk encryption" v={pz.encryption} ok={pz.encryption === "On"} />
               <Row k="Antivirus" v={pz.antivirus} ok={pz.antivirus === "On"} />
               <Row k="Screen lock" v={pz.screenLock} ok={pz.screenLock === "On"} />
               <Row k="Password manager" v={pz.passwordMgr} ok={pz.passwordMgr === "In use"} />
+              </>}
             </div></div>
             <div className="card"><div className="c-head"><h3>Accounts owned</h3><span className="sub">{p.accounts.length}</span></div><div className="c-body flush" style={{ padding: 0 }}>
               {p.accounts.length ? (

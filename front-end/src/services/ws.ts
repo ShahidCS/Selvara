@@ -5,14 +5,21 @@
 import { DATA, FRAMEWORK_REQS, FW_ID, refreshFrameworkCounts } from "@/lib/data";
 import { fwEdits, touchFw } from "@/lib/frameworks";
 import { approvals, type Approval } from "@/lib/approvals";
+import { delegations } from "@/lib/delegation";
+import { setAcks, setTasks } from "@/lib/me";
+import { ACCESS_REQUESTS, ACCESS_REVIEWS } from "@/lib/requests";
 import { API_ON, modAllowed } from "@/lib/rbac";
+import { SERVER_KINDS } from "@/lib/rulesWs";
 import { appStore, bumpData, createStore } from "@/lib/store";
 import { ApiError, apiFetch, API_BASE } from "./http";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export interface WsMember { id: string; name: string; role: string }
 /** The company's active members (owner and assignee pickers), and what the server says about optional services. */
-export const wsMeta = createStore<{ members: WsMember[]; library: any[]; filesConfigured: boolean; loaded: Record<string, boolean>; error: string }>({ members: [], library: [], filesConfigured: false, loaded: {}, error: "" });
+export interface WsTask { id: string; title: string; policyId: string; kind: "ack" | "approve" | "publish" | "emergency" }
+export const wsMeta = createStore<{ members: WsMember[]; library: any[]; filesConfigured: boolean; loaded: Record<string, boolean>; error: string; tasks: WsTask[] }>({ members: [], library: [], filesConfigured: false, loaded: {}, error: "", tasks: [] });
+const fill = (arr: any[], items: any[]) => { arr.length = 0; arr.push(...items); };
+const setDelegations = (list: any[]) => delegations.set({ list: list.map((x) => ({ ...x, fromRoleId: "", toRoleId: "" })) });
 
 /** The modules whose data lives on the server, in the order they are loaded. Each group of the programme adds its own. */
 const LOADERS: Record<string, (b: any) => void> = {
@@ -37,6 +44,17 @@ const LOADERS: Record<string, (b: any) => void> = {
     wsMeta.set({ library: b.library || [] });
     setApprovals(["control.exception"], b.approvals);
   },
+  policies(b) {
+    DATA.policies = b.policies; setAcks(appStore.get().who || "", b.acks || {});
+    setApprovals(["policy.emergency"], b.approvals); setDelegations(b.delegations || []);
+  },
+  /** My workspace: published policies (also for roles without the Policies module), acknowledgements, delegations, tasks. */
+  me(b) {
+    if (!modAllowed(appStore.get().role, "ws", "policies")) DATA.policies = b.published;
+    setAcks(appStore.get().who || "", b.acks || {}); setDelegations(b.delegations || []); wsMeta.set({ tasks: b.tasks || [] }); setTasks(b.tasks || []);
+  },
+  people(b) { DATA.people = b.people; setApprovals(["mfa-reset-member", "offboard"], b.approvals); },
+  access(b) { DATA.access = b.grants; fill(ACCESS_REQUESTS, b.requests); fill(ACCESS_REVIEWS, b.reviews); setApprovals(["access-request"], b.approvals); },
   evidence(b) {
     DATA.evidence = b.evidence;
     wsMeta.set({ filesConfigured: !!b.filesConfigured });
@@ -51,9 +69,10 @@ let inflight: Promise<void> | null = null;
 let loadedFor = "";
 /** Empties every server-backed collection (another company or role: nothing of the previous one may remain on screen). */
 function clearAll() {
-  DATA.frameworks = []; DATA.controls = []; DATA.tests = []; DATA.evidence = [];
-  approvals.set((s) => ({ list: s.list.filter((a) => !["control.exception", "evidence.delete"].includes(a.kind)) }));
-  wsMeta.set({ members: [], library: [], loaded: {} });
+  DATA.frameworks = []; DATA.controls = []; DATA.tests = []; DATA.evidence = []; DATA.policies = []; DATA.people = []; DATA.access = [];
+  fill(ACCESS_REQUESTS, []); fill(ACCESS_REVIEWS, []); setAcks("", {}); setTasks([]); delegations.set({ list: [] });
+  approvals.set((s) => ({ list: s.list.filter((a) => !SERVER_KINDS.includes(a.kind)) }));
+  wsMeta.set({ members: [], library: [], loaded: {}, tasks: [] });
 }
 /** Loads every server module the person's role may open. Safe to call often: concurrent calls share one load. */
 export function loadWorkspace(): Promise<void> {
@@ -80,7 +99,20 @@ export function loadWorkspace(): Promise<void> {
   return inflight;
 }
 
-const send = async <T,>(path: string, init: RequestInit): Promise<T> => { const out = await apiFetch<T>(path, init); await loadWorkspace(); return out; };
+/** Sensitive changes (MFA resets, offboarding) need the password confirmed in the last few minutes: the prompt (components/kit/StepUp.tsx)
+ *  asks once, then the change is sent again. */
+export const STEP_UP = "Confirm your password first.";
+export const stepUp = createStore<{ answer: ((ok: boolean) => void) | null }>({ answer: null });
+const askPassword = () => new Promise<boolean>((resolve) => stepUp.set({ answer: (ok) => { stepUp.set({ answer: null }); resolve(ok); } }));
+const send = async <T,>(path: string, init: RequestInit): Promise<T> => {
+  let out: T;
+  try { out = await apiFetch<T>(path, init); }
+  catch (e) {
+    if (!(e instanceof ApiError && e.status === 403 && e.message === STEP_UP) || !(await askPassword())) throw e;
+    out = await apiFetch<T>(path, init);
+  }
+  await loadWorkspace(); return out;
+};
 /** A change on the server, then a reload of the workspace data so every screen shows the result. */
 export const wsPost = <T,>(path: string, body: unknown = {}) => send<T>(path, { method: "POST", body: JSON.stringify(body) });
 export const wsPatch = <T,>(path: string, body: unknown) => send<T>(path, { method: "PATCH", body: JSON.stringify(body) });

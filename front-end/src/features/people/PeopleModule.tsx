@@ -1,3 +1,5 @@
+import { API_ON } from "@/lib/rbac";
+import { ModuleTip } from "@/components/kit/ModuleTip";
 import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData, useModState } from "@/lib/store";
@@ -33,20 +35,22 @@ function PeopleList() {
     { key: "name", header: "Name", value: (p) => p.name, locked: true, render: (p) => <span className="strong">{p.name}</span> },
     { key: "role", header: "Role", value: (p) => p.role, render: (p) => p.role },
     { key: "dept", header: "Department", value: (p) => p.dept, render: (p) => p.dept },
-    { key: "device", header: "Device", value: (p) => p.device, render: (p) => <><StatusChip s={p.device === "Compliant" ? "OK" : p.device === "At risk" ? "Needs evidence" : "Open"} /> <span style={{ color: "var(--muted)", fontSize: 12 }}>{p.device}</span></> },
+    { key: "device", header: "Device", value: (p) => p.device, render: (p) => p.device === "Not connected" ? <span style={{ color: "var(--muted)", fontSize: 12 }}>Not connected</span> : <><StatusChip s={p.device === "Compliant" ? "OK" : p.device === "At risk" ? "Needs evidence" : "Open"} /> <span style={{ color: "var(--muted)", fontSize: 12 }}>{p.device}</span></> },
     { key: "mfa", header: "MFA", value: (p) => (p.mfa ? "Enrolled" : "Not enrolled"), render: (p) => (p.mfa ? <Chip cls="ok" icon="check">Enrolled</Chip> : <Chip cls="neutral" icon="dot">Not enrolled</Chip>) },
     { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (p) => (canAct ? (
       <button className="btn btn-ghost sm" disabled={!p.mfa || !!sodReason("self-service MFA reset is not allowed, ask another admin", p.name)} title={sodReason("self-service MFA reset is not allowed, ask another admin", p.name) || undefined} aria-label={`Reset MFA for ${p.name}`} onClick={() => resetMfa(p.id)}><Icon name="refresh" />Reset MFA</button>
     ) : null) },
   ];
+  const noDevices = DATA.people.every((p) => p.device === "Not connected"); // production before a device integration: nothing to score
   const comp = DATA.people.filter((p) => p.device === "Compliant").length, mfa = DATA.people.filter((p) => p.mfa).length, n = DATA.people.length;
   return (
     <Page mod="people">
+      <ModuleTip mod="people" force={API_ON && !DATA.people.length} />
       <KpiStrip label="People summary">
         <KpiTile label="Workforce" value={n} caption="People on record" />
-        <KpiTile label="Device compliant" value={`${comp}/${n}`} caption="Managed and up to date" />
+        <KpiTile label="Device compliant" value={noDevices ? "—" : `${comp}/${n}`} caption={noDevices ? "No device integration connected" : "Managed and up to date"} />
         <KpiTile label="MFA enrolled" value={`${mfa}/${n}`} caption="Second factor set up" />
-        <KpiTile label="Unmanaged" value={n - comp} delta={n - comp ? { tone: "bad", text: "Needs action" } : { tone: "good", text: "None" }} caption="Devices not compliant" />
+        <KpiTile label="Unmanaged" value={noDevices ? "—" : n - comp} delta={noDevices ? undefined : n - comp ? { tone: "bad", text: "Needs action" } : { tone: "good", text: "None" }} caption={noDevices ? "Shown once devices are connected" : "Devices not compliant"} />
       </KpiStrip>
       <PendingApprovals kinds={KINDS} title="Pending approvals (MFA reset, offboarding)" subjectLabel="Person" />
       <div className="card" style={{ flex: "1 1 auto" }}>

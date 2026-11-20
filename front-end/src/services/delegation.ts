@@ -1,20 +1,25 @@
 /* Delegation of a named approver slot (rules: src/lib/delegation.ts, docs/security/SOD_MATRIX.md section 9). Deny by default, audited with who, to whom,
    until when and why; the real API must enforce every rule again. */
+import { API_ON } from "@/lib/rbac";
+import { wsMeta } from "./ws";
 import { DAY_MS, DELEGATION, delegations, givenBy, isLive, liveDelegations, type Delegation } from "@/lib/delegation";
 import { wsLog } from "@/lib/audit";
 import { clampText } from "@/lib/security";
 import { ROLES } from "@/lib/rbac";
 import { assertRole, getActor, hasRole, isSamePerson, SodError } from "@/lib/sod";
 import { bumpData } from "@/lib/store";
-import { apiFetch, viaApi } from "./http";
+import { viaApi } from "./http";
+import { wsPost } from "./ws";
 
-const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
+/** Production: the server records it (under /api/ws), then the workspace reloads. */
+const post = <T,>(path: string, body: unknown) => wsPost<T>(`/ws${path}`, body);
 const fmt = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace("T", " ") + " UTC";
 export const delegationUntil = fmt;
 
 /** People the signed-in person may delegate to: another admin or owner. */
 export function eligibleDelegates(): string[] {
   const me = getActor(); const out: string[] = [];
+  if (API_ON) return wsMeta.get().members.filter((m) => (DELEGATION.ROLES as readonly string[]).includes(m.role) && m.name !== me.name).map((m) => m.name); // the company's real admins and owners
   ROLES.forEach((r) => {
     if (!hasRole(r.id, ...DELEGATION.ROLES) || isSamePerson(r.person, me.name) || out.some((o) => isSamePerson(o, r.person))) return;
     out.push(r.person);

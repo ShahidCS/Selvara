@@ -1,3 +1,7 @@
+import { AccessRequestForm } from "@/features/work";
+import { useLayer } from "@/hooks/useLayer";
+import { ModuleTip } from "@/components/kit/ModuleTip";
+import { API_ON } from "@/lib/rbac";
 import { Empty, Page } from "@/components/ui";
 import { getMe } from "@/lib/audit";
 import { toAcknowledge } from "@/lib/me";
@@ -27,16 +31,27 @@ function MeBody({ role }: { role: string }) {
   const first = me.name.split(" ")[0];
   return (
     <Page title={`Good morning, ${first}`} sub={`You have ${open} open tasks · ${toAck} policies to acknowledge`}>
+      <ModuleTip mod="me" />
       <div className="banner info">
-        <strong>Member access.</strong> You can read published policies, add remarks on policies you are invited to, and acknowledge policies. Only a policy&apos;s creator can edit it; settings and team management are for company admins.
+        <strong>Member access.</strong> You can read published policies{API_ON ? "" : ", add remarks on policies you are invited to,"} and acknowledge policies. Only a policy&apos;s creator can edit it; settings and team management are for company admins.
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "stretch" }}>
         <MyTasks role={role} />
-        <MyRemarks role={role} />
+        {API_ON ? null : <MyRemarks role={role} />}
       </div>
+      {API_ON && !modAllowed(role, "ws", "access") && modAllowed(role, "ws", "work") ? (
+        <div className="card"><div className="c-head"><h3>Access</h3></div><div className="c-body">
+          <p className="field help" style={{ marginTop: 0 }}>Need access to a system? Ask for it here; an admin or owner decides.</p>
+          <RequestAccessButton />
+        </div></div>) : null}
       <PublishedPolicies />
       <DelegationCard />
-      <AccountSecurity />
+      {API_ON ? null : <AccountSecurity /> /* production: Your account (/auth) */}
     </Page>
   );
+}
+
+function RequestAccessButton() {
+  const L = useLayer();
+  return <button className="btn btn-secondary" onClick={() => L.openModal("Request access", (close) => <AccessRequestForm close={close} />)}>Request access</button>;
 }

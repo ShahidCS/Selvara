@@ -51,4 +51,5 @@ The demonstration's screens are rich and already route every change through a se
 
 | Group | State | Migration | PR |
 |---|---|---|---|
-| 1 | Built, in review | `0008` | group 1 PR |
+| 1 | Merged | `0008` | ShahidCS/Selvara#74 |
+| 2 | Built, in review | none (uses `0008`) | group 2 PR |

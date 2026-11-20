@@ -30,7 +30,8 @@ export interface WsTx {
   remove(kind: string, id: string, version: number): Promise<void>;
   /** The next number of a per-company sequence, starting after `start`. */
   next(kind: string, start: number): Promise<number>;
-  audit(action: string, target: string, cat?: string): Promise<void>;
+  /** An entry in the company's log; `system` attributes it to "System" (an expiry noticed during someone else's action). */
+  audit(action: string, target: string, cat?: string, system?: boolean): Promise<void>;
   /* four-eyes requests of this module (approvals and approval_votes, migration 0003) */
   request(a: NewWsApproval): Promise<ApprovalRow>;
   approvals(kinds: string[]): Promise<ApprovalRow[]>;
@@ -43,17 +44,18 @@ export interface WsTx {
 }
 export interface WsStore { tx<T>(actor: Actor, now: number, work: (t: WsTx) => Promise<T>): Promise<T> }
 
-const entry = (a: Actor, at: number, action: string, target: string, cat = "Control"): AuditRow =>
-  ({ at, actor: a.name, actorId: a.id, tenantId: a.tenantId, action, target: target.slice(0, 1000), cat, space: "ws", ip: a.ip });
+const entry = (a: Actor, at: number, action: string, target: string, cat = "Control", system = false): AuditRow =>
+  ({ at, actor: system ? "System" : a.name, actorId: system ? null : a.id, tenantId: a.tenantId, action, target: target.slice(0, 1000), cat, space: "ws", ip: system ? "system" : a.ip });
 const KIND_RE = /^[a-z][a-z0-9.-]{1,39}$/;
+const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 const checkKind = (k: string) => { if (!KIND_RE.test(k)) throw new Error("bad kind"); };
 
 export class PgWsStore implements WsStore {
   constructor(private db: Db, private store: Store) {}
   async tx<T>(actor: Actor, now: number, work: (t: WsTx) => Promise<T>): Promise<T> {
-    const store = this.store;
+    const store = this.store; const notices: { userId: string; text: string }[] = [];
     try {
-      return await this.db.tx({ tenantId: actor.tenantId, userId: actor.id }, async (q: Tx) => {
+      const out = await this.db.tx({ tenantId: actor.tenantId, userId: actor.id }, async (q: Tx) => {
         const t: WsTx = {
           actor, now,
           async get<R>(kind: string, id: string) {
@@ -88,11 +90,11 @@ export class PgWsStore implements WsStore {
               on conflict (tenant_id, kind) do update set n = greatest(ws_counters.n, $3) + 1 returning n`, [actor.tenantId, kind, start]);
             return Number(r[0].n);
           },
-          async audit(action, target, cat) { await q.query(auditSql, auditArgs(entry(actor, now, action, target, cat))); },
+          async audit(action, target, cat, system) { await q.query(auditSql, auditArgs(entry(actor, now, action, target, cat, system))); },
           async request(a) {
             const r = await q.query<{ id: string }>(`insert into approvals (tenant_id, kind, title, subject_ref, payload, needs, approver_roles, forbid, requested_by, created_ms, expires_ms, domain)
               values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'ws') returning id`,
-              [actor.tenantId, a.kind, a.title.slice(0, 300), a.subject, JSON.stringify(a.payload), a.needs, a.approverRoles, a.forbid, actor.id, now, now + a.ttlMs]);
+              [actor.tenantId, a.kind, a.title.slice(0, 300), a.subject, JSON.stringify(a.payload), a.needs, a.approverRoles, a.forbid.filter(isUuid), actor.id, now, now + a.ttlMs]);
             await q.query(auditSql, auditArgs(entry(actor, now, `approval.${a.kind}.requested`, `${a.title} (${r[0].id})`, "Approval")));
             return (await loadApprovals(q, actor.tenantId, r[0].id, [a.kind]))[0];
           },
@@ -103,10 +105,12 @@ export class PgWsStore implements WsStore {
             catch (e) { if (e instanceof UpstreamError && e.code === "42501") throw new WsRefused("Segregation of duties: you cannot approve this request."); throw e; } // the database's own guard (0003)
           },
           async setApproval(id, status, reason) { await q.query("update approvals set status = $2, decided_reason = coalesce($3, decided_reason) where id = $1", [id, status, reason ?? null]); },
-          async notify(userId, text) { await store.insertNotice({ id: randomUUID().replace(/-/g, "").slice(0, 12), userId, at: now, text: text.slice(0, 300) }); },
+          async notify(userId, text) { if (isUuid(userId)) notices.push({ userId, text }); }, // sent only once the change has committed
         };
         return work(t);
       });
+      for (const n of notices) await store.insertNotice({ id: randomUUID().replace(/-/g, "").slice(0, 12), userId: n.userId, at: now, text: n.text.slice(0, 300) }).catch(() => undefined);
+      return out;
     } catch (e) {
       if (e instanceof UpstreamError && (e.code === "40001" || e.code === "23505")) throw new WsConflict("Someone changed this record meanwhile. Reload and try again.");
       throw e;
@@ -129,7 +133,7 @@ export class MemoryWsStore implements WsStore {
     const snap = { rows: structuredClone([...st.rows]), counters: new Map(st.counters), requests: structuredClone(st.requests), log: (this.store as unknown as { auditLog: AuditRow[] }).auditLog.length };
     const store = this.store;
     const person = async (id: string) => (await store.profileById(id))?.person ?? "";
-    const pending: AuditRow[] = [];
+    const pending: AuditRow[] = []; const pending2: { userId: string; text: string }[] = [];
     const t: WsTx = {
       actor, now,
       async get<R>(kind: string, id: string) { const r = st.rows.get(key(actor.tenantId, kind, id)); return r && !r.deleted ? { id, data: structuredClone(r.data) as R, version: r.version } : null; },
@@ -141,7 +145,7 @@ export class MemoryWsStore implements WsStore {
       async update(kind, id, data, version) { const r = st.rows.get(key(actor.tenantId, kind, id)); if (!r || r.deleted || r.version !== version) throw new WsConflict("Someone changed this record meanwhile. Reload and try again."); r.data = structuredClone(data); r.version += 1; },
       async remove(kind, id, version) { const r = st.rows.get(key(actor.tenantId, kind, id)); if (!r || r.deleted || r.version !== version) throw new WsConflict("Someone changed this record meanwhile. Reload and try again."); r.deleted = now; r.version += 1; },
       async next(kind, start) { const k = `${actor.tenantId}\u0000${kind}`; const n = Math.max(st.counters.get(k) ?? 0, start) + 1; st.counters.set(k, n); return n; },
-      async audit(action, target, cat) { pending.push(entry(actor, now, action, target, cat)); },
+      async audit(action, target, cat, system) { pending.push(entry(actor, now, action, target, cat, system)); },
       async request(a) {
         const id = randomUUID();
         const row = { tenantId: actor.tenantId, forbidIds: a.forbid, id, kind: a.kind, title: a.title, subject: a.subject, payload: a.payload, needs: a.needs, approverRoles: a.approverRoles, forbid: a.forbid,
@@ -157,11 +161,12 @@ export class MemoryWsStore implements WsStore {
         r.votes.push({ by: actor.id, byName: await person(actor.id), at: now, reason });
       },
       async setApproval(id, status, reason) { const r = st.requests.find((x) => x.id === id)!; r.status = status; if (reason) r.decidedReason = reason; },
-      async notify(userId, text) { await store.insertNotice({ id: randomUUID().slice(0, 12), userId, at: now, text }); },
+      async notify(userId, text) { pending2.push({ userId, text }); },
     };
     try {
       const out = await work(t);
       for (const e of pending) await store.audit(e);
+      for (const n of pending2) await store.insertNotice({ id: randomUUID().slice(0, 12), userId: n.userId, at: now, text: n.text });
       return out;
     } catch (e) {
       st.rows = new Map(snap.rows); st.counters = snap.counters; st.requests = snap.requests;

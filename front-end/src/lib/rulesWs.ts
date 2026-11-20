@@ -90,3 +90,111 @@ export const EVIDENCE_FILE_TYPES: Record<string, string> = {
 };
 export const EVIDENCE_FILE_MAX = 4 * 1024 * 1024;
 export const EVIDENCE_FILES_PER_ITEM = 20;
+
+/* ---------- policies (group 2) ---------- */
+export const POLICY_CYCLES = [6, 12, 24] as const;
+export const POLICY_EMERGENCY_DAYS = 5;
+export const POLICY_EFFECTIVE_MAX_DAYS = 90;
+/** Who may edit content: an admin or owner who owns the policy, and only while the working version is a draft. */
+export function policyEditBlock(role: string, isOwner: boolean, owner: string, workStatus: string | null): string | null {
+  return roleBlock(role, "editing a policy", "admin", "owner")
+    || (isOwner ? null : `Only the policy owner (${owner}) can edit content. An admin can reassign ownership.`)
+    || (workStatus && workStatus !== "Draft" ? `Content is locked while the version is ${workStatus.toLowerCase()}.` : null);
+}
+export function policySubmitBlock(role: string, isOwner: boolean, owner: string, workStatus: string | null): string | null {
+  if (!workStatus) return "There is no draft to submit.";
+  if (workStatus !== "Draft") return `The version is already ${workStatus.toLowerCase()}.`;
+  return roleBlock(role, "submitting a policy", "admin", "owner") || (isOwner ? null : `Only the policy owner (${owner}) can submit it.`);
+}
+/** The named approver: an admin or owner who neither wrote the version nor submitted it (production also excludes the owner and the submitter). */
+export const policyApproverBlock = (isEditor: boolean, isOwnerOrSubmitter: boolean): string | null =>
+  isEditor ? "Segregation of duties: the approver cannot be the author or a last editor."
+    : isOwnerOrSubmitter ? "Segregation of duties: the approver cannot be the policy owner or the person who submitted it." : null;
+export function policyApproveBlock(p: { role: string; workStatus: string | null; approver: string | null; isEditor: boolean; actsAsApprover: boolean }): string | null {
+  if (p.workStatus !== "In review") return "Only a version in review can be approved.";
+  return roleBlock(p.role, "approving a policy", "admin", "owner") || (p.approver ? null : "No approver has been named yet.")
+    || (p.isEditor ? "Segregation of duties: the author or a last editor cannot approve their own policy." : null)
+    || (p.actsAsApprover ? null : `Only the named approver (${p.approver}) can do this.`);
+}
+export function policyPublishBlock(p: { role: string; workStatus: string | null; approver: string | null; isEditor: boolean; actsAsApprover: boolean; effective?: string; today: string }): string | null {
+  if (p.workStatus !== "Approved") return "Only an approved version can be published.";
+  return roleBlock(p.role, "publishing a policy", "admin", "owner")
+    || (p.isEditor ? "Segregation of duties: the author or a last editor cannot publish their own policy." : null)
+    || (p.actsAsApprover ? null : `Only the named approver (${p.approver}) can publish.`)
+    || (p.effective && p.effective > p.today ? `The effective date (${p.effective}) has not been reached.` : null);
+}
+export function policyEmergencyBlock(role: string, workStatus: string | null): string | null {
+  if (workStatus !== "Draft" && workStatus !== "In review") return "An emergency change needs a draft or in-review version.";
+  return roleBlock(role, "an emergency change", "admin");
+}
+export function policyDecideExceptionBlock(status: string, role: string, isPublisherOrAuthor: boolean): string | null {
+  if (status !== "Pending") return `The exception is already ${status.toLowerCase()}.`;
+  return roleBlock(role, "retrospective approval", "admin", "owner") || (isPublisherOrAuthor ? "Segregation of duties: the person who published the emergency change or its authors cannot approve it." : null);
+}
+export function policyEffectiveBlock(eff: string, nowMs: number): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(eff) || Number.isNaN(Date.parse(eff + "T00:00:00Z"))) return "Enter a valid effective date.";
+  if (eff < isoDayOf(nowMs)) return "The effective date cannot be in the past.";
+  if (Date.parse(eff + "T00:00:00Z") > nowMs + POLICY_EFFECTIVE_MAX_DAYS * 86400_000) return "The effective date can be at most 90 days ahead.";
+  return null;
+}
+export const cleanVer = (v: unknown) => { const m = /^(\d+)\.(\d+)/.exec(String(v ?? "")); return m ? `${m[1]}.${m[2]}` : "0.1"; };
+export const bumpMinor = (v: string) => { const m = /^(\d+)\.(\d+)$/.exec(cleanVer(v)) as RegExpExecArray; return `${m[1]}.${Number(m[2]) + 1}`; };
+/** `days` business days after `from` (weekends skipped), as YYYY-MM-DD. */
+export function addBusinessDaysIso(fromMs: number, days: number): string {
+  const d = new Date(fromMs); let n = 0;
+  while (n < days) { d.setUTCDate(d.getUTCDate() + 1); const w = d.getUTCDay(); if (w !== 0 && w !== 6) n++; }
+  return d.toISOString().slice(0, 10);
+}
+/** `months` months after the ISO day (clamped to the month's last day). */
+export function addMonthsIso(iso: string, months: number): string {
+  const [y, m, dd] = iso.split("-").map(Number); const t = new Date(Date.UTC(y, m - 1 + months, 1));
+  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();
+  t.setUTCDate(Math.min(dd, last)); return t.toISOString().slice(0, 10);
+}
+
+/* ---------- delegation of a named approver slot (group 2; SOD_MATRIX section 9) ---------- */
+export const DELEGATION_MAX_DAYS = 14;
+export function delegationBlock(d: { role: string; toRole: string | null; self: boolean; days: number; reason: string; live: boolean; loop: boolean }): string | null {
+  return roleBlock(d.role, "delegating approvals", "admin", "owner")
+    || (!d.toRole || !["admin", "owner"].includes(d.toRole) ? "Choose another admin or owner." : null)
+    || (d.self ? "Segregation of duties: you cannot delegate to yourself." : null)
+    || (!Number.isInteger(d.days) || d.days < 1 || d.days > DELEGATION_MAX_DAYS ? `Choose 1 to ${DELEGATION_MAX_DAYS} days.` : null)
+    || (d.reason.trim().length < 10 ? "Give a reason of at least 10 characters." : null)
+    || (d.live ? "You already have an active delegation. End it before starting another." : null)
+    || (d.loop ? "That person has delegated to you. End that delegation first." : null);
+}
+
+/* ---------- people (group 2) ---------- */
+export const MFA_RESET_REASONS = ["Lost authenticator device", "New device enrolment", "Suspected compromise, rotate", "Admin left and returned"] as const;
+export const MFA_RESET_TTL_H = 24;
+export const OFFBOARD_TTL_H = 72;
+export const TICKET_REF = /^[A-Z]{2,6}-\d{1,6}$/;
+export function mfaResetFieldsBlock(f: { checks: boolean[]; reason: string; details: string; ticket: string }): string | null {
+  if (f.checks.length !== 3 || !f.checks.every(Boolean)) return "Confirm all three identity checks before submitting.";
+  if (!(MFA_RESET_REASONS as readonly string[]).includes(f.reason)) return "Choose a valid reason.";
+  if (f.details.trim().length < 10) return "Describe the reason in at least 10 characters.";
+  if (!TICKET_REF.test(f.ticket.trim())) return "Enter a ticket reference like SEC-1234.";
+  return null;
+}
+
+/* ---------- access (group 2) ---------- */
+export const ACCESS_LEVELS = ["Read", "Write", "Admin"] as const;
+export const ACCESS_SECOND_TTL_H = 72;
+export const isPrivilegedLevel = (level: string) => /^(super\s*admin|admin)/i.test(level);
+export const isPrivilegedSystem = (system: string) => /identity admin|iam|production|privileged|vault|root|domain admin/i.test(system);
+export function accessRequestBlock(r: { system: string; level: string; reason: string; forOther: boolean; employee: boolean }): string | null {
+  if (!r.system.trim()) return "System is required.";
+  if (!(ACCESS_LEVELS as readonly string[]).includes(r.level)) return "Choose a valid access level.";
+  if (r.employee && r.forOther) return "Employees can only request access for themselves.";
+  if (r.level === "Admin" && r.reason.trim().length < 10) return "Admin-level access needs a reason of at least 10 characters.";
+  return null;
+}
+export function accessDecideBlock(d: { role: string; isRequester: boolean; isBeneficiary: boolean; isFirstApprover: boolean }): string | null {
+  return (["admin", "owner"].includes(d.role) ? null : "Only admins and owners decide access requests.")
+    || (d.isRequester ? "Segregation of duties: you cannot decide a request you raised." : null)
+    || (d.isBeneficiary ? "Segregation of duties: you cannot decide a request for your own access." : null)
+    || (d.isFirstApprover ? "Segregation of duties: a different admin or owner must give the second approval." : null);
+}
+
+/** Four-eyes kinds the server owns in production: the browser's engine shows them but never decides or applies them there. */
+export const SERVER_KINDS = ["control.exception", "evidence.delete", "policy.emergency", "mfa-reset-member", "offboard", "access-request"];
