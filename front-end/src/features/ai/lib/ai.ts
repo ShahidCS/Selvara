@@ -1,5 +1,6 @@
 import { adminLog } from "@/lib/adminAudit";
-import { roleOf } from "@/lib/rbac";
+import { API_ON, roleOf } from "@/lib/rbac";
+import { G6 } from "@/lib/g6";
 /* AI governance helpers (ported from the prototype's `ai*` helpers, source lines 3012-3245).
  * Seed constants come from src/features/ai/data/aiSeed.json (extracted with scripts/extract-source.js). */
 import seed from "@/features/ai/data/aiSeed.json";
@@ -16,7 +17,7 @@ export const AI_GUARDRAIL_TONE: Record<string, string> = clone(seed.AI_GUARDRAIL
 /** How AI is discovered across the estate: [source, description]. */
 export const AI_DISCOVERY: [string, string][] = clone(seed.AI_DISCOVERY) as [string, string][];
 /** Discovered AI awaiting registration. Mutated in place (the source reassigned it with filter()). */
-export const AI_SHADOW: any[] = clone(seed.AI_SHADOW);
+export const AI_SHADOW: any[] = API_ON ? G6.shadow : clone(seed.AI_SHADOW); // production: the server's list (empty until a discovery source is connected)
 export const AI_DETAIL: Record<string, any> = clone(seed.AI_DETAIL);
 
 export const AI_TIERS = ["High", "Medium", "Low"];
@@ -76,4 +77,5 @@ export function aiEuRationale(c: string): string {
   return ({ "High-risk": "Used in a regulated decision context that affects individuals; the full set of high-risk obligations applies.", "Limited risk": "Interacts with people and must disclose that it is AI; transparency obligations apply.", "Minimal risk": "Internal productivity use with no automated decisions on individuals; no specific obligations.", Prohibited: "Falls within an unacceptable-risk category and must not be operated." } as Record<string, string>)[c] || "Not yet classified under the EU AI Act.";
 }
 /** Prototype: aiLog writes to the platform admin audit chain only (tenant = the signed-in role's tenant). */
-export function aiLog(action: string, name: string) { adminLog(action, name, { tenant: roleOf(appStore.get().role).tenant || "", categories: ["AI governance"] }); }
+/** Production: the server writes every AI governance entry to the company's own log, so this does nothing there. */
+export function aiLog(action: string, name: string) { if (API_ON) return; adminLog(action, name, { tenant: roleOf(appStore.get().role).tenant || "", categories: ["AI governance"] }); }

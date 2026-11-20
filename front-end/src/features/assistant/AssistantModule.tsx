@@ -8,6 +8,8 @@ import { ApprovalsPanel } from "@/components/kit/sodKit";
 import { AgentFormPage } from "./AgentFormPage";
 import { AskTab } from "./AskTab";
 import { AgentsTab, McpTab, RunLogTab } from "./Tables";
+import { SettingsTab } from "./SettingsTab";
+import { ModuleTip } from "@/components/kit/ModuleTip";
 
 /** `/ws/assistant` shows the sidebar-selected view (Ask, Agents, Run log, MCP servers); `/new` creates an agent. */
 export default function AssistantModule() {
@@ -34,7 +36,8 @@ function AssistantViews() {
         </div>
         <div className="c-body scroll" id="asstBody" ref={bodyRef}>
           {view === "agents" || view === "mcp" ? <ApprovalsPanel prefix="assistant." title="Enable / grant approvals (four-eyes)" /> : null}
-          {view === "ask" ? <AskTab scrollRef={bodyRef} /> : view === "agents" ? <AgentsTab manage={manage} /> : view === "log" ? <RunLogTab manage={manage} /> : <McpTab manage={manage} />}
+          <ModuleTip mod="assistant" />
+          {view === "ask" ? <AskTab scrollRef={bodyRef} /> : view === "agents" ? <AgentsTab manage={manage} /> : view === "log" ? <RunLogTab manage={manage} /> : view === "settings" ? <SettingsTab /> : <McpTab manage={manage} />}
         </div>
       </div>
     </Page>

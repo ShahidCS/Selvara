@@ -10,6 +10,7 @@ import { clampText, isSafeWebhookUrl, logSafeUrl } from "@/lib/security";
 import { FAIL_MSG, uiMessage } from "@/lib/grcSod";
 import * as svc from "@/features/api/services/api";
 import { KeyCreated } from "./ApiModals";
+import { API_ON } from "@/lib/rbac";
 
 const LIST = "/ws/api";
 const back = { href: LIST, label: "API, Webhooks & Custom Tests" };
@@ -20,7 +21,7 @@ const Denied = ({ title }: { title: string }) => <Page title={title} back={back}
 export function NewKeyPage() {
   const role = useApp((s) => s.role);
   const L = useLayer(); const go = useGo();
-  const [label, setLabel] = useState(""); const [scope, setScope] = useState("Read"); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const [label, setLabel] = useState(""); const [scope, setScope] = useState("Read"); const [days, setDays] = useState(90); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   const dirty = !busy && (label !== "" || scope !== "Read");
   const { allowLeave } = useUnsavedGuard(dirty, L);
   const ref = useRef<HTMLInputElement>(null); useEffect(() => { ref.current?.focus(); }, []);
@@ -32,7 +33,7 @@ export function NewKeyPage() {
     const sc = svc.KEY_SCOPES.includes(scope) ? scope : "Read";
     setBusy(true);
     try {
-      const k = await svc.createKey({ label: lb, scope: sc });
+      const k = await svc.createKey({ label: lb, scope: sc, days });
       allowLeave(); bumpData();
       if (k.pending) { wsLog("api.key.requested", lb + " (" + sc + ")", "System"); L.toast("Write-scope key requested; a second admin must approve it"); go(LIST); return; }
       wsLog("api.key.created", lb + " (" + sc + ")", "System"); // never log the key
@@ -47,7 +48,8 @@ export function NewKeyPage() {
         <FormSection n={1} title="Key" note="A label to recognise it by, and what it may do.">
           <div className="field"><label htmlFor="ak-label">Label <Req /></label><input ref={ref} className="input" id="ak-label" maxLength={80} placeholder="e.g. Reporting service" value={label} onChange={(e) => setLabel(e.target.value)} aria-invalid={!!err} aria-describedby={err ? "ak-err" : undefined} /></div>
           <div className="field"><label htmlFor="ak-scope">Scope</label><select className="select" id="ak-scope" value={scope} onChange={(e) => setScope(e.target.value)}>{svc.KEY_SCOPES.map((s) => <option key={s}>{s}</option>)}</select></div>
-          <p className="field help">Store the key securely once it is shown.</p>
+          {API_ON ? <div className="field"><label htmlFor="ak-days">Expires after</label><select className="select" id="ak-days" value={days} onChange={(e) => setDays(Number(e.target.value))}>{svc.KEY_DAYS.map((d) => <option key={d} value={d}>{d} days</option>)}</select></div> : null}
+          <p className="field help">Store the key securely once it is shown.{API_ON ? " Selvara keeps only a fingerprint of it. Send it as Authorization: Bearer <key> to /api/v1 (read the registers; a read/write key may also push events to /api/v1/events)." : ""}</p>
           {scope === "Read/Write" ? <p className="field help" role="note">Write-scope keys have no secret until a second admin approves the request. The key is then shown once, to you only.</p> : null}
         </FormSection>
         {err ? <FormMessage id="ak-err">{err}</FormMessage> : null}
@@ -82,7 +84,7 @@ export function NewWebhookPage() {
       <div className="scroll rec-scroll"><form className="rec-form" onSubmit={submit} noValidate>
         <FormSection n={1} title="Endpoint" note="Where signed events are sent. https only.">
           <div className="field"><label htmlFor="wh-url">Endpoint URL <Req /></label><input ref={ref} className="input" id="wh-url" maxLength={2048} inputMode="url" autoComplete="off" spellCheck={false} placeholder="https://hooks.example.com/grc" value={url} onChange={(e) => setUrl(e.target.value)} aria-invalid={!!err} aria-describedby={err ? "wh-err" : undefined} /></div>
-          <p className="field help">A signing secret (HMAC-SHA256) is generated automatically. Verify the signature on every delivery.</p>
+          <p className="field help">A signing secret (HMAC-SHA256) is generated automatically{API_ON ? " when a second admin approves the webhook, and shown once to you" : ""}. Verify the signature on every delivery{API_ON ? ": the x-selvara-signature header is v1= followed by the HMAC of \"<x-selvara-timestamp>.<body>\"" : ""}.</p>
         </FormSection>
         <FormSection n={2} title="Events" note="Which events this endpoint receives.">
           <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
@@ -128,8 +130,9 @@ export function NewTestPage() {
         <FormSection n={1} title="Test" note="What is checked, against what, and how often.">
           <div className="field"><label htmlFor="ct-name">Test name <Req /></label><input ref={ref} className="input" id="ct-name" maxLength={120} placeholder="e.g. Database encryption at rest" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={!!err} aria-describedby={err ? "ct-err" : undefined} /></div>
           <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div className="field"><label htmlFor="ct-target">Target</label><input className="input" id="ct-target" maxLength={80} placeholder="e.g. Meridian" value={target} onChange={(e) => setTarget(e.target.value)} /></div>
+            <div className="field"><label htmlFor="ct-target">Target{API_ON ? <> <Req /></> : null}</label><input className="input" id="ct-target" maxLength={80} placeholder="e.g. Meridian" value={target} onChange={(e) => setTarget(e.target.value)} /></div>
             <div className="field"><label htmlFor="ct-sched">Schedule</label><select className="select" id="ct-sched" value={sched} onChange={(e) => setSched(e.target.value)}>{svc.TEST_SCHEDULES.map((x) => <option key={x}>{x}</option>)}</select></div>
+          {API_ON ? <p className="field help" style={{ gridColumn: "1 / -1" }}>The target is the resource name your systems push events for (POST /api/v1/events with a read/write key). The newest event&apos;s status gives Pass or Fail. &quot;On push&quot; tests are evaluated as events arrive; the others when they are due, the next time this page is opened.</p> : null}
           </div>
         </FormSection>
         {err ? <FormMessage id="ct-err">{err}</FormMessage> : null}

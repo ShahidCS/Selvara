@@ -143,6 +143,14 @@ function newRisk(t: WsTx, id: string, f: { title: string; desc: string; cat: str
   };
 }
 const nextRiskId = async (t: WsTx) => { for (;;) { const id = `RK-${String(await t.next("risk", 0)).padStart(2, "0")}`; if (!(await t.get("risk", id))) return id; } };
+/** Creates a risk (also used by other modules: an AI signal). It starts as a Draft for its owner to review, with its own audit entry. */
+export async function createRiskIn(t: WsTx, f: { title: string; desc: string; cat: string; owner: { id: string; name: string }; l: number; i: number; rl: number; ri: number; source: string }) {
+  const id = await nextRiskId(t);
+  const risk = newRisk(t, id, { ...f, treat: "Mitigate" }); log(t, risk, `Risk identified from ${f.source}`);
+  await t.insert("risk", id, risk); await t.audit("risk.created", `${id} ${f.title}`, "Risk");
+  if (f.owner.id !== t.actor.id) await t.notify(f.owner.id, `${t.actor.name} made you the owner of risk ${id} ${f.title.slice(0, 80)}.`);
+  return risk;
+}
 
 /** Applies an import's rows (re-validated on the server) as `editor`. Existing ids update, others are new; an import never sets a status. */
 async function applyRows(t: WsTx, rows: ImportRow[], fileName: string, editor: { id: string; name: string }, members: { id: string; name: string }[]) {

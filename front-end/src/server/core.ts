@@ -16,6 +16,7 @@ import { randomId, same, seal, sha256Hex, unseal } from "./crypto";
 import { adminRoutes } from "./admin";
 import { supportRoutes } from "./support";
 import { workspaceRoutes } from "./ws/routes";
+import { v1Routes } from "./ws/apikeys";
 import { logFailure } from "./errors";
 import type { Company, Lockout, Log, Outcome } from "./directory";
 import type { Deps, Profile, SessionRow } from "./types";
@@ -563,6 +564,9 @@ export const ROUTES: Record<string, H> = {
 const helperEntry = (d: Deps, r: Req, p: Profile, a: Access, action: string, target: string) => entry(d, r, actorOf(p, a), action, target);
 Object.assign(ROUTES, adminRoutes({ signed, entry: helperEntry, randomId, sha256Hex }), supportRoutes({ signed, companyAdmin: admin, entry: helperEntry }));
 Object.assign(ROUTES, workspaceRoutes({ signed }));
+Object.assign(ROUTES, v1Routes());
+/** The company API (/api/v1): authenticated by an API key in the Authorization header, never by the session cookie, so the cross-site check does not apply. */
+const KEY_ROUTES = new Set(["POST v1/events"]);
 /** Routes that take raw bytes (application/octet-stream) instead of JSON: evidence file uploads (pages/api/[...path].ts reads them). */
 export const RAW_ROUTES = new Set(["POST ws/evidence/:id/files", "POST ws/kb-docs", "POST ws/trust/resources/:id/file"]);
 
@@ -580,7 +584,7 @@ export async function handle(d: Deps, r: Req): Promise<Res> {
   const found = match(r.method, r.path); if (!found) return err(404, "Not found.");
   const [key, h] = found;
   if (r.method !== "GET") {
-    if (r.headers.origin !== d.site.origin) return err(403, "Cross-site request refused.");
+    if (!KEY_ROUTES.has(key) && r.headers.origin !== d.site.origin) return err(403, "Cross-site request refused.");
     const raw = RAW_ROUTES.has(key);
     if (raw ? !r.raw || r.headers["content-type"] !== "application/octet-stream" : !/^application\/json/.test(r.headers["content-type"] || "")) return err(415, raw ? "Send the file's bytes." : "Send JSON.");
     if (!raw && r.raw) return err(415, "Send JSON.");

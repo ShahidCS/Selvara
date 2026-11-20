@@ -9,7 +9,7 @@ import { PassThrough, UpstreamError } from "../errors";
 import type { AuditRow, Store } from "../types";
 
 /** Who acts: always from the session, never from the request. `role` is the base company role (admin, owner, analyst, ...). */
-export interface Actor { id: string; name: string; role: string; tenantId: string; ip: string }
+export interface Actor { id: string; name: string; role: string; tenantId: string; ip: string; /** Filled after a commit with what was audited (webhook events, server/ws/webhooks.ts). */ committed?: { action: string; target: string }[] }
 export interface Rec<T = Record<string, unknown>> { id: string; data: T; version: number }
 export interface NewWsApproval { kind: string; title: string; subject: string; payload: Record<string, unknown>; needs: 1 | 2; approverRoles: string[]; forbid: string[]; ttlMs: number }
 
@@ -58,7 +58,7 @@ const checkKind = (k: string) => { if (!KIND_RE.test(k)) throw new Error("bad ki
 export class PgWsStore implements WsStore {
   constructor(private db: Db, private store: Store) {}
   async tx<T>(actor: Actor, now: number, work: (t: WsTx) => Promise<T>): Promise<T> {
-    const store = this.store; const notices: { userId: string; text: string }[] = [];
+    const store = this.store; const notices: { userId: string; text: string }[] = []; const done: { action: string; target: string }[] = [];
     try {
       const out = await this.db.tx({ tenantId: actor.tenantId, userId: actor.id }, async (q: Tx) => {
         const t: WsTx = {
@@ -95,7 +95,7 @@ export class PgWsStore implements WsStore {
               on conflict (tenant_id, kind) do update set n = greatest(ws_counters.n, $3) + 1 returning n`, [actor.tenantId, kind, start]);
             return Number(r[0].n);
           },
-          async audit(action, target, cat, system) { await q.query(auditSql, auditArgs(entry(actor, now, action, target, cat, system))); },
+          async audit(action, target, cat, system) { await q.query(auditSql, auditArgs(entry(actor, now, action, target, cat, system))); done.push({ action, target }); },
           async request(a) {
             const r = await q.query<{ id: string }>(`insert into approvals (tenant_id, kind, title, subject_ref, payload, needs, approver_roles, forbid, requested_by, created_ms, expires_ms, domain)
               values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'ws') returning id`,
@@ -121,6 +121,7 @@ export class PgWsStore implements WsStore {
         return work(t);
       });
       for (const n of notices) await store.insertNotice({ id: randomUUID().replace(/-/g, "").slice(0, 12), userId: n.userId, at: now, text: n.text.slice(0, 300) }).catch(() => undefined);
+      actor.committed?.push(...done);
       return out;
     } catch (e) {
       if (e instanceof UpstreamError && (e.code === "40001" || e.code === "23505")) throw new WsConflict("Someone changed this record meanwhile. Reload and try again.");
@@ -183,7 +184,8 @@ export class MemoryWsStore implements WsStore {
     try {
       const out = await work(t);
       for (const e of pending) await store.audit(e);
-      for (const n of pending2) await store.insertNotice({ id: randomUUID().slice(0, 12), userId: n.userId, at: now, text: n.text });
+      for (const n of pending2) await store.insertNotice({ id: randomUUID().slice(0, 12), userId: n.userId, at: now, text: n.text.slice(0, 300) });
+      actor.committed?.push(...pending.map((e) => ({ action: e.action, target: e.target })));
       return out;
     } catch (e) {
       st.rows = new Map(snap.rows); st.counters = snap.counters; st.requests = snap.requests;

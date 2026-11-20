@@ -1,5 +1,5 @@
 import { Icon } from "@/components/ui";
-import { appStore, persist, useApp, useData, useModVersion } from "@/lib/store";
+import { appStore, persist, setModState, useApp, useData, useModVersion } from "@/lib/store";
 import { API_ON, TITLE, landingPath, roleOf, allowedSpaces, modAllowed } from "@/lib/rbac";
 import { isDemoAccount } from "@/lib/session";
 import { signOut, switchCompany } from "@/services/authApi";
@@ -97,7 +97,7 @@ export function Topbar() {
       <div role="search" aria-label="Site" style={{ display: "contents" }}>
       <button className="top-search" onClick={L.openPalette} aria-label="Search (Command or Ctrl K)"><Icon name="search" /><span className="ph">Search…</span><span className="kbd">⌘K</span></button>
       </div>
-      {canAsk ? <button className="icon-btn" aria-label="Ask AI (Command or Ctrl J)" title="Ask AI (⌘J)" onClick={() => go("/ws/assistant")}><Icon name="assistant" /></button> : null}
+      {canAsk ? <button className="icon-btn" aria-label="Ask AI (Command or Ctrl J)" title="Ask AI (⌘J)" onClick={() => { setModState("assistant.from", window.location.pathname); go("/ws/assistant"); }}><Icon name="assistant" /></button> : null}
       {API_ON ? null : <button className="icon-btn nbell" aria-label={unread ? `Notifications, ${unread > 9 ? "9+" : unread} unread` : "Notifications"} aria-haspopup="dialog" onClick={openNotifications}>
         <Icon name="bell" />{unread ? <span className="nbadge" aria-hidden="true">{unread > 9 ? "9+" : unread}</span> : null}
       </button>}

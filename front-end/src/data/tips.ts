@@ -166,4 +166,33 @@ export const MODULE_TIPS: Record<string, ModuleTipText> = {
       "Export the log, or build an evidence package for your auditors. Every export is recorded, at most 10 an hour.",
     ],
   },
+  ai: {
+    title: "Getting started with AI governance",
+    steps: [
+      "Register every AI system your company builds or uses with Register system, and give it an owner. Registering does not approve it.",
+      "Classify it under the EU AI Act. The classification is a draft until an admin or owner other than you and the system owner confirms it.",
+      "Record the impact assessment and submit it; someone other than the author, the submitter and the system owner approves it.",
+      "Log bias tests and human-oversight measures, link the evidence, then ask another admin or owner to complete the review.",
+    ],
+    note: "Classifications and assessments are drafts until qualified compliance and legal staff review them.",
+  },
+  assistant: {
+    title: "Getting started with the AI Assistant",
+    steps: [
+      "AI is off until a company admin asks to turn it on in Settings and a second admin approves.",
+      "In Ask, choose the records to send with your question. Only those are sent, without owners' names.",
+      "A PII blocker checks every request: if it finds personal data or a secret it stops the request and says what and where.",
+      "Agents suggest; someone other than the person who ran them approves each change. Grant their tools in MCP access first.",
+    ],
+    note: "Every answer is a draft for a person to review. The AI provider does not train on these requests.",
+  },
+  api: {
+    title: "Getting started with the API",
+    steps: [
+      "Create a read key to read your registers from /api/v1. A read/write key, which can also push events, needs a second admin.",
+      "Each key is shown once. Selvara keeps only a fingerprint: if a key is lost, revoke it and create a new one.",
+      "Add a webhook to receive signed events. A second admin approves it; then show its signing secret once and verify every delivery.",
+      "Custom tests turn the events your systems push into Pass or Fail results.",
+    ],
+  },
 };
