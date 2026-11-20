@@ -148,3 +148,12 @@ Where the inventory (`inventory/group5-audits-auditor-auditlog-appsec.md`, secti
 - **RoPA.** The RoPA tab is presented as a reference register for the company to adapt. Its export is recorded in the company's own log, not the platform's.
 - **The report.** The engagement report is a draft. It is recorded in the company's own log only.
 - **AppSec.** It stays a read-only specification page; there is nothing to store. Real application security findings and scans would be new scope, for example with the vulnerability-scanner integration in group 7.
+- **Cross-check fixes.**
+  - An end date for auditor access must be a real calendar day, so access always ends.
+  - The audit log is verified only when someone asks, because verifying recomputes the whole chain. The last result, with its time and who ran it, is shown.
+  - The 10-exports-an-hour limit is taken under a lock.
+  - No unaudited bulk reading route exists.
+  - An auditor receives names, never the company's internal user ids. A request to another firm's engagement reveals nothing.
+  - Snapshots are shared from the minute access was granted.
+  - The screens no longer claim that completing revokes the auditor's role-based reads, or that freezing locks evidence.
+  - Overview rows for audits the role cannot open show a count only.

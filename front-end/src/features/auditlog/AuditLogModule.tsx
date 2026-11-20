@@ -46,7 +46,7 @@ export default function AuditLogModule() {
       const rp = ropaById(ropaFor(l));
       return rp ? <span className="tag num" style={{ cursor: "pointer" }} aria-label={`Open RoPA register, ${rp.id}`} {...activate(() => setV("ropa"))}>{rp.id}</span> : <span className="tag num" style={{ cursor: "pointer" }} aria-label="Open RoPA register" {...activate(() => setV("ropa"))}>—</span>;
     } },
-    { key: "hash", header: "Hash", value: (l) => l.hash, render: (l) => <span className="num" style={{ fontSize: 11, color: "var(--muted)" }}>{l.hash}</span> },
+    { key: "hash", header: "Hash", value: (l) => l.hash, render: (l) => <span className="num" title={l.hash} style={{ fontSize: 11, color: "var(--muted)" }}>{API_ON && l.hash ? l.hash.slice(0, 12) + "…" : l.hash}</span> },
   ];
   return (
     <Page mod="auditlog" acts={acts}>
@@ -55,7 +55,8 @@ export default function AuditLogModule() {
         <div className="c-head" style={{ flexWrap: "wrap", gap: 8 }}>
           <div className="seg" role="tablist">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div>
           <span className="r" style={{ marginLeft: "auto", fontSize: 12 }} role="status">
-            {chainOk ? <span style={{ color: "var(--ok-ink)" }}><Icon name="check" /> Chain intact, {WS_AUDIT.length}{API_ON && WS_AUDIT.length >= 500 ? "+ (newest 500 shown; export for all)" : ""} entries</span> : <span style={{ color: "var(--bad-ink)" }}><Icon name="alert" /> Chain broken</span>}
+            {API_ON && !svc.lastVerified() ? <span style={{ color: "var(--muted)" }}><Icon name="clock" /> Not verified yet: use Chain integrity</span>
+              : chainOk ? <span style={{ color: "var(--ok-ink)" }}><Icon name="check" /> {API_ON ? `Verified ${svc.lastVerified()}, ` : ""}Chain intact, {WS_AUDIT.length}{API_ON && WS_AUDIT.length >= 500 ? "+ (newest 500 shown; export for all)" : ""} entries</span> : <span style={{ color: "var(--bad-ink)" }}><Icon name="alert" /> Chain broken</span>}
           </span>
         </div>
         <div className={`c-body ${view === "log" ? "flush" : ""} scroll`} style={view === "log" ? { padding: 0 } : undefined} id="audBodyL">

@@ -27,16 +27,25 @@ const ACCESS_MAX_DAYS = 180;
 interface Pbc { id: string; item: string; owner: string; ownerId?: string; status: "Requested" | "Outstanding" | "Received" }
 interface Finding { id: string; title: string; sev: string; status: "Draft" | "Open" | "Rejected" | "Closed"; rec: string; issue: string; draftedBy?: string; draftedById?: string; acceptedBy?: string; acceptedAt?: string; rejectedReason?: string; rejectedBy?: string }
 interface Ir { id: string; item: string; by: string; byId: string; at: string; status: "Open" | "Answered" | "Closed"; response: string; answeredBy?: string; closedBy?: string }
-interface Access { status: "none" | "granted" | "ended"; auditorId?: string; auditor?: string; from?: string; until?: string; grantedBy?: string; endedBy?: string; endedAt?: string }
+interface Access { status: "none" | "granted" | "ended"; auditorId?: string; auditor?: string; from?: string; fromAt?: string; until?: string; grantedBy?: string; endedBy?: string; endedAt?: string; endedAtStamp?: string }
 export interface Audit {
   id: string; name: string; fw: string; auditor: string; lead: string; stage: string; scope: string; period: string; progress: number; opened: string;
   pbc: Pbc[]; tests: unknown[]; findings: Finding[]; irs: Ir[]; access: Access; populationsFrozen: boolean; frozenAt?: string; frozenBy?: string; createdBy: string; createdById: string; closeReason?: string;
 }
 const manageBlock = (role: string) => roleBlock(role, "managing an audit", "admin", "owner");
+const stamp = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace("T", " "); // the same form as a snapshot's `at`
+/** The minutes a snapshot must fall in to be shared with this engagement's auditor: from the grant to the end of access. */
+const inWindow = (a: Audit, at: string, now: number) => !!a.access.fromAt && at >= a.access.fromAt && at <= (a.access.endedAtStamp ?? (a.access.until ? `${a.access.until} 23:59` : stamp(now)));
 const isOpenFinding = (f: Finding) => f.status !== "Closed" && f.status !== "Draft" && f.status !== "Rejected";
 const live = (a: Audit, today: string) => a.access.status === "granted" && !!a.access.until && a.access.until >= today;
 /** The audit as the screens read it (the demonstration's `auditorAccess` flag is derived). */
 export const auditView = (a: Audit) => ({ ...a, auditorAccess: a.access.status });
+/** What an external auditor receives: names, never the company's internal user ids. */
+const forAuditor = (a: Audit) => {
+  const { createdById: _c, ...rest } = a; void _c;
+  return { ...rest, auditorAccess: a.access.status, access: { status: a.access.status, auditor: a.access.auditor, from: a.access.from, until: a.access.until, endedAt: a.access.endedAt, endedBy: a.access.endedBy },
+    pbc: a.pbc.map(({ ownerId: _o, ...p }) => (void _o, p)), irs: a.irs.map(({ byId: _b, ...r }) => (void _b, r)), findings: a.findings.map(({ draftedById: _d, ...f }) => (void _d, f)) };
+};
 async function load(t: WsTx, id: string): Promise<Rec<Audit>> { return (await t.get<Audit>("audit", str(id, 20))) ?? missing("Audit"); }
 const save = (t: WsTx, rec: Rec<Audit>) => t.update("audit", rec.id, rec.data, rec.version);
 const whyCannotComplete = (a: Audit) => {
@@ -51,7 +60,7 @@ async function sweepAudits(t: WsTx) {
   for (const rec of await t.list<Audit>("audit")) {
     const a = rec.data;
     if (a.access.status === "granted" && a.access.until && a.access.until < today) {
-      a.access.status = "ended"; a.access.endedBy = "System"; a.access.endedAt = today; await save(t, rec);
+      a.access.status = "ended"; a.access.endedBy = "System"; a.access.endedAt = today; a.access.endedAtStamp = `${a.access.until} 23:59`; await save(t, rec);
       await t.audit("audit.auditor.access.expired", `${a.id} ${a.name}: ${a.access.auditor} (until ${a.access.until})`, "Audit", true);
       if (a.access.auditorId) await t.notify(a.access.auditorId, `Your auditor access to ${a.name} ended on ${a.access.until}.`);
     }
@@ -63,7 +72,7 @@ async function complete(t: WsTx, rec: Rec<Audit>, reason: string, how: string) {
   if (needsReason(a) && reason.length < 10) invalid("A reason for closing with open findings or outstanding requests of at least 10 characters is required.");
   for (const r of a.irs) if (r.status === "Answered") { r.status = "Closed"; r.closedBy = `${t.actor.name} (with the engagement)`; }
   const wasLive = a.access.status === "granted";
-  if (wasLive) { a.access.status = "ended"; a.access.endedBy = t.actor.name; a.access.endedAt = isoDayOf(t.now); }
+  if (wasLive) { a.access.status = "ended"; a.access.endedBy = t.actor.name; a.access.endedAt = isoDayOf(t.now); a.access.endedAtStamp = stamp(t.now); }
   a.stage = "Complete"; a.progress = 100; a.closeReason = reason || undefined; await save(t, rec);
   await t.audit(wasLive ? "audit.auditor.access.ended" : "audit.stage.advanced", `${a.id} ${a.name} → Complete by ${t.actor.name}${reason ? `: ${reason}` : ""} (${how})`, "Audit");
   if (wasLive && a.access.auditorId) await t.notify(a.access.auditorId, `${a.name} was completed and your auditor access ended.`);
@@ -97,10 +106,10 @@ export function auditRoutes(h: WsHelpers) {
     const isAuditor = c.actor.role === "auditor";
     const mine = isAuditor ? all.filter((a) => a.access.auditorId === c.actor.id && live(a, today)) : all;
     const snaps = (await t.list<RiskSnapshot>("risk-snapshot")).map((x) => x.data);
-    const shared = (a: Audit) => (a.access.status !== "none" && a.access.from ? snaps.filter((s) => s.at.slice(0, 10) >= a.access.from! && s.at.slice(0, 10) <= (a.access.endedAt ?? a.access.until ?? today)) : [])
+    const shared = (a: Audit) => snaps.filter((s) => inWindow(a, s.at, t.now))
       .map((s) => ({ id: s.id, at: s.at, count: s.count, scope: s.scope, hash: s.hash }));
     return {
-      audits: mine.map((a) => ({ ...auditView(a), snapshots: shared(a) })).reverse(), stages: AUDIT_STAGES, fws: AUDIT_FWS,
+      audits: mine.map((a) => ({ ...(isAuditor ? forAuditor(a) : auditView(a)), snapshots: shared(a) })).reverse(), stages: AUDIT_STAGES, fws: AUDIT_FWS,
       auditors: isAuditor ? [] : (await membersOf(d, c.actor)).filter((m) => m.role === "auditor").map((m) => ({ id: m.id, name: m.name })),
     };
   })));
@@ -121,8 +130,9 @@ export function auditRoutes(h: WsHelpers) {
     const m = (await membersOf(d, t.actor)).find((x) => x.id === str(b.auditorId, 100) && x.role === "auditor");
     if (!m) invalid("Choose the external auditor. Invite them in Team & Settings with the Auditor role first.");
     const today = isoDayOf(t.now); const until = txt(b.until, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(until) || until < today || Date.parse(until + "T00:00:00Z") > t.now + ACCESS_MAX_DAYS * 86400_000) invalid(`Choose an end date within ${ACCESS_MAX_DAYS} days.`);
-    a.access = { status: "granted", auditorId: m!.id, auditor: m!.name, from: today, until, grantedBy: t.actor.name }; a.lead = `External, ${m!.name}`;
+    const ms = Date.parse(until + "T00:00:00Z"); // a real calendar day only ("2026-13-45" or "9999-99-99" never pass)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(until) || Number.isNaN(ms) || isoDayOf(ms) !== until || until < today || ms > t.now + ACCESS_MAX_DAYS * 86400_000) invalid(`Choose an end date within ${ACCESS_MAX_DAYS} days.`);
+    a.access = { status: "granted", auditorId: m!.id, auditor: m!.name, from: today, fromAt: stamp(t.now), until, grantedBy: t.actor.name }; a.lead = `External, ${m!.name}`;
     if (a.stage === "Planned") { a.stage = "Fieldwork"; a.progress = PROGRESS[1]; }
     a.period = `Access ${today} to ${until}`; await save(t, rec);
     await t.audit("audit.auditor.access.granted", `${a.id} ${a.name} → ${m!.name} until ${until}`, "Audit");
@@ -192,13 +202,11 @@ export function auditRoutes(h: WsHelpers) {
   /** Management closes an answered request (so a request the auditor never closes cannot block completion); the auditor closes any. */
   const closeIr = wsRoute(h, "audits", async (d, r, c) => tx(d, c, async (t) => {
     await sweepAudits(t); const rec = await load(t, r.path[2]); const a = rec.data; const me = c.actor;
+    if (me.role === "auditor" && (a.access.auditorId !== me.id || !live(a, isoDayOf(t.now)))) missing("Audit"); // nothing about another engagement is revealed
     if (a.stage === "Complete") invalid("This engagement is complete and locked.");
     const x = a.irs.find((y) => y.id === str(r.path[4], 20)) ?? missing("Request");
     if (x.status === "Closed") invalid("The request is already closed.");
-    if (me.role === "auditor") {
-      if (a.access.auditorId !== me.id) missing("Audit");
-      if (!live(a, isoDayOf(t.now))) refuse("Auditor access for this engagement has ended.");
-    } else {
+    if (me.role !== "auditor") {
       refuse(manageBlock(me.role));
       if (x.status !== "Answered") refuse("Only the auditor can close a request that has not been answered.");
     }
@@ -239,7 +247,7 @@ export function auditRoutes(h: WsHelpers) {
     const rec = await load(t, r.path[2]); const a = rec.data;
     if (c.actor.role === "auditor" ? a.access.auditorId !== c.actor.id || !live(a, isoDayOf(t.now)) : !!manageBlock(c.actor.role)) missing("Audit");
     const s = (await t.get<RiskSnapshot>("risk-snapshot", str(r.path[4], 20))) ?? missing("Snapshot");
-    if (!a.access.from || s.data.at.slice(0, 10) < a.access.from || s.data.at.slice(0, 10) > (a.access.endedAt ?? a.access.until ?? "")) missing("Snapshot");
+    if (!inWindow(a, s.data.at, t.now)) missing("Snapshot");
     await t.audit("risk.register.snapshot.downloaded", `${s.id} (SHA-256 ${s.data.sha256}) for ${a.id} by ${c.actor.name}`, "Risk");
     return ok(s.data);
   }));
@@ -251,24 +259,20 @@ export function auditRoutes(h: WsHelpers) {
   });
   const shape = (e: CompanyAuditEntry) => ({ seq: e.chainN, at: new Date(e.at).toISOString().slice(0, 16).replace("T", " "), actor: e.actor, action: e.action, target: e.target, cat: e.cat, hash: e.hash, prev: e.prevHash });
   const logData = logRoute(async (_d, t) => ({
-    entries: (await t.auditPage(null, 500)).map(shape), firstBad: await t.auditVerify(),
+    entries: (await t.auditPage(null, 500)).map(shape), verification: (await t.get<{ at: string; by: string; firstBad: number | null; entries: number }>("audit-verify", "last"))?.data ?? null,
     packages: (await t.list<{ id: string; at: string; by: string; entries: number; sha: string }>("audit-package")).map((x) => x.data).reverse(),
   }));
-  const older = wsRoute(h, "auditlog", async (d, r, c) => {
-    refuse(roleBlock(c.actor.role, "reading the audit log", "admin"));
-    const before = Math.trunc(Number(r.path[3])); if (!Number.isFinite(before) || before < 1) invalid("Invalid position.");
-    return tx(d, c, async (t) => ok((await t.auditPage(before, 500)).map(shape)));
-  });
   const verify = logRoute(async (_d, t) => {
     const bad = await t.auditVerify(); const n = (await t.auditPage(null, 1))[0]?.chainN ?? 0;
+    const last = { at: stamp(t.now), by: t.actor.name, firstBad: bad, entries: n }; const prev = await t.get("audit-verify", "last");
+    if (prev) await t.update("audit-verify", "last", last, prev.version); else await t.insert("audit-verify", "last", last);
     await t.audit("auditlog.chain.verified", bad == null ? `intact, ${n} entries` : `BROKEN at entry ${bad}`, "System");
     return { intact: bad == null, entries: n, firstBad: bad };
   });
   /** At most 10 exports an hour per company (application security spec). */
-  const exportLimit = async (t: WsTx) => {
-    const recent = (await t.list<{ at: number }>("audit-export")).filter((x) => x.data.at > t.now - 3600_000).length;
-    if (recent >= 10) invalid("At most 10 exports an hour. Try again later.");
-    await t.insert("audit-export", `AX-${await t.next("audit-export", 0)}`, { at: t.now, by: t.actor.name });
+  const exportLimit = async (t: WsTx) => { // an hourly counter taken under the counter's row lock, so parallel requests cannot all pass
+    const n = await t.next(`auditx-${Math.floor(t.now / 3600_000)}`, 0);
+    if (n > 10) invalid("At most 10 exports an hour. Try again later.");
   };
   /** The newest 5,000 entries (newest first). */
   const newest = async (t: WsTx) => {
@@ -294,7 +298,7 @@ export function auditRoutes(h: WsHelpers) {
     await t.insert("audit-package", id, { id, at: at.slice(0, 16).replace("T", " "), by: t.actor.name, entries: rows.length, sha });
     await t.audit("evidence.package.generated", `${id}, ${rows.length} entries, SHA-256 ${sha}`, "System");
     return { fileName: `${id}.json`, content: JSON.stringify({ package: id, generated: at, generatedBy: t.actor.name, entries: rows, manifest: { algorithm: "SHA-256", entries: rows.length, sha256: sha, firstBad: await t.auditVerify() },
-      note: "Evidence package for an auditor. The SHA-256 covers the entries array as serialised here; each entry also carries the server's own hash chain." }, null, 2) };
+      note: "Evidence package for an auditor. manifest.sha256 is the SHA-256 of JSON.stringify(entries) (compact, no spaces); each entry also carries the server's own hash chain." }, null, 2) };
   });
 
   return {
@@ -304,6 +308,6 @@ export function auditRoutes(h: WsHelpers) {
     "POST ws/audits/:id/findings": draft, "POST ws/audits/:id/findings/:fid/issue": promote, "POST ws/audits/:id/findings/:fid/reject": reject,
     "POST ws/audits/:id/information-requests": raiseIr, "POST ws/audits/:id/information-requests/:rid/respond": respond, "POST ws/audits/:id/information-requests/:rid/close": closeIr,
     "POST ws/audits/:id/report": report, "GET ws/audits/:id/snapshots/:sid": snapshot,
-    "GET ws/data/auditlog": logData, "GET ws/auditlog/before/:n": older, "POST ws/auditlog/verify": verify, "POST ws/auditlog/exports": exportLog, "POST ws/auditlog/packages": pack,
+    "GET ws/data/auditlog": logData, "POST ws/auditlog/verify": verify, "POST ws/auditlog/exports": exportLog, "POST ws/auditlog/packages": pack,
   };
 }

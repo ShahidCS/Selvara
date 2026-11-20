@@ -114,7 +114,7 @@ export function AuditDetail({ id }: { id: string }) {
                 {a.auditorAccess === "ended" && a.populationsFrozen ? <span className="field help" style={{ margin: 0, alignSelf: "center" }}>Engagement closed and locked.</span> : null}
               </div>
               {a.auditorAccess === "granted" && a.stage !== "Complete" && completeWhy ? <p className="field help" style={{ margin: "8px 0 0" }}>Cannot complete yet: {completeWhy}</p> : null}
-              <p className="field help" style={{ margin: "8px 0 0" }}>Freezing populations locks the sampled records so evidence can’t change mid-audit. Ending access completes the engagement and revokes the external auditor’s read access.</p>
+              <p className="field help" style={{ margin: "8px 0 0" }}>{API_ON ? "Freezing populations records when the sampled populations were fixed; evidence keeps its version history, so later changes stay visible. Ending access completes the engagement and ends the auditor's access to it; their read-only access to controls, evidence, policies and frameworks follows their role." : "Freezing populations locks the sampled records so evidence can’t change mid-audit. Ending access completes the engagement and revokes the external auditor’s read access."}</p>
             </>
           ) : <p className="field help" style={{ margin: 0 }}>Read-only for your role. Management (admin/owner) manages auditor access, populations, stages and requests. Auditors may raise information requests and draft findings.</p>}
         </div></div>

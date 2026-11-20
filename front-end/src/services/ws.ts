@@ -26,9 +26,9 @@ export interface WsVendorQ { id: string; vendorId: string; vendor: string; conta
 export interface WsTrustPublic { company: string; chatbot: boolean; faq: { q: string; a: string }[]; subprocessors: { name: string; purpose: string; region: string }[]; updates: { at: string; title: string }[];
   controls: [string, string][]; account: { company: string; nda: string; access: string[] } | null; myRequests: { resource: string; status: string; at: string }[]; subscribed: boolean }
 /** Group 5: auditors who can be given access, and the company audit log's verification and evidence packages. */
-export interface WsAuditLog { firstBad: number | null; packages: { id: string; at: string; by: string; entries: number; sha: string }[] }
+export interface WsAuditLog { firstBad: number | null; verifiedAt: string | null; verifiedBy?: string; packages: { id: string; at: string; by: string; entries: number; sha: string }[] }
 export const g4Meta = createStore<{ contacts: { id: string; name: string }[]; vendorQs: WsVendorQ[]; assigned: WsVendorQ[]; trustPublic: WsTrustPublic | null; incidents: any[]; subscribers: number;
-  auditors: { id: string; name: string }[]; auditlog: WsAuditLog }>({ contacts: [], vendorQs: [], assigned: [], trustPublic: null, incidents: [], subscribers: 0, auditors: [], auditlog: { firstBad: null, packages: [] } });
+  auditors: { id: string; name: string }[]; auditlog: WsAuditLog }>({ contacts: [], vendorQs: [], assigned: [], trustPublic: null, incidents: [], subscribers: 0, auditors: [], auditlog: { firstBad: null, verifiedAt: null, packages: [] } });
 /** My Work as the server computes it for the signed-in person. */
 export interface WsWork {
   issues: { id: string; title: string; sev: string; status: string; dueDate: string; due: string }[];
@@ -109,7 +109,8 @@ const LOADERS: Record<string, (b: any) => void> = {
   /** The company's real audit log (newest 500), its verification and the evidence packages. */
   auditlog(b) {
     fill(WS_AUDIT, (b.entries as any[]).slice().reverse());
-    g4Meta.set({ auditlog: { firstBad: b.firstBad ?? null, packages: b.packages ?? [] } });
+    const v = b.verification; // the last verification (verifying recomputes the whole chain, so it runs only when asked)
+    g4Meta.set({ auditlog: { firstBad: v?.firstBad ?? null, verifiedAt: v?.at ?? null, verifiedBy: v?.by, packages: b.packages ?? [] } });
   },
   /** Posture figures of the modules the person cannot open (scores and statuses only, no titles or owners). Loaded last: it never replaces
    *  what a module the person can open has loaded. */
@@ -135,7 +136,7 @@ function clearAll() {
   DATA.risks = []; DATA.issues = []; DATA.reports = []; DATA.audits = []; fill(WS_AUDIT, []); DATA.vendors = []; DATA.questionnaires = []; DATA.trust = []; DATA.commitments = [];
   fill(ANSWER_LIB, []); fill(KB_DOCS, []); fill(TRUST_FAQ, []); fill(TRUST_SUBPROC, []); fill(TRUST_UPDATES, []); fill(STANDARD_TERMS, []);
   TRUST.accounts = []; TRUST.requests = []; TRUST.decisions = []; TRUST.blocked = []; TRUST.chats = []; TRUST.activity = []; TRUST.modeHist = [];
-  g4Meta.set({ contacts: [], vendorQs: [], assigned: [], trustPublic: null, incidents: [], subscribers: 0, auditors: [], auditlog: { firstBad: null, packages: [] } });
+  g4Meta.set({ contacts: [], vendorQs: [], assigned: [], trustPublic: null, incidents: [], subscribers: 0, auditors: [], auditlog: { firstBad: null, verifiedAt: null, packages: [] } });
   fill(ACCESS_REQUESTS, []); fill(ACCESS_REVIEWS, []); setAcks("", {}); setTasks([]); delegations.set({ list: [] });
   fill(RISK_PARTIES, []); fill(RISK_SNAPSHOTS, []); fill(RISK_ENT, []); fill(SCHED_PACKS, []); fill(VENDOR_REQS, []);
   approvals.set((s) => ({ list: s.list.filter((a) => !SERVER_KINDS.includes(a.kind)) }));

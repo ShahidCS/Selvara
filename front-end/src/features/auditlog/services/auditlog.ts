@@ -28,6 +28,8 @@ const EXPORTS: WsExport[] = []; // append-only register (module memory)
 export const wsExports = (): readonly WsExport[] => (API_ON ? g4Meta.get().auditlog.packages : EXPORTS);
 /** Production: the server's verification of the company's SHA-256 chain (null = intact). */
 export const serverFirstBad = () => g4Meta.get().auditlog.firstBad;
+/** Production: when the chain was last verified (null = never). */
+export const lastVerified = () => g4Meta.get().auditlog.verifiedAt;
 
 /** A link is sealed only if its hash matches its fields AND it points at its predecessor's hash (genesis for the first). */
 export function linkOk(l: WsEntry, i: number): boolean {

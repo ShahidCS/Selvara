@@ -72,11 +72,13 @@ describe("audits", () => {
     expect((await audits(mo.cookie)).audits).toEqual([]); // not shared yet
     expect((await call("POST", `ws/audits/${id}/auditor-access`, { auditorId: ana.id, until: day(30) }, jordan.cookie)).status).toBe(400); // not an auditor
     expect((await call("POST", `ws/audits/${id}/auditor-access`, { auditorId: mo.id, until: day(400) }, jordan.cookie)).status).toBe(400); // too long
+    for (const until of ["9999-99-99", "2026-13-45", "2026-02-30"]) expect((await call("POST", `ws/audits/${id}/auditor-access`, { auditorId: mo.id, until }, jordan.cookie)).status, until).toBe(400); // not a real day
     expect((await call("POST", `ws/audits/${id}/auditor-access`, { auditorId: mo.id, until: day(30) }, jordan.cookie)).status).toBe(200);
     expect(store.notices.some((n) => n.userId === mo.id && /auditor access to ISO 27001 surveillance/.test(n.text))).toBe(true);
     expect(await audit(mo.cookie, id)).toMatchObject({ auditorAccess: "granted", lead: "External, Morgan Blake", stage: "Fieldwork" });
     expect((await audits(kim.cookie)).audits).toEqual([]); // another firm sees nothing
     expect((await call("POST", `ws/audits/${id}/information-requests`, { item: "Access review export" }, kim.cookie)).status).toBe(404);
+    expect((await call("POST", `ws/audits/${id}/information-requests/IR-999/close`, {}, kim.cookie)).body).toEqual({ error: "Audit not found." }); // reveals nothing
     // the auditor raises a request and drafts a finding; management cannot draft
     expect((await call("POST", `ws/audits/${id}/findings`, { title: "No access reviews in Q3", sev: "High" }, jordan.cookie)).status).toBe(403);
     await call("POST", `ws/audits/${id}/information-requests`, { item: "Access review export" }, mo.cookie);
@@ -121,6 +123,7 @@ describe("audits", () => {
     const snap = body<{ hash: string }>(await call("POST", "ws/risks/snapshots", { scope: "all" }, jordan.cookie));
     expect(body<{ snapshots: { shared: boolean }[] }>(await call("GET", "ws/data/risk", {}, jordan.cookie)).snapshots[0].shared).toBe(true);
     const a = await audit(mo.cookie, id2); expect(a.snapshots).toHaveLength(1);
+    expect(JSON.stringify(a)).not.toContain(jordan.id); // no internal user ids for the external auditor
     const content = body<{ sha256: string; content: { title: string }[] }>(await call("GET", `ws/audits/${id2}/snapshots/${a.snapshots[0].id}`, {}, mo.cookie));
     expect(content.sha256.startsWith(snap.hash)).toBe(true); expect(content.content[0].title).toBe("Shared risk");
     clock += 5 * 86400_000; const j2 = await signIn("jordan@acme.example"); const m2 = await signIn("morgan@auditfirm.example");
@@ -136,10 +139,11 @@ describe("company audit log", () => {
     await call("POST", "ws/audits", { name: "Log me" }, jordan.cookie);
     expect((await call("GET", "ws/data/auditlog", {}, owen.cookie)).status).toBe(403); // owners cannot open it (role table)
     expect((await call("GET", "ws/data/auditlog", {}, mo.cookie)).status).toBe(403);
-    const d1 = body<{ entries: { action: string; cat: string }[]; firstBad: number | null }>(await call("GET", "ws/data/auditlog", {}, jordan.cookie));
-    expect(d1.entries[0]).toMatchObject({ action: "audit.created", cat: "Audit" }); expect(d1.firstBad).toBeNull();
+    const d1 = body<{ entries: { action: string; cat: string }[]; verification: unknown }>(await call("GET", "ws/data/auditlog", {}, jordan.cookie));
+    expect(d1.entries[0]).toMatchObject({ action: "audit.created", cat: "Audit" }); expect(d1.verification).toBeNull(); // verified only when asked
     expect(d1.entries.every((e) => !/other\.example/.test(JSON.stringify(e)))).toBe(true);
     expect(body<{ intact: boolean }>(await call("POST", "ws/auditlog/verify", {}, jordan.cookie)).intact).toBe(true);
+    expect(body<{ verification: { by: string; firstBad: number | null } }>(await call("GET", "ws/data/auditlog", {}, jordan.cookie)).verification).toMatchObject({ by: "Jordan Avery", firstBad: null });
     const f = body<{ fileName: string; content: string }>(await call("POST", "ws/auditlog/exports", { format: "csv" }, jordan.cookie));
     expect(f.fileName).toBe("workspace-audit-log.csv"); expect(f.content).toMatch(/audit\.created/);
     const p = body<{ content: string }>(await call("POST", "ws/auditlog/packages", {}, jordan.cookie));

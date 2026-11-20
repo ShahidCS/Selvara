@@ -28,7 +28,7 @@ function ReasonForm(o: Opts) {
             <select className="select" id="rd-pick" value={pick} onChange={(e) => setPick(e.target.value)}>{o.select.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
         ) : null}
         {o.label ? <div className="field"><label htmlFor="rd-text">{o.label}{min ? <span style={{ color: "var(--bad-ink)" }}> *</span> : null}</label>
-          {o.textType === "date" ? <input className="input" id="rd-text" type="date" value={text} onChange={(e) => { setText(e.target.value); setErr(""); }} /> : <textarea className="input" id="rd-text" data-focus rows={3} maxLength={o.max ?? 300} style={{ resize: "vertical" }} value={text} onChange={(e) => { setText(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "rd-err" : undefined} />}</div> : null}
+          {o.textType === "date" ? <input className="input" id="rd-text" type="date" data-focus aria-invalid={!!err} aria-describedby={err ? "rd-err" : undefined} value={text} onChange={(e) => { setText(e.target.value); setErr(""); }} /> : <textarea className="input" id="rd-text" data-focus rows={3} maxLength={o.max ?? 300} style={{ resize: "vertical" }} value={text} onChange={(e) => { setText(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "rd-err" : undefined} />}</div> : null}
         <p className="field help" id="rd-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
       </div>
       <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><button className={`btn ${o.danger ? "btn-danger" : "btn-primary"}`} disabled={busy} onClick={go}>{o.confirm}</button></LayerFoot>
