@@ -1,3 +1,5 @@
+import { API_ON } from "@/lib/rbac";
+import { MemberSelect, myMemberId, useMembers } from "@/components/kit/MemberSelect";
 import { useState } from "react";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import type { LayerApi } from "@/components/shell/LayerProvider";
@@ -14,20 +16,22 @@ const errStyle = (on: boolean) => ({ color: "var(--bad-ink)", display: on ? "blo
 
 /** "Add request" modal (source addPbc / savePbc). `onAdded` switches to the PBC tab. */
 export function AddPbcForm({ L, id, onAdded }: { L: LayerApi; id: string; onAdded: () => void }) {
-  const [item, setItem] = useState(""); const [owner, setOwner] = useState(getActor().name);
+  const members = useMembers();
+  const [item, setItem] = useState(""); const [owner, setOwner] = useState(getActor().name); const [ownerId, setOwnerId] = useState(() => myMemberId(members));
   const [err, setErr] = useState(false);
   const submit = () => attempt(L, async () => {
     const it = clampText(item, 300);
     if (!it) { setErr(true); return; }
     const a = svc.findAudit(id); if (!a) return;
-    await svc.addPbc(id, { item: it, owner: clampText(owner, 80) });
+    await svc.addPbc(id, { item: it, owner: clampText(owner, 80), ownerId: API_ON ? ownerId || myMemberId(members) : undefined });
     wsLog("audit.pbc.added", a.name + ": " + it, "Audit"); L.closeLayer(); L.toast("Request added"); onAdded(); bumpData();
   });
   return (
     <>
       <div>
         <div className="field"><label htmlFor="pbc-item">Request <Req /></label><input className="input" id="pbc-item" data-focus placeholder="e.g. Access review export" maxLength={300} value={item} onChange={(e) => setItem(e.target.value)} aria-invalid={err} aria-describedby={err ? "pbc-err" : undefined} /></div>
-        <div className="field"><label htmlFor="pbc-owner">Owner</label><input className="input" id="pbc-owner" placeholder="e.g. O. Hart" maxLength={80} value={owner} onChange={(e) => setOwner(e.target.value)} /></div>
+        {API_ON ? <MemberSelect id="pbc-owner" value={ownerId || myMemberId(members)} onChange={setOwnerId} help="The owner is told and provides it." />
+          : <div className="field"><label htmlFor="pbc-owner">Owner</label><input className="input" id="pbc-owner" placeholder="e.g. O. Hart" maxLength={80} value={owner} onChange={(e) => setOwner(e.target.value)} /></div>}
         <p className="field help" id="pbc-err" role={err ? "alert" : undefined} style={errStyle(err)}>Request description is required.</p>
       </div>
       <LayerFoot><button className="btn btn-secondary" onClick={L.closeLayer}>Cancel</button><button className="btn btn-primary" onClick={submit}>Add request</button></LayerFoot>

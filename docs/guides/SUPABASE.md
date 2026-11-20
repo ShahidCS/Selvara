@@ -42,7 +42,7 @@ In **each** project (staging and production separately), open SQL Editor → New
 8. [`supabase/migrations/0008_workspace_records.sql`](../../supabase/migrations/0008_workspace_records.sql) (production programme, group 1): the workspace modules' records (Frameworks, Controls and Tests, Evidence; later groups add theirs), one row per record, walled off per company by row level security, never deleted (a removed record keeps its row), read-only to platform staff. Evidence **files** are not stored in the database but in Supabase Storage (section 4d). Run it with the release that needs schema version 8.
 9. [`supabase/migrations/0009_company_audit_verify.sql`](../../supabase/migrations/0009_company_audit_verify.sql) (production programme, group 5): lets a company admin verify their own company's audit chain from the workspace Audit log. Run it with the release that needs schema version 9.
 
-All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `8`.
+All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `9`.
 
 Supabase may warn that a script contains destructive operations: the `drop ... if exists` lines only remove the script's own triggers and policies to recreate them. No data is deleted.
 

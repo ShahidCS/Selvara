@@ -114,7 +114,7 @@ export function cyclePbc(id: string, pid: string) {
     return { id: p.id as string, status: p.status as string };
   }, () => post<{ id: string; status: string } | null>(`/audits/${enc(id)}/pbc/${enc(pid)}/advance`, {}));
 }
-export function addPbc(id: string, input: { item: string; owner: string }) {
+export function addPbc(id: string, input: { item: string; owner: string; ownerId?: string }) {
   return viaApi(() => {
     const a = need(id); guard(whyCannotManage()); const pid = "PBC-" + (50 + a.pbc.length);
     a.pbc.push({ id: pid, item: input.item, owner: input.owner || "Unassigned", status: "Requested" });

@@ -54,7 +54,8 @@ The demonstration's screens are rich and already route every change through a se
 | 1 | Merged | `0008` | ShahidCS/Selvara#74 |
 | 2 | Merged | none (uses `0008`) | ShahidCS/Selvara#75 |
 | 3 | Merged | none (uses `0008`) | ShahidCS/Selvara#76 |
-| 4 | Built, in review | none (uses `0008`) | group 4 PR |
+| 4 | Merged | none (uses `0008`) | ShahidCS/Selvara#77 |
+| 5 | Built, in review | `0009` | group 5 PR |
 
 ### Group 3 decisions (Risk, Issues, My Work, Overview, Reports)
 
@@ -119,3 +120,31 @@ Where the inventory (`inventory/group4-vendors-portal-questionnaires-trust-commi
   - Visitors receive only document names and access.
   - Nobody who ever edited a library answer can verify it.
   - The Trust Center's activity and change history are recorded and shown.
+
+### Group 5 decisions (Audits, auditor access, Audit log, AppSec)
+
+Where the inventory (`inventory/group5-audits-auditor-auditlog-appsec.md`, section 7) found a gap, production does the following.
+
+- **Auditor access.**
+  - Access names one person and a period: a member invited with the Auditor role, up to 180 days. It ends by itself on its last day; the system records the end and tells the auditor.
+  - It cannot be granted on a completed engagement.
+  - An auditor sees only the engagements assigned to them while access is live. They never see another firm's engagements.
+  - Granting access moves a planned engagement into Fieldwork.
+- **What the auditor can open.** The Auditor role still opens Controls, Evidence, Policies and Frameworks read-only at all times, as listed in `roles.json`. Tying those reads to a live engagement would change `roles.json`, which needs the owner's approval.
+- **Completion.**
+  - Every path to Complete applies the same rules. No drafted finding may wait for a decision, and no information request may be still open; an answered request closes with the engagement.
+  - A reason is required when findings or requests remain open.
+  - Management can close an answered request.
+  - A completed engagement is locked: no new requests, freezes or findings.
+- **Findings.** Accepting a finding creates a real issue in the same unit of work. The issue has an owner, a real due date (14 days) and a link back to the finding, and the auditor is told. Declining a finding needs a reason, and the auditor is told.
+- **Populations.** Freezing populations records who froze them and when. Nothing else is locked: evidence keeps its version history, so changes after the freeze stay visible.
+- **Risk snapshots.** A risk register snapshot taken while an auditor's access is live is marked shared. That engagement's auditor can download it from the engagement.
+- **Audit log.**
+  - The Audit log is the company's real server log, sealed by the database in a SHA-256 chain.
+  - Company admins read the newest 500 entries, verify the chain (migration `0009`), export the log (JSON or CSV, newest 5,000) and build an evidence package with a SHA-256 manifest.
+  - Every export is recorded, at most 10 an hour.
+  - "Export selected" is removed in production.
+  - The category tabs include the server's categories.
+- **RoPA.** The RoPA tab is presented as a reference register for the company to adapt. Its export is recorded in the company's own log, not the platform's.
+- **The report.** The engagement report is a draft. It is recorded in the company's own log only.
+- **AppSec.** It stays a read-only specification page; there is nothing to store. Real application security findings and scans would be new scope, for example with the vulnerability-scanner integration in group 7.
