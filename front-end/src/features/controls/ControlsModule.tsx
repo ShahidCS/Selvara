@@ -59,14 +59,18 @@ function ControlsList() {
   );
 
   const soa = async () => {
-    downloadText("statement-of-applicability.csv", await svc.exportSoa());
-    wsLog("controls.soa.exported", DATA.controls.length + " controls", "Control");
-    L.toast("Statement of Applicability exported");
+    try {
+      downloadText("statement-of-applicability.csv", await svc.exportSoa());
+      wsLog("controls.soa.exported", DATA.controls.length + " controls", "Control");
+      L.toast("Statement of Applicability exported");
+    } catch (e) { L.toast(uiMessage(e), false); }
   };
   const matrixExport = async () => {
-    downloadText("cross-framework-matrix.csv", await svc.exportMatrix());
-    wsLog("controls.matrix.exported", DATA.controls.length + " controls", "Control");
-    L.toast("Matrix exported");
+    try {
+      downloadText("cross-framework-matrix.csv", await svc.exportMatrix());
+      wsLog("controls.matrix.exported", DATA.controls.length + " controls", "Control");
+      L.toast("Matrix exported");
+    } catch (e) { L.toast(uiMessage(e), false); }
   };
   const syncAll = async () => {
     try {

@@ -28,6 +28,7 @@ export function toggleSnooze(id: string) {
 export interface NewFramework { template: string | null; short: string; name: string; kind: string; region: string; version: string; lines: string[] }
 /** Adds a framework to the company's library. Returns its id. */
 export function addFramework(f: NewFramework) {
+  f = { ...f, lines: f.lines.map((l) => l.slice(0, 200)).slice(0, 300) };
   const sh = f.short.trim().slice(0, 40); const fn = (f.name || sh).trim().slice(0, 120);
   if (!sh) return Promise.reject(new SodError("Give the framework a short name."));
   const id = fwIdFor(sh, f.template);

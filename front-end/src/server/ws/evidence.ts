@@ -10,7 +10,7 @@ import { approvalBlock, reasonBlock } from "@/lib/rules";
 import type { Deps } from "../types";
 import { approvalsView, invalid, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
 import { checkFile } from "./files";
-import { WsRefused, type Rec, type WsTx } from "./store";
+import { WsConflict, WsRefused, type Rec, type WsTx } from "./store";
 
 export interface Attachment { id: string; name: string; size: string; bytes: number; by: string; byId: string; at: string; path: string; sha256: string; type: string }
 export interface Evidence {
@@ -29,6 +29,10 @@ async function touch(t: WsTx, e: Evidence) {
   const old = e.review.status; e.review = { status: "Pending review" };
   await t.audit("evidence.review.reset", `${e.id} v${e.ver}: ${old} → Pending review after edit`);
 }
+/** A decision is about what the person saw: if the evidence changed since (a new version, file or edit), they look again. */
+function stale(seen: unknown, version: number) {
+  if (seen != null && Number(seen) !== version) throw new WsConflict("This evidence changed since you opened it (a new version, file or edit). Look at it again before deciding.");
+}
 async function pendingDelete(t: WsTx, e: Evidence) {
   if (!e.deleteRequest) return null;
   const a = await t.approval(e.deleteRequest.approvalId, DEL);
@@ -46,7 +50,7 @@ export function evidenceRoutes(h: WsHelpers) {
     await sweepApprovals(t, DEL);
     const names = new Map((await membersOf(d, t.actor)).map((m) => [m.id, m.name]));
     // newest first, as the register shows them; file paths stay on the server
-    const items = (await t.list<Evidence>("evidence")).map((x) => ({ ...x.data, attachments: x.data.attachments.map(({ path: _p, ...a }) => (void _p, a)) })).reverse();
+    const items = (await t.list<Evidence>("evidence")).map((x) => ({ ...x.data, _v: x.version, attachments: x.data.attachments.map(({ path: _p, ...a }) => (void _p, a)) })).reverse();
     return { evidence: items, approvals: await approvalsView(t, DEL, names), filesConfigured: d.files.configured };
   })));
   const create = wsRoute(h, "evidence", async (d, r, c) => {
@@ -73,6 +77,7 @@ export function evidenceRoutes(h: WsHelpers) {
     return tx(d, c, async (t) => {
       const rec = await item(t, id); const e = rec.data;
       if (what === "review") {
+        stale(r.body.seen, rec.version);
         const decision = str(r.body.decision, 10); if (decision !== "Accepted" && decision !== "Rejected") invalid("Choose Accepted or Rejected.");
         refuse(evidenceReviewBlock(e.review.status, me.role, contributors(e).has(me.id)), decision === "Rejected" && e.review.status === "Rejected" ? "Already rejected." : null);
         const note = txt(r.body.note, 500); if (decision === "Rejected") { const bad = textBlock(note, 10, "A review note"); if (bad) invalid(bad); }
@@ -114,6 +119,7 @@ export function evidenceRoutes(h: WsHelpers) {
         delete e.deleteRequest; await t.update("evidence", id, e, rec.version); await t.audit("evidence.delete.withdrawn", `${id} (${a!.id})`);
         return ok(true);
       }
+      stale(r.body.seen, rec.version);
       refuse(evidenceDecideDeleteBlock(true, me.role, a!.requestedBy === me.id),
         approvalBlock({ key: me.id, base: me.role }, { status: a!.status, expiresAt: a!.expiresAt, approverRoles: a!.approverRoles, requestedBy: a!.requestedBy, forbid: a!.forbid, votes: a!.votes.map((v) => v.by) }, t.now));
       const reason = txt(r.body.reason, 300); const bad = reasonBlock(reason); if (bad) invalid(bad);
@@ -145,6 +151,7 @@ export function evidenceRoutes(h: WsHelpers) {
     try {
       return await tx(d, c, async (t) => {
         const rec = await item(t, id); const e = rec.data; const me = c.actor;
+        if (e.attachments.length >= EVIDENCE_FILES_PER_ITEM) invalid(`At most ${EVIDENCE_FILES_PER_ITEM} files per evidence item.`); // again, under the row lock
         e.attachments.push({ id: fileId, name: ok1.name, size: kb(bytes.length), bytes: bytes.length, by: me.name, byId: me.id, at: isoDayOf(t.now), path, sha256: createHash("sha256").update(bytes).digest("hex"), type: ok1.type });
         await touch(t, e); await t.update("evidence", id, e, rec.version);
         await t.audit("evidence.attachment.added", `${id} v${e.ver}: ${ok1.name} (${kb(bytes.length)})`);

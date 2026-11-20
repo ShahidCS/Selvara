@@ -48,12 +48,20 @@ function setApprovals(kinds: string[], list: Approval[]) {
 }
 
 let inflight: Promise<void> | null = null;
+let loadedFor = "";
+/** Empties every server-backed collection (another company or role: nothing of the previous one may remain on screen). */
+function clearAll() {
+  DATA.frameworks = []; DATA.controls = []; DATA.tests = []; DATA.evidence = [];
+  approvals.set((s) => ({ list: s.list.filter((a) => !["control.exception", "evidence.delete"].includes(a.kind)) }));
+  wsMeta.set({ members: [], library: [], loaded: {} });
+}
 /** Loads every server module the person's role may open. Safe to call often: concurrent calls share one load. */
 export function loadWorkspace(): Promise<void> {
   if (!API_ON || !API_BASE) return Promise.resolve();
   if (inflight) return inflight;
   inflight = (async () => {
-    const role = appStore.get().role;
+    const role = appStore.get().role; const key = `${appStore.get().company?.ref ?? ""}|${role}`;
+    if (key !== loadedFor) { clearAll(); loadedFor = key; }
     try {
       const members = await apiFetch<WsMember[]>("/ws/members").catch(() => [] as WsMember[]);
       const loaded: Record<string, boolean> = {};
@@ -66,6 +74,8 @@ export function loadWorkspace(): Promise<void> {
     } catch (e) {
       wsMeta.set({ error: e instanceof ApiError && e.status > 0 && e.status < 500 ? e.message : "Could not load your workspace. Reload the page to try again." });
     } finally { inflight = null; bumpData(); }
+    // the company or role changed while loading: load again for the current one (the first result is replaced)
+    if (`${appStore.get().company?.ref ?? ""}|${appStore.get().role}` !== key) await loadWorkspace();
   })();
   return inflight;
 }

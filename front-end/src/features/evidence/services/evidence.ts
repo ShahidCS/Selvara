@@ -96,7 +96,7 @@ export function reviewEvidence(id: string, decision: "Accepted" | "Rejected", no
     e.review = { status: decision, by: getActor().name, at: today(), note: n };
     wsLog("evidence." + (decision === "Accepted" ? "accepted" : "rejected"), `${e.id} v${e.ver} by ${e.review.by} (collector ${e.by})`, "Control");
     return e;
-  }, () => send<any>("POST", `/evidence/${enc(id)}/review`, { decision, note }));
+  }, () => send<any>("POST", `/evidence/${enc(id)}/review`, { decision, note, seen: findEvidence(id)?._v }));
 }
 /** Step 1 of deletion: an admin requests it with a reason. Nothing is deleted until a DIFFERENT admin approves. */
 export function requestDelete(id: string, reason: string) {
@@ -120,7 +120,7 @@ export function decideDelete(id: string, decision: "approve" | "reject", reason:
     DATA.evidence = DATA.evidence.filter((x) => x.id !== id);
     wsLog("evidence.deleted", `${e.id} v${e.ver}; requested by ${a.requestedBy}, approved by ${me} (${a.id})`, "Control");
     return true;
-  }, () => send<boolean>("POST", `/evidence/${enc(id)}/delete-requests/${decision}`, { reason }).then(() => decision === "approve"));
+  }, () => send<boolean>("POST", `/evidence/${enc(id)}/delete-requests/${decision}`, { reason, seen: findEvidence(id)?._v }).then(() => decision === "approve"));
 }
 export function withdrawDelete(id: string) {
   return viaApi(() => {

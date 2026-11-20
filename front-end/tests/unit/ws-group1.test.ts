@@ -217,3 +217,26 @@ describe("evidence", () => {
     expect(log("evidence.deleted")[0].target).toMatch(/requested by Jordan Avery, approved by Casey Morgan/);
   });
 });
+
+describe("cross-check fixes", () => {
+  it("a decision is refused when the evidence changed since the reviewer opened it", async () => {
+    const jordan = await member("jordan@acme.example", "admin", "Jordan Avery");
+    const casey = await member("casey@acme.example", "admin", "Casey Morgan");
+    const id = body<{ id: string }>(await call("POST", "ws/evidence", { name: "Firewall review", type: "Report" }, jordan.cookie)).id;
+    const seen = body<{ evidence: { _v: number }[] }>(await call("GET", "ws/data/evidence", {}, casey.cookie)).evidence[0]._v;
+    await call("POST", `ws/evidence/${id}/versions`, { note: "Swapped in a different export" }, jordan.cookie); // changed after Casey looked
+    expect((await call("POST", `ws/evidence/${id}/review`, { decision: "Accepted", seen }, casey.cookie)).status).toBe(409);
+    const now = body<{ evidence: { _v: number }[] }>(await call("GET", "ws/data/evidence", {}, casey.cookie)).evidence[0]._v;
+    expect((await call("POST", `ws/evidence/${id}/review`, { decision: "Accepted", seen: now }, casey.cookie)).status).toBe(200);
+  });
+  it("custom controls never take a library id; export entries are built by the server; vendors get no member list", async () => {
+    const jordan = await member("jordan@acme.example", "admin", "Jordan Avery");
+    const grace = await member("grace@acme.example", "vendor", "Grace Lin");
+    expect(body<{ id: string }>(await call("POST", "ws/controls", { title: "Restore drills", domain: "Business Continuity" }, jordan.cookie)).id).toBe("BC-2"); // BC-1 is a library control
+    await call("POST", "ws/exports", { action: "controls.soa.exported", target: "999999 controls" }, jordan.cookie);
+    expect(log("controls.soa.exported")[0].target).toBe("1 controls");
+    expect((await call("POST", "ws/exports", { action: "framework.gap.exported", target: "<script>" }, jordan.cookie)).status).toBe(400);
+    expect((await call("POST", "ws/exports", { action: "control.workpaper.exported", target: "NOPE-1" }, jordan.cookie)).status).toBe(400);
+    expect((await call("GET", "ws/members", {}, grace.cookie)).body).toEqual([]);
+  });
+});

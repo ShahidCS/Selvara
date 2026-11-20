@@ -5,9 +5,11 @@ import { EVIDENCE_FILE_MAX } from "@/lib/rulesWs";
 
 /* The production API (/api/...), contract in docs/security/CONTROLS.md. Off (503) unless the Supabase environment is set.
    Bodies are read here, not by Next.js: JSON up to 16 KB everywhere, and the raw bytes of an evidence file (at most 4 MB) only on
-   POST /api/ws/evidence/<id>/files with Content-Type application/octet-stream and the file name in ?name=. The handlers check the rest. */
+   POST /api/ws/evidence/<id>/files with Content-Type application/octet-stream and the file name in ?name=, and up to 96 KB of JSON to add a framework. The handlers check the rest. */
 export const config = { api: { bodyParser: false } };
 const JSON_MAX = 16 * 1024;
+/** Adding a framework carries up to 300 requirement lines of 200 characters. */
+const LARGE_JSON: Record<string, number> = { "POST ws/frameworks": 96 * 1024 };
 const parseCookies = (h: string | undefined) => Object.fromEntries((h || "").split(";").map((c) => c.trim().split("=")).filter((x) => x.length === 2 && x[0]).map(([k, v]) => [k, decodeURIComponent(v)]));
 async function readBody(req: NextApiRequest, max: number): Promise<Buffer | null> {
   const parts: Buffer[] = []; let n = 0;
@@ -22,7 +24,7 @@ export default async function api(req: NextApiRequest, res: NextApiResponse) {
   const upload = isUpload(req.method, path) && req.headers["content-type"] === "application/octet-stream";
   let body: Record<string, unknown> = {}; let raw: Uint8Array | undefined;
   if (req.method !== "GET" && req.method !== "HEAD") {
-    const buf = await readBody(req, upload ? EVIDENCE_FILE_MAX : JSON_MAX);
+    const buf = await readBody(req, upload ? EVIDENCE_FILE_MAX : LARGE_JSON[`${req.method} ${path.join("/")}`] ?? JSON_MAX);
     if (!buf) { res.status(413).json({ error: upload ? `File is too large (max ${EVIDENCE_FILE_MAX / 1024 / 1024} MB).` : "Request too large." }); return; }
     if (upload) { raw = new Uint8Array(buf); body = { name: String(req.query.name ?? "").slice(0, 200) }; }
     else if (buf.length) {

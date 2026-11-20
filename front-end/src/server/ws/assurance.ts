@@ -2,7 +2,8 @@
    Every rule is the shared one in src/lib/rulesWs.ts (the demonstration explains with the same functions); people are compared by user id.
    Differences from the demonstration, on purpose (listed in the PR): the requirement-side and control-side mappings are kept in step (the
    demonstration lets them drift), a framework's version is stored, a company adopts controls from the shared library instead of starting
-   with synthetic ones, nothing is seeded by hashing, a manual test's result is recorded by a person, and there is no simulated ticketing. */
+   with synthetic ones, nothing is seeded by hashing, a manual test's result is recorded by a person, and there is no simulated ticketing. Also: frameworks start out of
+   scope, only one exception request may be pending per control and its requester may withdraw it, custom control ids never take a library id. */
 import {
   CONTROL_STATUSES, EXCEPTION_TTL_H, FW_KINDS, FW_MAX_LINES, TEST_RESULTS, attestBlock, decideExceptionBlock, exceptionInputBlock, exceptionStateOf, fwAddBlock,
   fwAdminBlock, fwIdFor, fwNaBlock, isoDayOf, manageControlsBlock, requestExceptionBlock, runTestsBlock, setStatusBlock, statusFromTests, textBlock,
@@ -65,7 +66,7 @@ async function setMapping(t: WsTx, fw: string, req: string, ctrlId: string, on: 
 }
 async function newControlId(t: WsTx, domain: string) {
   const pre = (domain.match(/[A-Z]/g) || ["C"]).slice(0, 3).join("");
-  for (let i = 0; i < 1000; i++) { const id = `${pre}-${await t.next(`control-${pre.toLowerCase()}`, 0)}`; if (!(await t.get("control", id))) return id; }
+  for (let i = 0; i < 1000; i++) { const id = `${pre}-${await t.next(`control-${pre.toLowerCase()}`, 0)}`; if (!LIB_CONTROLS.some((l) => l.id === id) && !(await t.get("control", id))) return id; } // library ids stay free for adoption
   throw new WsConflict("Could not find a free control id. Try again.");
 }
 
