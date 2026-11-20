@@ -86,3 +86,14 @@ export function companyBlock(c: { ref: string; name: string }): string | null {
   if (/[<>"`{}[\]\\]/.test(n) || /\p{Cc}/u.test(n)) return "Enter the company name without symbols such as < > { } or quotes.";
   return null;
 }
+
+/* ---------- support access (slice 3b) ---------- */
+/** A company's support grant lasts at most this long (migration 0007 checks it too). */
+export const SUPPORT_GRANT_MAX_H = 8;
+export const SUPPORT_GRANT_HOURS = [1, 4, 8] as const;
+/** Why a company admin cannot give a support grant with these details, or null. */
+export function supportGrantBlock(g: { reason: string; hours: number; live: boolean }): string | null {
+  if (g.live) return "A support grant is already live. Revoke it first to give a new one.";
+  if (!Number.isInteger(g.hours) || g.hours < 1 || g.hours > SUPPORT_GRANT_MAX_H) return `Choose a duration of ${SUPPORT_GRANT_MAX_H} hours or less.`;
+  return reasonBlock(g.reason);
+}

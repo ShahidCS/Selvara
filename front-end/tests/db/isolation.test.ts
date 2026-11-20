@@ -13,6 +13,7 @@ import { Db, SCHEMA_VERSION, dbFromEnv } from "@/server/db";
 import { UpstreamError } from "@/server/errors";
 import { PgDirectory } from "@/server/directory";
 import { PgPlatform } from "@/server/platform";
+import { PgSupport } from "@/server/support";
 import type { AuditRow } from "@/server/types";
 
 const URL_ = process.env.TEST_DATABASE_URL;
@@ -393,6 +394,92 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
       expect(await code(app.tx({ tenantId: A, userId: alex }, (q) => q.query("select platform_audit_verify()")))).toBe("42501");
       const exposed = (await admin.query(`select r.rolname, p.proname from pg_proc p cross join (values ('anon'), ('authenticated'), ('service_role')) r(rolname)
         where p.proname like 'platform_%' and p.pronamespace = 'public'::regnamespace and has_function_privilege(r.rolname, p.oid, 'execute')`)).rows;
+      expect(exposed).toEqual([]);
+    });
+  });
+
+  describe("support access (migration 0007, src/server/support.ts)", () => {
+    let sup: PgSupport; let plat: PgPlatform; let sam = ""; let kim = ""; let grant = "";
+    const at = () => Date.now();
+    const entry = (actorId: string, tenantId: string | null, action: string): AuditRow => ({ at: at(), actor: "Someone", actorId, tenantId, action, target: "test", cat: "Access", space: tenantId ? "ws" : "admin", ip: "198.51.100.7" });
+    const plain = { reason: "Customer asked for help with SSO", ticket: "SUP-77", minutes: 30 };
+    const asStaff = (userId: string, tenantId: string | null) => ({ tenantId, userId, platform: true });
+    beforeAll(async () => {
+      sup = new PgSupport(app); plat = new PgPlatform(app); sam = randomUUID(); kim = randomUUID();
+      await admin.query("insert into auth.users (id, email) values ($1, 'sam@platform.example.test'), ($2, 'kim@platform.example.test')", [sam, kim]);
+      await admin.query("insert into public.profiles (id, email, person, status, requested_ms) values ($1, 'sam@platform.example.test', 'Sam Hayes', 'Active', $3), ($2, 'kim@platform.example.test', 'Kim Rowe', 'Active', $3)", [sam, kim, now]);
+      await admin.query("insert into public.platform_staff (user_id, role, created_ms) values ($1, 'support', $3), ($2, 'support', $3)", [sam, kim, now]);
+      await admin.query("update public.elevations set ended_ms = expires_ms where ended_ms is null"); // from the tests above
+    });
+
+    it("without a session, the platform flag with a company in the context shows nothing of that company", async () => {
+      const r = await app.tx(asStaff(drew, A), async (q) => ({ m: (await q.query("select 1 from memberships")).length, s: (await q.query("select 1 from tenant_settings")).length, a: (await q.query("select 1 from audit_log where tenant_id is not null")).length }));
+      expect(r).toEqual({ m: 0, s: 0, a: 0 });
+      expect(await sup.view(sam, A, "members", "198.51.100.7")).toBeNull();
+      expect(await sup.open(sam, A, plain, "198.51.100.7", at(), entry(sam, null, "platform.support.started"))).toBe("no-grant");
+    });
+
+    it("only the company gives a grant (8 hours at most), and platform staff can neither give nor change one", async () => {
+      expect(await code(app.tx(ctxA(), (q) => q.query("insert into support_grants (tenant_id, reason, granted_by, created_ms, expires_ms) values ($1, 'Too long a grant here', $2, $3, $4)", [A, alex, at(), at() + 9 * 3600_000])))).toBe("23514");
+      expect(await code(app.tx(asStaff(sam, null), (q) => q.query("insert into support_grants (tenant_id, reason, granted_by, created_ms, expires_ms) values ($1, 'Granting myself access', $2, $3, $4)", [A, sam, at(), at() + 3600_000])))).toBe("42501");
+      grant = (await sup.grant(A, alex, { reason: "Help with the SSO setup", hours: 1 }, at(), entry(alex, A, "support.grant.created")))!;
+      expect(grant).toBeTruthy();
+      expect(await sup.grant(A, alex, { reason: "A second one at once", hours: 1 }, at(), entry(alex, A, "support.grant.created"))).toBeNull();
+      expect(await sup.grants(B, casey)).toEqual([]); // another company does not see it
+      expect((await sup.liveGrants(sam)).map((g) => [g.ref, g.grantedBy])).toEqual([["cust-a", "Alex Kim"]]);
+      expect(await code(app.tx(ctxB(), (q) => q.query("select * from platform_support_grants()")))).toBe("42501");
+    });
+
+    it("a support session shows that company only, read-only, and writes each view to the company's log", async () => {
+      const s = await sup.open(sam, A, plain, "198.51.100.7", at(), entry(sam, null, "platform.support.started"));
+      expect(typeof s === "object" && s.company.ref).toBe("cust-a");
+      expect(await sup.open(sam, A, plain, "198.51.100.7", at(), entry(sam, null, "x"))).toBe("busy");
+      expect(await plat.elevation(sam, at())).toBeNull(); // not a platform elevation
+      const m = await sup.view(sam, A, "members", "198.51.100.9");
+      const names = m && m.what === "members" ? m.members.map((x) => x.name) : [];
+      expect(names).toEqual(expect.arrayContaining(["Alex Kim", "Blair Ng"])); expect(names).not.toContain("Casey Ito");
+      expect(await sup.view(sam, B, "members", "198.51.100.9")).toBeNull(); // another company: nothing
+      expect(await sup.view(kim, A, "members", "198.51.100.9")).toBeNull(); // another staff member without a session
+      expect(await app.tx(asStaff(sam, B), (q) => q.query("select 1 from memberships"))).toEqual([]);
+      // read-only, whatever the query: inserts are refused, updates match nothing
+      for (const sql of ["insert into memberships (tenant_id, user_id, role, status, created_ms) values ($1, '" + sam + "', 'admin', 'Active', 1)",
+        "insert into support_grants (tenant_id, reason, granted_by, created_ms, expires_ms) values ($1, 'Granting myself more time', '" + sam + "', 1, 2)",
+        "insert into invitations (tenant_id, email, role, invited_by, created_ms, expires_ms) values ($1, 'x@y.example.test', 'admin', '" + sam + "', 1, 2)",
+        "insert into audit_log (at_ms, actor, action, target, cat, space, ip, tenant_id) values (1, 'x', 'x', 'x', 'Access', 'ws', 'x', $1)",
+        "insert into approvals (tenant_id, kind, title, approver_roles, requested_by, created_ms, expires_ms, domain) values ($1, 'team-role', 'x', '{admin}', '" + sam + "', 1, 2, 'ws')"])
+        expect(await code(app.tx(asStaff(sam, A), (q) => q.query(sql, [A])))).toBe("42501");
+      for (const sql of ["update memberships set role = 'viewer' where tenant_id = $1 returning 1", "update tenant_settings set version = version + 1 where tenant_id = $1 returning 1",
+        "update support_grants set expires_ms = expires_ms + 1 where tenant_id = $1 returning 1", "update invitations set status = 'Revoked' where tenant_id = $1 returning 1"])
+        expect(await app.tx(asStaff(sam, A), (q) => q.query(sql, [A]))).toEqual([]);
+      expect((await admin.query("select role from public.memberships where user_id = $1", [blair])).rows[0].role).toBe("owner");
+      expect(await code(app.tx(asStaff(sam, A), (q) => q.query("select add_company_admin('cust-a', 'blair@a.example.test')")))).toBe("42501");
+      const log = await sup.accessLog(A, alex);
+      expect(log.map((x) => x.action)).toEqual(expect.arrayContaining(["support.access.started", "support.viewed"]));
+      expect(log.find((x) => x.action === "support.access.started")!.actor).toBe("Sam Hayes (Selvara platform)");
+      expect(await sup.close(sam, "ended by platform staff", "198.51.100.7", at(), entry(sam, null, "platform.support.ended"))).toBe(true);
+      expect(await sup.view(sam, A, "members", "198.51.100.9")).toBeNull();
+      expect(await sup.close(sam, "again", "198.51.100.7", at(), entry(sam, null, "x"))).toBe(false);
+    });
+
+    it("revoking the grant ends a live session at once; the support entries keep the company's chain intact", async () => {
+      await sup.open(kim, A, plain, "198.51.100.7", at(), entry(kim, null, "platform.support.started"));
+      expect(await sup.view(kim, A, "settings", "198.51.100.7")).toEqual(expect.objectContaining({ what: "settings" }));
+      // the grant check stands on its own, even if the trigger that closes the sessions did not run
+      await admin.query("alter table public.support_grants disable trigger support_grant_revoked");
+      await admin.query("update public.support_grants set revoked_ms = $2, revoked_by = $3 where id = $1", [grant, at(), alex]);
+      expect(await sup.view(kim, A, "settings", "198.51.100.7")).toBeNull();
+      await admin.query("update public.support_grants set revoked_ms = null, revoked_by = null where id = $1", [grant]);
+      await admin.query("alter table public.support_grants enable trigger support_grant_revoked");
+      expect(await sup.view(kim, A, "settings", "198.51.100.7")).toEqual(expect.objectContaining({ what: "settings" }));
+      expect(await sup.revoke(A, alex, grant, at(), entry(alex, A, "support.grant.revoked"))).toBe(true);
+      expect(await sup.view(kim, A, "settings", "198.51.100.7")).toBeNull();
+      expect(await sup.session(kim, at())).toBeNull();
+      expect((await admin.query("select count(*)::int as n from public.elevations where grant_id = $1 and ended_ms is null", [grant])).rows[0].n).toBe(0);
+      expect(await sup.liveGrants(sam)).toEqual([]);
+      expect(Number((await admin.query("select public.audit_verify($1) as bad", [A])).rows[0].bad)).toBe(2); // the tampering test above; nothing new breaks
+      const exposed = (await admin.query(`select r.rolname, p.proname from pg_proc p cross join (values ('anon'), ('authenticated'), ('service_role')) r(rolname)
+        where p.proname in ('platform_support_grants', 'platform_open_workspace', 'platform_close_workspace', 'support_viewed', 'support_grant_revoked')
+        and p.pronamespace = 'public'::regnamespace and has_function_privilege(r.rolname, p.oid, 'execute')`)).rows;
       expect(exposed).toEqual([]);
     });
   });

@@ -37,7 +37,9 @@ In **each** project (staging and production separately), open SQL Editor → New
 
 6. [`supabase/migrations/0006_platform_console.sql`](../../supabase/migrations/0006_platform_console.sql) (from v0.1.11): the Admin Console. Company creation, suspension and reactivation through a second platform super admin's approval, one elevation at a time, and the platform audit log check. The database itself refuses these changes unless the caller is an active platform super admin with a live elevation. Run it just before you deploy v0.1.11 (v0.1.11 refuses a database without it; v0.1.10 keeps working with it).
 
-All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `6`.
+7. [`supabase/migrations/0007_support_access.sql`](../../supabase/migrations/0007_support_access.sql) (from v0.1.12): support access. A company admin gives Selvara support a read-only grant (8 hours at most, revocable) in Team & Settings, Support access; platform staff then open a support session in that company (reason, ticket, 60 minutes at most) from Customers & Usage, Support access. The database shows a company to platform staff only during such a session, refuses every platform write to company data, and writes the session and each view to the company's own audit log. Run it just before you deploy v0.1.12 (v0.1.12 refuses a database without it; v0.1.11 keeps working with it).
+
+All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `7`.
 
 Supabase may warn that a script contains destructive operations: the `drop ... if exists` lines only remove the script's own triggers and policies to recreate them. No data is deleted.
 

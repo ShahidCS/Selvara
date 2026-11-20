@@ -42,7 +42,7 @@ export function adminRoutes(h: AdminHelpers): Record<string, H> {
     const e = { reason: s(r.body.reason).trim(), ticket: s(r.body.ticket, 20).trim(), minutes: Number(r.body.minutes) };
     const why = elevationBlock(e); if (why) return err(400, why);
     const row = await d.plat.startElevation(c.p.id, e, d.now(), h.entry(d, r, c.p, c.a, "platform.elevation.started", `${e.minutes} minutes; ticket ${e.ticket}; reason: ${e.reason}`));
-    return row ? ok({ elevation: row }) : err(409, "This account is already elevated.");
+    return row ? ok({ elevation: row }) : err(409, "This account is already elevated, or has a support session open. End it first.");
   });
   const elevationEnd = staff(async (d, r, c) => {
     const done = await d.plat.endElevation(c.p.id, d.now(), h.entry(d, r, c.p, c.a, "platform.elevation.ended", "ended early"));
