@@ -6,14 +6,15 @@ import { apiMessage, LinkBox, RequestsTable, utcMin } from "@/components/kit/ser
 import { ASSIGNABLE_ROLES, isPrivilegedRole, ROLE_LABEL } from "@/lib/rules";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import * as svc from "@/services/team";
+import { ApiSupportAccess } from "./ApiSupportAccess";
 import { JoinRequests } from "./JoinRequests";
 
 /* Team & Settings in production (NEXT_PUBLIC_API_MODE=http): only what the server holds for the session's company. Members and requests to join
    come from the server, which scopes them to the company and decides who may see them; the account lockout is the company's own setting. Role
    changes and invitations go through the server's four-eyes engine (slice 2c): admin and owner need a second admin's approval, shown under
-   Requests. The other settings move here when their server slice ships (docs/architecture/BACKEND_FOUNDATION.md). */
+   Requests. Support access (slice 3b) is the company's read-only, revocable grant to Selvara support, with every session it allowed. The other settings move here when their server slice ships (docs/architecture/BACKEND_FOUNDATION.md). */
 
-const VIEWS: [string, string][] = [["members", "Members"], ["invitations", "Invitations"], ["requests", "Requests"], ["signin", "Sign-in protection"]];
+const VIEWS: [string, string][] = [["members", "Members"], ["invitations", "Invitations"], ["requests", "Requests"], ["signin", "Sign-in protection"], ["support", "Support access"]];
 const roleName = (id: string) => ROLE_LABEL[id] ?? id;
 /** The server's own words for a refusal (it never sends internal details); anything else gets the fallback. */
 const why = apiMessage;
@@ -30,7 +31,7 @@ export function ApiTeam() {
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head"><div className="seg" role="tablist">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className={`c-body ${view === "members" ? "flush" : ""} scroll`} style={view === "members" ? { padding: 0 } : undefined}>
-          {view === "members" ? <Members /> : view === "invitations" ? <Invitations /> : view === "requests" ? <RequestsTable id="team-requests-api" load={svc.listApprovals} decide={svc.decideRequest} note="Granting or inviting an admin or owner needs a second admin. Nobody approves their own request or a request about themselves. A request expires after 72 hours." /> : <SignIn />}
+          {view === "members" ? <Members /> : view === "invitations" ? <Invitations /> : view === "requests" ? <RequestsTable id="team-requests-api" load={svc.listApprovals} decide={svc.decideRequest} note="Granting or inviting an admin or owner needs a second admin. Nobody approves their own request or a request about themselves. A request expires after 72 hours." /> : view === "signin" ? <SignIn /> : <ApiSupportAccess />}
         </div>
       </div>
     </Page>

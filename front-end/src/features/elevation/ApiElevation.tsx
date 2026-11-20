@@ -9,7 +9,7 @@ import * as svc from "@/services/platform";
 
 /* Elevated Access in production (slice 3a): a platform super admin starts a time-boxed elevation with a reason and a ticket (60 minutes at
    most, one at a time) before any Admin Console change; signing out or "End now" ends it. The server records it and refuses every change
-   without it. Workspace access for support (customer-approved grants) is slice 3b. */
+   without it. A platform elevation never opens a company's workspace: that is a support session on a customer's grant (slice 3b, Customers & Usage). */
 const DURATIONS = ["15", "30", "60"] as const;
 
 export function ApiElevation() {

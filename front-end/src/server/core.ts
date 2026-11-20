@@ -14,6 +14,7 @@ import { isEmail } from "@/lib/security";
 import { checkRegistration, verifyAssertion } from "@/lib/webauthn";
 import { randomId, same, seal, sha256Hex, unseal } from "./crypto";
 import { adminRoutes } from "./admin";
+import { supportRoutes } from "./support";
 import { logFailure } from "./errors";
 import type { Company, Lockout, Log, Outcome } from "./directory";
 import type { Deps, Profile, SessionRow } from "./types";
@@ -258,7 +259,10 @@ const signOut: H = async (d, r) => {
   const c = await current(d, r);
   if (c) {
     await d.store.updateSession(c.s.idHash, { revokedAt: d.now(), revokedWhy: "Signed out" }); await audit(d, r, actorOf(c.p, c.a), "auth.signed_out", c.p.person);
-    if (c.a.platform) await d.plat.endElevation(c.p.id, d.now(), entry(d, r, actorOf(c.p, c.a), "platform.elevation.ended", "signed out")); // signing out ends an elevation
+    if (c.a.platform) { // signing out ends an elevation or a support session (the company's log records the end of a support session)
+      await d.sup.close(c.p.id, "signed out", r.ip, d.now(), entry(d, r, actorOf(c.p, c.a), "platform.support.ended", "signed out"));
+      await d.plat.endElevation(c.p.id, d.now(), entry(d, r, actorOf(c.p, c.a), "platform.elevation.ended", "signed out"));
+    }
   }
   return ok(undefined, [cookie("", 0)]);
 };
@@ -555,7 +559,8 @@ export const ROUTES: Record<string, H> = {
   "POST team/members/:id/role": roleChange, "GET team/approvals": approvalList, "POST team/approvals/:id/:decision": approvalDecide,
   "GET team/invitations": inviteList, "POST team/invitations": inviteCreate, "POST team/invitations/:id/:action": inviteAction,
 };
-Object.assign(ROUTES, adminRoutes({ signed, entry: (d, r, p, a, action, target) => entry(d, r, actorOf(p, a), action, target), randomId, sha256Hex }));
+const helperEntry = (d: Deps, r: Req, p: Profile, a: Access, action: string, target: string) => entry(d, r, actorOf(p, a), action, target);
+Object.assign(ROUTES, adminRoutes({ signed, entry: helperEntry, randomId, sha256Hex }), supportRoutes({ signed, companyAdmin: admin, entry: helperEntry }));
 
 /** Finds the handler for a request; `:name` segments match anything. */
 export function route(method: string, path: string[]): H | null { return match(method, path)?.[1] ?? null; }

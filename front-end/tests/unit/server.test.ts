@@ -3,6 +3,7 @@ import { COOKIE, NO_COMPANY, handle, type Req, type Res } from "@/server/core";
 import { MemoryAuth, MemoryStore } from "@/server/memory";
 import { MemoryDirectory } from "@/server/directory";
 import { MemoryPlatform } from "@/server/platform";
+import { MemorySupport } from "@/server/support";
 import { sha256Hex } from "@/server/crypto";
 import type { Deps } from "@/server/types";
 import { totpAt } from "@/lib/totp";
@@ -11,11 +12,11 @@ import { safeMessage, upstream } from "@/server/errors";
 
 /* The production auth API (src/server), run through `handle` exactly as /api does, against in-memory stand-ins for Supabase Auth and Postgres. */
 const ORIGIN = "https://app.example.test";
-let clock = 1_800_000_000_000; let d: Deps; let auth: MemoryAuth; let store: MemoryStore; let dir: MemoryDirectory; let plat: MemoryPlatform; let ACME = "";
+let clock = 1_800_000_000_000; let d: Deps; let auth: MemoryAuth; let store: MemoryStore; let dir: MemoryDirectory; let plat: MemoryPlatform; let sup: MemorySupport; let ACME = "";
 beforeEach(() => {
-  clock = 1_800_000_000_000; auth = new MemoryAuth(() => clock); used.clear(); store = new MemoryStore(() => clock); dir = new MemoryDirectory(store); plat = new MemoryPlatform(store, dir);
+  clock = 1_800_000_000_000; auth = new MemoryAuth(() => clock); used.clear(); store = new MemoryStore(() => clock); dir = new MemoryDirectory(store); plat = new MemoryPlatform(store, dir); sup = new MemorySupport(store, dir, plat);
   ACME = dir.addCompany("acme-eu", "Acme Test Co");
-  d = { auth, store, dir, plat, site: { origin: ORIGIN, rpId: "app.example.test" }, secret: "x".repeat(40), now: () => clock };
+  d = { auth, store, dir, plat, sup, site: { origin: ORIGIN, rpId: "app.example.test" }, secret: "x".repeat(40), now: () => clock };
 });
 const PW = "Lantern-orbit-Quince-71"; const NEW = "Copper-harbour-Violet-58";
 async function call(method: string, path: string, body: Record<string, unknown> = {}, o: { cookie?: string; ip?: string; origin?: string | null } = {}): Promise<Res> {
@@ -393,18 +394,18 @@ describe("role changes, invitations and four-eyes requests (slice 2c)", () => {
   });
 });
 
+/** A platform super admin signed in with a newly registered passkey (the first sign-in registers it and signs in). */
+async function superAdmin(email: string, person: string) {
+  const id = await auth.createUser(email, PW, person); await auth.confirmUser(id);
+  await store.insertProfile({ id, email, person, status: "Active", requestedAt: clock }); dir.staff.set(id, "super");
+  const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  const spki = new Uint8Array(await crypto.subtle.exportKey("spki", kp.publicKey));
+  const st = (await call("POST", "auth/sign-in", { email, password: PW })).body as { ticket: string; challenge: string };
+  const cd = toB64u(new TextEncoder().encode(JSON.stringify({ type: "webauthn.create", challenge: st.challenge, origin: ORIGIN })));
+  const res = await call("POST", "auth/sign-in/passkey", { ticket: st.ticket, register: { id: toB64u(crypto.getRandomValues(new Uint8Array(16))), publicKey: toB64u(spki), clientDataJSON: cd } });
+  expect(res.status).toBe(200); return { id, cookie: cookieOf(res) };
+}
 describe("Admin Console (slice 3a): elevation, companies through four-eyes, platform audit log", () => {
-  /** A platform super admin signed in with a newly registered passkey (the first sign-in registers it and signs in). */
-  async function superAdmin(email: string, person: string) {
-    const id = await auth.createUser(email, PW, person); await auth.confirmUser(id);
-    await store.insertProfile({ id, email, person, status: "Active", requestedAt: clock }); dir.staff.set(id, "super");
-    const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
-    const spki = new Uint8Array(await crypto.subtle.exportKey("spki", kp.publicKey));
-    const st = (await call("POST", "auth/sign-in", { email, password: PW })).body as { ticket: string; challenge: string };
-    const cd = toB64u(new TextEncoder().encode(JSON.stringify({ type: "webauthn.create", challenge: st.challenge, origin: ORIGIN })));
-    const res = await call("POST", "auth/sign-in/passkey", { ticket: st.ticket, register: { id: toB64u(crypto.getRandomValues(new Uint8Array(16))), publicKey: toB64u(spki), clientDataJSON: cd } });
-    expect(res.status).toBe(200); return { id, cookie: cookieOf(res) };
-  }
   const elevate = (cookie: string, minutes = 30) => call("POST", "admin/elevation", { reason: "Customer onboarding for a new contract", ticket: "OPS-101", minutes }, { cookie });
   const requests = async (cookie: string) => (await call("GET", "admin/approvals", {}, { cookie })).body as { id: string; status: string; block: string | null; mine: boolean }[];
 
@@ -547,5 +548,92 @@ describe("database readiness (GET /api/system/ready)", () => {
     d.db = { ensureSchema: async () => { throw upstream("db.schema", { code: "SCHEMA_OUTDATED", message: "database schema 2, this server needs 3: run the missing migrations" }, 503); } } as unknown as Deps["db"];
     expect(await call("GET", "system/ready")).toEqual(expect.objectContaining({ status: 503, body: { error: "The database is not ready." } }));
     expect(JSON.stringify(spy.mock.calls)).toContain("SCHEMA_OUTDATED");
+  });
+});
+
+describe("Support access (slice 3b): customer grants, read-only support sessions, the company's own log", () => {
+  const give = (cookie: string, hours = 4, reason = "Help with the SSO setup, ticket 88") => call("POST", "team/support/grants", { reason, hours }, { cookie });
+  const open = (cookie: string, ref = "acme-eu", minutes = 30) => call("POST", "admin/support/open", { ref, reason: "Customer asked for help with SSO", ticket: "SUP-77", minutes }, { cookie });
+  const companyLog = () => store.auditLog.filter((x) => x.tenantId === ACME).map((x) => x.action);
+
+  it("only a company admin gives or revokes a grant, one at a time, 8 hours at most, with a reason; it is in the company's log", async () => {
+    const admin = await account("jordan@company.example", "admin", "Jordan Avery");
+    const member = await account("alex.kim@company.example");
+    const sam = await account("sam@platform.example", "support", "Sam Hayes");
+    expect((await give(member.cookie)).status).toBe(403);
+    expect((await give(sam.cookie)).status).toBe(403);
+    expect((await give(admin.cookie, 9)).status).toBe(400);
+    expect((await give(admin.cookie, 4, "short")).status).toBe(400);
+    const g = await give(admin.cookie); expect(g.status).toBe(200);
+    expect((await give(admin.cookie)).body).toEqual({ error: "A support grant is already live. Revoke it first to give a new one." });
+    const list = (await call("GET", "team/support", {}, { cookie: admin.cookie })).body as { grants: { id: string; status: string; grantedBy: string }[]; maxHours: number };
+    expect(list.grants).toEqual([expect.objectContaining({ status: "Live", grantedBy: "Jordan Avery" })]); expect(list.maxHours).toBe(8);
+    expect(((await call("GET", "admin/support", {}, { cookie: sam.cookie })).body as { grants: { ref: string }[] }).grants.map((x) => x.ref)).toEqual(["acme-eu"]);
+    const id = (g.body as { id: string }).id;
+    expect((await call("POST", `team/support/grants/${id}/revoke`, {}, { cookie: member.cookie })).status).toBe(403);
+    expect((await call("POST", `team/support/grants/${id}/revoke`, {}, { cookie: admin.cookie })).status).toBe(204);
+    expect((await call("POST", `team/support/grants/${id}/revoke`, {}, { cookie: admin.cookie })).status).toBe(409);
+    expect(((await call("GET", "admin/support", {}, { cookie: sam.cookie })).body as { grants: unknown[] }).grants).toEqual([]);
+    expect(companyLog()).toEqual(expect.arrayContaining(["support.grant.created", "support.grant.revoked"]));
+  });
+
+  it("platform staff read a company's workspace only in a support session on a live grant; every view is in the company's log", async () => {
+    const admin = await account("jordan@company.example", "admin", "Jordan Avery");
+    const sam = await account("sam@platform.example", "support", "Sam Hayes");
+    expect((await call("GET", "admin/support/view/members", {}, { cookie: sam.cookie })).status).toBe(403);
+    expect((await open(sam.cookie)).status).toBe(409); // no grant yet
+    expect((await call("POST", "admin/support/open", { ref: "acme-eu", reason: "short", ticket: "SUP-77", minutes: 30 }, { cookie: sam.cookie })).status).toBe(400);
+    expect((await call("POST", "admin/support/open", { ref: "acme-eu", reason: "Customer asked for help with SSO", ticket: "SUP-77", minutes: 61 }, { cookie: sam.cookie })).status).toBe(400);
+    expect((await call("GET", "admin/support/view/members", {}, { cookie: admin.cookie })).status).toBe(403); // not platform staff
+    await give(admin.cookie, 1);
+    const o = await open(sam.cookie, "acme-eu", 60); expect(o.status).toBe(200);
+    expect((o.body as { session: { company: { ref: string }; expiresAt: number } }).session.expiresAt).toBe(clock + 60 * 60_000);
+    expect((await open(sam.cookie)).status).toBe(409); // one at a time
+    const m = (await call("GET", "admin/support/view/members", {}, { cookie: sam.cookie })).body as { company: { ref: string }; members: { name: string }[] };
+    expect(m.company.ref).toBe("acme-eu"); expect(m.members.map((x) => x.name)).toEqual(["Jordan Avery"]);
+    expect(((await call("GET", "admin/support/view/settings", {}, { cookie: sam.cookie })).body as { lockout: { preset: string } }).lockout.preset).toBe("standard");
+    const a = (await call("GET", "admin/support/view/audit", {}, { cookie: sam.cookie })).body as { entries: { action: string }[] };
+    expect(a.entries.map((x) => x.action)).toEqual(expect.arrayContaining(["support.access.started", "support.viewed"]));
+    expect((await call("GET", "admin/support/view/secrets", {}, { cookie: sam.cookie })).status).toBe(404);
+    // the customer sees who looked, and the platform log records the session
+    const started = store.auditLog.find((x) => x.action === "support.access.started")!;
+    expect([started.tenantId, started.actorId, started.space, started.actor]).toEqual([ACME, sam.id, "ws", "Sam Hayes (Selvara platform)"]);
+    expect(store.auditLog.find((x) => x.action === "platform.support.started")).toEqual(expect.objectContaining({ tenantId: null, space: "admin" }));
+    const seen = ((await call("GET", "team/support", {}, { cookie: admin.cookie })).body as { log: { action: string; target: string }[] }).log;
+    expect(seen.filter((x) => x.action === "support.viewed").map((x) => x.target)).toEqual(["audit", "settings", "members"]);
+    // a support session gives no platform powers and no company actions
+    expect((await call("GET", "team/members", {}, { cookie: sam.cookie })).status).toBe(403);
+    expect((await call("POST", "admin/support/close", {}, { cookie: sam.cookie })).status).toBe(204);
+    expect((await call("GET", "admin/support/view/members", {}, { cookie: sam.cookie })).status).toBe(403);
+    expect(companyLog()).toContain("support.access.ended");
+  });
+
+  it("a revoked or expired grant ends the session at once; signing out ends it too", async () => {
+    const admin = await account("jordan@company.example", "admin", "Jordan Avery");
+    const sam = await account("sam@platform.example", "support", "Sam Hayes");
+    const g = (await give(admin.cookie, 1)).body as { id: string };
+    await open(sam.cookie);
+    await call("POST", `team/support/grants/${g.id}/revoke`, {}, { cookie: admin.cookie });
+    expect((await call("GET", "admin/support/view/members", {}, { cookie: sam.cookie })).status).toBe(403);
+    expect(((await call("GET", "admin/support", {}, { cookie: sam.cookie })).body as { session: unknown }).session).toBeNull();
+    await give(admin.cookie, 1);
+    expect((await open(sam.cookie, "acme-eu", 60)).status).toBe(200); // the revoked grant's session no longer blocks a new one
+    await call("POST", "auth/sign-out", {}, { cookie: sam.cookie });
+    expect(companyLog().filter((x) => x === "support.access.ended").length).toBe(1);
+    expect(store.auditLog.filter((x) => x.tenantId === ACME && x.action === "support.access.ended")[0].target).toBe("Ticket SUP-77; signed out");
+  });
+
+  it("a super admin's support session is not a platform elevation, and an elevation blocks a support session", async () => {
+    const admin = await account("jordan@company.example", "admin", "Jordan Avery");
+    const dana = await superAdmin("dana@platform.example", "Dana Whitfield");
+    await give(admin.cookie);
+    expect((await open(dana.cookie)).status).toBe(200);
+    expect(((await call("GET", "admin/elevation", {}, { cookie: dana.cookie })).body as { elevation: unknown }).elevation).toBeNull();
+    expect((await call("POST", "admin/companies/acme-eu/suspend", { reason: "Testing the separation" }, { cookie: dana.cookie })).body).toEqual({ error: "Elevate to make changes." });
+    expect((await call("POST", "admin/elevation", { reason: "Customer onboarding for a new contract", ticket: "OPS-101", minutes: 30 }, { cookie: dana.cookie })).status).toBe(409);
+    await call("POST", "admin/support/close", {}, { cookie: dana.cookie });
+    expect((await call("POST", "admin/elevation", { reason: "Customer onboarding for a new contract", ticket: "OPS-101", minutes: 30 }, { cookie: dana.cookie })).status).toBe(200);
+    expect((await open(dana.cookie)).status).toBe(409);
+    expect((await call("POST", "admin/elevation/end", {}, { cookie: dana.cookie })).status).toBe(204);
   });
 });

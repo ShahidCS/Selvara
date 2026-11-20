@@ -64,7 +64,7 @@ export class PgPlatform implements Platform {
   }
   async endElevation(userId: string, at: number, entry: AuditRow) {
     return this.tx(userId, async (q) => {
-      const r = await q.query("update elevations set ended_ms = least($2, expires_ms) where user_id = $1 and ended_ms is null returning id, expires_ms", [userId, at]);
+      const r = await q.query("update elevations set ended_ms = least($2, expires_ms) where user_id = $1 and tenant_id is null and ended_ms is null returning id, expires_ms", [userId, at]);
       if (r.some((x) => Number(x.expires_ms) > at)) await q.query(auditSql, auditArgs(entry)); // only a live one is worth an entry
       return r.length > 0;
     });
@@ -158,16 +158,19 @@ async function applyPg(q: Tx, a: ApprovalRow, log: Log, approvers: string) {
 
 /** In-memory platform for the server tests, over the in-memory directory (companies and invitations live there). */
 export class MemoryPlatform implements Platform {
-  elevations: (ElevationRow & { userId: string; endedAt?: number })[] = [];
+  /** Platform elevations, and support sessions (slice 3b: `tenantId` and `grantId` set, kept here because one person holds one live elevation of either kind). */
+  elevations: (ElevationRow & { userId: string; endedAt?: number; tenantId?: string; grantId?: string })[] = [];
   requests: ApprovalRow[] = [];
   constructor(private store: Store, private dir: MemoryDirectory) {}
   private async person(id: string) { return (await this.store.profileById(id))?.person ?? ""; }
-  private live(userId: string, at: number) { return this.elevations.find((e) => e.userId === userId && !e.endedAt && e.expiresAt > at) ?? null; }
+  private live(userId: string, at: number) { return this.elevations.find((e) => e.userId === userId && !e.tenantId && !e.endedAt && e.expiresAt > at) ?? null; }
+  /** Any live elevation, platform or support session (the database's one-live-per-person index). */
+  anyLive(userId: string, at: number) { return this.elevations.find((e) => e.userId === userId && !e.endedAt && e.expiresAt > at) ?? null; }
   /** What the database functions check: an active super admin with a live elevation. */
   private elevatedSuper(userId: string, at: number) { return this.dir.staff.get(userId) === "super" && !!this.live(userId, at); }
   async elevation(userId: string, at: number) { const e = this.live(userId, at); return e ? { id: e.id, reason: e.reason, ticket: e.ticket, startedAt: e.startedAt, expiresAt: e.expiresAt } : null; }
   async startElevation(userId: string, e: { reason: string; ticket: string; minutes: number }, at: number, entry: AuditRow) {
-    if (this.live(userId, at)) return null;
+    if (this.anyLive(userId, at)) return null;
     const row = { id: `e${this.elevations.length + 1}`, userId, reason: e.reason, ticket: e.ticket, startedAt: at, expiresAt: at + e.minutes * 60_000 };
     this.elevations.push(row); await this.store.audit(entry); return this.elevation(userId, at);
   }

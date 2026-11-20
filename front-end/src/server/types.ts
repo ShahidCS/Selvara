@@ -50,4 +50,4 @@ export interface Store {
 }
 /** `dir` holds companies, memberships and platform staff (directory.ts); `db` is the company-scoped Postgres access (db.ts) behind it, absent in
  *  the in-memory tests. */
-export interface Deps { auth: AuthProvider; store: Store; dir: import("./directory").Directory; /** The Admin Console's data (platform.ts). */ plat: import("./platform").Platform; site: { origin: string; rpId: string }; secret: string; now: () => number; db?: import("./db").Db }
+export interface Deps { auth: AuthProvider; store: Store; dir: import("./directory").Directory; /** The Admin Console's data (platform.ts). */ plat: import("./platform").Platform; /** Support access to company workspaces (support.ts). */ sup: import("./support").Support; site: { origin: string; rpId: string }; secret: string; now: () => number; db?: import("./db").Db }

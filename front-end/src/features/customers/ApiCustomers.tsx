@@ -6,11 +6,13 @@ import { apiMessage, LinkBox, RequestsTable } from "@/components/kit/serverReque
 import { REASON_MIN } from "@/lib/rules";
 import { bumpData, useData, useModState } from "@/lib/store";
 import * as svc from "@/services/platform";
+import { ApiSupportSessions } from "./ApiSupportSessions";
 
 /* Customers & Usage in production (slice 3a): the companies on the platform, with member counts only (no member names). An elevated platform
    super admin asks to create, suspend or reactivate a company; another super admin approves under Requests, and only then does it happen. A
-   new company's first admin joins with a link the platform creates once the company exists. Billing, plans and usage are later slices. */
-const VIEWS: [string, string][] = [["companies", "Companies"], ["requests", "Requests"]];
+   new company's first admin joins with a link the platform creates once the company exists. Support access (slice 3b): read-only sessions in a
+   company that gave a support grant. Billing, plans and usage are later slices. */
+const VIEWS: [string, string][] = [["companies", "Companies"], ["requests", "Requests"], ["support", "Support access"]];
 
 export function ApiCustomers() {
   const s = useServerElevation();
@@ -22,7 +24,7 @@ export function ApiCustomers() {
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head"><div className="seg" role="tablist">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className="c-body scroll">
-          {view === "companies" ? <Companies s={s} /> : (
+          {view === "companies" ? <Companies s={s} /> : view === "support" ? <ApiSupportSessions /> : (
             <RequestsTable id="platform-requests-api" load={svc.listPlatformRequests} decide={svc.decidePlatformRequest}
               note="Creating, suspending or reactivating a company needs a second platform super admin, each in an elevated session. Nobody approves their own request. A request expires after 24 hours." />
           )}
