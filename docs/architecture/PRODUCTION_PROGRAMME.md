@@ -52,4 +52,23 @@ The demonstration's screens are rich and already route every change through a se
 | Group | State | Migration | PR |
 |---|---|---|---|
 | 1 | Merged | `0008` | ShahidCS/Selvara#74 |
-| 2 | Built, in review | none (uses `0008`) | group 2 PR |
+| 2 | Merged | none (uses `0008`) | ShahidCS/Selvara#75 |
+| 3 | Built, in review | none (uses `0008`) | group 3 PR |
+
+### Group 3 decisions (Risk, Issues, My Work, Overview, Reports)
+
+Where the inventory (`inventory/group3-risk-issues-work-overview-reports.md`, section 7) found a gap, production does the following. The demonstration is unchanged unless stated.
+
+- **Identity.** Risk owners, action owners and issue owners are members of the company, chosen from a list and compared by user id. "Only mine" and My Work use the signed-in person. The demonstration's fixed name is gone in production.
+- **Risk workflow.** Approve and request changes apply only to a submitted risk. Requesting changes returns the risk to Open and tells the submitter. Submit works only from a draft or after changes were requested. Close works only on an open risk, and reopen only on an accepted one. Reopening keeps the old acceptance as history and takes an optional reason. Re-scoring does not reset an approved review (kept from the demonstration).
+- **Acceptance expiry.** When an acceptance passes its date, the system records it once, notes it in the risk's history and tells the owner. My Work then asks the owner to review the risk. The risk stays Accepted until someone reopens it.
+- **Import.** The browser reads and converts the file as before. The server checks every row again: 5,000 rows at most, 1 MB, lengths, categories, scores of 1 to 5, real dates, the id format, and spreadsheet formula characters. An import never sets a status. A new row is always an open draft. An update keeps the risk's status and notes in the history what the file asked for. Owners are matched to members by exact name. Withdrawing a staged import is recorded in the risk log.
+- **Snapshots.** A snapshot keeps the frozen register and a SHA-256 seal. Admins can download it. It is not shared with auditors until Audits are on the server (group 5).
+- **Parties.** Interested parties have ids and are kept per company. A party links only to risks that exist. Two parties cannot have the same name.
+- **Enterprise risks.** Production starts with none and has no editor for them yet.
+- **Above appetite.** One definition everywhere: an open risk whose current score is 11 or more. This also changes the demonstration's Overview caption and board pack summary.
+- **Issues.** The due date is a real date. Every screen still reads "Overdue 3d" or "Due 5d", worked out each day. Links must point at controls and risks that exist. Every action is in the audit log, including tasks, root cause and links. A deleted issue stays in storage for the audit trail. The owner is told when an issue is assigned to them or its closure is decided.
+- **Reports.** Generate builds the real pack (CSV or text) from the company's records, marked as a draft. The pack name and frequency are checked. The company's email domains come from its members' addresses, and public mail providers never count as one. Replacing or removing a schedule that sends outside the company needs a reason. Schedules show "Not sent until email is set up" until email exists (group 8). The month-on-month trend appears once history is recorded.
+- **Overview and the board pack.** Every Overview role sees the posture figures. A role sees the detail only of the modules it may open. For the others the server sends scores and statuses without titles, owners or text, and the board pack shows totals only. The static month-on-month texts are not shown in production. Exporting the board pack is recorded under Report.
+- **My Work.** My Work lists the issues and risk actions the person owns, and the decisions waiting for them: risk approvals, Board evidence, imports, issue closures, external report distribution, policies they must approve, and access requests. A vendor request is stored on the server with length limits for the Vendors module (group 4).
+- **Landing page.** Every company role lands on the Overview in production, as in the demonstration.
