@@ -205,4 +205,31 @@ export const MODULE_TIPS: Record<string, ModuleTipText> = {
     ],
     note: "Connections bring employee data (names, emails, MFA status) into Selvara. Disconnecting erases it.",
   },
+  billing: {
+    title: "Getting started with billing",
+    steps: [
+      "Refresh the exchange rates first (Exchange Rates & Tax). Reference values are never used for an invoice.",
+      "Set up a billing account for each company: plan, cycle, currency, tax country and billing contact.",
+      "Issue invoices: each account's periods that have started are invoiced with today's rate and tax locked in.",
+      "Record payments, credits and refunds on an invoice. Above USD 1,000, and for every write-off, a second super admin approves under Requests.",
+    ],
+    note: "Every change needs an elevated session, a reason and a ticket. Amounts are drafts for finance review.",
+  },
+  rates: {
+    title: "How rates and tax work",
+    steps: [
+      "Refresh rates reads two public feeds and compares them.",
+      "A rate that moved more than 3 %, where the feeds disagree by more than 1 %, or older than 48 hours is held for you to release or reject.",
+      "Releasing a held rate and every override need a second super admin. Rejecting keeps the rate in force.",
+    ],
+    note: "Tax rates are reference values: finance confirms them before they are used.",
+  },
+  billingws: {
+    title: "Your billing",
+    steps: [
+      "Your plan, invoices and payments come from Selvara's billing team.",
+      "To change plan, ask here: the team accepts it from your next period.",
+      "Pay open invoices by bank transfer with the invoice number as the reference, or by card where Pay is shown.",
+    ],
+  },
 };

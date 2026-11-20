@@ -8,6 +8,7 @@ import type { Ctx, Req, Res } from "./core";
 import type { Log, Outcome } from "./directory";
 import type { AuditRow, Deps, Profile } from "./types";
 import type { PlatformKind } from "./platform";
+import { applyGroup8 } from "./admin8";
 
 type H = (d: Deps, r: Req) => Promise<Res>;
 export interface AdminHelpers {
@@ -22,6 +23,8 @@ const s = (v: unknown, max = 300) => String(v ?? "").slice(0, max);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HOUR = 3600_000;
 export const ELEVATE_FIRST = "Elevate to make changes.";
+/** What a request is about, for the screens: plain values only, never more than the title already says. */
+const summary = (p: Record<string, unknown>) => Object.fromEntries(Object.entries(p).filter(([k, v]) => ["invoiceId", "code", "ticket", "reason", "person", "company", "amount"].includes(k) && (typeof v === "string" || typeof v === "number")));
 const outcome = (o: Outcome): Res => ("error" in o ? err(o.code, o.error) : ok({ status: o.status }));
 
 export function adminRoutes(h: AdminHelpers): Record<string, H> {
@@ -92,7 +95,8 @@ export function adminRoutes(h: AdminHelpers): Record<string, H> {
       const status = x.status === "Pending" && x.expiresAt <= now ? "Expired" : x.status;
       const rule = status === "Pending" ? approvalBlock({ key: c.p.id, base: c.a.role }, { status, expiresAt: x.expiresAt, approverRoles: x.approverRoles, requestedBy: x.requestedBy, forbid: x.forbid, votes: x.votes.map((v) => v.by) }, now) : null;
       return { id: x.id, kind: x.kind, title: x.title, requestedBy: x.requestedByName, status, createdAt: x.createdAt, expiresAt: x.expiresAt, reason: x.decidedReason ?? null,
-        votes: x.votes.map((v) => ({ by: v.byName, at: v.at, reason: v.reason })), mine: x.requestedBy === c.p.id, block: rule ?? (status === "Pending" && !live ? ELEVATE_FIRST : null) };
+        votes: x.votes.map((v) => ({ by: v.byName, at: v.at, reason: v.reason })), mine: x.requestedBy === c.p.id, named: x.payload.namedName ?? null, payload: summary(x.payload),
+        block: rule ?? (status === "Pending" && x.payload.named && x.payload.named !== c.p.id ? `Only the named approver (${String(x.payload.namedName)}) can decide this request.` : null) ?? (status === "Pending" && !live ? ELEVATE_FIRST : null) };
     }));
   });
   const approvalDecide = elevated(async (d, r, c) => {
@@ -102,7 +106,9 @@ export function adminRoutes(h: AdminHelpers): Record<string, H> {
     const actor = { id: c.p.id, role: c.a.role };
     if (decision === "withdraw") return outcome(await d.plat.withdrawApproval(actor, id, d.now(), log(d, r, c)));
     const why = s(r.body.reason).trim(); const short = reasonBlock(why); if (short) return err(400, short);
-    return outcome(await d.plat.decideApproval(actor, id, decision === "approve", why, d.now(), log(d, r, c)));
+    const row = (await d.plat.approvals(c.p.id)).find((x) => x.id === id);
+    if (row?.payload.named && row.payload.named !== c.p.id) return err(403, `Only the named approver (${String(row.payload.namedName)}) can decide this request.`);
+    return outcome(await d.plat.decideApproval(actor, id, decision === "approve", why, d.now(), log(d, r, c), (q, a, by) => applyGroup8(d, q, a, by, { id: c.p.id, name: c.p.person, ip: r.ip })));
   });
 
   /* ---------- platform audit log ---------- */

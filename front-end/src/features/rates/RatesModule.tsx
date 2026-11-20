@@ -8,9 +8,12 @@ import * as svc from "@/features/rates/services/rates";
 import { HeldRequestForm, RateEditForm } from "./RateEdit";
 import { ElevateGateBanner, useGate } from "@/components/kit/admin/ElevateGate";
 import { PendingApprovals } from "@/components/kit/admin/PendingApprovals";
+import { API_ON } from "@/lib/rbac";
+import { ApiRates } from "./ApiRates";
 
 /** Prototype: REND.rates (Exchange Rates & Tax, Held/Applied workflow). Module state (query, region, details) survives navigation like the prototype's RATE. */
-export default function RatesModule() {
+export default function RatesModule() { return API_ON ? <ApiRates /> : <DemoRates />; }
+function DemoRates() {
   useData(); const L = useLayer(); const gate = useGate();
   const allowed = svc.ratesCanManage(useApp((s) => s.role));
   const [rules, setRules] = useModState("rates.rules", false);

@@ -41,6 +41,7 @@ In **each** project (staging and production separately), open SQL Editor → New
 
 8. [`supabase/migrations/0008_workspace_records.sql`](../../supabase/migrations/0008_workspace_records.sql) (production programme, group 1): the workspace modules' records (Frameworks, Controls and Tests, Evidence; later groups add theirs), one row per record, walled off per company by row level security, never deleted (a removed record keeps its row), read-only to platform staff. Evidence **files** are not stored in the database but in Supabase Storage (section 4d). Run it with the release that needs schema version 8.
 9. [`supabase/migrations/0009_company_audit_verify.sql`](../../supabase/migrations/0009_company_audit_verify.sql) (production programme, group 5): lets a company admin verify their own company's audit chain from the workspace Audit log. Run it with the release that needs schema version 9.
+10. [`supabase/migrations/0010_platform_records.sql`](../../supabase/migrations/0010_platform_records.sql) (production programme, group 8a): the platform's own records for the Admin Console billing ledger, exchange rates and tax, and invoice numbers. Only an elevated platform super admin (or the verified payment webhook, for payments) may write them; a company reads only its own billing rows. Schema version 10.
 
 All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `9`.
 
@@ -137,6 +138,16 @@ Each connector needs credentials that Selvara's operator creates once in the pro
 | Okta | Nothing: each company creates a service app in its own Okta with the public key Selvara generates for it. | none |
 
 GitHub, Entra ID and Google trust one Selvara app for every customer, so a company proves its organisation with a sign-in by one of its people: Selvara takes the installation, tenant or domain from the provider's answer, and one provider tenant can be connected to one Selvara company at a time. Verify each permission list against the provider's current documentation before use. Rotating `SERVER_SECRET` makes sealed values unreadable (Okta keys, webhook secrets): reconnect Okta and re-add webhooks after a rotation.
+
+### 4g. Card payments with Stripe (you, per project; production programme group 8a; optional)
+
+Without these, billing works as an internal ledger and invoices are paid by bank transfer (a super admin marks them paid). With them, company admins can pay open invoices on Stripe's hosted page, and super admins can create payment links. No card data reaches Selvara.
+
+1. In the Stripe dashboard (test mode first, in the staging project), create a **restricted key** with write access to Checkout Sessions and Refunds only (or use the secret key). Add it to Vercel as `STRIPE_SECRET_KEY` (**Sensitive**). A `_test_` key gives test mode; a `_live_` key, live mode.
+2. Developers, Webhooks, **Add endpoint**: URL `<SITE_URL>/api/billing/stripe/webhook`, events `checkout.session.completed`. Copy its signing secret into Vercel as `STRIPE_WEBHOOK_SECRET` (**Sensitive**).
+3. Redeploy. The Admin Console's Billing shows "Card payments: Test mode" (or Live), and the method "Card (Stripe)" can be chosen for an account.
+
+Payments are recorded only from the webhook: its signature is checked on the raw body, each event is processed once, an event from the other mode (test or live) is refused, and a payment whose currency does not match the invoice is logged and not counted. Keep test and live keys in separate projects.
 
 ## 5. First accounts (you, per project)
 

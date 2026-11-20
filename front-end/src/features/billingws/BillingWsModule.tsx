@@ -7,6 +7,8 @@ import { safeFileName } from "@/lib/security";
 import { SUBSCRIPTION, billingCanManage, findInvoice, invoiceText } from "@/services/billing";
 import { useGo, useRoute } from "@/lib/route";
 import { PaymentPage, PlanPage } from "./BillingFormPages";
+import { API_ON } from "@/lib/rbac";
+import { ApiBillingWs } from "./ApiBillingWs";
 
 function Meter({ used, limit, label }: { used: number; limit: number; label: string }) {
   const pct = Math.min(100, Math.round(used / limit * 100)); const tone = pct >= 90 ? "var(--bad-ink)" : "var(--accent)";
@@ -20,6 +22,7 @@ function Meter({ used, limit, label }: { used: number; limit: number; label: str
 /** `/ws/billingws` is the account overview; `/plan` and `/payment` are form pages. */
 export default function BillingWsModule() {
   const { param } = useRoute();
+  if (API_ON) return <ApiBillingWs />;
   if (param === "plan") return <PlanPage />;
   if (param === "payment") return <PaymentPage />;
   return <BillingOverview />;
