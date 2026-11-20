@@ -13,9 +13,8 @@ import { nowStamp } from "@/lib/format";
 import { clampText, isEmail } from "@/lib/security";
 import { ANSWER_LIB, TRUST, TRUST_FAQ } from "@/lib/trustData";
 import { apiFetch, viaApi } from "@/services/http";
+import { wsPost, wsUpload } from "@/services/ws";
 
-const send = <T,>(method: string, path: string, body?: unknown) =>
-  apiFetch<T>(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
 const enc = encodeURIComponent;
 const today = () => nowStamp().slice(0, 10);
 
@@ -76,7 +75,7 @@ export function approveRequest(id: string) {
     if (acc) { if (!acc.viewers.includes(r.who)) acc.viewers.push(r.who); acc.status = "Active"; }
     else TRUST.accounts.push({ company: r.company, domain: domainOf(r.who) || "—", nda: "Signed " + today(), viewers: [r.who], access: r.resource, status: "Active" });
     return r;
-  }, () => send<(typeof TRUST.requests)[number] | null>("POST", `/trust/requests/${enc(id)}/approve`, {}));
+  }, async () => { const r = TRUST.requests.find((x) => x.id === id) ?? null; await wsPost(`/ws/trust/requests/${enc(id)}/approve`, {}); return r; });
 }
 export function denyRequest(id: string, note: string) {
   return viaApi(() => {
@@ -86,25 +85,25 @@ export function denyRequest(id: string, note: string) {
     TRUST.requests = TRUST.requests.filter((x) => x.id !== id);
     TRUST.decisions.unshift({ at: today(), who: r.who, resource: r.resource, decision: "Denied", by: getActor().name, note });
     return r;
-  }, () => send<(typeof TRUST.requests)[number] | null>("POST", `/trust/requests/${enc(id)}/deny`, { note }));
+  }, async () => { const r = TRUST.requests.find((x) => x.id === id) ?? null; await wsPost(`/ws/trust/requests/${enc(id)}/deny`, { note }); return r; });
 }
-export function revokeAccount(i: number) {
+export function revokeAccount(i: number, reason = "") {
   return viaApi(() => {
     gate("revoking Trust Center access");
     const a = TRUST.accounts[i];
     if (!a) return null;
     a.status = "Revoked"; a.viewers = [];
     return a;
-  }, () => send<(typeof TRUST.accounts)[number] | null>("POST", `/trust/accounts/${i}/revoke`, {}));
+  }, () => wsPost<(typeof TRUST.accounts)[number] | null>(`/ws/trust/accounts/${enc(TRUST.accounts[i]?.id ?? "")}/revoke`, { reason }));
 }
 export function blockDomain(d: string) {
-  return viaApi(() => { gate("blocking a domain"); if (!TRUST.blocked.includes(d)) TRUST.blocked.push(d); return d; }, () => send<string>("POST", "/trust/blocked-domains", { domain: d }));
+  return viaApi(() => { gate("blocking a domain"); if (!TRUST.blocked.includes(d)) TRUST.blocked.push(d); return d; }, () => wsPost<string>("/ws/trust/blocked-domains", { domain: d }));
 }
-export function unblockDomain(d: string) {
-  return viaApi(() => { gate("unblocking a domain"); TRUST.blocked = TRUST.blocked.filter((x) => x !== d); return d; }, () => send<string>("DELETE", `/trust/blocked-domains/${enc(d)}`));
+export function unblockDomain(d: string, reason = "") {
+  return viaApi(() => { gate("unblocking a domain"); TRUST.blocked = TRUST.blocked.filter((x) => x !== d); return d; }, () => wsPost<string>(`/ws/trust/blocked-domains/${enc(d)}/delete`, { reason }));
 }
 export function setChatbot(on: boolean) {
-  return viaApi(() => { gate("changing the Trust Center chatbot"); TRUST.chatbot = on; return on; }, () => send<boolean>("PUT", "/trust/chatbot", { enabled: on }));
+  return viaApi(() => { gate("changing the Trust Center chatbot"); TRUST.chatbot = on; return on; }, () => wsPost<boolean>("/ws/trust/chatbot", { enabled: on }));
 }
 /** Make private is immediate. Make public is a four-eyes approval (approver != editor/requester); the resource stays access-controlled until then. */
 export function toggleVisibility(i: number) {
@@ -115,7 +114,7 @@ export function toggleVisibility(i: number) {
     if (stillPending(t.publishPending)) throw new SodError("Publishing is already awaiting approval.");
     const ap = requestApproval({ kind: "trust.publish", title: `Make "${clampText(t.name, 100)}" public`, subject: t.name, payload: { name: t.name, mode: "toggle" }, needs: 1, approverRoles: APPROVERS, forbid: [t.editedBy].filter(Boolean) });
     t.publishPending = ap.id; return { name: t.name, access: t.access, pending: true };
-  }, () => send<{ name: string; access: string; pending: boolean }>("POST", `/trust/resources/${i}/visibility`, {}));
+  }, () => wsPost<{ name: string; access: string; pending: boolean }>(`/ws/trust/resources/${enc(DATA.trust[i]?.id ?? "")}/visibility`, {}));
 }
 /** Publishing as "On request, NDA" is immediate; publishing as Public is a four-eyes approval and the resource is not listed until approved. */
 export function publishResource(name: string, access: string) {
@@ -127,7 +126,7 @@ export function publishResource(name: string, access: string) {
       return { name, pending: true };
     }
     DATA.trust.push({ name, access: "On request, NDA", status: "Active", editedBy: getActor().name }); return { name, pending: false };
-  }, () => send<{ name: string; pending: boolean }>("POST", "/trust/resources", { name, access }));
+  }, () => wsPost<{ name: string; pending: boolean }>("/ws/trust/resources", { name, access }));
 }
 const approvalsPendingFor = (name: string) => DATA.trust.some((t) => t.name === name && stillPending(t.publishPending));
 /** Public-side actions (a real API must authenticate/rate-limit these; they are anonymous in the prototype). */
@@ -137,10 +136,10 @@ export function askQuestion(q: string, domain: string) {
     const reply = ans || "Thanks — this one needs a person. Your question has been sent to the security team, who will reply by email.";
     TRUST.chats.unshift({ at: today(), who: domain, q, a: reply });
     return { ans, reply };
-  }, () => send<{ ans: string | null; reply: string }>("POST", "/trust/questions", { q }));
+  }, () => wsPost<{ ans: string | null; reply: string }>("/ws/trust/questions", { q }));
 }
 export function subscribeUpdates(email: string) {
-  return viaApi(() => email, () => send<string>("POST", "/trust/subscriptions", { email }));
+  return viaApi(() => email, async () => { await wsPost("/ws/trust/subscriptions", {}); return email; });
 }
 /* Anonymous request-access: rate limited (per email and overall), reason stored clamped to 300 chars, enqueued for admins. The reply never reveals whether the
  * address is blocked or already queued (no enumeration). Limits follow docs/architecture/SPEC_BOARDS.md 9.G2 (sign-up style: 3 per hour per email). The real API must
@@ -161,5 +160,10 @@ export function requestAccess(resourceIndex: number, email: string, reason: stri
     const label = domainOf(em).split(".")[0] || "";
     TRUST.requests.unshift({ id: "TR-" + n, who: em, company: label ? label.charAt(0).toUpperCase() + label.slice(1, 80) : "—", resource: t.name, reason: clampText(reason, 300) || "—", at: today() });
     return { queued: true };
-  }, () => send<{ queued: boolean }>("POST", "/trust/access-requests", { resource: resourceIndex, email, reason }));
+  }, () => wsPost<{ queued: boolean }>("/ws/trust/access-requests", { resourceId: DATA.trust[resourceIndex]?.id, reason }));
 }
+
+/* ---- production only: document files, links and the NDA (server/ws/trust.ts) ---- */
+export const uploadResourceFile = (i: number, file: File) => wsUpload<{ name: string }>(`/ws/trust/resources/${enc(DATA.trust[i]?.id ?? "")}/file`, file);
+export const resourceLink = (i: number) => apiFetch<{ url: string }>(`/ws/trust/resources/${enc(DATA.trust[i]?.id ?? "")}/link`);
+export const acceptNda = () => wsPost<{ ok: boolean }>("/ws/trust/nda", {});

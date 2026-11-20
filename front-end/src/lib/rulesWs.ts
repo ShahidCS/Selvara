@@ -288,5 +288,36 @@ export function externalRecipientsOf(recip: string, ownDomains: Set<string>): st
   });
 }
 
+/* ---------- vendors, questionnaires, trust, commitments (group 4) ---------- */
+export const VENDOR_TIER_LIST = ["Critical", "Medium", "Low"] as const;
+export const VENDOR_TIER_MONTHS: Record<string, number> = { Critical: 12, Medium: 24, Low: 36 };
+export const VENDOR_OUTCOMES = ["Approved, continue", "Approved with conditions", "Escalate, remediation required"] as const;
+export const VENDOR_FINDING_SEVS = ["High", "Medium", "Low"] as const;
+export const VENDOR_CRITICAL_TTL_H = 72;
+export const vendorManageBlock = (role: string) => roleBlock(role, "vendor decisions", "admin", "owner");
+/** Score 0-100 with up to 2 decimals ("7.9" stays 7.9; "12abc" and "" are invalid). */
+export function vendorScore(raw: unknown): number | null {
+  const t = String(raw ?? "").trim(); if (!/^\d{1,3}(\.\d{1,2})?$/.test(t)) return null;
+  const n = Number(t); return n >= 0 && n <= 100 ? n : null;
+}
+/** A certificate's state on a day: Waived (until its waiver ends), Expired, Expiring (within 60 days) or Valid. */
+export function certStateOf(c: { expires: string; waived?: boolean }, today: string): "Valid" | "Expiring" | "Expired" | "Waived" {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(c.expires)) return c.waived ? "Waived" : "Valid";
+  if (c.expires < today) return "Expired";
+  if (c.waived) return "Waived";
+  return Date.parse(c.expires + "T00:00:00Z") - Date.parse(today + "T00:00:00Z") <= 60 * 86400_000 ? "Expiring" : "Valid";
+}
+/** Questionnaire work (import, answer, submit for review) and answer verification. */
+export const questionnaireWorkBlock = (role: string) => roleBlock(role, "questionnaire work", "admin", "owner", "employee");
+export const answerVerifyBlock = (role: string, isAuthorOrEditor: boolean) =>
+  (["admin", "owner"].includes(role) ? null : "Only admin or owner can verify answers (verified answers feed the public chatbot).")
+  || (isAuthorOrEditor ? "Segregation of duties: you wrote or edited this answer, so a different admin or owner must verify it." : null);
+export const trustManageBlock = (role: string) => roleBlock(role, "Trust Center administration", "admin", "owner");
+/** A domain (or any of its parent domains) on the blocklist. */
+export const domainBlocked = (email: string, blocked: string[]) => { const d = String(email).trim().toLowerCase().split("@").pop() || ""; return blocked.some((b) => !!b && (d === b || d.endsWith("." + b))); };
+export const DOMAIN_RE = /^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
+export const INCIDENT_NOTICE_H = 48;
+
 /** Four-eyes kinds the server owns in production: the browser's engine shows them but never decides or applies them there. */
-export const SERVER_KINDS = ["control.exception", "evidence.delete", "policy.emergency", "mfa-reset-member", "offboard", "access-request", "risk.board-evidence", "risk.import", "issue.close", "report.distribution"];
+export const SERVER_KINDS = ["control.exception", "evidence.delete", "policy.emergency", "mfa-reset-member", "offboard", "access-request", "risk.board-evidence", "risk.import", "issue.close", "report.distribution",
+  "vendor.request.critical", "vendor.gate", "vendor.tier", "vendor.waiver", "trust.publish", "q.send"];

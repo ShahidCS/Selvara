@@ -1,3 +1,4 @@
+import { API_ON } from "@/lib/rbac";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { FormActions, FormMessage, FormSection, Page } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
@@ -17,9 +18,10 @@ const back = { href: LIST, label: "Questionnaires" };
 /** `/ws/questionnaires/import`: import a questionnaire. Same fields, validation and service call as the dialog it replaces. */
 export function ImportFormPage() {
   const L = useLayer(); const go = useGo();
-  const [name, setName] = useState(""); const [total, setTotal] = useState("120"); const [due, setDue] = useState("30 Nov 2026");
+  const [due0] = useState(() => (API_ON ? new Date(Date.now() + 30 * 86400_000).toISOString().slice(0, 10) : "30 Nov 2026")); // production: a real date
+  const [name, setName] = useState(""); const [total, setTotal] = useState("120"); const [due, setDue] = useState(due0);
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
-  const dirty = !busy && (name !== "" || total !== "120" || due !== "30 Nov 2026");
+  const dirty = !busy && (name !== "" || total !== "120" || due !== due0);
   const { allowLeave } = useUnsavedGuard(dirty, L);
   const ref = useRef<HTMLInputElement>(null); useEffect(() => { ref.current?.focus(); }, []);
   const submit = async (e: FormEvent) => {
@@ -41,7 +43,7 @@ export function ImportFormPage() {
           <div className="field"><label htmlFor="qi-name">Name <Req /></label><input ref={ref} className="input" id="qi-name" maxLength={160} placeholder="e.g. Acme, CAIQ" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={!!err} aria-describedby={err ? "qi-err" : undefined} /></div>
           <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div className="field"><label htmlFor="qi-total">Total questions</label><input className="input" id="qi-total" type="number" min={1} max={100000} value={total} onChange={(e) => setTotal(e.target.value)} /></div>
-            <div className="field"><label htmlFor="qi-due">Due</label><input className="input" id="qi-due" maxLength={40} value={due} onChange={(e) => setDue(e.target.value)} /></div>
+            <div className="field"><label htmlFor="qi-due">Due</label><input className="input" id="qi-due" type={API_ON ? "date" : "text"} maxLength={40} value={due} onChange={(e) => setDue(e.target.value)} /></div>
           </div>
         </FormSection>
         {err ? <FormMessage id="qi-err">{err}</FormMessage> : null}

@@ -1,5 +1,9 @@
 import { DataTable, Icon, KpiCard, Page, StatusChip, Table, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
+import { API_ON } from "@/lib/rbac";
+import { SodError } from "@/lib/sod";
+import { askReason } from "@/components/kit/ReasonDialog";
+import { ModuleTip } from "@/components/kit/ModuleTip";
 import { wsLog } from "@/lib/audit";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { VENDOR_REQS } from "@/lib/requests";
@@ -35,10 +39,11 @@ function VendorsList() {
   const canManage = vendorCanManage(role);
   const approve = (id: string) => attempt(L, async () => {
     const r = await svc.approveRequest(id); if (r.ok === false) { L.toast(r.msg); return; }
-    if (r.pending) { wsLog("vendor.request.approval_requested", r.name + " (Critical tier, 2 approvers needed)", "Vendor"); L.toast("Critical tier: two other approvers must confirm before " + r.name + " is added"); bumpData(); return; }
+    if (r.pending) { wsLog("vendor.request.approval_requested", r.name + " (Critical tier, 2 approvers needed)", "Vendor"); L.toast(API_ON ? "Critical tier: a second admin or owner must confirm before " + r.name + " is added" : "Critical tier: two other approvers must confirm before " + r.name + " is added"); bumpData(); return; }
     wsLog("vendor.request.approved", r.name + " → added to inventory", "Vendor"); L.toast(r.name + " added to the vendor inventory"); bumpData();
   });
-  const dismiss = (id: string) => attempt(L, async () => {
+  const dismiss = (id: string) => API_ON ? askReason(L, { title: "Dismiss vendor request", label: "Reason (the requester is told)", confirm: "Dismiss", danger: true,
+    run: async (why) => { const r = await svc.dismissRequest(id, why); if (r.ok === false) throw new SodError(r.msg); return "Request dismissed"; } }) : attempt(L, async () => {
     const r = await svc.dismissRequest(id); if (r.ok === false) { L.toast(r.msg); return; }
     wsLog("vendor.request.dismissed", r.name, "Vendor"); L.toast("Request dismissed"); bumpData();
   });
@@ -55,6 +60,7 @@ function VendorsList() {
   ];
   return (
     <Page mod="vendors" acts={<button className="btn btn-primary" disabled={!canManage} title={canManage ? undefined : "Only admin or owner can add vendors"} onClick={() => go("/ws/vendors/new")}><Icon name="plus" />Add vendor</button>}>
+      <ModuleTip mod="vendors" force={API_ON && !DATA.vendors.length} />
       {canManage ? <ApprovalsPanel prefix="vendor." title="Vendor approvals (four-eyes)" /> : null}
       <div className="kpis" style={{ marginBottom: 12 }} role="group" aria-label="Vendors by tier">
         {VENDOR_TIERS.map((t) => {
@@ -70,7 +76,7 @@ function VendorsList() {
             <Table cols={[{ t: "Request" }, { t: "Vendor" }, { t: "Purpose" }, { t: "Requested by" }, { t: "" }]}>
               {VENDOR_REQS.map((r) => {
                 const waiting = getApproval(r.pendingApproval)?.status === "Pending";
-                const why = waiting ? "Awaiting two approvers (Critical tier)." : sodReason("you raised this request, so another admin or owner must approve it", personOnly(r.requester));
+                const why = waiting ? (API_ON ? "Awaiting a second approver (Critical tier)." : "Awaiting two approvers (Critical tier).") : sodReason("you raised this request, so another admin or owner must approve it", personOnly(r.requester));
                 const crit = r.crit === "Critical";
                 return (
                   <tr key={r.id}>

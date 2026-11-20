@@ -110,4 +110,42 @@ export const MODULE_TIPS: Record<string, ModuleTipText> = {
     ],
     note: "Packs are not emailed until your administrator sets up email.",
   },
+  vendors: {
+    title: "Managing third parties",
+    steps: [
+      "Requests for new vendors from My Work appear here. Someone other than the requester approves them. A Critical vendor needs two approvers.",
+      "Each vendor gets a next review date from its tier: 12, 24 or 36 months. Overdue reviews show in the bell and on the Overview.",
+      "Record certificates with their expiry dates. They turn Expiring at 60 days and Expired by themselves. A waiver needs a second person and ends on its date.",
+      "Send questionnaire goes to the vendor's contact. Invite them in Team & Settings with the Vendor role. They answer in their own workspace.",
+    ],
+    note: "Risk scores and outcomes are your assessments. Qualified risk staff must review them.",
+  },
+  questionnaires: {
+    title: "Answering customer questionnaires",
+    steps: [
+      "Import a questionnaire, then record your progress as you answer it.",
+      "When every question is answered, submit it for review. An admin or owner who did not work on it approves sending it.",
+      "Build the answer library. A verified answer is also published to your Trust Center, so someone other than its author verifies it.",
+      "Keep the documents you quote from in the knowledge base.",
+    ],
+  },
+  trust: {
+    title: "Your Trust Center",
+    steps: [
+      "Add documents and attach their files. A public document needs a second admin or owner to approve it. Others are shared on request under NDA.",
+      "Customers' access requests wait under Access & requests. Approving one gives their company access, and they open documents after accepting the NDA.",
+      "Block domains you never want to approve. The person who unblocks a domain cannot approve its requests.",
+      "The public page shows your company's own records: verified answers, approved vendors that process data, and control status.",
+    ],
+    note: "The public page for anonymous visitors opens once email is set up, because visitors must verify their address first.",
+  },
+  commitments: {
+    title: "Contract commitments and incidents",
+    steps: [
+      "Import each customer contract's key commitment. Someone other than the importer marks it reviewed.",
+      "Run contract analysis to compare commitments with your standard terms. It flags any commitment stricter than the standard.",
+      "Start the incident clock when a breach is suspected. It shows the 48-hour deadline for notifying customers. Close it with an outcome.",
+    ],
+    note: "The analysis is a draft for legal review.",
+  },
 };

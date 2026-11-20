@@ -5,29 +5,32 @@ import { DATA } from "@/lib/data";
 import { nowStamp } from "@/lib/format";
 import { INCIDENT } from "@/lib/trustData";
 import { assertRole, getActor, SodError } from "@/lib/sod";
-import { apiFetch, viaApi } from "@/services/http";
+import { viaApi } from "@/services/http";
+import { wsPost } from "@/services/ws";
 
-const send = <T,>(method: string, path: string, body?: unknown) =>
-  apiFetch<T>(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
+export interface AnalysisRow { commitment: string; clause: string; finding: string }
 
 export function startIncident(summary: string) {
   return viaApi(() => {
     assertRole("starting the incident clock", "admin", "owner");
     if (INCIDENT.active) throw new SodError("An incident is already active.");
     INCIDENT.active = true; INCIDENT.started = nowStamp(); INCIDENT.startedBy = getActor().name; delete INCIDENT.closedBy; return INCIDENT;
-  }, () => send<unknown>("POST", "/incidents", { summary }));
+  }, () => wsPost<unknown>("/ws/incidents", { summary }));
 }
-export function closeIncident() {
+export function closeIncident(outcome = "") {
   return viaApi(() => {
     assertRole("closing the incident", "admin", "owner");
     if (!INCIDENT.active) throw new SodError("There is no active incident.");
     INCIDENT.active = false; INCIDENT.closedBy = getActor().name; return INCIDENT;
-  }, () => send<unknown>("POST", "/incidents/close", {}));
+  }, () => wsPost<unknown>("/ws/incidents/close", { outcome }));
 }
 export function importContract(name: string, detail: string) {
   return viaApi(() => { assertRole("importing a contract", "admin", "owner"); DATA.commitments.unshift({ name, detail: detail || "Imported contract", status: "Review" }); return { name }; },
-    () => send<unknown>("POST", "/commitments", { name, detail }));
+    () => wsPost<unknown>("/ws/commitments", { name, detail }));
 }
+/** The demonstration's analysis is static text (null here); production compares each commitment with the standard terms. */
 export function runContractAnalysis() {
-  return viaApi(() => true, () => send<boolean>("POST", "/commitments/analysis", {}));
+  return viaApi<AnalysisRow[] | null>(() => null, () => wsPost<AnalysisRow[]>("/ws/commitments/analysis", {}));
 }
+/** Production: an admin or owner other than the importer marks a commitment reviewed, with a note. */
+export const reviewCommitment = (id: string, note: string) => wsPost<unknown>(`/ws/commitments/${encodeURIComponent(id)}/review`, { note });

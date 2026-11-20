@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { API_ON } from "@/lib/rbac";
+import { uiMessage } from "@/lib/grcSod";
 import { LayerFoot } from "@/hooks/useLayer";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
@@ -10,7 +12,6 @@ import * as svc from "@/features/trust/services/trust";
 import { attempt } from "@/components/kit/sodKit";
 
 const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
-const FAIL = "Something went wrong. Please try again.";
 
 /* ---- admin: deny request (source trustDeny / trustDoDeny) ---- */
 export function DenyForm({ id, L }: { id: string; L: LayerApi }) {
@@ -88,17 +89,17 @@ export function SubscribeForm({ L }: { L: LayerApi }) {
   const [email, setEmail] = useState(""); const [err, setErr] = useState(false);
   const submit = async () => {
     const em = clampText(email, 254);
-    if (!isEmail(em)) { setErr(true); return; }
+    if (!API_ON && !isEmail(em)) { setErr(true); return; } // production subscribes the signed-in member
     try {
       await svc.subscribeUpdates(em);
       wsLog("trust.subscribed", em, "Policy");
       L.closeLayer(); L.toast("Subscribed to Trust Center updates");
-    } catch { L.toast(FAIL, false); }
+    } catch (e) { L.toast(uiMessage(e), false); }
   };
   return (
     <>
       <div>
-        <div className="field"><label htmlFor="ts-email">Email <Req /></label><input className="input" id="ts-email" data-focus type="email" maxLength={254} placeholder="name@company.example" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={err} aria-describedby={err ? "ts-err" : undefined} /></div>
+        {API_ON ? <p style={{ margin: 0 }}>We will send Trust Center updates to the email address of your Selvara account once email is set up.</p> : <div className="field"><label htmlFor="ts-email">Email <Req /></label><input className="input" id="ts-email" data-focus type="email" maxLength={254} placeholder="name@company.example" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={err} aria-describedby={err ? "ts-err" : undefined} /></div>}
         <p className="field help" id="ts-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>Enter a valid email address.</p>
       </div>
       <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><button className="btn btn-primary" onClick={submit}>Subscribe</button></LayerFoot>
@@ -113,7 +114,7 @@ export function RequestAccessForm({ i, L }: { i: number; L: LayerApi }) {
   if (!t) return <p className="field help">Resource not found.</p>;
   const submit = () => attempt(L, async () => {
     const em = clampText(email, 254);
-    if (!isEmail(em)) { setErr(true); return; }
+    if (!API_ON && !isEmail(em)) { setErr(true); return; } // production requests for the signed-in member
     const out = await svc.requestAccess(i, em, clampText(note, 300)); // enqueues for the admins; the reply is the same whether or not it was queued
     wsLog(out.queued ? "trust.access.requested" : "trust.access.request.ignored", t.name + " by " + em, "Policy");
     L.closeLayer(); L.toast("Access request submitted");
@@ -122,9 +123,9 @@ export function RequestAccessForm({ i, L }: { i: number; L: LayerApi }) {
     <>
       <div>
         <p style={{ margin: "0 0 8px" }}>This resource is shared on request under NDA. Submit a request and the security team will review it.</p>
-        <div className="field"><label htmlFor="tr-email">Your work email <Req /></label><input className="input" id="tr-email" data-focus type="email" maxLength={254} placeholder="name@company.example" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={err} aria-describedby={err ? "tr-err" : undefined} /></div>
+        {API_ON ? null : <div className="field"><label htmlFor="tr-email">Your work email <Req /></label><input className="input" id="tr-email" data-focus type="email" maxLength={254} placeholder="name@company.example" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={err} aria-describedby={err ? "tr-err" : undefined} /></div>}
         <div className="field"><label htmlFor="tr-note">Reason</label><input className="input" id="tr-note" maxLength={300} placeholder="e.g. Vendor due diligence" value={note} onChange={(e) => setNote(e.target.value)} /></div>
-        <p className="field help">{svc.REQUEST_ACCESS_COPY}</p>
+        <p className="field help">{API_ON ? "The request is made with your account's email address. You can send up to 3 requests an hour." : svc.REQUEST_ACCESS_COPY}</p>
         <p className="field help" id="tr-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>Enter a valid email address.</p>
       </div>
       <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><button className="btn btn-primary" onClick={submit}>Submit request</button></LayerFoot>

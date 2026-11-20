@@ -15,11 +15,14 @@ import type { Issue } from "./issues";
 import type { Policy } from "./policies";
 import type { Risk } from "./risk";
 import type { AccessRequest } from "./access";
+import { vendorDueText, type Vendor } from "./vendors";
 import type { Actor, WsTx } from "./store";
 
 export interface VendorRequest { id: string; name: string; cat: string; reason: string; requester: string; requesterId: string; data: boolean; crit: string; at: string; status: "Pending" | "Approved" | "Rejected" }
 interface WorkItem { t: string; m: string; sev: "High" | "Medium" | "Low"; path: string; decision?: boolean }
 const CRITS = ["Critical", "Medium", "Low"];
+const GROUP4 = ["vendor.request.critical", "vendor.gate", "vendor.tier", "vendor.waiver", "trust.publish", "q.send"];
+const HOME: Record<string, string> = { vendor: "vendors", trust: "trust", q: "questionnaires" };
 
 async function work(t: WsTx, me: Actor) {
   const today = isoDayOf(t.now); const week = isoDayOf(t.now + 7 * 86400_000); const role = me.role;
@@ -35,12 +38,14 @@ async function work(t: WsTx, me: Actor) {
     if (r.ownerId === me.id && r.review === "Changes requested") reviews.push({ t: `Update risk ${r.id} ${r.title}`, m: "Changes were requested", sev: "Medium", path: "/ws/risk" });
     if (r.ownerId === me.id && r.acceptance && r.acceptance.until < today) reviews.push({ t: `Review risk ${r.id}: acceptance expired`, m: `Accepted until ${r.acceptance.until}`, sev: "High", path: "/ws/risk" });
   }
-  const aps = await t.approvals(["risk.board-evidence", "risk.import", "issue.close", "report.distribution"]);
+  const aps = await t.approvals(["risk.board-evidence", "risk.import", "issue.close", "report.distribution", ...GROUP4]);
   const may = (a: (typeof aps)[number]) => a.status === "Pending" && a.expiresAt > t.now
     && !approvalBlock({ key: me.id, base: role }, { status: a.status, expiresAt: a.expiresAt, approverRoles: a.approverRoles, requestedBy: a.requestedBy, forbid: a.forbid, votes: a.votes.map((v) => v.by) }, t.now);
   for (const a of aps.filter(may)) {
     if (a.kind === "issue.close" && modAllowed(role, "issues")) reviews.push({ t: a.title, m: `Closure proposed by ${a.requestedByName}`, sev: "High", path: `/ws/issues/${String(a.payload.issueId ?? a.subject ?? "")}`, decision: true });
     if (a.kind.startsWith("risk.") && canRisk) reviews.push({ t: a.title, m: `Requested by ${a.requestedByName}`, sev: a.kind === "risk.import" ? "Medium" : "High", path: "/ws/risk", decision: true });
+    const home = HOME[a.kind.split(".")[0]];
+    if (home && modAllowed(role, home)) reviews.push({ t: a.title, m: `Requested by ${a.requestedByName}`, sev: "Medium", path: `/ws/${home}`, decision: true });
     if (a.kind === "report.distribution" && modAllowed(role, "reports")) reviews.push({ t: a.title, m: `Requested by ${a.requestedByName}`, sev: "Medium", path: "/ws/reports", decision: true });
   }
   if (modAllowed(role, "policies")) for (const p of (await t.list<Policy>("policy")).map((x) => x.data)) {
@@ -68,6 +73,7 @@ async function overview(t: WsTx, role: string) {
     for (const [id, s] of Object.entries(state)) figures[id] = { scope: s.scope, snooze: s.snooze, na: Object.fromEntries(Object.keys(s.na ?? {}).map((k) => [k, {}])), mod: {}, reqCtrl: s.reqCtrl ?? {} };
     out.frameworks = { library: LIB_FRAMEWORKS, state: figures, custom: (await t.list<FwCustom>("fw-custom")).map((x) => ({ id: x.id, name: x.data.name, short: x.data.short, kind: x.data.kind, region: x.data.region, version: x.data.version, reqs: x.data.reqs.map((q) => [q[0], "", ...q.slice(2)]) })) };
   }
+  if (!modAllowed(role, "vendors")) out.vendors = (await t.list<Vendor>("vendor")).map((x, n) => ({ id: `#${n + 1}`, name: "", cat: "", tier: x.data.tier, status: x.data.status, due: vendorDueText(x.data.nextReview, isoDayOf(t.now)) }));
   if (!modAllowed(role, "controls")) out.controls = (await t.list<Control>("control")).map((x) => ({ id: x.data.id, title: "", owner: "", domain: x.data.domain, status: x.data.status, map: x.data.map }));
   return out;
 }

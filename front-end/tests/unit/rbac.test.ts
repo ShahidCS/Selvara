@@ -16,7 +16,8 @@ describe("module access in production (API mode) and in the demonstration", () =
     expect(modAllowed("admin", "ws", "policies", true)).toBe(true); // group 2
     expect(modAllowed("admin", "ws", "risk", true)).toBe(true); // group 3
     expect(modAllowed("admin", "ws", "overview", true)).toBe(true);
-    expect(modAllowed("admin", "ws", "vendors", true)).toBe(false); // not on the server yet
+    expect(modAllowed("admin", "ws", "vendors", true)).toBe(true); // group 4
+    expect(modAllowed("admin", "ws", "audits", true)).toBe(false); // not on the server yet
     expect(modAllowed("super", "admin", "billing", true)).toBe(false);
     expect(modAllowed("super", "admin", "customers", true)).toBe(true); // Admin Console, slice 3a
     expect(modAllowed("admin", "ws", "team", true)).toBe(true);
@@ -32,7 +33,7 @@ describe("module access in production (API mode) and in the demonstration", () =
     expect(landingPath("admin", "ws", true)).toBe("/ws/overview");
     expect(firstMod("admin", "ws", true)).toBe("overview");
     for (const r of ["owner", "auditor", "analyst", "employee"]) expect(landingPath(r, "ws", true)).toBe("/ws/overview");
-    for (const r of ["vendor", "viewer"]) expect(landingPath(r, "ws", true)).toBe("/auth");
+    expect(landingPath("vendor", "ws", true)).toBe("/ws/questionnaires"); expect(landingPath("viewer", "ws", true)).toBe("/ws/trust");
     expect(landingPath("super", "admin", true)).toBe("/admin/customers");
     expect(landingPath("support", "admin", true)).toBe("/admin/customers");
     expect(modAllowed("support", "admin", "elevation", true)).toBe(false); // support never elevates

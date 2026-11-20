@@ -10,6 +10,8 @@ import { useGo, useRoute } from "@/lib/route";
 import { AddAnswerPage, ImportFormPage } from "./QuestionnaireForms";
 import { QuestionnaireDetail } from "./QuestionnaireDetail";
 import VendorPortal from "./VendorPortal";
+import { API_ON } from "@/lib/rbac";
+import { ModuleTip } from "@/components/kit/ModuleTip";
 
 const VIEWS: [string, string][] = [["flight", "In flight"], ["library", "Answer library"], ["kb", "Knowledge base"]];
 
@@ -62,6 +64,8 @@ function QuestionnairesList() {
     ? <button className="btn btn-primary" onClick={() => go("/ws/questionnaires/import")}><Icon name="plus" />Import questionnaire</button>
     : view === "library"
       ? <button className="btn btn-primary" onClick={() => go("/ws/questionnaires/answer")}><Icon name="plus" />Add answer</button>
+      : API_ON ? <label className="btn btn-secondary" style={{ cursor: "pointer" }}><Icon name="plus" />Upload document
+          <input type="file" style={{ display: "none" }} aria-label="Upload document" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) attempt(L, async () => { const r = await svc.uploadKbDoc(f); L.toast(`${r.name} added to the knowledge base`); bumpData(); }); }} /></label>
       : <button className="btn btn-secondary" onClick={() => L.toast("Upload document (demo)")}><Icon name="plus" />Upload document</button>;
 
   let body;
@@ -76,15 +80,16 @@ function QuestionnairesList() {
     );
   } else if (view === "library") {
     body = (
-      <DataTable<Answer> id="answer-library" label="Answer library" rows={ANSWER_LIB} rowKey={(a) => String(ANSWER_LIB.indexOf(a))} columns={libCols} searchText={(a) => `${a.q} ${a.a}`}
+      <DataTable<Answer> id="answer-library" label="Answer library" rows={ANSWER_LIB} rowKey={(a) => a.id ?? String(ANSWER_LIB.indexOf(a))} columns={libCols} searchText={(a) => `${a.q} ${a.a}`}
         tabs={[{ key: "Verified", label: "Verified", match: (a: Answer) => !!a.verified }, { key: "Unverified", label: "Unverified", match: (a: Answer) => !a.verified }]} exportName="answer-library" />
     );
   } else {
     body = (
       <div style={{ padding: 12 }}>
         <Table cols={[{ t: "Document" }, { t: "Type" }, { t: "" }]}>
+          {!KB_DOCS.length ? <tr><td colSpan={3} style={{ color: "var(--muted)" }}>No documents yet. Upload policies and reports you use to answer questionnaires.</td></tr> : null}
           {KB_DOCS.map((d, i) => (
-            <tr key={i}><td className="strong"><Icon name="evidence" /> {d.name}</td><td>{d.type}</td><td className="r"><button className="btn btn-ghost sm" onClick={() => L.toast("Opened (demo)")}><Icon name="ext" />Open</button></td></tr>
+            <tr key={i}><td className="strong"><Icon name="evidence" /> {d.name}</td><td>{d.type}</td><td className="r"><button className="btn btn-ghost sm" onClick={() => API_ON && d.id ? attempt(L, async () => { const { url } = await svc.kbDocLink(d.id!); window.open(url, "_blank", "noopener"); }) : L.toast("Opened (demo)")}><Icon name="ext" />Open</button></td></tr>
           ))}
         </Table>
       </div>
@@ -92,6 +97,7 @@ function QuestionnairesList() {
   }
   return (
     <Page mod="questionnaires" acts={acts}>
+      <ModuleTip mod="questionnaires" force={API_ON && !DATA.questionnaires.length && !ANSWER_LIB.length} />
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head"><div className="seg" role="tablist">{VIEWS.map((v) => <button key={v[0]} role="tab" aria-selected={view === v[0]} onClick={() => setView(v[0])}>{v[1]}</button>)}</div></div>
         <div className="c-body flush scroll" style={{ padding: 0 }} id="qBody">{body}</div>

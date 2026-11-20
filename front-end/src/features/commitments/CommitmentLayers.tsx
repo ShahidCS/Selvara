@@ -1,5 +1,7 @@
 import { adminLog } from "@/lib/adminAudit";
 import { useState } from "react";
+import { API_ON } from "@/lib/rbac";
+import { uiMessage } from "@/lib/grcSod";
 import { Table } from "@/components/ui";
 import { LayerFoot } from "@/hooks/useLayer";
 import type { LayerApi } from "@/components/shell/LayerProvider";
@@ -18,7 +20,7 @@ export function StartIncidentForm({ L }: { L: LayerApi }) {
     const s = clampText(sum, 200);
     await svc.startIncident(s);
     wsLog("incident.started", s || "incident drill", "Policy");
-    adminLog("incident.started", s || "incident drill", { categories: ["Incident"], basis: "Legal obligation" });
+    if (!API_ON) adminLog("incident.started", s || "incident drill", { categories: ["Incident"], basis: "Legal obligation" }); // production: the company's audit log (server)
     L.closeLayer(); L.toast("Incident clock started"); bumpData();
   });
   return (
@@ -35,6 +37,21 @@ export function StartIncidentForm({ L }: { L: LayerApi }) {
 /* ---- contract analysis (source commAnalyse) ---- */
 const FINDINGS: [string, string][] = [["Breach notice", "⚠ One MSA specifies 72h, stricter standard is 48h"], ["Liability cap", "OK, within policy"], ["Audit rights", "⚠ Globex requires annual on-site, needs scheduling"], ["Data residency", "OK, in-region"]];
 export async function openAnalysis(L: LayerApi) {
+  if (API_ON) {
+    let rows: svc.AnalysisRow[] = [];
+    try { rows = (await svc.runContractAnalysis()) ?? []; } catch (e) { L.toast(uiMessage(e), false); return; }
+    L.openModal("Contract analysis", (
+      <>
+        <p style={{ margin: "0 0 10px" }}>Each commitment compared with your standard terms (hours, days and percentages).</p>
+        <Table cols={[{ t: "Commitment" }, { t: "Clause" }, { t: "Finding" }]}>
+          {!rows.length ? <tr><td colSpan={3} style={{ color: "var(--muted)" }}>No commitments to analyse yet.</td></tr> : null}
+          {rows.map((r, i) => <tr key={i}><td className="strong">{r.commitment}</td><td>{r.clause}</td><td>{r.finding}</td></tr>)}
+        </Table>
+        <p className="field help" style={{ marginTop: 10 }}>Draft analysis. Legal review required before relying on these results.</p>
+      </>
+    ), <button className="btn btn-primary" onClick={() => L.closeLayer()}>Done</button>);
+    return;
+  }
   L.openModal("Contract analysis", (
     <>
       <p style={{ margin: "0 0 10px" }}>Automated review of imported contracts against your standard terms. Synthetic demo result.</p>
@@ -65,7 +82,7 @@ export function ImportContractForm({ L }: { L: LayerApi }) {
         <div className="field"><label htmlFor="ct-detail">Key commitment</label><input className="input" id="ct-detail" maxLength={200} placeholder="e.g. 99.95% uptime" value={detail} onChange={(e) => setDetail(e.target.value)} /></div>
         <p className="field help" id="ct-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>Contract name is required.</p>
       </div>
-      <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><button className="btn btn-primary" onClick={submit}>Import &amp; analyse</button></LayerFoot>
+      <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><button className="btn btn-primary" onClick={submit}>{API_ON ? "Import" : <>Import &amp; analyse</>}</button></LayerFoot>
     </>
   );
 }

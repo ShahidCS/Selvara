@@ -11,6 +11,7 @@ import { assertNotSelf, assertRole, getActor, sodReason, SodError } from "@/lib/
 import { clampText } from "@/lib/security";
 import { ANSWER_LIB, VENDOR_Q } from "@/lib/trustData";
 import { apiFetch, viaApi } from "@/services/http";
+import { wsPost, wsUpload } from "@/services/ws";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const stillPending = (id?: string) => !!id && getApproval(id)?.status === "Pending";
@@ -56,14 +57,14 @@ export function verifyAnswer(i: number) {
     if (a.verified) return a;
     assertNotSelf("you wrote or edited this answer, so a different admin or owner must verify it", a.author, a.editedBy);
     a.verified = true; a.verifiedBy = getActor().name; return a;
-  }, () => send<any>("POST", `/answer-library/${i}/verify`, {}));
+  }, () => wsPost<any>(`/ws/answer-library/${encodeURIComponent(ANSWER_LIB[i]?.id ?? "")}/verify`, {}));
 }
 export function addAnswer(q: string, a: string) {
-  return viaApi(() => { work("adding an answer"); ANSWER_LIB.unshift({ q, a, verified: false, uses: 0, author: getActor().name }); return { q }; }, () => send<any>("POST", "/answer-library", { q, a }));
+  return viaApi(() => { work("adding an answer"); ANSWER_LIB.unshift({ q, a, verified: false, uses: 0, author: getActor().name }); return { q }; }, () => wsPost<any>("/ws/answer-library", { q, a }));
 }
 export function importQuestionnaire(name: string, total: number, due: string) {
   return viaApi(() => { work("importing a questionnaire"); const q: any = { name, prog: "0 / " + total, status: "Not started", due: due || "TBD", author: getActor().name, editors: [] }; qid(q); DATA.questionnaires.unshift(q); return { name }; },
-    () => send<any>("POST", "/questionnaires", { name, total, due }));
+    () => wsPost<any>("/ws/questionnaires", { name, total, due }));
 }
 export function advanceQuestionnaire(i: number) {
   return viaApi(() => {
@@ -76,7 +77,7 @@ export function advanceQuestionnaire(i: number) {
     q.prog = a + " / " + b; q.status = a >= b ? "Complete" : "In progress";
     const me = getActor().name; q.editors = Array.from(new Set([...(q.editors || []), me])); qid(q);
     return { q, a, b };
-  }, () => send<any>("POST", `/questionnaires/${i}/advance`, {}));
+  }, () => wsPost<any>(`/ws/questionnaires/${encodeURIComponent(DATA.questionnaires[i]?.qid ?? "")}/advance`, {}));
 }
 /** Source "Mark complete" (sent to the customer). Now: submit for review. A reviewer other than the author/editors approves the send. */
 export function requestSend(i: number) {
@@ -88,7 +89,7 @@ export function requestSend(i: number) {
     const me = getActor().name; q.editors = Array.from(new Set([...(q.editors || []), me]));
     const ap = requestApproval({ kind: "q.send", title: `Send questionnaire "${clampText(q.name, 100)}" externally (${q.prog})`, subject: q.name, payload: { qid: qid(q) }, needs: 1, approverRoles: ["admin", "owner"], forbid: qContributors(q) });
     q.pendingSend = ap.id; return { name: q.name as string, prog: String(q.prog) };
-  }, () => send<any>("POST", `/questionnaires/${i}/send-for-review`, {}));
+  }, () => wsPost<any>(`/ws/questionnaires/${encodeURIComponent(DATA.questionnaires[i]?.qid ?? "")}/send-for-review`, {}));
 }
 /** Store the answers; returns how many required questions are still unanswered. */
 const storeAnswers = (answers: string[]) => {
@@ -101,3 +102,9 @@ export function saveVendorAnswers(answers: string[]) {
 export function submitVendorQuestionnaire(answers: string[]) {
   return viaApi(() => storeAnswers(answers), () => send<number>("POST", "/vendor-questionnaire/submit", { answers }));
 }
+
+/* ---- production only: knowledge-base files and the Vendor-role member's own questionnaires (server/ws/questionnaires.ts, vendors.ts) ---- */
+export const uploadKbDoc = (file: File) => wsUpload<{ id: string; name: string }>("/ws/kb-docs", file);
+export const kbDocLink = (id: string) => apiFetch<{ url: string }>(`/ws/kb-docs/${encodeURIComponent(id)}/link`);
+export const saveAssigned = (id: string, answers: string[]) => wsPost<number>(`/ws/vendor-questionnaires/${encodeURIComponent(id)}/answers`, { answers });
+export const submitAssigned = (id: string, answers: string[]) => wsPost<number>(`/ws/vendor-questionnaires/${encodeURIComponent(id)}/submit`, { answers });

@@ -5,6 +5,18 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ## [Unreleased]
 
 ### Changed
+- Production programme, group 4: **Third parties (Vendors)**, the **Vendor role's questionnaires**, **Questionnaires**, **Trust Center** and **Commitments** run on the server in production, using the group 1 store (no new migration). The decisions are recorded in `docs/architecture/PRODUCTION_PROGRAMME.md` (group 4).
+  - **Vendors.** Requests from My Work are approved by someone other than the requester. A Critical vendor and its onboarding gate need a second approver. Tier changes and certificate waivers need an approver other than the person who requested or added the vendor. Nothing about a vendor is invented. Review dates and certificate expiries are real dates and go overdue or expire by themselves.
+  - **The vendor's questionnaire.** It goes to the vendor's contact, who answers in their own workspace. It locks when submitted and can be reopened with a note.
+  - **Questionnaires.** A questionnaire is sent only after review by someone who did not work on it. Library answers are verified by another admin or owner. Knowledge-base documents are real files.
+  - **Trust Center.**
+    - Real document files, shown only after access is approved and the NDA accepted.
+    - Access is approved by neither the requester nor the person who unblocked their domain.
+    - The public page is built from the company's own records.
+  - **Commitments.** A real contract analysis against the standard terms, a review by another person, and the company's own incident clock with its customer-notice deadline.
+  - **Standalone vendor portal and anonymous Trust Center.** Both open with email (group 8).
+  - **Protected file.** `rbac.ts` lists the four modules as server-ready (pre-approved change).
+  - Draft for security and compliance review.
 - Production programme, group 3: **Risk register**, **Issues**, **My Work**, **Overview** and **Reports** run on the server in production with the demonstration's behaviour, using the group 1 store (no new migration). The decisions are recorded in `docs/architecture/PRODUCTION_PROGRAMME.md` (group 3).
   - **Risk register.** The full review workflow, now with state checks. Scores, mapped controls and treatment actions with owners and due dates. Acceptance on the authority ladder. Board-approved acceptance above 15, recorded by an admin and verified by a second admin or owner who is not the risk's owner, editor or recorder (four-eyes `risk.board-evidence`). The acceptance is cancelled when the residual changes, and an expired acceptance is recorded once. Closing and reopening. Interested parties. Register snapshots sealed with SHA-256, which admins can download. Import: rows are checked again on the server, and an import that changes existing risks waits for a second admin (`risk.import`).
   - **Issues.** Owners are members and due dates are real dates. High and Critical issues close only when a different person verifies the fix (`issue.close`). Every action is in the audit log.
