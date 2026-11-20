@@ -15,6 +15,7 @@ import { API_ON } from "@/lib/rbac";
 import { SodError } from "@/lib/sod";
 import { askReason } from "@/components/kit/ReasonDialog";
 import { g4Meta } from "@/services/ws";
+import { PortalAnswers, SendQuestionnaire } from "./PortalQuestionnaire";
 
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -40,9 +41,7 @@ export function VendorDetail({ id }: { id: string }) {
     if (r.pending) { wsLog("vendor.gate.approval_requested", r.name + " (Critical tier, 2 approvers needed)", "Vendor"); L.toast(API_ON ? "Critical tier: a second admin or owner must confirm the gate" : "Critical tier: two other approvers must confirm the gate"); bumpData(); return; }
     wsLog("vendor.gate." + decision.toLowerCase(), r.name, "Vendor"); L.toast("Procurement gate " + decision.toLowerCase()); bumpData();
   });
-  const sendQ = () => API_ON ? askReason(L, { title: "Send security questionnaire", label: "", confirm: "Send", select: g4.contacts, selectLabel: "Vendor contact",
-    intro: g4.contacts.length ? "The contact answers in their own Selvara workspace. You see the answers here when they submit." : "Invite the vendor's contact in Team & Settings with the Vendor role first, then send the questionnaire.",
-    run: async (_t, contactId) => { const r = await must(svc.sendQuestionnaire(id, contactId)); return "Security questionnaire sent to " + r.name; } }) : act(() => svc.sendQuestionnaire(id), (r) => { wsLog("vendor.questionnaire.sent", r.name, "Vendor"); L.toast("Security questionnaire sent to " + r.name); bumpData(); });
+  const sendQ = () => API_ON ? L.openModal("Send security questionnaire", (close) => <SendQuestionnaire vendorId={id} mail={!!g4.mail} contacts={g4.contacts} close={close} />) : act(() => svc.sendQuestionnaire(id), (r) => { wsLog("vendor.questionnaire.sent", r.name, "Vendor"); L.toast("Security questionnaire sent to " + r.name); bumpData(); });
   const gatePend = pendingOf(v.gatePending);
   const gateWhy = !can ? "Read-only: only admin or owner can decide the procurement gate." : gatePend ? (API_ON ? "Awaiting a second approver (Critical tier)." : "Awaiting two approvers (Critical tier).") : sodReason("you requested or added this vendor, so another admin or owner must approve its gate", personOnly(v.requestedBy), personOnly(v.addedBy));
   const manageTitle = can ? undefined : "Only admin or owner can do this";
@@ -94,11 +93,11 @@ export function VendorDetail({ id }: { id: string }) {
                     <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                       <span className="strong num">{q.id}</span><StatusChip s={q.status === "Submitted" ? "Complete" : q.status === "Reopened" ? "Review" : "Pending"} />
                       <span className="sub">to {q.contact}, sent {q.at} by {q.sentBy}{q.submittedAt ? `, submitted ${q.submittedAt}` : ""}</span>
-                      {q.status === "Submitted" && can ? <button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} onClick={() => askReason(L, { title: "Ask for clarification", label: "What needs clarifying?", max: 500, confirm: "Reopen",
+                      {q.status === "Submitted" && can && !q.portal ? <button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} onClick={() => askReason(L, { title: "Ask for clarification", label: "What needs clarifying?", max: 500, confirm: "Reopen",
                         run: async (note) => { await svc.reopenVendorQuestionnaire(q.id, note); return "Questionnaire reopened for clarification"; } })}><Icon name="refresh" />Reopen</button> : null}
                     </div>
                     {q.note && q.status === "Reopened" ? <p className="field help">Clarification asked: {q.note}</p> : null}
-                    {q.status !== "Sent" ? <dl className="meta-grid" style={{ marginTop: 8 }}>{q.questions.flatMap((x, i) => [<dt key={"q" + i}>{x.q}</dt>, <dd key={"a" + i}>{q.answers[i] || "—"}</dd>])}</dl> : null}
+                    {q.portal ? <PortalAnswers q={q} can={can} /> : q.status !== "Sent" ? <dl className="meta-grid" style={{ marginTop: 8 }}>{q.questions.flatMap((x, i) => [<dt key={"q" + i}>{x.q}</dt>, <dd key={"a" + i}>{q.answers[i] || "—"}</dd>])}</dl> : null}
                   </div>
                 ))}
               </div></div>

@@ -24,12 +24,15 @@ export interface WsMember { id: string; name: string; role: string }
 export interface WsTask { id: string; title: string; policyId: string; kind: "ack" | "approve" | "publish" | "emergency" }
 /** Group 4 data the screens read beside DATA: the vendor's contacts and questionnaires, what was sent to a Vendor-role member, the Trust
  *  Center's public page and the incident history. */
-export interface WsVendorQ { id: string; vendorId: string; vendor: string; contact: string; contactId: string; customer: string; questions: { q: string; required: boolean }[]; answers: string[]; status: string; sentBy: string; at: string; submittedAt?: string; note?: string }
+export interface WsVendorQ { id: string; vendorId: string; vendor: string; contact: string; contactId: string; customer: string; questions: { q: string; required: boolean }[]; answers: string[]; status: string; sentBy: string; at: string; submittedAt?: string; note?: string;
+  /** Sent by email and answered in the standalone vendor portal (group 8b). */
+  portal?: { email: string; due: string; expiresAt: number; linkLive: boolean; version: number; clarify: string[]; history: { version: number; at: number }[];
+    readiness: { unanswered: number; noEvidence: number; clar: number; ready: boolean }; items: Record<string, { answer: string; comment: string; file: { name: string } | null }> } }
 export interface WsTrustPublic { company: string; chatbot: boolean; faq: { q: string; a: string }[]; subprocessors: { name: string; purpose: string; region: string }[]; updates: { at: string; title: string }[];
   controls: [string, string][]; account: { company: string; nda: string; access: string[] } | null; myRequests: { resource: string; status: string; at: string }[]; subscribed: boolean }
 /** Group 5: auditors who can be given access, and the company audit log's verification and evidence packages. */
 export interface WsAuditLog { firstBad: number | null; verifiedAt: string | null; verifiedBy?: string; packages: { id: string; at: string; by: string; entries: number; sha: string }[] }
-export const g4Meta = createStore<{ contacts: { id: string; name: string }[]; vendorQs: WsVendorQ[]; assigned: WsVendorQ[]; trustPublic: WsTrustPublic | null; incidents: any[]; subscribers: number;
+export const g4Meta = createStore<{ contacts: { id: string; name: string }[]; vendorQs: WsVendorQ[]; /** email is set up (the vendor portal can be used) */ mail?: boolean; assigned: WsVendorQ[]; trustPublic: WsTrustPublic | null; incidents: any[]; subscribers: number;
   auditors: { id: string; name: string }[]; auditlog: WsAuditLog }>({ contacts: [], vendorQs: [], assigned: [], trustPublic: null, incidents: [], subscribers: 0, auditors: [], auditlog: { firstBad: null, verifiedAt: null, packages: [] } });
 /** My Work as the server computes it for the signed-in person. */
 export interface WsWork {
@@ -89,7 +92,7 @@ const LOADERS: Record<string, (b: any) => void> = {
   issues(b) { DATA.issues = b.issues; setApprovals(["issue.close"], b.approvals); },
   reports(b) { DATA.reports = b.reports.map((x: any) => ({ ...x })); fill(SCHED_PACKS, b.schedules); setApprovals(["report.distribution"], b.approvals); },
   work(b) { wsMeta.set({ work: b }); },
-  vendors(b) { DATA.vendors = b.vendors; fill(VENDOR_REQS, b.requests); setApprovals(["vendor.request.critical", "vendor.gate", "vendor.tier", "vendor.waiver"], b.approvals); g4Meta.set({ contacts: b.contacts, vendorQs: b.questionnaires }); },
+  vendors(b) { DATA.vendors = b.vendors; fill(VENDOR_REQS, b.requests); setApprovals(["vendor.request.critical", "vendor.gate", "vendor.tier", "vendor.waiver"], b.approvals); g4Meta.set({ contacts: b.contacts, vendorQs: b.questionnaires, mail: !!b.mail }); },
   questionnaires(b) {
     DATA.questionnaires = b.questionnaires; fill(ANSWER_LIB, b.answers); fill(KB_DOCS, b.docs); setApprovals(["q.send"], b.approvals);
     g4Meta.set({ assigned: b.assigned }); if (b.filesConfigured) wsMeta.set({ filesConfigured: true });

@@ -12,7 +12,7 @@ import { nowStamp } from "@/lib/format";
 import { clampText, isIsoDate } from "@/lib/security";
 import { VENDOR_REQS } from "@/lib/requests";
 import { FINDING_SEVS, REASSESS_OUTCOMES, TIER_WINDOW, VENDOR_TIERS, parseScore, personOnly, vFind, vInit } from "@/features/vendors/lib/vendors";
-import { viaApi } from "@/services/http";
+import { apiFetch, viaApi } from "@/services/http";
 import { wsPost } from "@/services/ws";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -211,7 +211,12 @@ export function changeTier(id: string, tier: string) {
   }, () => post<Res<{ changed: boolean; pending: boolean; name: string; from: string; to: string }>>(`/vendors/${enc(id)}/tier`, { tier }));
 }
 
-/** Production: reopen a submitted vendor questionnaire with a note (a clarification round). */
-export function reopenVendorQuestionnaire(id: string, note: string) {
-  return post<{ ok: boolean }>(`/vendor-questionnaires/${enc(id)}/reopen`, { note });
+/** Production: reopen a submitted vendor questionnaire with a note (a clarification round); by email, only the chosen questions reopen. */
+export function reopenVendorQuestionnaire(id: string, note: string, questions?: string[]) {
+  return post<{ ok: boolean; emailed?: boolean }>(`/vendor-questionnaires/${enc(id)}/reopen`, { note, questions });
 }
+/** Production (group 8b): the assessment by email, answered in the standalone vendor portal. */
+export const sendQuestionnaireByEmail = (id: string, email: string, dueDays: number) => post<{ ok: boolean; id: string; name: string; emailed: boolean }>(`/vendors/${enc(id)}/questionnaire/email`, { email, dueDays });
+export const portalRelink = (qid: string) => post<{ ok: boolean }>(`/vendor-questionnaires/${enc(qid)}/link`, {});
+/** A 60-second link to a file the vendor attached (no workspace reload). */
+export const portalFileLink = (qid: string, q: string) => apiFetch<{ url: string }>(`/ws/vendor-questionnaires/${enc(qid)}/files/${enc(q)}/link`, { method: "POST", body: "{}" });
