@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { appStore, loadPersisted, persist, useApp, useData } from "@/lib/store";
 import { restoreSession } from "@/lib/session";
 import { loadWorkspace } from "@/services/ws";
+import { StepUpHost } from "@/components/kit/StepUp";
 import { confirmSession } from "@/services/authApi";
 import { API_MODE } from "@/services/http";
 import { getWelcome, welcomeText } from "@/lib/accountSecurity";
@@ -111,5 +112,5 @@ export function AppShell({ children }: { children: ReactNode }) {
     // body is overflow:hidden in the portal CSS, so the standalone container scrolls itself
     return <LayerProvider><div id="standalone" style={{ height: "100dvh", overflow: "auto", background: "var(--bg)" }}>{children}</div></LayerProvider>;
   }
-  return <LayerProvider><Frame>{children}</Frame></LayerProvider>;
+  return <LayerProvider><Frame>{children}</Frame>{API_MODE === "http" ? <StepUpHost /> : null}</LayerProvider>;
 }

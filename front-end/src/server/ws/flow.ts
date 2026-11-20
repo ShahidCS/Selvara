@@ -5,9 +5,9 @@
    change happens only on the final approval; an MFA reset then really resets (people.ts). */
 import { approvalBlock, reasonBlock } from "@/lib/rules";
 import { ACCESS_KINDS, grantFor, sweepAccess, type AccessRequest } from "./access";
-import { approvalsView, invalid, membersOf, missing, modAllowed, ok, refuse, str, txt, wsRoute, type WsHelpers } from "./common";
+import { approvalsView, invalid, membersOf, missing, modAllowed, ok, refuse, stepUp, str, txt, wsRoute, type WsHelpers } from "./common";
 import { actsAs } from "./delegation";
-import { PEOPLE_KINDS, applyMfaReset, completeOffboard, sweepPeople } from "./people";
+import { PEOPLE_KINDS, applyMfaReset, endSessions, offboardIn, sweepPeople } from "./people";
 import type { Actor } from "./store";
 
 const KINDS = [...PEOPLE_KINDS, ...ACCESS_KINDS];
@@ -42,6 +42,7 @@ export function flowRoutes(h: WsHelpers) {
       refuse(approvalBlock({ key: me.id, base: me.role }, { status: a.status, expiresAt: a.expiresAt, approverRoles: a.approverRoles, requestedBy: a.requestedBy, forbid: a.forbid, votes: a.votes.map((v) => v.by) }, t.now));
       if (a.kind === "access-request" && a.payload.firstApproverId === me.id) refuse("Segregation of duties: a different admin or owner must give the second approval.");
       const reason = txt(r.body.reason, 300); const bad = reasonBlock(reason); if (bad) invalid(bad);
+      if (decision === "approve" && a.kind !== "access-request") await stepUp(d, c);
       const namedId = a.payload.approverId ? String(a.payload.approverId) : null;
       const meta = (await t.get<{ delegated: Record<string, string> }>("approval-meta", a.id)) ?? null;
       const as = namedId ? await actsAs(t, me, namedId, { requestedBy: a.requestedBy, forbid: a.forbid }) : { ok: true, onBehalfOf: null };
@@ -68,15 +69,14 @@ export function flowRoutes(h: WsHelpers) {
         await grantFor(t, rq.data, `request ${rq.id}`);
         await t.audit("access.request.approved", `${rq.data.user} → ${rq.data.system}; two approvers: ${me.name}, ${a.payload.firstApprover}`, "Access");
       } else if (a.kind === "mfa-reset-member") {
-        const pid = String(a.payload.personId); const tenant = me.tenantId;
-        after = async () => {
-          await applyMfaReset(d, tenant, pid);
-          await d.ws.tx(me, d.now(), (t2) => t2.audit("person.mfa.reset", `${a.payload.person}; approved by ${by}; ticket ${a.payload.ticket}; effects applied: sessions revoked, factors removed, user notified, re-enrolment forced, recovery codes invalidated`, "Access"));
-        };
+        // applied before this unit of work commits: if it fails, the decision is undone too and can be made again (the reset is idempotent)
+        await applyMfaReset(d, me.tenantId, String(a.payload.personId));
+        await t.audit("person.mfa.reset", `${a.payload.person}; approved by ${by}; ticket ${a.payload.ticket}; effects applied: sessions revoked, factors removed, user notified, re-enrolment forced, recovery codes invalidated`, "Access");
       } else if (a.kind === "offboard") {
         const p = { id: String(a.payload.personId), name: String(a.payload.person), member: a.payload.member !== false };
         const to = { id: String(a.payload.transferToId), name: String(a.payload.transferTo) };
-        after = async () => { await completeOffboard(d, me, p, to, `; approved by ${by}`); };
+        await offboardIn(t, d, p, to, `; approved by ${by}`);
+        if (p.member) after = async () => { await endSessions(d, p.id, me.tenantId, "Offboarded"); };
       }
       return ok({ status: "Approved" });
     });

@@ -62,6 +62,16 @@ async function acknowledge(t: WsTx, p: Policy) {
   return { at: DAY_FMT(a.at), ver: a.ver };
 }
 
+/** Acting as the named approver: the approver, or their live delegate, but never the owner or the submitter of the version by delegation. */
+async function viaDelegate(t: WsTx, me: Actor, p: Policy, w: Version | undefined) {
+  const as = await actsAs(t, me, w?.approverId, { requestedBy: w?.submittedById, forbid: [p.ownerId] });
+  return as.onBehalfOf && (me.id === p.ownerId || me.id === w?.submittedById) ? { ok: false, onBehalfOf: null } : as;
+}
+/** What a reader (not an admin or owner) receives: published text only, no draft or approval details. */
+function forReader(p: Policy) {
+  return { ...p, versions: p.versions.map((v) => (v.status === "Published" || v.status === "Superseded" ? v : { ...v, body: "", note: "", approvalReason: undefined })), lastRemindedAt: undefined };
+}
+
 export function policyRoutes(h: WsHelpers) {
   const tx = <T,>(d: Deps, c: { actor: Actor }, w: (t: WsTx) => Promise<T>) => d.ws.tx(c.actor, d.now(), w);
   const save = async (t: WsTx, r: Rec<Policy>) => { syncTop(r.data); await t.update("policy", r.id, r.data, r.version); };
@@ -69,14 +79,14 @@ export function policyRoutes(h: WsHelpers) {
   const data = wsRoute(h, "policies", async (d, _r, c) => ok(await tx(d, c, async (t) => {
     await sweepApprovals(t, EMG); await sweepDelegations(t);
     const members = await membersOf(d, c.actor); const names = new Map(members.map((m) => [m.id, m.name]));
-    const acks = (await t.list<Ack>("policy-ack")).map((x) => x.data);
+    const acks = (await t.list<Ack>("policy-ack")).map((x) => x.data); const manager = ["admin", "owner"].includes(c.actor.role);
     const policies = (await t.list<Policy>("policy")).map((x) => {
       const l = live(x.data); const done = l ? acks.filter((a) => a.policyId === x.id && a.ver === l.ver).length : 0;
-      return { ...x.data, acceptance: { required: l ? members.length : 0, done } };
+      return { ...(manager ? x.data : forReader(x.data)), acceptance: { required: l ? members.length : 0, done } };
     });
     const mine: Record<string, { at: string; ver: string }> = {};
     for (const a of acks) if (a.userId === c.actor.id) mine[a.policyId] = { at: DAY_FMT(a.at), ver: a.ver };
-    return { policies, acks: mine, approvals: await approvalsView(t, EMG, names), delegations: await delegationsOf(t, c.actor.id) };
+    return { policies, acks: mine, approvals: manager ? await approvalsView(t, EMG, names) : [], delegations: await delegationsOf(t, c.actor.id) };
   })));
 
   const create = wsRoute(h, "policies", async (d, r, c) => {
@@ -131,7 +141,7 @@ export function policyRoutes(h: WsHelpers) {
       }
       if (what === "return") {
         if (!w || w.status !== "In review") invalid("Only a version in review can be returned to draft.");
-        const as = await actsAs(t, me, w!.approverId);
+        const as = await viaDelegate(t, me, p, w);
         if (!as.ok) refuse(roleBlock(me.role, "returning a policy to draft", "admin", "owner"), p.ownerId === me.id ? null : "Only the named approver or the policy owner can return it to draft.");
         else if (editorIds(w!).has(me.id)) refuse("Segregation of duties: the author or a last editor cannot act as approver.");
         const reason = txt(r.body.reason, 500); const bad = textBlock(reason, 10); if (bad) invalid(bad);
@@ -142,7 +152,7 @@ export function policyRoutes(h: WsHelpers) {
         return ok(true);
       }
       if (what === "approve") {
-        const as = await actsAs(t, me, w?.approverId);
+        const as = await viaDelegate(t, me, p, w);
         refuse(policyApproveBlock({ role: me.role, workStatus: w?.status ?? null, approver: w?.approver ?? null, isEditor: !!w && editorIds(w).has(me.id), actsAsApprover: as.ok }));
         const reason = txt(r.body.reason, 500); const bad = textBlock(reason, 10, "An approval reason"); if (bad) invalid(bad);
         const eff = str(r.body.effective, 10) || isoDayOf(t.now); const effBad = policyEffectiveBlock(eff, t.now); if (effBad) invalid(effBad);
@@ -153,7 +163,7 @@ export function policyRoutes(h: WsHelpers) {
         return ok({ ver: w!.ver });
       }
       if (what === "publish") {
-        const as = await actsAs(t, me, w?.approverId); const today = isoDayOf(t.now);
+        const as = await viaDelegate(t, me, p, w); const today = isoDayOf(t.now);
         refuse(policyPublishBlock({ role: me.role, workStatus: w?.status ?? null, approver: w?.approver ?? null, isEditor: !!w && editorIds(w).has(me.id), actsAsApprover: as.ok, effective: w?.effective, today }));
         const prev = live(p); if (prev) { prev.status = "Superseded"; prev.supersededAt = today; }
         Object.assign(w!, { status: "Published", publishedBy: me.name, publishedById: me.id, publishedAt: today });

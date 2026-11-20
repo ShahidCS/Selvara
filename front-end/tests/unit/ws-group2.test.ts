@@ -200,3 +200,40 @@ describe("access", () => {
     expect(body<{ grants: { user: string }[] }>(await call("GET", "ws/data/access", {}, jordan.cookie)).grants.map((g) => g.user)).toEqual(["Priya Nair"]);
   });
 });
+
+describe("cross-check fixes (group 2)", () => {
+  it("MFA reset and offboarding need a recently confirmed password; the reset ends every session of the person", async () => {
+    const { jordan, casey, priya } = await team();
+    clock += 6 * 60_000; // the sign-in's confirmation has lapsed
+    const ask = () => call("POST", `ws/people/${priya.id}/mfa-reset`, { checks: [true, true, true], reason: "Lost authenticator device", reasonText: "Phone lost on a trip", ticket: "SEC-12", approverId: casey.id }, jordan.cookie);
+    expect((await ask()).body).toEqual({ error: "Confirm your password first." });
+    expect((await call("POST", "me/reauth", { password: PW }, jordan.cookie)).status).toBe(204);
+    const id = body<{ id: string }>(await ask()).id;
+    expect((await call("POST", `ws/approvals/${id}/approve`, { reason: "Identity confirmed by call-back" }, casey.cookie)).body).toEqual({ error: "Confirm your password first." });
+    await call("POST", "me/reauth", { password: PW }, casey.cookie);
+    expect((await call("POST", `ws/approvals/${id}/approve`, { reason: "Identity confirmed by call-back" }, casey.cookie)).body).toEqual({ status: "Approved" });
+    expect([...store.sessions.values()].filter((s) => s.userId === priya.id).every((s) => !!s.revokedAt)).toBe(true);
+    expect(await store.kvGet("mfa", priya.id)).toBeNull();
+  });
+  it("the owner never approves their own policy by delegation; readers get published text only; employees see their own access only", async () => {
+    const { jordan, casey, owen, priya } = await team();
+    await call("POST", "ws/delegations", { toId: jordan.id, days: 3, reason: "Annual leave week" }, owen.cookie);
+    const id = body<{ id: string }>(await call("POST", "ws/policies", { name: "Backup policy", body: "Secret draft text" }, jordan.cookie)).id;
+    await call("POST", `ws/policies/${id}/submit`, { approverId: owen.id }, jordan.cookie);
+    expect((await call("POST", `ws/policies/${id}/approve`, { reason: "Approving as Owen's delegate" }, jordan.cookie)).status).toBe(403);
+    const seen = body<{ policies: { versions: { body: string }[] }[] }>(await call("GET", "ws/data/policies", {}, priya.cookie)).policies[0];
+    expect(seen.versions[0].body).toBe("");
+    await call("POST", "ws/access/grants", { userId: owen.id, system: "Identity admin console", level: "Admin", reason: "Found in the IdP admin list" }, jordan.cookie);
+    expect(body<{ grants: unknown[] }>(await call("GET", "ws/data/access", {}, priya.cookie)).grants).toEqual([]);
+    expect((await call("POST", "ws/access/grants", { userId: casey.id, system: "Vault", level: "Admin", reason: "Recording my own vault access" }, casey.cookie)).body).toEqual({ error: "Segregation of duties: you cannot record access for yourself." });
+  });
+  it("owned items go to an admin or owner; contractors with privileged access can be offboarded through a second approver", async () => {
+    const { jordan, casey, priya } = await team();
+    const pp = body<{ id: string }>(await call("POST", "ws/people/contractors", { name: "Grace Lin", role: "GRC Lead" }, jordan.cookie)).id;
+    expect((await call("POST", `ws/people/${pp}/offboard`, { transferToId: priya.id }, jordan.cookie)).body).toEqual({ error: "Transfer owned items to an admin or owner (not the person being offboarded)." });
+    await call("POST", "ws/access/grants", { userId: pp, system: "Production database", level: "Admin", reason: "Found in the database role list" }, jordan.cookie);
+    const r = await call("POST", `ws/people/${pp}/offboard`, { transferToId: jordan.id }, jordan.cookie); expect(r.status).toBe(202);
+    expect((await call("POST", `ws/approvals/${body<{ id: string }>(r).id}/approve`, { reason: "Contract ended last week" }, casey.cookie)).body).toEqual({ status: "Approved" });
+    expect(body<{ people: { id: string }[] }>(await call("GET", "ws/data/people", {}, jordan.cookie)).people.some((p) => p.id === pp)).toBe(false);
+  });
+});

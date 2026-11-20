@@ -46,9 +46,13 @@ export function accessRoutes(h: WsHelpers) {
   const data = wsRoute(h, "access", async (d, _r, c) => ok(await tx(d, c, async (t) => {
     await sweepAccess(t);
     const names = new Map((await membersOf(d, c.actor)).map((m) => [m.id, m.name]));
-    const grants = (await t.list<Grant>("grant")).map((x) => x.data);
-    const requests = (await t.list<AccessRequest>("access-request")).map((x) => ({ ...x.data, privileged: privilegedRequest(x.data, grants) })).reverse();
-    return { grants, requests, reviews: (await t.list<AccessReview>("access-review")).map((x) => x.data).reverse(), approvals: await approvalsView(t, ACCESS_KINDS, names) };
+    const all = (await t.list<Grant>("grant")).map((x) => x.data);
+    const manager = ["admin", "owner"].includes(c.actor.role); const me = c.actor.id;
+    // a person who does not decide access sees their own grants and requests only
+    const grants = manager ? all : all.filter((g) => g.userId === me);
+    const requests = (await t.list<AccessRequest>("access-request")).map((x) => ({ ...x.data, privileged: privilegedRequest(x.data, all) }))
+      .filter((q) => manager || q.userId === me || q.requesterId === me).reverse();
+    return { grants, requests, reviews: manager ? (await t.list<AccessReview>("access-review")).map((x) => x.data).reverse() : [], approvals: manager ? await approvalsView(t, ACCESS_KINDS, names) : [] };
   })));
   const request = wsRoute(h, null, async (d, r, c) => {
     const me = c.actor; if (!canRequest(me.role)) refuse("Not permitted.");
@@ -83,7 +87,7 @@ export function accessRoutes(h: WsHelpers) {
       if (privilegedRequest(q, (await t.list<Grant>("grant")).map((x) => x.data))) {
         const others = (await membersOf(d, me)).filter((m) => ["admin", "owner"].includes(m.role) && ![me.id, q.requesterId, q.userId].includes(m.id));
         if (!others.length) invalid("No eligible second approver (not you, not the requester, not the beneficiary).");
-        const a = await t.request({ kind: "access-request", title: `Second approval: ${q.user} → ${q.system} (${q.level})`, subject: q.userId, needs: 1, approverRoles: ["admin", "owner"],
+        const a = await t.request({ kind: "access-request", title: `Second approval: ${q.user} → ${q.system} (${q.level})`, subject: q.user, needs: 1, approverRoles: ["admin", "owner"],
           forbid: [...new Set([q.requesterId, q.userId, me.id])].filter((x) => x !== me.id), ttlMs: ACCESS_SECOND_TTL_H * 3600_000, payload: { reqId: q.id, system: q.system, level: q.level, firstApprover: me.name, firstApproverId: me.id, firstReason: reason } });
         q.stage = "second"; q.firstApprover = me.name; q.firstApproverId = me.id; q.approvalId = a.id; await t.update("access-request", q.id, q, rec.version);
         await t.audit("access.request.approval.first", `${q.user} → ${q.system} (${q.level}); first approver ${me.name}; reason: ${reason}; second approver required (${a.id})`, "Access");
@@ -102,7 +106,11 @@ export function accessRoutes(h: WsHelpers) {
     const reason = txt(r.body.reason, 300); if (reason.length < 10) invalid("Give a reason of at least 10 characters.");
     const level = str(r.body.level, 20); if (!(ACCESS_LEVELS as readonly string[]).includes(level)) invalid("Choose a valid access level.");
     const system = txt(r.body.system, 100); if (!system) invalid("System is required.");
-    return tx(d, c, async (t) => { const who = await personRef(d, t, { id: r.body.userId, name: r.body.user }); await grantFor(t, { userId: who.id, user: who.name, system, level }, `recorded by ${c.actor.name}: ${reason}`); return ok(); });
+    return tx(d, c, async (t) => {
+      const who = await personRef(d, t, { id: r.body.userId, name: r.body.user });
+      if (who.id === c.actor.id) refuse("Segregation of duties: you cannot record access for yourself.");
+      await grantFor(t, { userId: who.id, user: who.name, system, level }, `recorded by ${c.actor.name}: ${reason}`); return ok();
+    });
   });
   const grantRevoke = wsRoute(h, "access", async (d, r, c) => {
     refuse(roleBlock(c.actor.role, "revoking access", "admin", "owner"));

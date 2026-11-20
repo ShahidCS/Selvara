@@ -4,7 +4,7 @@
    excluded from it, and keeps every exclusion of their own. People are compared by user id. */
 import { delegationBlock } from "@/lib/rulesWs";
 import type { Deps } from "../types";
-import { invalid, membersOf, missing, ok, refuse, str, txt, wsRoute, type WsHelpers } from "./common";
+import { invalid, membersOf, missing, ok, pickOne, refuse, str, txt, wsRoute, type WsHelpers } from "./common";
 import type { Actor, WsTx } from "./store";
 
 export interface Delegation { id: string; from: string; fromId: string; to: string; toId: string; reason: string; createdAt: number; until: number; revokedAt?: number; revokedBy?: string; endedLogged?: boolean }
@@ -15,7 +15,7 @@ const utc = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace("T",
 export async function sweepDelegations(t: WsTx) {
   for (const r of await t.list<Delegation>("delegation")) {
     const x = r.data;
-    if (!x.revokedAt && !x.endedLogged && x.until <= t.now) { x.endedLogged = true; await t.update("delegation", r.id, x, r.version); await t.audit("delegation.expired", `${x.from} → ${x.to}`, "Approval"); }
+    if (!x.revokedAt && !x.endedLogged && x.until <= t.now) { x.endedLogged = true; await t.update("delegation", r.id, x, r.version); await t.audit("delegation.expired", `${x.from} → ${x.to}`, "Approval", true); }
   }
 }
 /** True when the actor may act as the named approver `namedId`: they are that person, or hold a live delegation from them (and the request was
@@ -37,7 +37,8 @@ export function delegationRoutes(h: WsHelpers) {
   const tx = <T,>(d: Deps, c: { actor: Actor }, w: (t: WsTx) => Promise<T>) => d.ws.tx(c.actor, d.now(), w);
   const create = wsRoute(h, "me", async (d, r, c) => {
     const me = c.actor; const days = Number(r.body.days); const reason = txt(r.body.reason, 300);
-    const ms = await membersOf(d, me); const to = ms.find((m) => m.id === str(r.body.toId, 100)) ?? ms.find((m) => m.name === txt(r.body.to, 80)) ?? null;
+    const ms = await membersOf(d, me);
+    const to = r.body.toId || r.body.to ? pickOne(ms, r.body.toId, r.body.to, "Choose another admin or owner.") : null;
     return tx(d, c, async (t) => {
       await sweepDelegations(t);
       const all = (await t.list<Delegation>("delegation")).map((x) => x.data);

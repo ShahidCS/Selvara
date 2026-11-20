@@ -99,7 +99,20 @@ export function loadWorkspace(): Promise<void> {
   return inflight;
 }
 
-const send = async <T,>(path: string, init: RequestInit): Promise<T> => { const out = await apiFetch<T>(path, init); await loadWorkspace(); return out; };
+/** Sensitive changes (MFA resets, offboarding) need the password confirmed in the last few minutes: the prompt (components/kit/StepUp.tsx)
+ *  asks once, then the change is sent again. */
+export const STEP_UP = "Confirm your password first.";
+export const stepUp = createStore<{ answer: ((ok: boolean) => void) | null }>({ answer: null });
+const askPassword = () => new Promise<boolean>((resolve) => stepUp.set({ answer: (ok) => { stepUp.set({ answer: null }); resolve(ok); } }));
+const send = async <T,>(path: string, init: RequestInit): Promise<T> => {
+  let out: T;
+  try { out = await apiFetch<T>(path, init); }
+  catch (e) {
+    if (!(e instanceof ApiError && e.status === 403 && e.message === STEP_UP) || !(await askPassword())) throw e;
+    out = await apiFetch<T>(path, init);
+  }
+  await loadWorkspace(); return out;
+};
 /** A change on the server, then a reload of the workspace data so every screen shows the result. */
 export const wsPost = <T,>(path: string, body: unknown = {}) => send<T>(path, { method: "POST", body: JSON.stringify(body) });
 export const wsPatch = <T,>(path: string, body: unknown) => send<T>(path, { method: "PATCH", body: JSON.stringify(body) });

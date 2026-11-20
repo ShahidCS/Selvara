@@ -527,6 +527,10 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
       expect((await ws.tx(me(casey, B), Date.now(), (t) => t.approvals(["control.exception"])))).toEqual([]);
       expect(await ws.tx(me(casey, B), Date.now(), (t) => t.approval(ap.id, ["control.exception"]))).toBeNull();
     });
+    it("a request about a contractor (a non-uuid id) is stored: only member ids go into the uuid forbid list", async () => {
+      const ap = await ws.tx(me(alex, A, "Alex Kim"), Date.now(), (t) => t.request({ kind: "offboard", title: "Offboard Grace Lin", subject: "Grace Lin", payload: { personId: "PP-1" }, needs: 1, approverRoles: ["admin", "owner"], forbid: ["PP-1", blair], ttlMs: 3600_000 }));
+      expect(ap.forbid).toEqual([blair]);
+    });
     it("platform staff never write workspace records, and read them only in a support session", async () => {
       expect(await app.tx({ tenantId: A, userId: drew, platform: true }, (q) => q.query("select id from ws_records"))).toEqual([]);
       expect(await code(app.tx({ tenantId: A, userId: drew, platform: true }, (q) => q.query("insert into ws_records (tenant_id, kind, id, data, created_ms, updated_ms) values ($1, 'control', 'P-1', '{}', 1, 1)", [A])))).toBe("42501");

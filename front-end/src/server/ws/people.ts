@@ -8,9 +8,9 @@
 import { MFA_RESET_TTL_H, OFFBOARD_TTL_H, isPrivilegedLevel, mfaResetFieldsBlock, roleBlock } from "@/lib/rulesWs";
 import { ROLE_LABEL, isPrivilegedRole as privRole } from "@/lib/rules";
 import type { Deps } from "../types";
-import { approvalsView, invalid, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
+import { approvalsView, invalid, membersOf, missing, ok, pickOne, refuse, stepUp, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
 import type { Delegation } from "./delegation";
-import type { Actor, WsTx } from "./store";
+import { WsConflict, type Actor, type WsTx } from "./store";
 
 export interface Contractor { id: string; name: string; role: string; dept: string; contractor: true; addedBy: string; addedAt: number }
 export interface Grant { id: string; userId: string | null; user: string; system: string; level: string; status: string; granted: string; source?: string }
@@ -52,12 +52,14 @@ export async function offboardRecords(t: WsTx, p: { id: string; name: string }, 
   return revoked;
 }
 /** Ends the person's sessions in this company (their next request signs them out). */
-export async function endSessions(d: Deps, userId: string, tenantId: string, why: string) {
-  for (const s of await d.store.sessionsOf(userId)) if (!s.revokedAt && (s.tenantId ?? null) === tenantId) await d.store.updateSession(s.idHash, { revokedAt: d.now(), revokedWhy: why });
+export async function endSessions(d: Deps, userId: string, tenantId: string | null, why: string) {
+  for (const s of await d.store.sessionsOf(userId)) if (!s.revokedAt && (tenantId === null || (s.tenantId ?? null) === tenantId)) await d.store.updateSession(s.idHash, { revokedAt: d.now(), revokedWhy: why });
 }
 /** The member's MFA reset, once approved: authenticators and recovery codes removed, sessions here ended, the member told. */
-export async function applyMfaReset(d: Deps, tenantId: string, userId: string) {
-  await d.auth.resetMfa(userId); await d.store.replaceRecovery(userId, []); await endSessions(d, userId, tenantId, "MFA reset");
+/** The authenticator belongs to the account, not to one company: the reset is account-wide, so every session ends (in every company), as a
+ *  password reset does, and the account shows no authenticator until the person enrols again. */
+export async function applyMfaReset(d: Deps, _tenantId: string, userId: string) {
+  await d.auth.resetMfa(userId); await d.store.replaceRecovery(userId, []); await d.store.kvDel("mfa", userId); await endSessions(d, userId, null, "MFA reset");
   await d.store.insertNotice({ id: crypto.randomUUID().slice(0, 12), userId, at: d.now(), text: "Your two-step verification was reset by your company admins. Set up your authenticator again at your next sign-in." });
 }
 
@@ -89,6 +91,7 @@ export function peopleRoutes(h: WsHelpers) {
   /** Requests a member MFA reset (admin only; never for oneself), with the three identity checks, a ticket and a named approver. */
   const mfaReset = wsRoute(h, "people", async (d, r, c) => {
     const me = c.actor; refuse(roleBlock(me.role, "request a member MFA reset", "admin"));
+    await stepUp(d, c);
     const pid = str(r.path[2], 100);
     const f = { checks: (Array.isArray(r.body.checks) ? r.body.checks : []).map(Boolean).slice(0, 3), reason: str(r.body.reason, 60), details: txt(r.body.reasonText, 300), ticket: txt(r.body.ticket, 20).toUpperCase() };
     const bad = mfaResetFieldsBlock(f); if (bad) invalid(bad);
@@ -102,9 +105,8 @@ export function peopleRoutes(h: WsHelpers) {
       const needs: 1 | 2 = privileged(p) ? 2 : 1;
       const eligible = members.filter((m) => ["admin", "owner"].includes(m.role) && m.id !== me.id && m.id !== p.id);
       if (eligible.length < needs) invalid(`This reset needs ${needs} eligible approver(s) (not you, not ${p.name}); only ${eligible.length} available.`);
-      const named = eligible.find((m) => m.id === str(r.body.approverId, 100)) ?? eligible.find((m) => m.name === txt(r.body.approver, 80));
-      if (!named) invalid("Choose a named approver from the eligible people.");
-      const a = await t.request({ kind: "mfa-reset-member", title: `Reset MFA for ${p.name}`, subject: p.id, needs, approverRoles: ["admin", "owner"], forbid: [p.id], ttlMs: MFA_RESET_TTL_H * 3600_000,
+      const named = pickOne(eligible, r.body.approverId, r.body.approver, "Choose a named approver from the eligible people.");
+      const a = await t.request({ kind: "mfa-reset-member", title: `Reset MFA for ${p.name}`, subject: p.name, needs, approverRoles: ["admin", "owner"], forbid: [p.id], ttlMs: MFA_RESET_TTL_H * 3600_000,
         payload: { personId: p.id, person: p.name, reason: f.reason, reasonText: f.details, ticket: f.ticket, approver: named!.name, approverId: named!.id, checks: f.checks } });
       await t.audit("person.mfa.reset.requested", `${p.name}; ticket ${f.ticket}; named approver ${named!.name}; ${needs} approval(s) needed; identity checks confirmed; request ${a.id}`, "Access");
       await t.notify(named!.id, `${me.name} asked you to approve an MFA reset for ${p.name} (ticket ${f.ticket}). It expires in ${MFA_RESET_TTL_H} hours.`);
@@ -115,35 +117,38 @@ export function peopleRoutes(h: WsHelpers) {
   const offboard = wsRoute(h, "people", async (d, r, c) => {
     const me = c.actor; refuse(roleBlock(me.role, "offboarding", "admin", "owner"));
     const pid = str(r.path[2], 100); if (pid === me.id) refuse("Segregation of duties: you cannot offboard yourself.");
+    await stepUp(d, c);
     const members = await membersOf(d, me);
-    const to = members.find((m) => m.id === str(r.body.transferToId, 100)) ?? members.find((m) => m.name === txt(r.body.transferTo, 80));
-    if (!to || to.id === pid) invalid("Transfer owned items to a known person (not the person being offboarded).");
+    // owned controls and policies go to someone who can manage them: an admin or owner other than the person leaving
+    const to = pickOne(members.filter((m) => ["admin", "owner"].includes(m.role) && m.id !== pid), r.body.transferToId, r.body.transferTo, "Transfer owned items to an admin or owner (not the person being offboarded).");
     const p = await tx(d, c, (t) => personOf(d, t, pid));
     if (p.member && p.memberRole === "admin" && members.filter((m) => m.role === "admin").length <= 1) invalid("The last remaining admin cannot be offboarded.");
     if (privileged(p)) {
       return tx(d, c, async (t) => {
         if ((await t.approvals(["offboard"])).some((a) => a.status === "Pending" && a.expiresAt > t.now && a.payload.personId === p.id)) invalid("An offboarding request is already pending for this person.");
         if (!members.some((m) => ["admin", "owner"].includes(m.role) && m.id !== me.id && m.id !== p.id)) invalid("No eligible second approver (not you, not the person being offboarded).");
-        const a = await t.request({ kind: "offboard", title: `Offboard ${p.name} (privileged access)`, subject: p.id, needs: 1, approverRoles: ["admin", "owner"], forbid: [p.id], ttlMs: OFFBOARD_TTL_H * 3600_000,
+        const a = await t.request({ kind: "offboard", title: `Offboard ${p.name} (privileged access)`, subject: p.name, needs: 1, approverRoles: ["admin", "owner"], forbid: [p.id], ttlMs: OFFBOARD_TTL_H * 3600_000,
           payload: { personId: p.id, person: p.name, member: p.member, transferToId: to!.id, transferTo: to!.name } });
         await t.audit("person.offboard.requested", `${p.name}, items → ${to!.name}; privileged access, second approver required; request ${a.id}`, "Access");
         return { status: 202, body: { pending: true, id: a.id } };
       });
     }
-    const n = await completeOffboard(d, c.actor, p, to!, "");
+    const n = await tx(d, c, (t) => offboardIn(t, d, p, to, ""));
+    if (p.member) await endSessions(d, p.id, me.tenantId, "Offboarded");
     return ok({ pending: false, revoked: n });
   });
   return { "GET ws/data/people": data, "POST ws/people/contractors": addContractor, "POST ws/people/:id/mfa-reset": mfaReset, "POST ws/people/:id/offboard": offboard };
 }
-/** Ends the membership (refused for the last admin), then the records, then the sessions. Returns the grants revoked, or -1 when blocked. */
-export async function completeOffboard(d: Deps, actor: Actor, p: { id: string; name: string; member: boolean }, to: { id: string; name: string }, note: string): Promise<number> {
+/** Offboards inside the caller's unit of work: the records first, then the membership (the directory refuses the last admin, which rolls the
+ *  whole change back; a retry after a partial failure finds the membership already ended and carries on). Sessions end after the commit
+ *  (and fail their membership check at the next request anyway). Returns the grants revoked. */
+export async function offboardIn(t: WsTx, d: Deps, p: { id: string; name: string; member: boolean }, to: { id: string; name: string }, note: string): Promise<number> {
+  const a = t.actor;
+  const n = await offboardRecords(t, p, to, note);
   if (p.member) {
-    const res = await d.dir.removeMember(actor.tenantId, actor.id, p.id, `Offboarded by ${actor.name}`, d.now(),
-      { at: d.now(), actor: actor.name, actorId: actor.id, tenantId: actor.tenantId, action: "member.removed", target: `${p.name}: offboarded`, cat: "Access", space: "ws", ip: actor.ip });
-    if (res === "last-admin") { await d.ws.tx(actor, d.now(), (t) => t.audit("person.offboard.blocked", `${p.name}; last remaining admin`, "Access")); return -1; }
-    if (res === "not-active") invalid("This person is no longer an active member.");
+    const res = await d.dir.removeMember(a.tenantId, a.id, p.id, `Offboarded by ${a.name}`, t.now,
+      { at: t.now, actor: a.name, actorId: a.id, tenantId: a.tenantId, action: "member.removed", target: `${p.name}: offboarded`, cat: "Access", space: "ws", ip: a.ip });
+    if (res === "last-admin") throw new WsConflict("The last remaining admin cannot be offboarded.");
   }
-  const n = await d.ws.tx(actor, d.now(), (t) => offboardRecords(t, p, to, note));
-  if (p.member) await endSessions(d, p.id, actor.tenantId, "Offboarded");
   return n;
 }
