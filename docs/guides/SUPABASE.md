@@ -35,7 +35,9 @@ In **each** project (staging and production separately), open SQL Editor → New
 4. [`supabase/migrations/0004_company_sessions.sql`](../../supabase/migrations/0004_company_sessions.sql): per-company sign-in settings, joining a company by its code, platform staff, and the `bootstrap_company` function for the first company (section 5b).
 5. [`supabase/migrations/0005_team_changes.sql`](../../supabase/migrations/0005_team_changes.sql) (from v0.1.10): invitations, the `add_company_admin` function (section 5c), and it **drops the old `profiles.role` column** (roles come from memberships and platform staff since 0004). Run it just before you deploy v0.1.10: v0.1.10 refuses a database without it, and v0.1.9 cannot add new people once the column is gone.
 
-All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `5`.
+6. [`supabase/migrations/0006_platform_console.sql`](../../supabase/migrations/0006_platform_console.sql) (from v0.1.11): the Admin Console. Company creation, suspension and reactivation through a second platform super admin's approval, one elevation at a time, and the platform audit log check. The database itself refuses these changes unless the caller is an active platform super admin with a live elevation. Run it just before you deploy v0.1.11 (v0.1.11 refuses a database without it; v0.1.10 keeps working with it).
+
+All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `6`.
 
 Supabase may warn that a script contains destructive operations: the `drop ... if exists` lines only remove the script's own triggers and policies to recreate them. No data is deleted.
 
@@ -94,7 +96,7 @@ The site is built by GitHub Actions, not by Vercel, so a `NEXT_PUBLIC_API_MODE` 
 2. GitHub → **Settings** → **Environments** → `production` → **Environment variables** → **Add variable**: name `API_MODE`, value `http`.
 3. Deploy: push the next release tag, or re-run the **Production** job of the latest release (the build runs again with the new value).
 
-What changes: the sign-in page uses your real account (no demo accounts), and only modules with a server API are shown (decision D4). Today that is **Team & Settings** for company admins (members and their roles, invitations, requests to join, the second-admin requests, account lockout) and **Your account** for everyone; other roles land on Your account. Each further module appears when its server slice ships. The Admin Console has no module on the server yet. To go back to the demonstration, set `API_MODE` to `mock` (or delete it) and deploy again.
+What changes: the sign-in page uses your real account (no demo accounts), and only modules with a server API are shown (decision D4). Today that is **Team & Settings** for company admins (members and their roles, invitations, requests to join, the second-admin requests, account lockout) and **Your account** for everyone; other roles land on Your account. Each further module appears when its server slice ships. From v0.1.11 platform staff get the Admin Console: Customers & Usage, Elevated Access (super admins only) and the Admin Audit Log. To go back to the demonstration, set `API_MODE` to `mock` (or delete it) and deploy again.
 
 ## 5. First accounts (you, per project)
 
@@ -119,7 +121,7 @@ insert into public.platform_staff (user_id, role, created_ms)
 values ('3f2c9a1e-0000-4000-8000-000000000000', 'super', (extract(epoch from now()) * 1000)::bigint);
 ```
 
-Their first sign-in asks them to add a passkey. Everyone else adds an authenticator app at their first sign-in. Until the Admin Console's server slice ships, a platform super admin sees only Your account.
+Their first sign-in asks them to add a passkey. Everyone else adds an authenticator app at their first sign-in. From v0.1.11 a platform super admin lands on the Admin Console (Customers & Usage, Elevated Access, Admin Audit Log). Creating, suspending or reactivating a company needs a **second** platform super admin to approve, so create two (each with their own email, passkey and `platform_staff` row). Until then, create companies with `bootstrap_company` (5b). A `support` row instead of `super` gives a read-only Admin Console account.
 
 **To correct a name** that was stored wrongly: `update public.profiles set person = 'Sam Admin' where email = 'sam.admin@yourcompany.example';` and reload the page.
 

@@ -64,3 +64,25 @@ export function nameBlock(name: string): string | null {
   if (/[<>"`{}[\]\\]/.test(n) || /\p{Cc}/u.test(n)) return "Enter your name without symbols such as < > { } or quotes.";
   return null;
 }
+
+/* ---------- platform (Admin Console, slice 3a) ---------- */
+export const ELEVATION_MAX_MIN = 60;
+export const ELEVATION_REASON_MIN = 15;
+/** A ticket reference such as SEC-1234 (also used in audit text, so only this shape is accepted). */
+export const TICKET_RE = /^[A-Z]{2,6}-\d{1,6}$/;
+/** Why an elevation cannot start with these details, or null. A reason, a ticket and at most 60 minutes. */
+export function elevationBlock(e: { reason: string; ticket: string; minutes: number }): string | null {
+  if (e.reason.trim().length < ELEVATION_REASON_MIN) return `Enter a reason of at least ${ELEVATION_REASON_MIN} characters.`;
+  if (!TICKET_RE.test(e.ticket.trim())) return "Enter a ticket reference such as SEC-1234.";
+  if (!Number.isInteger(e.minutes) || e.minutes < 1 || e.minutes > ELEVATION_MAX_MIN) return `Choose a duration of ${ELEVATION_MAX_MIN} minutes or less.`;
+  return null;
+}
+/** A company code people type to join: 3 to 40 lower-case letters, digits and hyphens. */
+export const COMPANY_CODE_RE = /^[a-z0-9][a-z0-9-]{2,39}$/;
+export function companyBlock(c: { ref: string; name: string }): string | null {
+  if (!COMPANY_CODE_RE.test(c.ref)) return "Company code: 3 to 40 lower-case letters, digits and hyphens, starting with a letter or digit.";
+  const n = c.name.trim();
+  if (n.length < 2 || n.length > 120) return "Company name: 2 to 120 characters.";
+  if (/[<>"`{}[\]\\]/.test(n) || /\p{Cc}/u.test(n)) return "Enter the company name without symbols such as < > { } or quotes.";
+  return null;
+}

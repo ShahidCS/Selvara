@@ -12,6 +12,7 @@ import { Client } from "pg";
 import { Db, SCHEMA_VERSION, dbFromEnv } from "@/server/db";
 import { UpstreamError } from "@/server/errors";
 import { PgDirectory } from "@/server/directory";
+import { PgPlatform } from "@/server/platform";
 import type { AuditRow } from "@/server/types";
 
 const URL_ = process.env.TEST_DATABASE_URL;
@@ -304,6 +305,95 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
       const exposed = (await admin.query(`select r.rolname, p.proname from pg_proc p cross join (values ('anon'), ('authenticated'), ('service_role'), ('selvara_app')) r(rolname)
         where p.proname in ('add_company_admin', 'invitation_by_token') and has_function_privilege(r.rolname, p.oid, 'execute')`)).rows.map((x) => `${x.rolname}:${x.proname}`);
       expect(exposed).toEqual(["selvara_app:invitation_by_token"]);
+    });
+  });
+
+  describe("Admin Console (migration 0006, src/server/platform.ts)", () => {
+    let plat: PgPlatform; let pdir: PgDirectory; let erin = ""; let sid = "";
+    const at = () => Date.now();
+    const log = (actorId: string) => (action: string, target: string): AuditRow => ({ at: at(), actor: "Someone", actorId, tenantId: null, action, target, cat: "Access", space: "admin", ip: "198.51.100.7" });
+    const plain = { reason: "Customer onboarding for a new contract", ticket: "OPS-101", minutes: 30 };
+    beforeAll(async () => {
+      plat = new PgPlatform(app); pdir = new PgDirectory(app);
+      erin = randomUUID(); sid = randomUUID();
+      for (const [id, email, name] of [[erin, "erin@platform.example.test", "Erin Vale"], [sid, "sid@platform.example.test", "Sid Low"]]) {
+        await admin.query("insert into auth.users (id, email) values ($1, $2)", [id, email]);
+        await admin.query("insert into public.profiles (id, email, person, status, requested_ms) values ($1, $2, $3, 'Active', $4)", [id, email, name, now]);
+      }
+      await admin.query("insert into public.platform_staff (user_id, role, created_ms) values ($1, 'super', $3), ($2, 'support', $3)", [erin, sid, now]);
+    });
+
+    it("the company functions need an elevated platform super admin, checked in the database", async () => {
+      const call = (ctx: { tenantId: string | null; userId: string; platform?: boolean }) => code(app.tx(ctx, (q) => q.query("select platform_set_company_status($1, 'Suspended', 'testing the check')", [B])));
+      expect(await call({ tenantId: null, userId: drew, platform: true })).toBe("42501"); // super, not elevated
+      expect(await call({ tenantId: null, userId: sid, platform: true })).toBe("42501"); // support
+      expect(await call({ tenantId: A, userId: alex })).toBe("42501"); // a company admin
+      expect(await call({ tenantId: null, userId: alex, platform: true })).toBe("42501"); // claims the platform flag but is not staff
+      expect(await code(app.tx({ tenantId: null, userId: alex }, (q) => q.query("select * from platform_companies()")))).toBe("42501");
+      expect(await plat.startElevation(sid, plain, at(), log(sid)("x", "y"))).toBeTruthy(); // support may hold one, the functions still refuse
+      expect(await call({ tenantId: null, userId: sid, platform: true })).toBe("42501");
+      expect((await admin.query("select status from public.tenants where id = $1", [B])).rows[0].status).toBe("Active");
+    });
+
+    it("elevation: one live at a time, 60 minutes at most, an expired one is closed, and ending is audited", async () => {
+      expect(await code(plat.startElevation(drew, { ...plain, minutes: 61 }, at(), log(drew)("platform.elevation.started", "x")))).toMatch(/23514|db/);
+      await admin.query("insert into public.elevations (user_id, reason, ticket, started_ms, expires_ms) values ($1, 'An old elevation from earlier', 'OPS-1', $2, $3)", [drew, at() - 7200_000, at() - 5400_000]);
+      expect(await plat.elevation(drew, at())).toBeNull();
+      const e = await plat.startElevation(drew, plain, at(), log(drew)("platform.elevation.started", "drew"));
+      expect(e!.expiresAt - e!.startedAt).toBe(30 * 60_000);
+      expect(await plat.startElevation(drew, plain, at(), log(drew)("platform.elevation.started", "again"))).toBeNull();
+      expect(await code(app.tx({ tenantId: null, userId: erin, platform: true }, (q) => q.query("insert into elevations (user_id, reason, ticket, started_ms, expires_ms) values ($1, 'Elevating someone else here', 'OPS-2', $2, $3)", [drew, at(), at() + 60_000])))).toBe("42501");
+      expect(await plat.endElevation(drew, at(), log(drew)("platform.elevation.ended", "drew"))).toBe(true);
+      expect(await plat.elevation(drew, at())).toBeNull();
+      expect((await admin.query("select count(*)::int as n from public.audit_log where tenant_id is null and action like 'platform.elevation.%' and target like 'drew%'")).rows[0].n).toBe(2);
+    });
+
+    it("a company created through a platform approval gets its settings and an admin invitation; staff see counts, not members", async () => {
+      await plat.startElevation(drew, plain, at(), log(drew)("platform.elevation.started", "x"));
+      await plat.startElevation(erin, plain, at(), log(erin)("platform.elevation.started", "x"));
+      const id = await plat.requestApproval(drew, { kind: "platform-company-create", title: "Create cust-c", subject: "cust-c", payload: { ref: "cust-c", name: "Company C", adminEmail: "first@c.example.test" }, ttlMs: 3600_000 }, at(), log(drew)("approval.platform-company-create.requested", "Create cust-c"));
+      expect(await plat.pendingApproval(drew, "platform-company-create", "cust-c", at())).toBe(true);
+      expect(await pdir.approvals(A, alex)).toEqual(expect.not.arrayContaining([expect.objectContaining({ id })])); // not a company's request
+      expect(await plat.decideApproval({ id: drew, role: "super" }, id, true, "Approving my own request", at(), log(drew))).toEqual(expect.objectContaining({ ok: false, code: 403 }));
+      expect(await plat.decideApproval({ id: erin, role: "super" }, id, true, "Contract signed yesterday", at(), log(erin))).toEqual({ ok: true, status: "Approved" });
+      const c = (await plat.companies(sid)).find((x) => x.ref === "cust-c")!;
+      expect(c).toEqual(expect.objectContaining({ name: "Company C", status: "Active", members: 0, admins: 0, pendingInvites: 1 }));
+      expect((await plat.companies(sid)).find((x) => x.ref === "cust-a")!.admins).toBeGreaterThan(0);
+      expect(await app.tx({ tenantId: null, userId: sid, platform: true }, (q) => q.query("select user_id from memberships where tenant_id = $1", [A]))).toEqual([]);
+      expect(await app.tx({ tenantId: null, userId: sid, platform: true }, (q) => q.query("select id from invitations"))).toEqual([]);
+      expect((await admin.query("select lockout from public.tenant_settings where tenant_id = $1", [c.id])).rows[0].lockout).toEqual({ preset: "standard" });
+      // the first admin's link: only by an elevated super admin, only for the platform's own admin invitation
+      expect(await plat.adminInviteLink(drew, A, "a".repeat(64), at(), log(drew)("x", "y"))).toBeNull();
+      expect(await plat.adminInviteLink(drew, c.id, "b".repeat(64), at(), log(drew)("platform.company.admin_link_created", "cust-c"))).toEqual(expect.objectContaining({ email: "first@c.example.test" }));
+      expect((await pdir.invitationByToken("b".repeat(64)))!.tenantId).toBe(c.id);
+      // a second request for a code that is taken by then is refused, and the vote is undone with it
+      const dup = await plat.requestApproval(drew, { kind: "platform-company-create", title: "Create cust-c again", subject: "cust-c", payload: { ref: "cust-c", name: "Company C2", adminEmail: "x@c.example.test" }, ttlMs: 3600_000 }, at(), log(drew)("x", "y"));
+      expect(await plat.decideApproval({ id: erin, role: "super" }, dup, true, "Approving a duplicate code", at(), log(erin))).toEqual(expect.objectContaining({ ok: false, code: 409 }));
+      expect((await admin.query("select count(*)::int as n from public.approval_votes where approval_id = $1", [dup])).rows[0].n).toBe(0);
+      expect((await admin.query("select action from public.audit_log where tenant_id = $1", [c.id])).rows.map((r) => r.action)).toEqual(["tenant.created"]);
+    });
+
+    it("suspension through a platform approval stops the company resolving and its members' access, and is written to both logs", async () => {
+      const id = await plat.requestApproval(drew, { kind: "platform-company-suspend", title: "Suspend cust-b", subject: B, payload: { companyId: B, ref: "cust-b", reason: "Unpaid invoices for months" }, ttlMs: 3600_000 }, at(), log(drew)("x", "y"));
+      expect(await plat.decideApproval({ id: erin, role: "super" }, id, true, "Finance confirmed today", at(), log(erin))).toEqual({ ok: true, status: "Approved" });
+      expect(await pdir.companyByCode("cust-b")).toBeNull();
+      expect(await pdir.membership(B, casey)).toBeNull();
+      expect((await admin.query("select action from public.audit_log where tenant_id = $1 and action = 'tenant.suspended'", [B])).rows.length).toBe(1);
+      const back = await plat.requestApproval(erin, { kind: "platform-company-reactivate", title: "Reactivate cust-b", subject: B, payload: { companyId: B, ref: "cust-b", reason: "Paid in full" }, ttlMs: 3600_000 }, at(), log(erin)("x", "y"));
+      expect(await plat.decideApproval({ id: drew, role: "super" }, back, true, "Payment checked by me", at(), log(drew))).toEqual({ ok: true, status: "Approved" });
+      expect(await pdir.companyByCode("cust-b")).toBe(B);
+    });
+
+    it("the platform audit log holds only platform entries and its chain verifies; the functions are not exposed to the public API roles", async () => {
+      const entries = await plat.auditLog(sid, 500);
+      expect(entries.length).toBeGreaterThan(0);
+      expect(entries.some((x) => x.action === "tenant.created" || x.action === "tenant.suspended")).toBe(false);
+      expect(entries[0].seq).toBeGreaterThan(entries[entries.length - 1].seq);
+      expect(await plat.verifyAudit(sid)).toBeNull();
+      expect(await code(app.tx({ tenantId: A, userId: alex }, (q) => q.query("select platform_audit_verify()")))).toBe("42501");
+      const exposed = (await admin.query(`select r.rolname, p.proname from pg_proc p cross join (values ('anon'), ('authenticated'), ('service_role')) r(rolname)
+        where p.proname like 'platform_%' and p.pronamespace = 'public'::regnamespace and has_function_privilege(r.rolname, p.oid, 'execute')`)).rows;
+      expect(exposed).toEqual([]);
     });
   });
 

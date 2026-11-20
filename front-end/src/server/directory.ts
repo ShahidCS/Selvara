@@ -72,22 +72,22 @@ export interface Directory {
 
 /** Thrown when an approved change can no longer be applied. The Postgres directory catches it inside the transaction and rolls back to a savepoint
  *  taken before the vote, so the vote and the change are undone together. */
-class ApplyConflict extends Error {}
+export class ApplyConflict extends Error {}
 const INVITE_MS = INVITE_TTL_H * 3600_000;
 const facts = (a: ApprovalRow) => ({ status: a.status, expiresAt: a.expiresAt, approverRoles: a.approverRoles, requestedBy: a.requestedBy, forbid: a.forbid, votes: a.votes.map((v) => v.by) });
 /** The engine's rules, shared by both directories: who may decide (rules.ts), then expiry and state. */
-function refuse(a: ApprovalRow | undefined, actor: { id: string; role: string }, at: number): Outcome | null {
+export function refuse(a: ApprovalRow | undefined, actor: { id: string; role: string }, at: number): Outcome | null {
   if (!a) return { ok: false, code: 404, error: "Request not found." };
   if (a.status === "Expired" || (a.status === "Pending" && a.expiresAt <= at)) return { ok: false, code: 409, error: "Request has expired." };
   if (a.status !== "Pending") return { ok: false, code: 409, error: `Request is ${a.status.toLowerCase()}.` };
   const why = approvalBlock({ key: actor.id, base: actor.role }, facts(a), at);
   return why ? { ok: false, code: 403, error: why } : null;
 }
-const names = (a: ApprovalRow, extra?: string) => [...a.votes.map((v) => v.byName), ...(extra ? [extra] : [])].join(", ");
+export const names = (a: ApprovalRow, extra?: string) => [...a.votes.map((v) => v.byName), ...(extra ? [extra] : [])].join(", ");
 
 const LIMIT = 500;
-const auditSql = "insert into audit_log (at_ms, actor, action, target, cat, space, ip, tenant_id, actor_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
-const auditArgs = (a: AuditRow) => [a.at, a.actor, a.action, a.target, a.cat, a.space, a.ip, a.tenantId ?? null, a.actorId ?? null];
+export const auditSql = "insert into audit_log (at_ms, actor, action, target, cat, space, ip, tenant_id, actor_id) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
+export const auditArgs = (a: AuditRow) => [a.at, a.actor, a.action, a.target, a.cat, a.space, a.ip, a.tenantId ?? null, a.actorId ?? null];
 const row = (r: Record<string, unknown>): MemberRow => ({ userId: String(r.user_id), person: String(r.person), email: String(r.email), role: String(r.role), status: r.status as MemberStatus, since: Number(r.created_ms), decidedAt: r.decided_ms == null ? undefined : Number(r.decided_ms) });
 
 export class PgDirectory implements Directory {
@@ -269,9 +269,11 @@ async function insertInvitation(q: Tx, tenantId: string, actorId: string, i: { e
     values ($1, $2, $3, $4, $5, $6, $7, $8, $9) on conflict do nothing returning id`, [tenantId, i.email, i.role, i.tokenHash, actorId, i.approvalId ?? null, at, at + INVITE_MS, i.tokenHash ? at : null]);
   return r[0]?.id ?? null;
 }
-async function loadApprovals(q: Tx, tenantId: string, id?: string): Promise<ApprovalRow[]> {
+/** A company's requests (domain ws), or the platform's (tenant null, domain admin). With an id: that one request, locked for the decision. */
+export async function loadApprovals(q: Tx, tenantId: string | null, id?: string): Promise<ApprovalRow[]> {
   const rows = await q.query(`select a.*, coalesce(p.person, '') as requester from approvals a left join profiles p on p.id = a.requested_by
-    where a.tenant_id = $1 and a.domain = 'ws' and ($2::uuid is null or a.id = $2) order by a.created_ms desc limit 100 ${id ? "for update of a" : ""}`, [tenantId, id ?? null]);
+    where ${tenantId ? "a.tenant_id = $1 and a.domain = 'ws'" : "a.tenant_id is null and $1::uuid is null and a.domain = 'admin'"} and ($2::uuid is null or a.id = $2)
+    order by a.created_ms desc limit 100 ${id ? "for update of a" : ""}`, [tenantId, id ?? null]);
   if (!rows.length) return [];
   const votes = await q.query(`select v.approval_id, v.by_user, coalesce(p.person, '') as person, v.at_ms, v.reason from approval_votes v left join profiles p on p.id = v.by_user
     where v.approval_id = any($1::uuid[]) order by v.at_ms`, [rows.map((r) => r.id)]);

@@ -2,10 +2,9 @@ import { useEffect, useState } from "react";
 import { Chip, DataTable, Empty, Icon, Page, Segmented, StatusChip, type DTColumn } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { CUSTOM_BOUNDS, LOCKOUT, type LockoutPreset } from "@/lib/accountSecurity";
-import { ASSIGNABLE_ROLES, isPrivilegedRole, REASON_MIN, ROLE_LABEL } from "@/lib/rules";
-import { SodError } from "@/lib/sod";
+import { apiMessage, LinkBox, RequestsTable, utcMin } from "@/components/kit/serverRequests";
+import { ASSIGNABLE_ROLES, isPrivilegedRole, ROLE_LABEL } from "@/lib/rules";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
-import { ApiError } from "@/services/http";
 import * as svc from "@/services/team";
 import { JoinRequests } from "./JoinRequests";
 
@@ -17,8 +16,7 @@ import { JoinRequests } from "./JoinRequests";
 const VIEWS: [string, string][] = [["members", "Members"], ["invitations", "Invitations"], ["requests", "Requests"], ["signin", "Sign-in protection"]];
 const roleName = (id: string) => ROLE_LABEL[id] ?? id;
 /** The server's own words for a refusal (it never sends internal details); anything else gets the fallback. */
-const why = (e: unknown, fallback: string) => (e instanceof ApiError && e.status > 0 && e.status < 500) || e instanceof SodError ? (e as Error).message : fallback;
-const utcMin = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace("T", " ") + " UTC";
+const why = apiMessage;
 const utc = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 export function ApiTeam() {
@@ -32,7 +30,7 @@ export function ApiTeam() {
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head"><div className="seg" role="tablist">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className={`c-body ${view === "members" ? "flush" : ""} scroll`} style={view === "members" ? { padding: 0 } : undefined}>
-          {view === "members" ? <Members /> : view === "invitations" ? <Invitations /> : view === "requests" ? <Requests /> : <SignIn />}
+          {view === "members" ? <Members /> : view === "invitations" ? <Invitations /> : view === "requests" ? <RequestsTable id="team-requests-api" load={svc.listApprovals} decide={svc.decideRequest} note="Granting or inviting an admin or owner needs a second admin. Nobody approves their own request or a request about themselves. A request expires after 72 hours." /> : <SignIn />}
         </div>
       </div>
     </Page>
@@ -50,7 +48,7 @@ function Members() {
     { key: "role", header: "Workspace role", value: (m) => roleName(m.role), render: (m) => roleName(m.role) },
     { key: "status", header: "Status", value: (m) => m.status, render: (m) => (m.status === "Pending" ? <Chip cls="warn" icon="clock">Pending</Chip> : <StatusChip s={m.status} />) },
     { key: "since", header: "Since", value: (m) => m.since, render: (m) => <span className="num">{utc(m.since)}</span> },
-    { key: "act", header: "", value: () => "", render: (m) => (m.status === "Active" && !m.me ? <button className="btn btn-ghost sm" aria-label={`Change role: ${m.name}`} onClick={() => L.openModal(`Change role, ${m.name}`, (close) => <RoleForm m={m} close={close} />)}><Icon name="edit" />Change role</button> : null) },
+    { key: "act", header: "Actions", hideHeader: true, render: (m) => (m.status === "Active" && !m.me ? <button className="btn btn-ghost sm" aria-label={`Change role: ${m.name}`} onClick={() => L.openModal(`Change role, ${m.name}`, (close) => <RoleForm m={m} close={close} />)}><Icon name="edit" />Change role</button> : null) },
   ];
   return (
     <>
@@ -90,21 +88,6 @@ function RoleForm({ m, close }: { m: svc.MemberRow; close: () => void }) {
   );
 }
 
-/** Shows an invitation link once, to copy and send to the person through the company's own channel. */
-function LinkBox({ link, email, expiresAt }: { link: string; email: string; expiresAt: number }) {
-  const L = useLayer();
-  const copy = async () => { try { await navigator.clipboard.writeText(link); L.toast("Link copied"); } catch { L.toast("Select the link and copy it", false); } };
-  return (
-    <>
-      <p style={{ margin: "0 0 12px", lineHeight: 1.5 }}>Send this link to {email} yourself, for example by email. It works once, only with that email address, until {utcMin(expiresAt)}. It is shown only now: if it is lost, create a new link (the old one stops working).</p>
-      <div className="field"><label htmlFor="lb-link">Invitation link</label><input className="input num" id="lb-link" data-focus readOnly value={link} onFocus={(e) => e.currentTarget.select()} /></div>
-      <div className="btngrp" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-        <button className="btn btn-primary" onClick={copy}>Copy link</button>
-      </div>
-    </>
-  );
-}
-
 function Invitations() {
   const v = useData(); const L = useLayer();
   const [rows, setRows] = useState<svc.InvitationItem[] | null>(null); const [err, setErr] = useState("");
@@ -131,7 +114,7 @@ function Invitations() {
     { key: "status", header: "Status", value: (i) => i.status, render: (i) => chip(i.status) },
     { key: "by", header: "Invited by", value: (i) => i.invitedBy, render: (i) => i.invitedBy },
     { key: "exp", header: "Expires", value: (i) => i.expiresAt, render: (i) => <span className="num">{utcMin(i.expiresAt)}</span> },
-    { key: "act", header: "", value: () => "", render: (i) => (i.status === "Pending" ? (
+    { key: "act", header: "Actions", hideHeader: true, render: (i) => (i.status === "Pending" ? (
       <div className="btngrp" style={{ justifyContent: "flex-end" }}>
         <button className="btn btn-ghost sm" aria-label={`${i.linkAt ? "New link" : "Create link"}: ${i.email}`} onClick={() => newLink(i)}><Icon name="refresh" />{i.linkAt ? "New link" : "Create link"}</button>
         <button className="btn btn-ghost sm" aria-label={`Revoke: ${i.email}`} onClick={() => revoke(i)}><Icon name="x" />Revoke</button>
@@ -149,60 +132,6 @@ function Invitations() {
       {err ? <p role="alert" style={{ color: "var(--bad-ink)" }}>{err}</p> : null}
       {rows ? (rows.length ? <DataTable<svc.InvitationItem> id="team-invitations-api" label="Invitations" rows={rows} rowKey={(i) => i.id} columns={cols} searchText={(i) => `${i.email} ${roleName(i.role)} ${i.status}`} exportName="invitations" />
         : <p style={{ color: "var(--muted)" }}>No invitations yet.</p>) : err ? null : <p style={{ color: "var(--muted)" }}>Loading invitations…</p>}
-    </>
-  );
-}
-
-function Requests() {
-  const v = useData(); const L = useLayer();
-  const [rows, setRows] = useState<svc.ApprovalItem[] | null>(null); const [err, setErr] = useState("");
-  useEffect(() => { let on = true; svc.listApprovals().then((x) => { if (on) { setRows(x); setErr(""); } }, (e) => { if (on) setErr(why(e, "Could not load the requests")); }); return () => { on = false; }; }, [v]);
-  const withdraw = async (a: svc.ApprovalItem) => { try { await svc.decideRequest(a.id, "withdraw"); bumpData(); L.toast("Request withdrawn"); } catch (x) { L.toast(why(x, "Could not withdraw the request"), false); } };
-  const chip = (s: svc.ApprovalItem["status"]) => (s === "Pending" ? <Chip cls="warn" icon="clock">Pending</Chip> : <StatusChip s={s} />);
-  const cols: DTColumn<svc.ApprovalItem>[] = [
-    { key: "title", header: "Request", value: (a) => a.title, locked: true, render: (a) => <span className="strong">{a.title}</span> },
-    { key: "by", header: "Requested by", value: (a) => a.requestedBy, render: (a) => a.requestedBy },
-    { key: "status", header: "Status", value: (a) => a.status, render: (a) => chip(a.status) },
-    { key: "when", header: "Requested", value: (a) => a.createdAt, render: (a) => <span className="num">{utcMin(a.createdAt)}</span> },
-    { key: "dec", header: "Decided by", value: (a) => a.votes.map((x) => x.by).join(", "), render: (a) => a.votes.map((x) => x.by).join(", ") || (a.reason ? `Rejected: ${a.reason}` : "") },
-    { key: "act", header: "", value: () => "", render: (a) => (a.status !== "Pending" ? null : a.mine ? (
-      <button className="btn btn-ghost sm" aria-label={`Withdraw: ${a.title}`} onClick={() => withdraw(a)}><Icon name="x" />Withdraw</button>
-    ) : a.block ? <span className="field help" style={{ margin: 0 }}>{a.block}</span> : (
-      <div className="btngrp" style={{ justifyContent: "flex-end" }}>
-        <button className="btn btn-ghost sm" aria-label={`Approve: ${a.title}`} onClick={() => L.openModal(`Approve: ${a.title}`, (close) => <DecideRequest a={a} decision="approve" close={close} />)}><Icon name="check" />Approve</button>
-        <button className="btn btn-ghost sm" aria-label={`Reject: ${a.title}`} onClick={() => L.openModal(`Reject: ${a.title}`, (close) => <DecideRequest a={a} decision="reject" close={close} />)}><Icon name="x" />Reject</button>
-      </div>)) },
-  ];
-  if (err) return <p role="alert" style={{ color: "var(--bad-ink)" }}>{err}</p>;
-  if (!rows) return <p style={{ color: "var(--muted)" }}>Loading requests…</p>;
-  return (
-    <>
-      <p className="field help" style={{ marginTop: 0, maxWidth: "70ch" }}>Granting or inviting an admin or owner needs a second admin. Nobody approves their own request or a request about themselves. A request expires after 72 hours.</p>
-      {rows.length ? <DataTable<svc.ApprovalItem> id="team-requests-api" label="Requests" rows={rows} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.title} ${a.requestedBy} ${a.status}`} exportName="requests" />
-        : <p style={{ color: "var(--muted)" }}>No requests yet.</p>}
-    </>
-  );
-}
-
-function DecideRequest({ a, decision, close }: { a: svc.ApprovalItem; decision: "approve" | "reject"; close: () => void }) {
-  const L = useLayer();
-  const [reason, setReason] = useState(""); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
-  const go = async () => {
-    if (busy) return;
-    if (reason.trim().length < REASON_MIN) { setErr(`Give a reason of at least ${REASON_MIN} characters.`); return; }
-    setBusy(true);
-    try { await svc.decideRequest(a.id, decision, reason); close(); bumpData(); L.toast(decision === "approve" ? "Approved and applied" : "Request rejected"); }
-    catch (e) { setErr(why(e, "Could not record the decision")); setBusy(false); }
-  };
-  return (
-    <>
-      <p className="field help" style={{ marginTop: 0 }}>Requested by {a.requestedBy} on {utcMin(a.createdAt)}.</p>
-      <div className="field"><label htmlFor="dr-reason">Reason (at least {REASON_MIN} characters)</label><textarea className="input" id="dr-reason" data-focus rows={3} maxLength={300} style={{ resize: "vertical" }} value={reason} onChange={(e) => { setReason(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "dr-err" : undefined} /></div>
-      <p className="field help" id="dr-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
-      <div className="btngrp" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-        <button className="btn btn-secondary" onClick={close}>Cancel</button>
-        <button className={`btn ${decision === "approve" ? "btn-primary" : "btn-danger"}`} disabled={busy} onClick={go}>{decision === "approve" ? "Approve" : "Reject"}</button>
-      </div>
     </>
   );
 }
