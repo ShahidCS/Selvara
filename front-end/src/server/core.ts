@@ -13,6 +13,7 @@ import { approvalBlock, INVITE_TTL_H, isAssignableRole, isPrivilegedRole, nameBl
 import { isEmail } from "@/lib/security";
 import { checkRegistration, verifyAssertion } from "@/lib/webauthn";
 import { randomId, same, seal, sha256Hex, unseal } from "./crypto";
+import { adminRoutes } from "./admin";
 import { logFailure } from "./errors";
 import type { Company, Lockout, Log, Outcome } from "./directory";
 import type { Deps, Profile, SessionRow } from "./types";
@@ -255,7 +256,10 @@ const sessionInfo: H = async (d, r) => {
 };
 const signOut: H = async (d, r) => {
   const c = await current(d, r);
-  if (c) { await d.store.updateSession(c.s.idHash, { revokedAt: d.now(), revokedWhy: "Signed out" }); await audit(d, r, actorOf(c.p, c.a), "auth.signed_out", c.p.person); }
+  if (c) {
+    await d.store.updateSession(c.s.idHash, { revokedAt: d.now(), revokedWhy: "Signed out" }); await audit(d, r, actorOf(c.p, c.a), "auth.signed_out", c.p.person);
+    if (c.a.platform) await d.plat.endElevation(c.p.id, d.now(), entry(d, r, actorOf(c.p, c.a), "platform.elevation.ended", "signed out")); // signing out ends an elevation
+  }
   return ok(undefined, [cookie("", 0)]);
 };
 /** A request to join names the company by its code. The answer is the same whether or not the email or the code is known, so neither can be
@@ -551,6 +555,8 @@ export const ROUTES: Record<string, H> = {
   "POST team/members/:id/role": roleChange, "GET team/approvals": approvalList, "POST team/approvals/:id/:decision": approvalDecide,
   "GET team/invitations": inviteList, "POST team/invitations": inviteCreate, "POST team/invitations/:id/:action": inviteAction,
 };
+Object.assign(ROUTES, adminRoutes({ signed, entry: (d, r, p, a, action, target) => entry(d, r, actorOf(p, a), action, target), randomId, sha256Hex }));
+
 /** Finds the handler for a request; `:name` segments match anything. */
 export function route(method: string, path: string[]): H | null { return match(method, path)?.[1] ?? null; }
 function match(method: string, path: string[]): [string, H] | null {

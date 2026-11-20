@@ -3,6 +3,7 @@ import type { Deps } from "./types";
 import { SupabaseAuth, SupabaseStore } from "./supabase";
 import { dbFromEnv } from "./db";
 import { PgDirectory } from "./directory";
+import { PgPlatform } from "./platform";
 
 let cached: Deps | null | undefined;
 /** Names of the variables the API needs. Values are secrets except the URLs. DATABASE_URL (as selvara_app, with DATABASE_CA_CERT for TLS) is
@@ -17,7 +18,7 @@ export function deps(): Deps | null {
   const env = { url: String(e.SUPABASE_URL), anonKey: String(e.SUPABASE_ANON_KEY), serviceKey: String(e.SUPABASE_SERVICE_ROLE_KEY) };
   let db: NonNullable<Deps["db"]>;
   try { db = dbFromEnv(String(e.DATABASE_URL), e.DATABASE_CA_CERT); } catch { cached = null; return cached; } // e.g. no CA certificate for a remote database
-  cached = { auth: new SupabaseAuth(env), store: new SupabaseStore(env), dir: new PgDirectory(db), site: { origin: site.origin, rpId: site.hostname }, secret: String(e.SERVER_SECRET), now: Date.now, db };
+  cached = { auth: new SupabaseAuth(env), store: new SupabaseStore(env), dir: new PgDirectory(db), plat: new PgPlatform(db), site: { origin: site.origin, rpId: site.hostname }, secret: String(e.SERVER_SECRET), now: Date.now, db };
   return cached;
 }
 /** The client address: from Vercel's own header when running on Vercel (a trusted proxy), otherwise the socket. Never from a header a client can set elsewhere. */

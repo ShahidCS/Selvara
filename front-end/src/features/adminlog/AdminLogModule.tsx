@@ -1,4 +1,6 @@
 import { DataTable, Icon, KpiStrip, KpiTile, Page, activate, type DTColumn } from "@/components/ui";
+import { API_ON } from "@/lib/rbac";
+import { ApiAdminLog } from "./ApiAdminLog";
 import { ADMIN_AUDIT, verifyChain } from "@/lib/adminAudit";
 import { LAWFUL_BASIS } from "@/lib/platform";
 import { ropaById, ropaFor } from "@/lib/ropa";
@@ -17,7 +19,7 @@ const VIEWS: [string, string][] = [["log", "Audit log"], ["chain", "Chain integr
 const FAIL = "Could not complete that action";
 
 /** Prototype: REND.adminlog. Read-only viewer: rows can only be filtered/exported, never edited or deleted. */
-export default function AdminLogModule() {
+function DemoAdminLogModule() {
   useData();
   const L = useLayer(); const gate = useGate();
   const can = svc.canAdminLog(useApp((s) => s.role));
@@ -86,3 +88,6 @@ export default function AdminLogModule() {
     </Page>
   );
 }
+
+/** Production (API mode) shows the server's data (slice 3a, decision D4); the demonstration keeps its own screen. */
+export default function AdminLogModule() { return API_ON ? <ApiAdminLog /> : <DemoAdminLogModule />; }

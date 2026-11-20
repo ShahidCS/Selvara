@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import { API_ON } from "@/lib/rbac";
+import { ApiCustomers } from "./ApiCustomers";
 import { Empty, Icon, Page } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { useApp, useData, useModState, getModState, setModState } from "@/lib/store";
@@ -9,7 +11,7 @@ import { ElevateGateBanner, useGate } from "@/components/kit/admin/ElevateGate";
 import { OnboardForm } from "./Onboard";
 
 /** Prototype: REND.customers + custBody/custPick/custClear. Also used by Billing's "Onboard customer" via the `customers.onboardPending` flag. */
-export default function CustomersModule() {
+function DemoCustomersModule() {
   useData(); const L = useLayer(); const gate = useGate();
   const allowed = customersCanManage(useApp((s) => s.role));
   const [selId, setSel] = useModState<string | null>("customers.sel", null);
@@ -39,3 +41,6 @@ export default function CustomersModule() {
     </Page>
   );
 }
+
+/** Production (API mode) shows the server's data (slice 3a, decision D4); the demonstration keeps its own screen. */
+export default function CustomersModule() { return API_ON ? <ApiCustomers /> : <DemoCustomersModule />; }

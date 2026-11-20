@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { COOKIE, NO_COMPANY, handle, type Req, type Res } from "@/server/core";
 import { MemoryAuth, MemoryStore } from "@/server/memory";
 import { MemoryDirectory } from "@/server/directory";
+import { MemoryPlatform } from "@/server/platform";
 import { sha256Hex } from "@/server/crypto";
 import type { Deps } from "@/server/types";
 import { totpAt } from "@/lib/totp";
@@ -10,11 +11,11 @@ import { safeMessage, upstream } from "@/server/errors";
 
 /* The production auth API (src/server), run through `handle` exactly as /api does, against in-memory stand-ins for Supabase Auth and Postgres. */
 const ORIGIN = "https://app.example.test";
-let clock = 1_800_000_000_000; let d: Deps; let auth: MemoryAuth; let store: MemoryStore; let dir: MemoryDirectory; let ACME = "";
+let clock = 1_800_000_000_000; let d: Deps; let auth: MemoryAuth; let store: MemoryStore; let dir: MemoryDirectory; let plat: MemoryPlatform; let ACME = "";
 beforeEach(() => {
-  clock = 1_800_000_000_000; auth = new MemoryAuth(() => clock); used.clear(); store = new MemoryStore(() => clock); dir = new MemoryDirectory(store);
+  clock = 1_800_000_000_000; auth = new MemoryAuth(() => clock); used.clear(); store = new MemoryStore(() => clock); dir = new MemoryDirectory(store); plat = new MemoryPlatform(store, dir);
   ACME = dir.addCompany("acme-eu", "Acme Test Co");
-  d = { auth, store, dir, site: { origin: ORIGIN, rpId: "app.example.test" }, secret: "x".repeat(40), now: () => clock };
+  d = { auth, store, dir, plat, site: { origin: ORIGIN, rpId: "app.example.test" }, secret: "x".repeat(40), now: () => clock };
 });
 const PW = "Lantern-orbit-Quince-71"; const NEW = "Copper-harbour-Violet-58";
 async function call(method: string, path: string, body: Record<string, unknown> = {}, o: { cookie?: string; ip?: string; origin?: string | null } = {}): Promise<Res> {
@@ -389,6 +390,107 @@ describe("role changes, invitations and four-eyes requests (slice 2c)", () => {
 
   it("names with markup are refused", async () => {
     expect((await call("POST", "auth/join-requests", { name: "<jordan>", email: "x@company.example", password: PW, company: "acme-eu" })).body).toEqual({ error: "Enter your name without symbols such as < > { } or quotes." });
+  });
+});
+
+describe("Admin Console (slice 3a): elevation, companies through four-eyes, platform audit log", () => {
+  /** A platform super admin signed in with a newly registered passkey (the first sign-in registers it and signs in). */
+  async function superAdmin(email: string, person: string) {
+    const id = await auth.createUser(email, PW, person); await auth.confirmUser(id);
+    await store.insertProfile({ id, email, person, status: "Active", requestedAt: clock }); dir.staff.set(id, "super");
+    const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+    const spki = new Uint8Array(await crypto.subtle.exportKey("spki", kp.publicKey));
+    const st = (await call("POST", "auth/sign-in", { email, password: PW })).body as { ticket: string; challenge: string };
+    const cd = toB64u(new TextEncoder().encode(JSON.stringify({ type: "webauthn.create", challenge: st.challenge, origin: ORIGIN })));
+    const res = await call("POST", "auth/sign-in/passkey", { ticket: st.ticket, register: { id: toB64u(crypto.getRandomValues(new Uint8Array(16))), publicKey: toB64u(spki), clientDataJSON: cd } });
+    expect(res.status).toBe(200); return { id, cookie: cookieOf(res) };
+  }
+  const elevate = (cookie: string, minutes = 30) => call("POST", "admin/elevation", { reason: "Customer onboarding for a new contract", ticket: "OPS-101", minutes }, { cookie });
+  const requests = async (cookie: string) => (await call("GET", "admin/approvals", {}, { cookie })).body as { id: string; status: string; block: string | null; mine: boolean }[];
+
+  it("only platform staff reach the Admin Console; support reads but never elevates or changes; changes need a live elevation", async () => {
+    const admin = await account("jordan@company.example", "admin", "Jordan Avery");
+    const sam = await account("sam@platform.example", "support", "Sam Hayes");
+    const dana = await superAdmin("dana@platform.example", "Dana Whitfield");
+    expect((await call("GET", "admin/companies", {}, { cookie: admin.cookie })).status).toBe(403);
+    expect(((await call("GET", "admin/companies", {}, { cookie: sam.cookie })).body as { ref: string }[]).map((c) => c.ref)).toEqual(["acme-eu"]);
+    expect((await elevate(sam.cookie)).status).toBe(403);
+    expect((await call("POST", "admin/companies", { ref: "globex-uk", name: "Globex Test Ltd", adminEmail: "casey@globex.example" }, { cookie: sam.cookie })).status).toBe(403);
+    expect((await call("POST", "admin/companies", { ref: "globex-uk", name: "Globex Test Ltd", adminEmail: "casey@globex.example" }, { cookie: dana.cookie })).body).toEqual({ error: "Elevate to make changes." });
+    expect((await call("POST", "admin/elevation", { reason: "short", ticket: "OPS-101", minutes: 30 }, { cookie: dana.cookie })).status).toBe(400);
+    expect((await call("POST", "admin/elevation", { reason: "Customer onboarding for a new contract", ticket: "ops 1", minutes: 30 }, { cookie: dana.cookie })).status).toBe(400);
+    expect((await elevate(dana.cookie, 61)).status).toBe(400);
+    expect((await elevate(dana.cookie, 15)).status).toBe(200);
+    expect((await elevate(dana.cookie)).status).toBe(409); // one at a time
+    expect(((await call("GET", "admin/elevation", {}, { cookie: dana.cookie })).body as { elevation: { ticket: string } }).elevation.ticket).toBe("OPS-101");
+    clock += 15 * 60_000 + 1; // runs out by itself (the session's idle limit is 15 minutes too, so sign in again)
+    const st = await call("POST", "auth/sign-in", { email: "dana@platform.example", password: PW }); expect(st.status).toBe(200);
+    expect(((await call("GET", "admin/elevation", {}, { cookie: dana.cookie })).status)).toBe(401);
+    expect(await plat.elevation(dana.id, clock)).toBeNull();
+    const e = store.auditLog.find((x) => x.action === "platform.elevation.started")!;
+    expect([e.space, e.tenantId, e.actorId, e.target]).toEqual(["admin", null, dana.id, "15 minutes; ticket OPS-101; reason: Customer onboarding for a new contract"]);
+  });
+
+  it("a company is created only when a second super admin approves; its first admin joins with a link from the platform", async () => {
+    const dana = await superAdmin("dana@platform.example", "Dana Whitfield");
+    await elevate(dana.cookie);
+    const body = { ref: "globex-uk", name: "Globex Test Ltd", adminEmail: "Casey@Globex.example" };
+    expect((await call("POST", "admin/companies", body, { cookie: dana.cookie })).body).toEqual({ error: "No other platform super admin can approve this. Add a second one first (docs/guides/SUPABASE.md section 5)." });
+    const riley = await superAdmin("riley@platform.example", "Riley Quinn");
+    expect((await call("POST", "admin/companies", { ...body, ref: "acme-eu" }, { cookie: dana.cookie })).status).toBe(409); // code taken
+    expect((await call("POST", "admin/companies", { ...body, name: "<b>x</b>" }, { cookie: dana.cookie })).status).toBe(400);
+    const req = await call("POST", "admin/companies", body, { cookie: dana.cookie }); expect(req.status).toBe(202);
+    const id = (req.body as { id: string }).id;
+    expect([...dir.companies.values()].some((c) => c.ref === "globex-uk")).toBe(false); // nothing until approved
+    expect((await requests(dana.cookie)).find((x) => x.id === id)!.block).toBe("Segregation of duties: you cannot approve your own request.");
+    expect((await call("POST", `admin/approvals/${id}/approve`, { reason: "Contract signed on 2026-11-18" }, { cookie: dana.cookie })).status).toBe(403);
+    expect((await requests(riley.cookie)).find((x) => x.id === id)!.block).toBe("Elevate to make changes.");
+    expect((await call("POST", `admin/approvals/${id}/approve`, { reason: "Contract signed on 2026-11-18" }, { cookie: riley.cookie })).status).toBe(403); // not elevated
+    await elevate(riley.cookie);
+    expect((await call("POST", `admin/approvals/${id}/approve`, { reason: "Contract signed on 2026-11-18" }, { cookie: riley.cookie })).body).toEqual({ status: "Approved" });
+    const globex = [...dir.companies.values()].find((c) => c.ref === "globex-uk")!;
+    expect(dir.invites.find((i) => i.tenantId === globex.id)).toEqual(expect.objectContaining({ email: "casey@globex.example", role: "admin", status: "Pending", tokenHash: null }));
+    expect(store.auditLog.find((x) => x.action === "platform.company.created")).toEqual(expect.objectContaining({ space: "admin", tenantId: null, actorId: riley.id }));
+    expect(store.auditLog.find((x) => x.action === "tenant.created")!.tenantId).toBe(globex.id); // the customer's own log shows it too
+    const link = (await call("POST", "admin/companies/globex-uk/admin-link", {}, { cookie: dana.cookie })).body as { link: string; email: string };
+    expect(link.email).toBe("casey@globex.example");
+    await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: PW, invite: link.link.split("#invite=")[1] });
+    const casey = (await store.profileByEmail("casey@globex.example"))!;
+    expect(dir.memberships.find((m) => m.tenantId === globex.id && m.userId === casey.id)).toEqual(expect.objectContaining({ role: "admin", status: "Active" }));
+    expect((await call("POST", "admin/companies/globex-uk/admin-link", {}, { cookie: dana.cookie })).status).toBe(409); // used
+  });
+
+  it("suspending a company (four-eyes, with a reason) ends its members' access at their next request; reactivating restores it", async () => {
+    const member = await account("alex.kim@company.example");
+    const dana = await superAdmin("dana@platform.example", "Dana Whitfield"); const riley = await superAdmin("riley@platform.example", "Riley Quinn");
+    await elevate(dana.cookie); await elevate(riley.cookie);
+    expect((await call("POST", "admin/companies/acme-eu/suspend", { reason: "short" }, { cookie: dana.cookie })).status).toBe(400);
+    const id = ((await call("POST", "admin/companies/acme-eu/suspend", { reason: "Unpaid invoices for three months" }, { cookie: dana.cookie })).body as { id: string }).id;
+    expect((await call("POST", "admin/companies/acme-eu/suspend", { reason: "Unpaid invoices for three months" }, { cookie: riley.cookie })).status).toBe(409); // already requested
+    expect((await call("GET", "auth/session", {}, { cookie: member.cookie })).status).toBe(200); // not yet
+    expect((await call("POST", `admin/approvals/${id}/approve`, { reason: "Confirmed with finance today" }, { cookie: riley.cookie })).body).toEqual({ status: "Approved" });
+    expect(dir.companies.get(ACME)!.status).toBe("Suspended");
+    expect((await call("GET", "auth/session", {}, { cookie: member.cookie })).status).toBe(401);
+    expect((await call("POST", "auth/sign-in", { email: "alex.kim@company.example", password: PW })).body).toEqual({ error: NO_COMPANY });
+    expect(store.auditLog.find((x) => x.action === "tenant.suspended")).toEqual(expect.objectContaining({ tenantId: ACME, target: "acme-eu; reason: Unpaid invoices for three months" }));
+    const back = ((await call("POST", "admin/companies/acme-eu/reactivate", { reason: "Invoices paid in full now" }, { cookie: riley.cookie })).body as { id: string }).id;
+    expect((await call("POST", `admin/approvals/${back}/reject`, { reason: "Wait for the bank transfer" }, { cookie: riley.cookie })).status).toBe(403); // own request
+    expect((await call("POST", `admin/approvals/${back}/approve`, { reason: "Payment received and checked" }, { cookie: dana.cookie })).body).toEqual({ status: "Approved" });
+    expect((await signIn("alex.kim@company.example")).status).toBe(200);
+  });
+
+  it("the platform audit log lists only platform entries, newest first, for platform staff only", async () => {
+    const admin = await account("jordan@company.example", "admin", "Jordan Avery");
+    const dana = await superAdmin("dana@platform.example", "Dana Whitfield"); await elevate(dana.cookie);
+    await call("POST", "admin/elevation/end", {}, { cookie: dana.cookie });
+    const res = (await call("GET", "admin/audit", {}, { cookie: dana.cookie })).body as { entries: { action: string }[]; verified: boolean };
+    expect(res.verified).toBe(true);
+    expect(res.entries.slice(0, 2).map((x) => x.action)).toEqual(["platform.elevation.ended", "platform.elevation.started"]);
+    expect(res.entries.some((x) => x.action === "auth.signed_in")).toBe(true);
+    expect(res.entries.every((x) => !("tenantId" in x))).toBe(true);
+    expect(store.auditLog.filter((x) => x.tenantId === ACME).length).toBeGreaterThan(0); // company entries exist, but are not listed
+    expect(res.entries.length).toBe(store.auditLog.filter((x) => !x.tenantId).length);
+    expect((await call("GET", "admin/audit", {}, { cookie: admin.cookie })).status).toBe(403);
   });
 });
 
