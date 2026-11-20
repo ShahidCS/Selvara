@@ -6,10 +6,12 @@ import { metrics } from "@/lib/metrics";
 import { getMe, wsLog } from "@/lib/audit";
 import { useGo } from "@/lib/route";
 import { useLayer } from "@/hooks/useLayer";
-import { COV_CATS, COV_FW, covCell, boardPackHTML } from "@/features/overview/lib/boardPack";
+import { COV_CATS, COV_FW, covCell, boardPackHTML, exportedBoardPack } from "@/features/overview/lib/boardPack";
 import { downloadText } from "@/lib/format";
 import { useRoute } from "@/lib/route";
 import { useApp } from "@/lib/store";
+import { API_ON, modAllowed } from "@/lib/rbac";
+import { ModuleTip } from "@/components/kit/ModuleTip";
 
 const MONTHS = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
 const tile = (tone: Desirability, text: string) => ({ tone, text });
@@ -39,21 +41,25 @@ function CoverageHeatmap() {
 export { CoverageHeatmap };
 
 export default function OverviewModule() {
-  useData(); useApp((s) => s.role); useRoute();
+  useData(); const role = useApp((s) => s.role); useRoute();
   const go = useGo(); const L = useLayer();
+  /* production: the detail of a module the role cannot open is never shown (the server sends its figures only) */
+  const can = (m: string) => modAllowed(role, "ws", m);
+  const live = (d: ReturnType<typeof tile>) => (API_ON ? undefined : d); // the demonstration's month-on-month texts are not real history
   const M = metrics();
   const fwRank = [...DATA.frameworks].map((f) => ({ f, r: fwReadiness(f.id) })).sort((a, b) => a.r - b.r).slice(0, 6);
   const sev: Record<string, number> = { High: DATA.issues.filter((i) => i.sev === "High").length, Medium: DATA.issues.filter((i) => i.sev === "Medium").length, Low: DATA.issues.filter((i) => i.sev === "Low").length };
   const sevMax = Math.max(1, ...Object.values(sev));
   const openTrend = [20, 19, 18, 17, 16, 15, M.openRisks];
-  const attn = DATA.issues.filter((i) => /Overdue/.test(i.due)).concat(
+  const attn = DATA.issues.filter((i) => i.status !== "Closed" && /Overdue/.test(i.due) && (!API_ON || can("issues"))).concat(
     DATA.vendors.filter((v) => /Overdue/.test(v.due)).map((v) => ({ id: v.name, title: v.cat + " vendor review overdue", sev: v.tier === "Critical" ? "High" : "Medium", owner: "Vendor" })));
   const audits = DATA.audits.filter((a) => a.stage !== "Complete");
   const period = new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 
-  const exportBoardPack = () => {
+  const exportBoardPack = async () => {
     const html = boardPackHTML();
-    wsLog("overview.boardpack.exported", "Board & executive pack", "Policy");
+    wsLog("overview.boardpack.exported", "Board & executive pack", "System");
+    if (!(await exportedBoardPack())) { L.toast("Something went wrong. Please try again.", false); return; }
     let w: Window | null = null;
     try {
       const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
@@ -69,39 +75,42 @@ export default function OverviewModule() {
   return (
     <Page title={`Security posture · ${period}`} sub={`${M.overdueControls} controls failing and ${M.openIssues} open issues need your attention.`} acts={<>
       <button className="btn btn-secondary" onClick={exportBoardPack}><Icon name="download" />Export board pack</button>
-      <button className="btn btn-secondary" onClick={() => go("/ws/reports")}><Icon name="reports" />Reports</button>
-      <button className="btn btn-primary" onClick={() => go("/ws/work")}><Icon name="work" />Open my work</button>
+      {!API_ON || can("reports") ? <button className="btn btn-secondary" onClick={() => go("/ws/reports")}><Icon name="reports" />Reports</button> : null}
+      {!API_ON || can("work") ? <button className="btn btn-primary" onClick={() => go("/ws/work")}><Icon name="work" />Open my work</button> : null}
     </>}>
+      <ModuleTip mod="overview" />
       <KpiStrip label="Posture summary">
-        <KpiTile label="Weighted compliance" value={M.compliance + "%"} delta={tile("good", "+3 pts this month")} caption="Across frameworks in scope" />
-        <KpiTile label="Open risks" value={M.openRisks} delta={tile("good", "2 fewer this month")} caption={`${M.aboveAppetite} above appetite`} />
-        <KpiTile label="Controls failing" value={M.overdueControls} delta={tile("bad", "1 more this week")} caption="Need remediation" />
-        <KpiTile label="Open issues" value={M.openIssues} delta={tile("flat", "No change")} caption="Not yet closed" />
-        <KpiTile label="Upcoming audits" value={M.upcomingAudits} delta={tile("flat", "Next in 136 days")} caption="Not yet complete" />
-        <KpiTile label="Vendor reviews due" value={M.vendorDue} delta={tile("bad", "2 overdue")} caption="Third-party reassessments" />
+        <KpiTile label="Weighted compliance" value={M.compliance + "%"} delta={live(tile("good", "+3 pts this month"))} caption="Across frameworks in scope" />
+        <KpiTile label="Open risks" value={M.openRisks} delta={live(tile("good", "2 fewer this month"))} caption={`${M.aboveAppetite} above appetite`} />
+        <KpiTile label="Controls failing" value={M.overdueControls} delta={live(tile("bad", "1 more this week"))} caption="Need remediation" />
+        <KpiTile label="Open issues" value={M.openIssues} delta={live(tile("flat", "No change"))} caption="Not yet closed" />
+        <KpiTile label="Upcoming audits" value={M.upcomingAudits} delta={live(tile("flat", "Next in 136 days"))} caption="Not yet complete" />
+        <KpiTile label="Vendor reviews due" value={M.vendorDue} delta={live(tile("bad", "2 overdue"))} caption="Third-party reassessments" />
       </KpiStrip>
       <div className="panels" style={{ gridTemplateColumns: "1.6fr 1fr 1fr", gridAutoRows: "minmax(0,1fr)" }}>
         <div className="card">
-          <div className="c-head"><h3>Risk Posture</h3><div className="r"><button className="btn btn-ghost sm" onClick={() => go("/ws/risk")}>Risk register</button></div></div>
+          <div className="c-head"><h3>Risk Posture</h3>{!API_ON || can("risk") ? <div className="r"><button className="btn btn-ghost sm" onClick={() => go("/ws/risk")}>Risk register</button></div> : null}</div>
           <div className="c-body scroll">
-            <LineChart title="Open risks over the last 7 months" data={openTrend.map((v, i) => ({ label: MONTHS[i], value: v }))} unit="" />
+            {API_ON ? <p className="field help" style={{ margin: 0 }}>{M.openRisks} open risk{M.openRisks === 1 ? "" : "s"}, {M.aboveAppetite} above appetite. The trend appears here once monthly figures have been recorded.</p>
+              : <LineChart title="Open risks over the last 7 months" data={openTrend.map((v, i) => ({ label: MONTHS[i], value: v }))} unit="" />}
             <div className="hr" />
             <HBarList title="Open issues by severity" rows={([["High", "bad"], ["Medium", "warn"], ["Low", "muted"]] as const).map(([s, tone]) => ({ label: s, value: sev[s], tone }))} max={sevMax} />
           </div>
         </div>
         <div className="card">
-          <div className="c-head"><h3>Framework Readiness</h3><div className="r"><button className="btn btn-ghost sm" onClick={() => go("/ws/frameworks")}>View all</button></div></div>
+          <div className="c-head"><h3>Framework Readiness</h3>{!API_ON || can("frameworks") ? <div className="r"><button className="btn btn-ghost sm" onClick={() => go("/ws/frameworks")}>View all</button></div> : null}</div>
           <div className="c-body scroll">
             <HBarList title="Lowest readiness first" rows={fwRank.map(({ f, r }) => ({ label: f.name, value: r, text: r + "%", tone: r >= 80 ? "ok" : r >= 50 ? "warn" : "bad" }))} max={100} />
           </div>
         </div>
         <div className="card">
-          <div className="c-head"><h3>Needs Attention</h3><div className="r"><button className="btn btn-ghost sm" onClick={() => go("/ws/issues")}>All issues</button></div></div>
+          <div className="c-head"><h3>Needs Attention</h3>{!API_ON || can("issues") ? <div className="r"><button className="btn btn-ghost sm" onClick={() => go("/ws/issues")}>All issues</button></div> : null}</div>
           <div className="c-body scroll flush" style={{ padding: "6px 14px" }}>
             <div className="sectitle" style={{ marginTop: 8 }}>Overdue</div>
             <div className="feed">
+              {!attn.length ? <p className="field help" style={{ margin: "4px 0 8px" }}>{API_ON && !can("issues") && M.openIssues ? ((n) => `${n} overdue issue${n === 1 ? "" : "s"}. Your role does not open Issues.`)(DATA.issues.filter((i) => i.status !== "Closed" && /Overdue/.test(i.due)).length) : "Nothing is overdue."}</p> : null}
               {attn.map((a, i) => (
-                <div key={i} className="feed-item clickable" {...activate(() => go("/ws/issues"))}>
+                <div key={i} className="feed-item clickable" {...activate(() => go(API_ON && DATA.issues.some((x) => x.id === a.id) ? `/ws/issues/${encodeURIComponent(a.id)}` : "/ws/issues"))}>
                   <span className="dot" style={{ marginTop: 5, background: a.sev === "High" ? "var(--bad-ink)" : "var(--warn-ink)" }} />
                   <div className="fi"><div className="ft" title={a.title}>{a.title}</div><div className="fm">{a.id}, {a.owner}</div></div>
                   <StatusChip s="Overdue" />
@@ -110,6 +119,7 @@ export default function OverviewModule() {
             </div>
             <div className="sectitle">Audits in motion</div>
             <div className="feed">
+              {!audits.length ? <p className="field help" style={{ margin: "4px 0 8px" }}>No audits in progress.</p> : null}
               {audits.map((a) => (
                 <div key={a.id || a.name} className="feed-item clickable" {...activate(() => go("/ws/audits"))}>
                   <span className="dot" style={{ marginTop: 5, background: "var(--accent)" }} />

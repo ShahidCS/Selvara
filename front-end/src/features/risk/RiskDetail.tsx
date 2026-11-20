@@ -170,7 +170,7 @@ export default function RiskDetail({ id }: { id: string }) {
   const reviewTone = r.review === "Approved" ? "ok" : r.review === "Submitted" ? "warn" : r.review === "Changes requested" ? "bad" : "neutral";
 
   const accBlock = sodReason("you own, edited or submitted this risk, so a different person must record its acceptance", r.owner, r.lastEditedBy, r.submittedBy)
-    || (riskNeedsBoard(scRes) && !hasRole(role, "admin") ? "Only a company admin can record Board-approved acceptance." : null);
+    || (riskNeedsBoard(scRes) && !hasRole(role, "admin") ? "Only a company admin can record Board-approved acceptance." : null) || svc.acceptRoleBlock(r);
   let acceptBlock: React.ReactNode = null;
   if (r.acceptance) {
     const exp: string | undefined = r.acceptance.until; const soon = expiresSoon(exp); const bd = r.acceptance.board;

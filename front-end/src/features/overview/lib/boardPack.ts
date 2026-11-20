@@ -6,6 +6,9 @@ import { esc } from "@/lib/format";
 import { getMe } from "@/lib/audit";
 import { fwReadiness } from "@/lib/frameworks";
 import { metrics, riskOpen, sCur } from "@/lib/metrics";
+import { API_ON, modAllowed } from "@/lib/rbac";
+import { appStore } from "@/lib/store";
+import { apiFetch } from "@/services/http";
 
 const COV_CATS: [string, string[]][] = [["Governance",["Governance","Regulatory","Financial crime","AI governance"]],["Access",["Identity and access"]],["Data & crypto",["Cryptography","Privacy"]],["Operations",["Operations","Change management","Asset management","Incident response","Resilience"]],["Infrastructure",["Network","Endpoint","Physical","Vulnerability management"]],["People & 3P",["People","Third-party risk"]]];
 const COV_FW: [string, string][] = [["iso27001","ISO 27001"],["soc2","SOC 2"],["nistcsf","NIST CSF"],["pci","PCI DSS"],["iso42001","ISO 42001"],["gdpr","GDPR"]];
@@ -17,6 +20,11 @@ export function covCell(fwId: string, cats: string[]): { pct: number; n: number;
   return { pct: Math.round((pass / inCat.length) * 100), n: inCat.length, pass };
 }
 function _covShade(pct: number) {const f=[237,246,245],t=[138,199,193];const r=f.map((x,i)=>Math.round(x+(t[i]-x)*(Math.max(0,Math.min(100,pct))/100)));return "#"+r.map(x=>x.toString(16).padStart(2,"0")).join("");}
+/** Production: the export is recorded in the company's log before the pack opens. The demonstration has nothing to record. */
+export async function exportedBoardPack(): Promise<boolean> {
+  if (!API_ON) return true;
+  try { await apiFetch("/ws/overview/board-pack", { method: "POST", body: "{}" }); return true; } catch { return false; }
+}
 export function boardPackHTML(): string {
   const ME = getMe();
  const M=metrics();const now=new Date();
@@ -26,10 +34,13 @@ export function boardPackHTML(): string {
  const fwBars=fwRows.map(({f,r})=>`<div class="bp-bar"><span class="bp-bar-l">${esc(f.name)}</span><span class="bp-track"><span class="bp-fill" style="width:${r}%"></span></span><span class="bp-bar-v">${r}%</span></div>`).join("");
  const covHead=`<tr><th class="bp-rowh"></th>${COV_CATS.map(c=>`<th class="bp-covh">${esc(c[0])}</th>`).join("")}</tr>`;
  const covBody=COV_FW.map(([fid,fn])=>`<tr><th class="bp-rowh">${esc(fn)}</th>${COV_CATS.map(([,cats])=>{const r=covCell(fid,cats);return r?`<td class="bp-cov" style="background:${_covShade(r.pct)}">${r.pct}%</td>`:'<td class="bp-cov bp-na">—</td>';}).join("")}</tr>`).join("");
+ /* production: a role sees the detail of the modules it may open; for the others the pack gives totals only */
+ const role=appStore.get().role; const sees=(m: string)=>!API_ON||modAllowed(role,"ws",m);
+ const hidden=(n: number,what: string)=>`<tr><td colspan="5" class="bp-empty">${n} ${what}. Your role does not open this module, so the detail is not included.</td></tr>`;
  const risks=DATA.risks.filter(r=>riskOpen(r)&&sCur(r)>=11).sort((a,b)=>sCur(b)-sCur(a)).slice(0,8);
- const riskRows=risks.length?risks.map(r=>`<tr><td class="bp-id">${esc(r.id)}</td><td>${esc(r.title)}</td><td>${esc(r.owner)}</td><td>${esc(r.treat)}</td><td class="bp-ctr"><span class="bp-score">${sCur(r)}</span></td></tr>`).join(""):`<tr><td colspan="5" class="bp-empty">No risks currently above appetite.</td></tr>`;
+ const riskRows=!sees("risk")?hidden(M.aboveAppetite,"risks above appetite"):risks.length?risks.map(r=>`<tr><td class="bp-id">${esc(r.id)}</td><td>${esc(r.title)}</td><td>${esc(r.owner)}</td><td>${esc(r.treat)}</td><td class="bp-ctr"><span class="bp-score">${sCur(r)}</span></td></tr>`).join(""):`<tr><td colspan="5" class="bp-empty">No risks currently above appetite.</td></tr>`;
  const issues=DATA.issues.filter(i=>i.status!=='Closed').slice(0,8);
- const issRows=issues.length?issues.map(i=>`<tr><td class="bp-id">${esc(i.id)}</td><td>${esc(i.title)}</td><td><span class="bp-sev bp-sev-${(i.sev||'').toLowerCase()}">${esc(i.sev)}</span></td><td>${esc(i.owner)}</td><td>${esc(i.due)}</td></tr>`).join(""):`<tr><td colspan="5" class="bp-empty">No open issues.</td></tr>`;
+ const issRows=!sees("issues")?hidden(M.openIssues,"open issues"):issues.length?issues.map(i=>`<tr><td class="bp-id">${esc(i.id)}</td><td>${esc(i.title)}</td><td><span class="bp-sev bp-sev-${(i.sev||'').toLowerCase()}">${esc(i.sev)}</span></td><td>${esc(i.owner)}</td><td>${esc(i.due)}</td></tr>`).join(""):`<tr><td colspan="5" class="bp-empty">No open issues.</td></tr>`;
  const audits=DATA.audits.filter(a=>a.stage!=='Complete');
  const audRows=audits.length?audits.map(a=>`<tr><td>${esc(a.name)}</td><td>${esc(a.fw)}</td><td>${esc(a.auditor)}</td><td>${esc(a.stage)}</td><td class="bp-ctr">${a.progress}%</td></tr>`).join(""):`<tr><td colspan="5" class="bp-empty">No audits in progress.</td></tr>`;
  const kpi=(v: any,l: any,tone?: string)=>`<div class="bp-kpi${tone?' bp-kpi-'+tone:''}"><div class="bp-kpi-v">${v}</div><div class="bp-kpi-l">${l}</div></div>`;
@@ -107,7 +118,7 @@ export function boardPackHTML(): string {
        <table class="bp-table"><thead><tr><th>ID</th><th>Issue</th><th>Severity</th><th>Owner</th><th>Due</th></tr></thead><tbody>${issRows}</tbody></table></div>
      <div class="bp-section"><div class="bp-h"><span class="n">6</span><h2>Audits in motion</h2></div>
        <table class="bp-table"><thead><tr><th>Audit</th><th>Framework</th><th>Auditor</th><th>Stage</th><th class="bp-ctr">Progress</th></tr></thead><tbody>${audRows}</tbody></table></div>
-     <div class="bp-foot"><b>Draft only.</b> This pack is generated from the current Selvara workspace and contains sample data. Compliance and risk outputs require review and approval by qualified compliance, legal or risk personnel before use or distribution. Generated ${esc(dateStr)} · Information Security — Confidential.</div>
+     <div class="bp-foot"><b>Draft only.</b> This pack is generated from the current Selvara workspace${API_ON?"":" and contains sample data"}. Compliance and risk outputs require review and approval by qualified compliance, legal or risk personnel before use or distribution. Generated ${esc(dateStr)} · Information Security — Confidential.</div>
    </div>
   </div></body></html>`;
 }

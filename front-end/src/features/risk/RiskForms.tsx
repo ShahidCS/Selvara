@@ -3,6 +3,8 @@ import { useState } from "react";
 import { LayerFoot, useLayer } from "@/components/shell/LayerProvider";
 import { wsLog } from "@/lib/audit";
 import { Lb, RISK_CATS, RISK_TREATS } from "@/lib/risk";
+import { API_ON } from "@/lib/rbac";
+import { MemberSelect, myMemberId, useMembers } from "@/components/kit/MemberSelect";
 import { bumpData, setModState } from "@/lib/store";
 import { attempt } from "@/features/issues";
 import * as svc from "@/features/risk/services/risks";
@@ -16,12 +18,14 @@ const ScaleOpts = () => <>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>
 /** "Add risk" modal. Current score starts between inherent and residual (cl/ci computed in the service). */
 export function AddRiskForm({ close }: { close: () => void }) {
   const L = useLayer();
+  const members = useMembers();
   const [title, setTitle] = useState(""); const [desc, setDesc] = useState(""); const [cat, setCat] = useState(RISK_CATS[0]); const [owner, setOwner] = useState("J. Avery");
+  const [ownerId, setOwnerId] = useState(() => myMemberId(members));
   const [l, setL] = useState(3), [i, setI] = useState(3), [rl, setRl] = useState(2), [ri, setRi] = useState(2); const [treat, setTreat] = useState(RISK_TREATS[0]);
   const [err, setErr] = useState(false);
   const save = () => attempt(L, async () => {
     if (!title.trim()) { setErr(true); return; }
-    const res = await svc.createRisk({ title, desc, cat, owner, l, i, rl, ri, treat });
+    const res = await svc.createRisk({ title, desc, cat, owner, ownerId: API_ON ? ownerId || myMemberId(members) : undefined, l, i, rl, ri, treat });
     if (!res.ok) { L.toast(res.msg); return; }
     wsLog("risk.created", title.trim().slice(0, 200), "Risk"); close(); L.toast("Risk " + res.id + " added as draft");
     setModState(K_TAB, "reg"); setModState<string | null>(K_SEL, res.id); bumpData();
@@ -34,7 +38,8 @@ export function AddRiskForm({ close }: { close: () => void }) {
         <div className="field"><label htmlFor="rk-desc">Description</label><textarea className="input" id="rk-desc" rows={2} maxLength={1000} style={{ resize: "vertical" }} value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
         <div className="grid2" style={grid2}>
           <div className="field"><label htmlFor="rk-cat">Category</label><select className="select" id="rk-cat" value={cat} onChange={(e) => setCat(e.target.value)}>{RISK_CATS.map((c) => <option key={c}>{c}</option>)}</select></div>
-          <div className="field"><label htmlFor="rk-owner">Owner</label><input className="input" id="rk-owner" maxLength={100} value={owner} onChange={(e) => setOwner(e.target.value)} /></div>
+          {API_ON ? <MemberSelect id="rk-owner" value={ownerId || myMemberId(members)} onChange={setOwnerId} />
+            : <div className="field"><label htmlFor="rk-owner">Owner</label><input className="input" id="rk-owner" maxLength={100} value={owner} onChange={(e) => setOwner(e.target.value)} /></div>}
         </div>
         <div className="sectitle">Inherent (before controls)</div>
         <div className="grid2" style={grid2}>
@@ -57,10 +62,11 @@ export function AddRiskForm({ close }: { close: () => void }) {
 
 export function AddActionForm({ id, close }: { id: string; close: () => void }) {
   const L = useLayer();
-  const [text, setText] = useState(""); const [owner, setOwner] = useState(""); const [due, setDue] = useState(""); const [err, setErr] = useState(false);
+  const members = useMembers();
+  const [text, setText] = useState(""); const [owner, setOwner] = useState(""); const [ownerId, setOwnerId] = useState(() => myMemberId(members)); const [due, setDue] = useState(""); const [err, setErr] = useState(false);
   const add = () => attempt(L, async () => {
     if (!text.trim()) { setErr(true); return; }
-    const res = await svc.addAction(id, { text, owner, due });
+    const res = await svc.addAction(id, { text, owner, ownerId: API_ON ? ownerId || myMemberId(members) : undefined, due });
     if (!res.ok) { L.toast(res.msg); return; }
     wsLog("risk.action.added", id + ": " + res.text, "Risk"); close(); bumpData();
   });
@@ -69,7 +75,8 @@ export function AddActionForm({ id, close }: { id: string; close: () => void }) 
       <div>
         <div className="field"><label htmlFor="rka-text">Action <Req /></label><input className="input" id="rka-text" data-focus maxLength={300} placeholder="e.g. Enforce patch SLA on edge services" value={text} onChange={(e) => setText(e.target.value)} aria-invalid={err} aria-describedby={err ? "rka-err" : undefined} /></div>
         <div className="grid2" style={grid2}>
-          <div className="field"><label htmlFor="rka-owner">Owner</label><input className="input" id="rka-owner" maxLength={100} value={owner} onChange={(e) => setOwner(e.target.value)} /></div>
+          {API_ON ? <MemberSelect id="rka-owner" value={ownerId || myMemberId(members)} onChange={setOwnerId} />
+            : <div className="field"><label htmlFor="rka-owner">Owner</label><input className="input" id="rka-owner" maxLength={100} value={owner} onChange={(e) => setOwner(e.target.value)} /></div>}
           <div className="field"><label htmlFor="rka-due">Due date</label><input className="input" type="date" id="rka-due" value={due} onChange={(e) => setDue(e.target.value)} /></div>
         </div>
         <p className="field help" id="rka-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>Action is required.</p>

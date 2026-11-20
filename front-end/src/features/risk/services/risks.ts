@@ -13,14 +13,20 @@ import {
   isoInDays, rband, riskAcceptState, riskCancelPending, riskCanApprove, riskCanEdit, riskCtrl, riskFindR, riskLog, riskNorm, riskNormAll, riskOpen, riskOpenActions,
   riskPriority, riskRevalidateAcceptance, sCur, sInh, sRes, todayIso,
 } from "@/lib/risk";
+import { API_ON } from "@/lib/rbac";
+import { riskAcceptRoleBlock, riskCloseRoleBlock } from "@/lib/rulesWs";
+/** Production only: the role and state rules the server adds for recording an acceptance (shown on the disabled form). */
+export const acceptRoleBlock = (r: { review?: string; l: number; i: number; rl: number; ri: number }): string | null => (!API_ON ? null : r.review === "Submitted" ? "The risk is awaiting approval. Decide the review first." : riskAcceptRoleBlock(appStore.get().role.replace(/2$/, ""), sRes(r)));
 import { apiFetch, viaApi } from "@/services/http";
+import { wsPost } from "@/services/ws";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* tsconfig is not strict, so a plain flag (not a discriminated union) is used: check `res.ok`, then read the fields. */
 export type Res<T = object> = { ok: boolean; msg?: string } & Partial<T>;
 const DENIED = { ok: false, msg: "You do not have permission to do this" };
 const NOT_FOUND = { ok: false, msg: "Risk not found" };
-const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
+/** Production: the same change on the server (under /api/ws), then the workspace reloads. */
+const post = <T,>(path: string, body: unknown) => wsPost<T>(`/ws${path}`, body);
 const enc = encodeURIComponent;
 const role = () => appStore.get().role;
 const edit = () => riskCanEdit(role());
@@ -30,7 +36,7 @@ const touch = (r: any) => { r.lastEditedBy = getActor().name; };
 const BOARD = "Board / CEO";
 const score = (v: unknown) => Math.max(1, Math.min(5, Math.trunc(Number(v)) || 1)); // 1..5 int (source: parseInt || 1)
 
-export interface RiskInput { title: string; desc: string; cat: string; owner: string; l: number; i: number; rl: number; ri: number; treat: string }
+export interface RiskInput { title: string; desc: string; cat: string; owner: string; ownerId?: string; l: number; i: number; rl: number; ri: number; treat: string }
 
 export function createRisk(f: RiskInput): Promise<Res<{ id: string }>> {
   return viaApi<Res<{ id: string }>>(() => {
@@ -92,7 +98,7 @@ export function toggleAction(id: string, ai: number): Promise<Res<{ done: boolea
     return { ok: true, done: !!r.actions[ai].done, text: String(r.actions[ai].text) };
   }, () => post<Res<{ done: boolean; text: string }>>(`/risks/${enc(id)}/actions/${ai}/toggle`, {}));
 }
-export function addAction(id: string, a: { text: string; owner: string; due: string }): Promise<Res<{ text: string }>> {
+export function addAction(id: string, a: { text: string; owner: string; ownerId?: string; due: string }): Promise<Res<{ text: string }>> {
   return viaApi<Res<{ text: string }>>(() => {
     if (!edit()) return DENIED;
     const r = riskFindR(id); if (!r) return NOT_FOUND;
@@ -224,6 +230,7 @@ export function withdrawBoardEvidence(id: string): Promise<Res> {
 }
 /** Reconcile pending acceptances with their approval requests (approved elsewhere, rejected, withdrawn or expired). Safe to call repeatedly. */
 export function syncBoardEvidence(): void {
+  if (API_ON) return; // production: the server applies decisions and expiries (server/ws/risk.ts)
   sweepExpired();
   DATA.risks.forEach((r: any) => {
     const p = r.pendingAcceptance; if (!p) return;
@@ -236,13 +243,13 @@ export function syncBoardEvidence(): void {
     }
   });
 }
-export function reopenRisk(id: string): Promise<Res> {
+export function reopenRisk(id: string, reason = ""): Promise<Res> {
   return viaApi<Res>(() => {
     if (!edit()) return DENIED;
     const r = riskFindR(id); if (!r) return NOT_FOUND;
     r.status = "Open"; r.treat = "Mitigate"; delete r.acceptance; touch(r); riskLog(r, "Risk reopened");
     return { ok: true };
-  }, () => post<Res>(`/risks/${enc(id)}/reopen`, {}));
+  }, () => post<Res>(`/risks/${enc(id)}/reopen`, { reason }));
 }
 /** Cancel a treatment action that is no longer needed (counts as handled for closing). Reason required. */
 export function cancelAction(id: string, ai: number, whyIn: string): Promise<Res<{ text: string }>> {
@@ -257,6 +264,7 @@ export function cancelAction(id: string, ai: number, whyIn: string): Promise<Res
 }
 /** Why the current person cannot close this risk (null = may close). Used by the UI and re-checked in closeRisk. */
 export function closeBlock(r: any): string | null {
+  if (API_ON) { const why = riskCloseRoleBlock(role().replace(/2$/, "")) || (r.review === "Submitted" ? "The risk is awaiting approval. Decide the review first." : null); if (why) return why; }
   const open = riskOpenActions(r);
   if (open.length) return "Close or cancel the open actions first.";
   if (r.lastEditedBy && isMe(r.lastEditedBy)) return "Segregation of duties: you last edited this risk, so a different person must close it.";
@@ -286,7 +294,7 @@ export function linkParty(pi: number, rid: string): Promise<Res<{ party: string 
     if (!riskFindR(rid)) return NOT_FOUND;
     if (!p.links.includes(rid)) p.links.push(rid);
     return { ok: true, party: p.party };
-  }, () => post<Res<{ party: string }>>(`/risk-parties/${pi}/links`, { riskId: rid }));
+  }, () => post<Res<{ party: string }>>(`/risk-parties/${enc(RISK_PARTIES[pi]?.id ?? "")}/links`, { riskId: rid }));
 }
 export function unlinkParty(pi: number, rid: string): Promise<Res<{ party: string }>> {
   return viaApi<Res<{ party: string }>>(() => {
@@ -294,7 +302,7 @@ export function unlinkParty(pi: number, rid: string): Promise<Res<{ party: strin
     const p = RISK_PARTIES[pi]; if (!p) return { ok: false, msg: "Not found" };
     p.links = p.links.filter((x) => x !== rid);
     return { ok: true, party: p.party };
-  }, () => post<Res<{ party: string }>>(`/risk-parties/${pi}/links/${enc(rid)}/delete`, {}));
+  }, () => post<Res<{ party: string }>>(`/risk-parties/${enc(RISK_PARTIES[pi]?.id ?? "")}/links/${enc(rid)}/delete`, {}));
 }
 export function addParty(f: { party: string; req: string; loc: string }): Promise<Res<{ party: string }>> {
   return viaApi<Res<{ party: string }>>(() => {
@@ -320,15 +328,24 @@ export function takeSnapshot(scopeIn: string): Promise<Res<{ count: number; scop
 }
 
 /** CSV text of the whole register (every cell through csvCell: formula-injection guard). */
+function registerCsv(): string {
+  riskNormAll();
+  const rows = DATA.risks.map((r) => ({
+    id: r.id, title: r.title, cat: r.cat, team: r.team, jur: r.jur, owner: r.owner, l: r.l, i: r.i, cl: r.cl, ci: r.ci, rl: r.rl, ri: r.ri,
+    inherentScore: sInh(r), currentScore: sCur(r), residualScore: sRes(r), rating: rband(sCur(r)).name, priority: riskPriority(r),
+    treat: r.treat, status: r.status, review: r.review, identified: r.identified, reviewed: r.reviewed,
+    boardRef: (r.acceptance?.board || r.pendingAcceptance?.board)?.ref || "", boardDate: (r.acceptance?.board || r.pendingAcceptance?.board)?.date || "", acceptanceState: riskAcceptState(r),
+  } as Record<string, unknown>));
+  return [RISK_CSV_HEADERS.join(",")].concat(rows.map((r) => RISK_CSV_COLS.map((c) => csvCell(r[c])).join(","))).join("\r\n");
+}
+/** The register as CSV. Production builds it from the register the server sent and records the export in the company's log first. */
 export function exportRegisterCsv(): Promise<string> {
-  return viaApi<string>(() => {
-    riskNormAll();
-    const rows = DATA.risks.map((r) => ({
-      id: r.id, title: r.title, cat: r.cat, team: r.team, jur: r.jur, owner: r.owner, l: r.l, i: r.i, cl: r.cl, ci: r.ci, rl: r.rl, ri: r.ri,
-      inherentScore: sInh(r), currentScore: sCur(r), residualScore: sRes(r), rating: rband(sCur(r)).name, priority: riskPriority(r),
-      treat: r.treat, status: r.status, review: r.review, identified: r.identified, reviewed: r.reviewed,
-      boardRef: (r.acceptance?.board || r.pendingAcceptance?.board)?.ref || "", boardDate: (r.acceptance?.board || r.pendingAcceptance?.board)?.date || "", acceptanceState: riskAcceptState(r),
-    } as Record<string, unknown>));
-    return [RISK_CSV_HEADERS.join(",")].concat(rows.map((r) => RISK_CSV_COLS.map((c) => csvCell(r[c])).join(","))).join("\r\n");
-  }, () => apiFetch<string>("/risks/export"));
+  return viaApi<string>(registerCsv, async () => {
+    await apiFetch("/ws/exports", { method: "POST", body: JSON.stringify({ action: "risk.register.exported" }) });
+    return registerCsv();
+  });
+}
+/** A snapshot's frozen content (production, admins), as JSON text for download. */
+export async function snapshotContent(id: string): Promise<string> {
+  return JSON.stringify(await apiFetch<unknown>(`/ws/risks/snapshots/${enc(id)}`), null, 2);
 }

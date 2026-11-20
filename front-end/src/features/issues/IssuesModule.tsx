@@ -1,5 +1,7 @@
 import { DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, activate, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
+import { ModuleTip } from "@/components/kit/ModuleTip";
+import { API_ON } from "@/lib/rbac";
 import { useApp, useData, useModState } from "@/lib/store";
 import { ISSUE_SEVS, ISSUE_STATUSES, isHighSev, whyCannotWrite } from "@/features/issues/services/issues";
 import { useLayer } from "@/hooks/useLayer";
@@ -45,6 +47,7 @@ function IssuesList() {
   const live = DATA.issues.filter(isOpen);
   return (
     <Page mod="issues" acts={<button className="btn btn-primary" disabled={!!writeWhy} title={writeWhy || undefined} onClick={() => go("/ws/issues/new")}><Icon name="plus" />New issue</button>}>
+      <ModuleTip mod="issues" force={API_ON && !DATA.issues.length} />
       <KpiStrip label="Issue summary">
         <KpiTile label="Open issues" value={live.length} caption={`${DATA.issues.length} in total`} />
         <KpiTile label="Overdue" value={live.filter((i: Issue) => /Overdue/.test(i.due)).length} delta={live.some((i: Issue) => /Overdue/.test(i.due)) ? { tone: "bad", text: "Needs action" } : { tone: "good", text: "None" }} caption="Past their due date" />

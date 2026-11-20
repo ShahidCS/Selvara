@@ -8,12 +8,13 @@ import { approvals, whyCannotApprove, type Approval } from "@/lib/approvals";
 import { getActor, isSamePerson, SodError } from "@/lib/sod";
 import { useApp, useData } from "@/lib/store";
 import { decide, type Decision } from "@/services/sodApprovals";
+import { uiMessage } from "@/lib/grcSod";
 
 /** Run a (possibly async) handler. A SodError (a rule the user can act on) shows its message; anything else a generic text (ASVS 7.4.1). */
 export async function attempt(L: LayerApi, fn: () => Promise<void> | void) {
   try { await fn(); } catch (e) {
     const rule = e instanceof SodError || (e as { name?: string } | null)?.name === "SodError";
-    L.toast(rule ? (e as Error).message : "Something went wrong. Please try again.", false);
+    L.toast(rule ? (e as Error).message : uiMessage(e), false); // a production refusal (4xx) is the server's own words
   }
 }
 
@@ -27,7 +28,7 @@ function DecideForm({ a, decision }: { a: Approval; decision: Decision }) {
   const [reason, setReason] = useState(""); const [err, setErr] = useState("");
   const go = () => attempt(L, async () => {
     if (decision !== "withdraw" && reason.trim().length < 10) { setErr("Give a reason of at least 10 characters."); return; }
-    try { await decide(a.id, decision, reason); } catch (e) { setErr(e instanceof SodError ? e.message : "Something went wrong. Please try again."); return; }
+    try { await decide(a.id, decision, reason); } catch (e) { setErr(uiMessage(e)); return; }
     L.closeLayer(); L.toast(decision === "approve" ? "Decision recorded" : decision === "reject" ? "Request rejected" : "Request withdrawn");
   });
   return (

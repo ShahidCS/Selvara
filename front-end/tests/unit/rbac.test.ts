@@ -14,8 +14,9 @@ describe("module access in production (API mode) and in the demonstration", () =
   it("production hides modules without a server API, even for roles that list every module", () => {
     expect(modAllowed("admin", "ws", "controls", true)).toBe(true); // production programme group 1
     expect(modAllowed("admin", "ws", "policies", true)).toBe(true); // group 2
-    expect(modAllowed("admin", "ws", "risk", true)).toBe(false); // not on the server yet
-    expect(modAllowed("admin", "ws", "overview", true)).toBe(false);
+    expect(modAllowed("admin", "ws", "risk", true)).toBe(true); // group 3
+    expect(modAllowed("admin", "ws", "overview", true)).toBe(true);
+    expect(modAllowed("admin", "ws", "vendors", true)).toBe(false); // not on the server yet
     expect(modAllowed("super", "admin", "billing", true)).toBe(false);
     expect(modAllowed("super", "admin", "customers", true)).toBe(true); // Admin Console, slice 3a
     expect(modAllowed("admin", "ws", "team", true)).toBe(true);
@@ -27,12 +28,10 @@ describe("module access in production (API mode) and in the demonstration", () =
     expect(modAllowed("viewer", "ws", "team", true)).toBe(false);
   });
 
-  it("production lands a company admin on Team & Settings, platform staff on Customers & Usage, and others on their first module on the server, and a role with nothing on the server yet on its account page", () => {
-    expect(landingPath("admin", "ws", true)).toBe("/ws/team");
-    expect(firstMod("admin", "ws", true)).toBe("team");
-    expect(landingPath("owner", "ws", true)).toBe("/ws/frameworks"); expect(landingPath("auditor", "ws", true)).toBe("/ws/frameworks");
-    expect(landingPath("analyst", "ws", true)).toBe("/ws/controls");
-    expect(landingPath("employee", "ws", true)).toBe("/ws/policies");
+  it("production lands company roles on the Overview, platform staff on Customers & Usage, and a role with nothing on the server yet on its account page", () => {
+    expect(landingPath("admin", "ws", true)).toBe("/ws/overview");
+    expect(firstMod("admin", "ws", true)).toBe("overview");
+    for (const r of ["owner", "auditor", "analyst", "employee"]) expect(landingPath(r, "ws", true)).toBe("/ws/overview");
     for (const r of ["vendor", "viewer"]) expect(landingPath(r, "ws", true)).toBe("/auth");
     expect(landingPath("super", "admin", true)).toBe("/admin/customers");
     expect(landingPath("support", "admin", true)).toBe("/admin/customers");

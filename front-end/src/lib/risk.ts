@@ -51,11 +51,12 @@ export const RISK_STATUSES = ["Open", "In review", "Accepted", "Closed"];
 export const RISK_SCORE_FIELDS = ["l", "i", "cl", "ci", "rl", "ri"];
 
 export interface RiskEnt { id: string; title: string; owner: string; kids: string[] }
-export const RISK_ENT: RiskEnt[] = clone(refs.RISK_ENT);
-export interface RiskParty { party: string; req: string; loc: string; links: string[] }
+const PRODUCTION = (process.env.NEXT_PUBLIC_API_MODE || "mock") === "http"; // production fills these from the server (services/ws.ts)
+export const RISK_ENT: RiskEnt[] = PRODUCTION ? [] : clone(refs.RISK_ENT);
+export interface RiskParty { id?: string; party: string; req: string; loc: string; links: string[] }
 /** Mutable (the prototype mutated this list in place). */
-export const RISK_PARTIES: RiskParty[] = clone(refs.RISK_PARTIES);
-export interface RiskSnapshot { id: string; at: string; count: number; scope: string; hash: string; by: string; shared: boolean }
+export const RISK_PARTIES: RiskParty[] = PRODUCTION ? [] : clone(refs.RISK_PARTIES);
+export interface RiskSnapshot { id: string; at: string; count: number; scope: string; hash: string; by: string; shared: boolean; sha256?: string }
 export const RISK_SNAPSHOTS: RiskSnapshot[] = [];
 
 export const todayIso = () => nowStamp().slice(0, 10);

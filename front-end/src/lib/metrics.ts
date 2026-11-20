@@ -11,9 +11,11 @@ export const sRes = (r: RiskRow) => r.rl * r.ri;
 /** Computed metrics (single source of truth for Overview / Reports). */
 export function metrics() {
   const fw = DATA.frameworks;
-  const compliance = Math.round(fw.reduce((a, f) => a + fwReadiness(f.id) * f.controls, 0) / fw.reduce((a, f) => a + f.controls, 0));
+  const weight = fw.reduce((a, f) => a + f.controls, 0);
+  const compliance = weight ? Math.round(fw.reduce((a, f) => a + fwReadiness(f.id) * f.controls, 0) / weight) : 0;
   const openRisks = DATA.risks.filter((r) => r.status !== "Accepted" && r.status !== "Closed").length;
-  const aboveAppetite = DATA.risks.filter((r) => r.rl * r.ri >= 8).length;
+  // one definition everywhere (risk dashboard, Overview, board pack): an open risk whose current score is at or above appetite (11)
+  const aboveAppetite = DATA.risks.filter((r) => riskOpen(r) && sCur(r) >= 11).length;
   const overdueControls = DATA.controls.filter((c) => c.status === "Fail").length;
   const needsEvidence = DATA.controls.filter((c) => c.status === "Needs evidence").length;
   const openIssues = DATA.issues.filter((i) => i.status !== "Closed").length;

@@ -7,7 +7,9 @@ import { fwEdits, touchFw } from "@/lib/frameworks";
 import { approvals, type Approval } from "@/lib/approvals";
 import { delegations } from "@/lib/delegation";
 import { setAcks, setTasks } from "@/lib/me";
-import { ACCESS_REQUESTS, ACCESS_REVIEWS } from "@/lib/requests";
+import { ACCESS_REQUESTS, ACCESS_REVIEWS, VENDOR_REQS } from "@/lib/requests";
+import { RISK_ENT, RISK_PARTIES, RISK_SNAPSHOTS } from "@/lib/risk";
+import { SCHED_PACKS } from "@/lib/trustData";
 import { API_ON, modAllowed } from "@/lib/rbac";
 import { SERVER_KINDS } from "@/lib/rulesWs";
 import { appStore, bumpData, createStore } from "@/lib/store";
@@ -17,7 +19,14 @@ import { ApiError, apiFetch, API_BASE } from "./http";
 export interface WsMember { id: string; name: string; role: string }
 /** The company's active members (owner and assignee pickers), and what the server says about optional services. */
 export interface WsTask { id: string; title: string; policyId: string; kind: "ack" | "approve" | "publish" | "emergency" }
-export const wsMeta = createStore<{ members: WsMember[]; library: any[]; filesConfigured: boolean; loaded: Record<string, boolean>; error: string; tasks: WsTask[] }>({ members: [], library: [], filesConfigured: false, loaded: {}, error: "", tasks: [] });
+/** My Work as the server computes it for the signed-in person. */
+export interface WsWork {
+  issues: { id: string; title: string; sev: string; status: string; dueDate: string; due: string }[];
+  actions: { riskId: string; risk: string; text: string; due: string }[];
+  reviews: { t: string; m: string; sev: string; path: string }[];
+  kpis: { assigned: number; overdue: number; dueWeek: number; approvals: number };
+}
+export const wsMeta = createStore<{ members: WsMember[]; library: any[]; filesConfigured: boolean; loaded: Record<string, boolean>; error: string; tasks: WsTask[]; work: WsWork | null }>({ members: [], library: [], filesConfigured: false, loaded: {}, error: "", tasks: [], work: null });
 const fill = (arr: any[], items: any[]) => { arr.length = 0; arr.push(...items); };
 const setDelegations = (list: any[]) => delegations.set({ list: list.map((x) => ({ ...x, fromRoleId: "", toRoleId: "" })) });
 
@@ -60,6 +69,22 @@ const LOADERS: Record<string, (b: any) => void> = {
     wsMeta.set({ filesConfigured: !!b.filesConfigured });
     setApprovals(["evidence.delete"], b.approvals);
   },
+  /** The risk register, its interested parties and snapshots; enterprise roll-ups are not kept in production yet. */
+  risk(b) {
+    DATA.risks = b.risks; fill(RISK_PARTIES, b.parties); fill(RISK_SNAPSHOTS, b.snapshots); fill(RISK_ENT, []);
+    setApprovals(["risk.board-evidence", "risk.import"], b.approvals);
+  },
+  issues(b) { DATA.issues = b.issues; setApprovals(["issue.close"], b.approvals); },
+  reports(b) { DATA.reports = b.reports.map((x: any) => ({ ...x })); fill(SCHED_PACKS, b.schedules); setApprovals(["report.distribution"], b.approvals); },
+  work(b) { wsMeta.set({ work: b }); },
+  /** Posture figures of the modules the person cannot open (scores and statuses only, no titles or owners). Loaded last: it never replaces
+   *  what a module the person can open has loaded. */
+  overview(b) {
+    if (b.frameworks) LOADERS.frameworks(b.frameworks);
+    if (b.controls) DATA.controls = b.controls;
+    if (b.risks) DATA.risks = b.risks;
+    if (b.issues) DATA.issues = b.issues;
+  },
 };
 function setApprovals(kinds: string[], list: Approval[]) {
   approvals.set((s) => ({ list: [...list, ...s.list.filter((a) => !kinds.includes(a.kind))] }));
@@ -70,9 +95,11 @@ let loadedFor = "";
 /** Empties every server-backed collection (another company or role: nothing of the previous one may remain on screen). */
 function clearAll() {
   DATA.frameworks = []; DATA.controls = []; DATA.tests = []; DATA.evidence = []; DATA.policies = []; DATA.people = []; DATA.access = [];
+  DATA.risks = []; DATA.issues = []; DATA.reports = [];
   fill(ACCESS_REQUESTS, []); fill(ACCESS_REVIEWS, []); setAcks("", {}); setTasks([]); delegations.set({ list: [] });
+  fill(RISK_PARTIES, []); fill(RISK_SNAPSHOTS, []); fill(RISK_ENT, []); fill(SCHED_PACKS, []); fill(VENDOR_REQS, []);
   approvals.set((s) => ({ list: s.list.filter((a) => !SERVER_KINDS.includes(a.kind)) }));
-  wsMeta.set({ members: [], library: [], loaded: {}, tasks: [] });
+  wsMeta.set({ members: [], library: [], loaded: {}, tasks: [], work: null });
 }
 /** Loads every server module the person's role may open. Safe to call often: concurrent calls share one load. */
 export function loadWorkspace(): Promise<void> {

@@ -3,6 +3,9 @@ import { Empty, StatusChip, Table, activate } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { Ib, Lb, RBANDS, RISK_STATUSES, riskOpen, riskPriority, riskRatingOf, sCur, sInh, sRes } from "@/lib/risk";
 import { useModState } from "@/lib/store";
+import { myMemberId } from "@/components/kit/MemberSelect";
+import { wsMeta } from "@/services/ws";
+import { API_ON } from "@/lib/rbac";
 import { K_RF, K_SEL, RF_INIT, RiskFilter, riskClearFilters, riskOpenDetail } from "./nav";
 import { ScoreChip } from "./RiskBits";
 import PendingImports from "./PendingImports";
@@ -31,7 +34,7 @@ export default function RiskRegister() {
     if (RF.cat !== "all" && r.cat !== RF.cat) return false;
     if (RF.team !== "all" && r.team !== RF.team) return false;
     if (RF.jur !== "all" && r.jur !== RF.jur) return false;
-    if (RF.mine && !/Avery/.test(r.owner)) return false; // matches the signed-in demo persona (synthetic surname)
+    if (RF.mine && (API_ON ? r.ownerId !== myMemberId(wsMeta.get().members) : !/Avery/.test(r.owner))) return false; // production: the signed-in person; demo: the persona (synthetic surname)
     if (RF.cell) {
       if (!riskOpen(r)) return false;
       const lk = RF.cell.v === "inh" ? r.l : RF.cell.v === "res" ? r.rl : r.cl || r.l;

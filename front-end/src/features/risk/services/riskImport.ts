@@ -2,12 +2,13 @@
  * approval request (kind "risk.import", one admin approver who is not the importer); approving applies the staged rows. Imports of only NEW ids apply at once.
  * In http mode the already-validated rows are POSTed; the server must re-validate (ids, ranges, lengths, RBAC) and enforce the same four-eyes rule. */
 import { wsLog } from "@/lib/audit";
-import { approve as approveReq, getApproval, reject as rejectReq, requestApproval, sweepExpired } from "@/lib/approvals";
+import { approve as approveReq, getApproval, reject as rejectReq, requestApproval, sweepExpired, withdraw as withdrawReq } from "@/lib/approvals";
 import { SodError, assertRole, getActor } from "@/lib/sod";
 import { riskCanEdit } from "@/lib/risk";
 import { clampText } from "@/lib/security";
 import { applyImport, type Parsed } from "@/features/risk/import/convert";
-import { viaApi, apiFetch } from "@/services/http";
+import { viaApi } from "@/services/http";
+import { wsPost } from "@/services/ws";
 
 export const IMPORT_KIND = "risk.import";
 export interface ImportResult { nNew: number; nUpd: number; staged?: boolean; approvalId?: string }
@@ -28,10 +29,7 @@ export function commitRiskImport(rows: Parsed[], fileName: string): Promise<Impo
       wsLog("risk.import.staged", ap.id + ": " + nNew + " new, " + nUpd + " updates (" + fn + ") awaiting approval", "Risk");
       return { nNew, nUpd, staged: true, approvalId: ap.id };
     },
-    () => apiFetch<ImportResult>("/risks/import", {
-      method: "POST",
-      body: JSON.stringify({ fileName, rows: rows.filter((r) => r.result !== "Skip").map((r) => r._apply) }),
-    }),
+    () => wsPost<ImportResult>("/ws/risks/import", { fileName, rows: rows.filter((r) => r.result !== "Skip").map((r) => r._apply) }),
   );
 }
 
@@ -55,6 +53,11 @@ export function decideRiskImport(id: string, decision: "approve" | "reject", rea
       wsLog("risk.import.approved", id + ": applied " + res.nNew + " new, " + res.nUpd + " updated (" + p.fileName + ")", "Risk");
       return res;
     },
-    () => apiFetch<ImportResult>(`/risks/import/${encodeURIComponent(id)}/decision`, { method: "POST", body: JSON.stringify({ decision, reason: reasonIn }) }),
+    () => wsPost<ImportResult>(`/ws/risk-imports/${encodeURIComponent(id)}/${decision}`, { reason: reasonIn }),
   );
+}
+/** The importer withdraws a staged import (nothing was changed). */
+export function withdrawRiskImport(id: string): Promise<unknown> {
+  return viaApi<unknown>(() => { withdrawReq(id); wsLog("risk.import.withdrawn", id + ": not applied", "Risk"); return true; },
+    () => wsPost(`/ws/risk-imports/${encodeURIComponent(id)}/withdraw`, {}));
 }
