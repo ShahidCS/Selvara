@@ -58,4 +58,5 @@ export interface Deps { auth: AuthProvider; store: Store; dir: import("./directo
   /** The AI model (server/claude.ts); absent until the owner adds the key. */ ai?: import("./claude").AiClient;
   /** Outgoing webhook delivery (server/ws/webhooks.ts); tests use a stand-in. */ hooks?: import("./ws/webhooks").HookSender;
   /** Integrations (group 7): the network the connectors use and the platform credentials; both default to the real ones, tests use stand-ins. */ net?: import("./integrations/net").Net; intEnv?: import("./integrations/providers").IntegrationEnv;
-  /** Group 8: the platform's own records (billing, rates) and the payment provider (undefined: from the environment; null: none). */ pstore?: import("./platstore").PlatStore; payments?: import("./billing").Payments | null }
+  /** Group 8: the platform's own records (billing, rates) and the payment provider (undefined: from the environment; null: none). */ pstore?: import("./platstore").PlatStore; payments?: import("./billing").Payments | null;
+  /** Group 8b: email delivery (undefined: from the environment; null: none, the "not configured" state). */ mail?: import("./mail").Mailer | null }

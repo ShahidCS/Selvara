@@ -5,6 +5,8 @@
    append-only audit log. Since slice 2a (docs/architecture/BACKEND_FOUNDATION.md) a session belongs to one company and the person's role comes
    from their membership there (or from platform staff), checked again on every request; join requests, lockout settings and the member list are
    per company. Handlers take a plain request and return a plain response, so they are tested without a network. */
+import { sendMail } from "./mail";
+import { vendorPortalRoutes } from "./vendorportal";
 import { CHALLENGE, CUSTOM_BOUNDS, LOCKOUT, MFA, REAUTH_MS, RESET, type LockoutRule } from "@/lib/accountSecurity";
 import { checkPassword, POLICY } from "@/lib/credentials";
 import { IP_POLICY, LEVEL_LABEL, REPUTATION } from "@/lib/ipGuard";
@@ -448,7 +450,9 @@ const joinDecide = admin(async (d, r, { p: me, a, company }) => {
   if (!done) return err(409, "That request has already been decided.");
   // A new person's account becomes usable with their first approval; a rejection leaves it unconfirmed (it still cannot sign in).
   if (approve && p.status !== "Active") { await d.auth.confirmUser(p.id); await d.store.updateProfile(p.id, { status: "Active", decidedBy: me.person, reason: why }); }
-  return ok({ id, status: approve ? "Active" : "Rejected" });
+  // the applicant learns the outcome by email when email is set up (the admin's reason is not sent)
+  const mail = await sendMail(d, p.email, { t: "join-decided", company: company.name, approved: approve, link: `${d.site.origin}/login` }, { tenantId: company.id, actor: me.person, ip: r.ip });
+  return ok({ id, status: approve ? "Active" : "Rejected", emailed: mail.sent });
 });
 /** The company's lockout setting, for the Team & Settings page. */
 const lockoutGet = admin(async (d, _r, { p: me, company }) => ok({ lockout: await d.dir.lockoutOf(company.id, me.id) }));
@@ -469,6 +473,13 @@ const lockoutSet = admin(async (d, r, { p: me, a, company }) => {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HOUR = 3600_000;
 const inviteLink = (d: Deps, token: string) => `${d.site.origin}/login#invite=${token}`;
+/** With email configured, the invitation goes to the person and the link is not shown to the admin; otherwise (or if sending failed) the
+ *  admin gets the link once, to send themselves, as before. */
+async function inviteOut(d: Deps, r: Req, c: { p: Profile; company: Company }, email: string, role: string, token: string, expiresAt: number) {
+  const link = inviteLink(d, token);
+  const m = await sendMail(d, email, { t: "invite", company: c.company.name, role, link, expires: new Date(expiresAt).toISOString().slice(0, 16).replace("T", " ") + " UTC" }, { tenantId: c.company.id, actor: c.p.person, ip: r.ip });
+  return m.sent ? { emailed: true, email, expiresAt } : { emailed: false, mail: m.reason, link, expiresAt };
+}
 const outcome = (o: Outcome): Res => ("error" in o ? err(o.code, o.error) : ok({ status: o.status }));
 const logFor = (d: Deps, r: Req, c: Ctx): Log => (action, target) => entry(d, r, actorOf(c.p, c.a), action, target);
 /** Grants or changes a member's role. Employee-level roles change at once; admin and owner need a second admin (SOD_MATRIX section 3, Team). */
@@ -535,7 +546,7 @@ const inviteCreate = admin(async (d, r, c) => {
   const token = randomId(32);
   const id = await d.dir.createInvitation(company.id, me.id, { email, role, tokenHash: await sha256Hex(token) }, now, entry(d, r, actorOf(me, c.a), "member.invited", `${email} (${role})`));
   if (!id) return err(409, "An invitation for this email is already pending.");
-  return ok({ pending: false, id, link: inviteLink(d, token), expiresAt: now + INVITE_TTL_H * HOUR });
+  return ok({ pending: false, id, ...(await inviteOut(d, r, c, email, role, token, now + INVITE_TTL_H * HOUR)) });
 });
 /** `link` replaces the invitation's link (the old one stops working) and shows the new one once; `revoke` ends the invitation. */
 const inviteAction = admin(async (d, r, c) => {
@@ -550,7 +561,7 @@ const inviteAction = admin(async (d, r, c) => {
   }
   const token = randomId(32);
   const v = await d.dir.setInvitationLink(c.company.id, c.p.id, id, await sha256Hex(token), now, entry(d, r, actorOf(c.p, c.a), "member.invitation.link_created", `${i.email} (${i.role}); ${id}`));
-  return v ? ok({ link: inviteLink(d, token), expiresAt: v.expiresAt }) : err(409, "This invitation is no longer pending.");
+  return v ? ok(await inviteOut(d, r, c, i.email, i.role, token, v.expiresAt)) : err(409, "This invitation is no longer pending.");
 });
 
 /** Method + path -> handler. Paths are relative to /api. */
@@ -566,7 +577,7 @@ export const ROUTES: Record<string, H> = {
 };
 const helperEntry = (d: Deps, r: Req, p: Profile, a: Access, action: string, target: string) => entry(d, r, actorOf(p, a), action, target);
 Object.assign(ROUTES, adminRoutes({ signed, entry: helperEntry, randomId, sha256Hex }), supportRoutes({ signed, companyAdmin: admin, entry: helperEntry }));
-Object.assign(ROUTES, workspaceRoutes({ signed }));
+Object.assign(ROUTES, workspaceRoutes({ signed }), vendorPortalRoutes());
 Object.assign(ROUTES, v1Routes());
 Object.assign(ROUTES, admin8Routes({ signed, entry: helperEntry }), { "POST billing/stripe/webhook": stripeWebhook });
 /** Payment-provider webhooks: signed by the provider over the raw body (JSON), never by the session cookie. */
@@ -574,7 +585,7 @@ const WEBHOOK_ROUTES = new Set(["POST billing/stripe/webhook"]);
 /** The company API (/api/v1): authenticated by an API key in the Authorization header, never by the session cookie, so the cross-site check does not apply. */
 const KEY_ROUTES = new Set(["POST v1/events", "POST billing/stripe/webhook"]);
 /** Routes that take raw bytes (application/octet-stream) instead of JSON: evidence file uploads (pages/api/[...path].ts reads them). */
-export const RAW_ROUTES = new Set(["POST ws/evidence/:id/files", "POST ws/kb-docs", "POST ws/trust/resources/:id/file"]);
+export const RAW_ROUTES = new Set(["POST ws/evidence/:id/files", "POST ws/kb-docs", "POST ws/trust/resources/:id/file", "POST vendor-portal/files/:q"]);
 
 /** Finds the handler for a request; `:name` segments match anything. */
 export function route(method: string, path: string[]): H | null { return match(method, path)?.[1] ?? null; }

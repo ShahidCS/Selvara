@@ -1,7 +1,7 @@
 /* Vendor submission model + pure rules for the external vendor assessment portal (board: vendor-assessment-portal).
  * No workspace RBAC, no audit-log import: this surface is used by unauthenticated external people. Everything here is a UI convenience;
  * the real server must re-evaluate every rule (see docs/guides/checklist/vendorportal.md, Security notes). */
-import questions from "@/features/vendorportal/data/vendorQuestions.json";
+import questions from "@/data/vendorQuestions.json";
 import invite from "@/features/vendorportal/data/vendorInviteSeed.json";
 import { randInt, safeFileName, type UploadRule } from "@/lib/security";
 

@@ -13,13 +13,14 @@ export interface Entry { id: string; invoiceId: string; type: string; review?: s
 export interface PlanRequest { id: string; tenantId: string; plan: string; at: number; byName?: string; company?: string }
 export interface Billing {
   accounts: Account[]; invoices: Invoice[]; entries: Entry[]; companies: { id: string; ref: string; name: string; status: string; hasAccount: boolean }[];
-  prices: { version: number; plans: Record<string, { monthly: number; seats: number }>; at: number; by: string }; methods: string[]; payments: { mode: "test" | "live" } | null; planRequests: PlanRequest[]; thresholdUsd: number;
+  prices: { version: number; plans: Record<string, { monthly: number; seats: number }>; at: number; by: string }; methods: string[]; payments: { mode: "test" | "live" } | null; planRequests: PlanRequest[]; thresholdUsd: number; /** email is set up for the platform */ mail: boolean;
 }
 export const billing = () => apiFetch<Billing>("/admin/billing");
 export interface AccountForm { tenantId: string; plan: string; cycle: string; currency: string; country: string; method: string; contactName: string; contactEmail: string; address: string; trialDays: number; reason: string; ticket: string }
 export const saveAccount = (f: AccountForm) => post<unknown>("/admin/billing/accounts", f);
 export const changePrices = (plans: Record<string, { monthly: number; seats: number }>, reason: string, ticket: string) => post<Pending>("/admin/billing/pricing", { plans, reason, ticket });
-export const issue = (upTo: string) => post<{ issued: string[]; skipped: string[] }>("/admin/billing/issue", { upTo });
+export const issue = (upTo: string) => post<{ issued: string[]; skipped: string[]; emailed: number; mail: boolean }>("/admin/billing/issue", { upTo });
+export const emailInvoice = (id: string) => post<{ sent: true }>(`/admin/billing/invoices/${encodeURIComponent(id)}/email/send`, {});
 export type FinanceKind = "credit" | "refund" | "markpaid" | "writeoff" | "void";
 export const finance = (id: string, kind: FinanceKind, amount: string, reason: string, ticket: string) => post<Invoice | Pending>(`/admin/billing/invoices/${encodeURIComponent(id)}/${kind}`, { amount, reason, ticket });
 export const paymentLink = (id: string) => post<{ url: string }>(`/admin/billing/invoices/${encodeURIComponent(id)}/payment-link/create`, {});

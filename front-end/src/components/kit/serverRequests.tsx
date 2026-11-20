@@ -17,12 +17,13 @@ export const utcMin = (ms: number) => new Date(ms).toISOString().slice(0, 16).re
 type Decide = (id: string, decision: "approve" | "reject" | "withdraw", reason?: string) => Promise<unknown>;
 
 /** Shows an invitation link once, to copy and send to the person outside Selvara. */
-export function LinkBox({ link, email, expiresAt }: { link: string; email: string; expiresAt: number }) {
+export function LinkBox({ link, email, expiresAt, mail }: { link: string; email: string; expiresAt: number; /** why it was not emailed */ mail?: string }) {
   const L = useLayer();
   const copy = async () => { try { await navigator.clipboard.writeText(link); L.toast("Link copied"); } catch { L.toast("Select the link and copy it", false); } };
   return (
     <>
       <p style={{ margin: "0 0 12px", lineHeight: 1.5 }}>Send this link to {email} yourself, for example by email. It works once, only with that email address, until {utcMin(expiresAt)}. It is shown only now: if it is lost, create a new link (the old one stops working).</p>
+      <p className="field help" style={{ margin: "0 0 12px" }}>{mail === "failed" || mail === "rate limited" ? "Selvara could not email it just now, so it is shown here." : "Selvara does not email it: email is not set up for this platform yet."}</p>
       <div className="field"><label htmlFor="lb-link">Invitation link</label><input className="input num" id="lb-link" data-focus readOnly value={link} onFocus={(e) => e.currentTarget.select()} /></div>
       <div className="btngrp" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
         <button className="btn btn-primary" onClick={copy}>Copy link</button>

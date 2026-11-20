@@ -17,6 +17,18 @@ import { approvalsView, invalid, membersOf, missing, ok, refuse, str, sweepAppro
 import { pendingOf, registerFourEyes } from "./foureyes";
 import type { VendorRequest } from "./insight";
 import type { Actor, Rec, WsTx } from "./store";
+import { isEmail } from "@/lib/security";
+import { mailConfigured } from "../mail";
+import { workEmailBlock } from "../visitor";
+import { mailPortal, newPortal, PORTAL_QUESTIONS, portalReadiness, type PortalQuestionnaire } from "../vendorportal";
+
+/** A questionnaire as the company sees it: a portal one without its link hash, file locations or clarification base. */
+const portalView = (q: PortalQuestionnaire, now: number) => {
+  if (!q.portal) return q;
+  const p = q.portal;
+  return { ...q, portal: { email: p.email, due: p.due, expiresAt: p.expiresAt, linkLive: !p.dead && p.expiresAt > now, version: p.version, clarify: p.clarify, history: p.history, readiness: portalReadiness(p),
+    items: Object.fromEntries(Object.entries(p.items).map(([k, i]) => [k, { answer: i.answer, comment: i.comment, file: i.file ? { name: i.file.name } : null }])) } };
+};
 
 export interface Cert { id: string; type: string; expires: string; recordedBy: string; waived?: boolean; waiver?: { approvalId: string; approvedBy: string; requestedBy: string; reason: string } }
 export interface Finding { id: string; title: string; sev: string; status: "Open" | "Closed"; by: string; at: string; closedBy?: string; closeReason?: string }
@@ -108,7 +120,9 @@ export function vendorRoutes(h: WsHelpers) {
       vendors: (await t.list<Vendor>("vendor")).map((x) => vendorView(x.data, today, pending)),
       requests: manager ? (await t.list<VendorRequest>("vendor-request")).map((x) => x.data).filter((x) => x.status === "Pending").reverse()
         .map((x) => ({ ...x, pendingApproval: pending.find((a) => a.kind === "vendor.request.critical" && a.payload.reqId === x.id)?.id })) : [],
-      questionnaires: (await t.list<VendorQuestionnaire>("vendor-questionnaire")).map((x) => x.data),
+      // a portal questionnaire's link hash and file locations never leave the server
+      questionnaires: (await t.list<PortalQuestionnaire>("vendor-questionnaire")).map((x) => portalView(x.data, t.now)),
+      mail: mailConfigured(d),
       contacts: ms.filter((m) => m.role === "vendor").map((m) => ({ id: m.id, name: m.name })),
       approvals: await approvalsView(t, VENDOR_KINDS, names),
     };
@@ -251,18 +265,75 @@ export function vendorRoutes(h: WsHelpers) {
     await t.notify(contact!.id, `${t.actor.name} sent you the security questionnaire for ${v.name}.`);
     return { name: v.name, id };
   });
-  /** Reopens a submitted questionnaire with a note (a clarification round). */
+  /** Sends the vendor assessment to a contact's work email: they answer in the standalone vendor portal (server/vendorportal.ts). Needs email. */
+  const sendQByEmail = wsRoute(h, "vendors", async (d, r, c) => {
+    refuse(vendorManageBlock(c.actor.role));
+    if (!mailConfigured(d)) invalid("Email is not set up yet. Invite the vendor's contact with the Vendor role and send it to them instead.");
+    const email = str(r.body.email, 254).toLowerCase(); if (!isEmail(email)) invalid("Enter the contact's work email.");
+    const block = workEmailBlock(email); if (block) invalid(block);
+    const dueIn = Math.round(Number(r.body.dueDays ?? 14)); if (!(dueIn >= 3 && dueIn <= 60)) invalid("Choose a due date 3 to 60 days ahead.");
+    const out = await tx(d, c, async (t) => {
+      const rec = await load(t, r.path[2]); const v = rec.data;
+      if ((await t.list<VendorQuestionnaire>("vendor-questionnaire")).some((x) => x.data.vendorId === v.id && x.data.status !== "Submitted")) invalid("A questionnaire is already waiting for this vendor's answers.");
+      const company = (await d.dir.companiesOf(t.actor.id)).find((m) => m.company.id === t.actor.tenantId)?.company.name ?? "your customer";
+      const id = `VQ-${await t.next("vendor-questionnaire", 0)}`; const { portal, token } = newPortal(email, day(t.now + dueIn * 86_400_000), t.now);
+      const q: PortalQuestionnaire = { id, vendorId: v.id, vendor: v.name, contact: email, contactId: "", customer: company, questions: PORTAL_QUESTIONS.map((x) => ({ q: x.text, required: x.critical })),
+        answers: PORTAL_QUESTIONS.map(() => ""), status: "Sent", sentBy: t.actor.name, sentById: t.actor.id, at: day(t.now), portal };
+      await t.insert("vendor-questionnaire", id, q);
+      v.status = "In review"; await save(t, rec);
+      await t.audit("vendor.questionnaire.sent", `${v.name} to ${email} through the vendor portal (${id}), due ${portal.due}`, "Vendor");
+      return { q, token };
+    });
+    const m = await mailPortal(d, r, c.actor, out.q, out.token);
+    return ok({ ok: true, id: out.q.id, name: out.q.vendor, emailed: m.sent });
+  });
+  /** A new portal link for a questionnaire sent by email (the old one stops working; three wrong addresses are forgiven), emailed again. */
+  const portalRelink = wsRoute(h, "vendors", async (d, r, c) => {
+    refuse(vendorManageBlock(c.actor.role));
+    if (!mailConfigured(d)) invalid("Email is not set up yet.");
+    const out = await tx(d, c, async (t) => {
+      const rec = (await t.get<PortalQuestionnaire>("vendor-questionnaire", str(r.path[2], 20))) ?? missing("Questionnaire"); const p = rec.data.portal;
+      if (!p) invalid("This questionnaire was sent to a member, not by email.");
+      if (rec.data.status === "Submitted") invalid("This questionnaire was submitted. Ask for a clarification instead.");
+      const fresh = newPortal(p!.email, p!.due, t.now); p!.tokenHash = fresh.portal.tokenHash; p!.expiresAt = fresh.portal.expiresAt; p!.fails = 0; p!.dead = false;
+      await t.update("vendor-questionnaire", rec.id, rec.data, rec.version);
+      await t.audit("vendor.portal.link_sent", `${rec.data.vendor} (${rec.id}) to ${p!.email}`, "Vendor");
+      return { q: rec.data, token: fresh.token };
+    });
+    const m = await mailPortal(d, r, c.actor, out.q, out.token, out.q.status === "Reopened");
+    return m.sent ? ok({ ok: true }) : invalid("The email could not be sent just now. Try again later.");
+  });
+  /** A 60-second link to a file the vendor attached through the portal (admins and owners). */
+  const portalFile = wsRoute(h, "vendors", async (d, r, c) => {
+    refuse(vendorManageBlock(c.actor.role));
+    return tx(d, c, async (t) => {
+      const rec = (await t.get<PortalQuestionnaire>("vendor-questionnaire", str(r.path[2], 20))) ?? missing("Questionnaire");
+      const f = rec.data.portal?.items[str(r.path[4], 10)]?.file; if (!f) return missing("File");
+      await t.audit("vendor.portal.file_opened", `${rec.data.vendor} (${rec.id}) ${str(r.path[4], 10)}: ${f!.name}`, "Vendor");
+      return ok({ url: await d.files.link(f!.path, f!.name, 60) });
+    });
+  });
+  /** Reopens a submitted questionnaire with a note (a clarification round). By email: only the chosen questions reopen, and the vendor is emailed. */
   const reopenQ = wsRoute(h, "vendors", async (d, r, c) => {
     refuse(vendorManageBlock(c.actor.role));
     const note = txt(r.body.note, 500); if (note.length < 10) invalid("Say what needs clarifying (at least 10 characters).");
-    return tx(d, c, async (t) => {
-      const rec = (await t.get<VendorQuestionnaire>("vendor-questionnaire", str(r.path[2], 20))) ?? missing("Questionnaire");
+    const out = await tx(d, c, async (t) => {
+      const rec = (await t.get<PortalQuestionnaire>("vendor-questionnaire", str(r.path[2], 20))) ?? missing("Questionnaire");
       if (rec.data.status !== "Submitted") invalid("Only a submitted questionnaire can be reopened.");
+      let token = ""; const p = rec.data.portal;
+      if (p) {
+        const ids = (Array.isArray(r.body.questions) ? (r.body.questions as unknown[]) : []).map((x) => str(x, 10)).filter((x) => PORTAL_QUESTIONS.some((q) => q.id === x));
+        if (!ids.length) invalid("Choose the questions that need a clarification.");
+        p.clarify = [...new Set(ids)]; p.clarifyNote = note; p.base = Object.fromEntries(p.clarify.map((id) => [id, { ...p.items[id] }]));
+        const fresh = newPortal(p.email, p.due, t.now); p.tokenHash = fresh.portal.tokenHash; p.expiresAt = fresh.portal.expiresAt; p.fails = 0; p.dead = false; token = fresh.token;
+      }
       rec.data.status = "Reopened"; rec.data.note = note; await t.update("vendor-questionnaire", rec.id, rec.data, rec.version);
-      await t.audit("vendor.questionnaire.reopened", `${rec.data.vendor} (${rec.id}): ${note.slice(0, 200)}`, "Vendor");
-      await t.notify(rec.data.contactId, `${c.actor.name} asked for clarification on the ${rec.data.vendor} questionnaire: ${note.slice(0, 120)}`);
-      return ok({ ok: true });
+      await t.audit("vendor.questionnaire.reopened", `${rec.data.vendor} (${rec.id}): ${note.slice(0, 200)}${p ? `; questions ${p.clarify.join(", ")}` : ""}`, "Vendor");
+      if (!p) await t.notify(rec.data.contactId, `${c.actor.name} asked for clarification on the ${rec.data.vendor} questionnaire: ${note.slice(0, 120)}`);
+      return { q: rec.data, token };
     });
+    const emailed = out.token ? (await mailPortal(d, r, c.actor, out.q, out.token, true)).sent : undefined;
+    return ok({ ok: true, emailed });
   });
 
   /* ----- the vendor's own view (role Vendor, through Questionnaires) ----- */
@@ -292,7 +363,8 @@ export function vendorRoutes(h: WsHelpers) {
     "GET ws/data/vendors": data, "POST ws/vendors": create, "POST ws/vendor-requests/:id/approve": reqApprove, "POST ws/vendor-requests/:id/dismiss": reqDismiss,
     "POST ws/vendors/:id/gate": gate, "POST ws/vendors/:id/certificates": cert, "POST ws/vendors/:id/waivers": waiver, "POST ws/vendors/:id/findings": finding,
     "POST ws/vendors/:id/findings/:fid/close": closeFinding, "POST ws/vendors/:id/reassessments": reassess, "POST ws/vendors/:id/tier": tier, "POST ws/vendors/:id/questionnaire": sendQ,
-    "POST ws/vendor-questionnaires/:id/reopen": reopenQ,
+    "POST ws/vendor-questionnaires/:id/reopen": reopenQ, "POST ws/vendors/:id/questionnaire/email": sendQByEmail, "POST ws/vendor-questionnaires/:id/link": portalRelink,
+    "POST ws/vendor-questionnaires/:id/files/:q/link": portalFile,
     "POST ws/vendor-questionnaires/:id/answers": answer(false), "POST ws/vendor-questionnaires/:id/submit": answer(true),
   };
 }

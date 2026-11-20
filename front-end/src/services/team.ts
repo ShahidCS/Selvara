@@ -237,7 +237,9 @@ export const decideRequest = (id: string, decision: "approve" | "reject" | "with
 export interface InvitationItem { id: string; email: string; role: string; status: "Pending" | "Accepted" | "Revoked" | "Expired"; invitedBy: string; createdAt: number; expiresAt: number; linkAt?: number; approvalId?: string }
 export const listInvitations = () => apiFetch<InvitationItem[]>("/team/invitations");
 /** The link comes back once (only its hash is stored). Admin and owner invitations come back `pending` until a second admin approves them. */
-export const invite = (email: string, role: string) => post<{ pending: boolean; id: string; link?: string; expiresAt?: number }>("/team/invitations", { email, role });
+/** With email configured the server emails the invitation (`emailed`); otherwise the link comes back once for the admin to send. */
+export interface InviteOut { emailed?: boolean; mail?: string; link?: string; expiresAt?: number }
+export const invite = (email: string, role: string) => post<{ pending: boolean; id: string } & InviteOut>("/team/invitations", { email, role });
 /** A new link for a pending invitation; the previous link stops working. */
-export const inviteLink = (id: string) => post<{ link: string; expiresAt: number }>(`/team/invitations/${encodeURIComponent(id)}/link`, {});
+export const inviteLink = (id: string) => post<InviteOut & { expiresAt: number }>(`/team/invitations/${encodeURIComponent(id)}/link`, {});
 export const revokeInvite = (id: string) => post<void>(`/team/invitations/${encodeURIComponent(id)}/revoke`, {});

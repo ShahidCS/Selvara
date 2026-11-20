@@ -130,6 +130,7 @@ function Invoices({ b, rows, lock }: { b: api.Billing; rows: api.Invoice[]; lock
   const open = (i: api.Invoice) => i.status === "Open" || i.status === "Past due";
   const actions = (i: api.Invoice): DTRowAction<api.Invoice>[] => [
     { label: "Download", run: download },
+    { label: "Send by email", whyNot: lock ?? (!b.mail ? "Email is not set up for the platform yet" : null), run: async (x: api.Invoice) => { try { await api.emailInvoice(x.id); L.toast(`${x.id} emailed to the billing contact`); } catch (e) { L.toast(apiMessage(e, "Could not send the invoice"), false); } } },
     { label: "Credit", whyNot: lock ?? (!open(i) ? "Only an open invoice can be credited" : null), run: () => fin(i, "credit") },
     { label: "Refund", whyNot: lock ?? (i.paid - i.refunded <= 0 ? "Nothing has been paid" : null), run: () => fin(i, "refund") },
     { label: "Mark paid", whyNot: lock ?? (!open(i) || !i.outstanding ? "Nothing is due" : null), run: () => fin(i, "markpaid") },
@@ -296,7 +297,7 @@ function AccountForm({ b, acc, close }: { b: api.Billing; acc?: api.Account; clo
 
 function IssueForm({ b, close }: { b: api.Billing; close: () => void }) {
   const L = useLayer(); const [upTo, setUpTo] = useState(today()); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
-  const [out, setOut] = useState<{ issued: string[]; skipped: string[] } | null>(null);
+  const [out, setOut] = useState<{ issued: string[]; skipped: string[]; emailed: number; mail: boolean } | null>(null);
   const due = b.accounts.filter((a) => a.nextPeriod <= upTo && !(a.status === "Trial" && a.trialEnds && a.trialEnds > upTo));
   const go = async () => {
     if (busy) return; setBusy(true);
@@ -307,7 +308,7 @@ function IssueForm({ b, close }: { b: api.Billing; close: () => void }) {
     <>
       <p style={{ marginTop: 0 }}>{out.issued.length ? `Issued: ${out.issued.join(", ")}.` : "No invoice was due."}</p>
       {out.skipped.length ? <><div className="sectitle">Not issued</div><ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>{out.skipped.map((x) => <li key={x}>{x}</li>)}</ul></> : null}
-      <p className="field help">Email delivery of invoices is off until email is configured; send them from the Invoices list (Download) or with a payment link.</p>
+      <p className="field help">{out.mail ? `${out.emailed} of ${out.issued.length} emailed to the billing contacts. Any not emailed can be sent again from the Invoices list.` : "Email is not set up for the platform yet, so nothing was emailed: send the invoices from the Invoices list (Download) or with a payment link."}</p>
       <LayerFoot><button className="btn btn-primary" onClick={close}>Done</button></LayerFoot>
     </>
   );

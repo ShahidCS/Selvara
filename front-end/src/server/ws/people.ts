@@ -5,6 +5,7 @@
    really offboards: the membership ends (never the last admin), sessions end, grants are revoked, pending access requests are denied,
    delegations end, and owned controls and policies move to the chosen member. A privileged person needs a second admin or owner.
    Device posture has no source until the device integrations (group 7): it is shown as "Not connected", never invented. */
+import { sendMail } from "../mail";
 import { MFA_RESET_TTL_H, OFFBOARD_TTL_H, isPrivilegedLevel, mfaResetFieldsBlock, roleBlock } from "@/lib/rulesWs";
 import { ROLE_LABEL, isPrivilegedRole as privRole } from "@/lib/rules";
 import type { Deps } from "../types";
@@ -58,9 +59,11 @@ export async function endSessions(d: Deps, userId: string, tenantId: string | nu
 /** The member's MFA reset, once approved: authenticators and recovery codes removed, sessions here ended, the member told. */
 /** The authenticator belongs to the account, not to one company: the reset is account-wide, so every session ends (in every company), as a
  *  password reset does, and the account shows no authenticator until the person enrols again. */
-export async function applyMfaReset(d: Deps, _tenantId: string, userId: string) {
+export async function applyMfaReset(d: Deps, tenantId: string, userId: string) {
   await d.auth.resetMfa(userId); await d.store.replaceRecovery(userId, []); await d.store.kvDel("mfa", userId); await endSessions(d, userId, null, "MFA reset");
   await d.store.insertNotice({ id: crypto.randomUUID().slice(0, 12), userId, at: d.now(), text: "Your two-step verification was reset by your company admins. Set up your authenticator again at your next sign-in." });
+  // the person cannot read the notice before enrolling again, so they are also told by email when email is set up
+  const p = await d.store.profileById(userId); if (p) await sendMail(d, p.email, { t: "mfa-reset", link: `${d.site.origin}/login` }, { tenantId, actor: "System", ip: "system" });
 }
 
 export const PEOPLE_KINDS = ["mfa-reset-member", "offboard"];
