@@ -58,7 +58,7 @@ async function team() {
   const aud = await member("aud@acme.example", "auditor", "Remy Auditor");
   return { jordan, casey, owen, ana, priya, aud };
 }
-type Risk = { id: string; status: string; review: string; acceptance?: { by: string; board?: { ref: string } }; pendingAcceptance?: { approvalId: string }; invalidatedAcceptance?: unknown; history: { a: string }[]; owner: string; linked: string[]; actions: { done: boolean; cancelled?: boolean }[] };
+type Risk = { id: string; title: string; status: string; review: string; acceptance?: { by: string; board?: { ref: string } }; pendingAcceptance?: { approvalId: string }; invalidatedAcceptance?: unknown; history: { a: string }[]; owner: string; linked: string[]; actions: { done: boolean; cancelled?: boolean }[] };
 const risks = async (cookie: string) => body<{ risks: Risk[]; parties: { id: string; links: string[] }[]; snapshots: { id: string; hash: string }[]; approvals: { id: string; kind: string; status: string }[] }>(await call("GET", "ws/data/risk", {}, cookie));
 const riskOf = async (cookie: string, id: string) => (await risks(cookie)).risks.find((r) => r.id === id)!;
 async function control(cookie: string) { return body<{ id: string }>(await call("POST", "ws/controls", { title: "Backups are encrypted", domain: "Operations" }, cookie)).id; }
