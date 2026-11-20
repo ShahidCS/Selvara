@@ -1,3 +1,5 @@
+import { MemberSelect, myMemberId, useMembers } from "@/components/kit/MemberSelect";
+import { API_ON } from "@/lib/rbac";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { DATA } from "@/lib/data";
 import { bumpData, useApp, useData } from "@/lib/store";
@@ -19,8 +21,9 @@ const Denied = ({ title, back, why }: { title: string; back: { href: string; lab
 export function ControlFormPage() {
   useData(); useApp((s) => s.role);
   const L = useLayer(); const go = useGo();
-  const owner0 = getActor().name;
+  const owner0 = getActor().name; const members = useMembers();
   const [title, setTitle] = useState(""); const [dom, setDom] = useState(svc.CONTROL_DOMAINS[0]); const [owner, setOwner] = useState(owner0);
+  const [ownerId, setOwnerId] = useState(""); const pickedOwner = ownerId || myMemberId(members);
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   const dirty = !busy && (title !== "" || dom !== svc.CONTROL_DOMAINS[0] || owner !== owner0);
   const { allowLeave } = useUnsavedGuard(dirty, L);
@@ -35,7 +38,7 @@ export function ControlFormPage() {
     if (!t) { setErr("Control title is required."); return; }
     setBusy(true);
     try {
-      const { id } = await svc.createControl({ title: t, domain: dom, owner: clampText(owner, 80) });
+      const { id } = await svc.createControl(API_ON ? { title: t, domain: dom, owner: "", ownerId: pickedOwner } : { title: t, domain: dom, owner: clampText(owner, 80) });
       wsLog("control.created", id + ", " + t, "Control");
       allowLeave(); L.toast("Custom control " + id + " created"); bumpData(); go(`${LIST}/${encodeURIComponent(id)}`);
     } catch (x) { setBusy(false); setErr(""); L.toast(uiMessage(x) || FAIL_MSG, false); }
@@ -48,7 +51,8 @@ export function ControlFormPage() {
           <div className="field"><label htmlFor="cc-dom">Domain</label><select className="select" id="cc-dom" value={dom} onChange={(e) => setDom(e.target.value)}>{svc.CONTROL_DOMAINS.map((d) => <option key={d}>{d}</option>)}</select></div>
         </FormSection>
         <FormSection n={2} title="Ownership" note="The owner attests to the control and can change its status when no test applies.">
-          <div className="field"><label htmlFor="cc-owner">Owner</label><input className="input" id="cc-owner" maxLength={80} value={owner} onChange={(e) => setOwner(e.target.value)} /></div>
+          {API_ON ? <MemberSelect id="cc-owner" value={pickedOwner} onChange={setOwnerId} />
+            : <div className="field"><label htmlFor="cc-owner">Owner</label><input className="input" id="cc-owner" maxLength={80} value={owner} onChange={(e) => setOwner(e.target.value)} /></div>}
         </FormSection>
         {err ? <FormMessage id="cc-err">{err}</FormMessage> : null}
         <FormActions><button type="button" className="btn btn-secondary" onClick={() => go(LIST)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={busy}>Create control</button></FormActions>

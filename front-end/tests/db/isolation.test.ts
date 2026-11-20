@@ -14,6 +14,8 @@ import { UpstreamError } from "@/server/errors";
 import { PgDirectory } from "@/server/directory";
 import { PgPlatform } from "@/server/platform";
 import { PgSupport } from "@/server/support";
+import { PgWsStore, WsConflict, WsRefused, type Actor } from "@/server/ws/store";
+import { MemoryStore } from "@/server/memory";
 import type { AuditRow } from "@/server/types";
 
 const URL_ = process.env.TEST_DATABASE_URL;
@@ -481,6 +483,67 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
         where p.proname in ('platform_support_grants', 'platform_open_workspace', 'platform_close_workspace', 'support_viewed', 'support_grant_revoked')
         and p.pronamespace = 'public'::regnamespace and has_function_privilege(r.rolname, p.oid, 'execute')`)).rows;
       expect(exposed).toEqual([]);
+    });
+  });
+
+  describe("workspace records (migration 0008, src/server/ws/store.ts)", () => {
+    let ws: PgWsStore;
+    const me = (userId: string, tenantId: string, name = "Someone", role = "admin"): Actor => ({ id: userId, name, role, tenantId, ip: "198.51.100.7" });
+    beforeAll(() => { ws = new PgWsStore(app, new MemoryStore(() => Date.now())); });
+
+    it("a company's records are its own; versions refuse a stale copy; ids come from a per-company counter", async () => {
+      await ws.tx(me(alex, A), Date.now(), async (t) => {
+        await t.insert("control", "GOV-1", { id: "GOV-1", title: "Company A control" });
+        expect(await t.next("evidence", 208)).toBe(209); expect(await t.next("evidence", 208)).toBe(210);
+        await t.audit("control.created", "GOV-1, Company A control");
+      });
+      expect(await ws.tx(me(casey, B), Date.now(), (t) => t.list("control"))).toEqual([]);
+      expect(await ws.tx(me(casey, B), Date.now(), (t) => t.next("evidence", 208))).toBe(209); // B's own sequence
+      expect(await app.tx(ctxB(), (q) => q.query("select * from ws_records where tenant_id = $1", [A]))).toEqual([]);
+      expect(await code(app.tx(ctxB(), (q) => q.query("insert into ws_records (tenant_id, kind, id, data, created_ms, updated_ms) values ($1, 'control', 'X-1', '{}', 1, 1)", [A])))).toBe("42501");
+      await expect(ws.tx(me(alex, A), Date.now(), (t) => t.update("control", "GOV-1", { id: "GOV-1", title: "stale" }, 7))).rejects.toBeInstanceOf(WsConflict);
+      await expect(ws.tx(me(alex, A), Date.now(), (t) => t.insert("control", "GOV-1", {}))).rejects.toBeInstanceOf(WsConflict);
+      await ws.tx(me(alex, A), Date.now(), async (t) => { const r = (await t.get<{ title: string }>("control", "GOV-1"))!; await t.update("control", "GOV-1", { ...r.data, title: "Renamed" }, r.version); });
+      expect((await ws.tx(me(blair, A), Date.now(), (t) => t.get<{ title: string }>("control", "GOV-1")))!.data.title).toBe("Renamed");
+      expect((await admin.query("select count(*)::int as n from public.audit_log where tenant_id = $1 and action = 'control.created'", [A])).rows[0].n).toBe(1);
+      // a failed unit of work leaves nothing behind, audit entry included
+      await expect(ws.tx(me(alex, A), Date.now(), async (t) => { await t.insert("control", "GOV-2", {}); await t.audit("control.created", "GOV-2"); throw new WsRefused("no"); })).rejects.toBeInstanceOf(WsRefused);
+      expect(await ws.tx(me(alex, A), Date.now(), (t) => t.get("control", "GOV-2"))).toBeNull();
+    });
+    it("records are never deleted or moved: removal keeps the row, the guard refuses rewrites", async () => {
+      expect(await code(app.tx(ctxA(), (q) => q.query("delete from ws_records where tenant_id = $1", [A])))).toBe("42501");
+      expect(await code(app.tx(ctxA(), (q) => q.query("update ws_records set id = 'GOV-9', version = version + 1 where tenant_id = $1 and id = 'GOV-1'", [A])))).toBe("42501");
+      expect(await code(app.tx(ctxA(), (q) => q.query("update ws_records set data = '{}' where tenant_id = $1 and id = 'GOV-1'", [A])))).toBe("40001"); // version must move on
+      await ws.tx(me(alex, A), Date.now(), async (t) => { const r = (await t.get("control", "GOV-1"))!; await t.remove("control", "GOV-1", r.version); });
+      expect(await ws.tx(me(alex, A), Date.now(), (t) => t.get("control", "GOV-1"))).toBeNull();
+      expect((await admin.query("select deleted_ms from public.ws_records where tenant_id = $1 and id = 'GOV-1'", [A])).rows[0].deleted_ms).not.toBeNull();
+      expect(await code(app.tx(ctxA(), (q) => q.query("update ws_records set data = '{}', version = version + 1 where tenant_id = $1 and id = 'GOV-1'", [A])))).toBe("42501");
+    });
+    it("module requests use the approvals engine: the database refuses a self-vote, and Team never sees them", async () => {
+      const ap = await ws.tx(me(alex, A, "Alex Kim"), Date.now(), (t) => t.request({ kind: "control.exception", title: "Exception for GOV-3", subject: "GOV-3", payload: {}, needs: 1, approverRoles: ["admin", "owner"], forbid: [blair], ttlMs: 3600_000 }));
+      await expect(ws.tx(me(alex, A), Date.now(), (t) => t.vote(ap.id, "Approving my own request"))).rejects.toBeInstanceOf(WsRefused);
+      await expect(ws.tx(me(blair, A, "Blair Ng", "owner"), Date.now(), (t) => t.vote(ap.id, "I am the control owner"))).rejects.toBeInstanceOf(WsRefused);
+      expect((await new PgDirectory(app).approvals(A, alex)).some((x) => x.id === ap.id)).toBe(false);
+      expect((await ws.tx(me(casey, B), Date.now(), (t) => t.approvals(["control.exception"])))).toEqual([]);
+      expect(await ws.tx(me(casey, B), Date.now(), (t) => t.approval(ap.id, ["control.exception"]))).toBeNull();
+    });
+    it("platform staff never write workspace records, and read them only in a support session", async () => {
+      expect(await app.tx({ tenantId: A, userId: drew, platform: true }, (q) => q.query("select id from ws_records"))).toEqual([]);
+      expect(await code(app.tx({ tenantId: A, userId: drew, platform: true }, (q) => q.query("insert into ws_records (tenant_id, kind, id, data, created_ms, updated_ms) values ($1, 'control', 'P-1', '{}', 1, 1)", [A])))).toBe("42501");
+      expect(await code(app.tx({ tenantId: A, userId: drew, platform: true }, (q) => q.query("insert into ws_counters (tenant_id, kind, n) values ($1, 'x', 1)", [A])))).toBe("42501");      // inside a live support session (the customer's grant): the records can be read, still never written
+      const wes = randomUUID();
+      await admin.query("insert into auth.users (id, email) values ($1, 'wes@platform.example.test')", [wes]);
+      await admin.query("insert into public.profiles (id, email, person, status, requested_ms) values ($1, 'wes@platform.example.test', 'Wes Lane', 'Active', $2)", [wes, now]);
+      await admin.query("insert into public.platform_staff (user_id, role, created_ms) values ($1, 'support', $2)", [wes, now]);
+      const sup = new PgSupport(app); const at = Date.now(); const log = (actorId: string, tenantId: string | null): AuditRow => ({ at, actor: "x", actorId, tenantId, action: "x", target: "x", cat: "Access", space: tenantId ? "ws" : "admin", ip: "198.51.100.7" });
+      await sup.grant(A, alex, { reason: "Help with the controls register", hours: 1 }, at, log(alex, A));
+      expect(typeof (await sup.open(wes, A, { reason: "Customer asked about controls", ticket: "SUP-9", minutes: 10 }, "198.51.100.7", at, log(wes, null)))).toBe("object");
+      await ws.tx(me(alex, A), Date.now(), (t) => t.insert("control", "SUP-1", { id: "SUP-1" }));
+      expect((await app.tx({ tenantId: A, userId: wes, platform: true }, (q) => q.query("select id from ws_records where id = 'SUP-1'"))).length).toBe(1);
+      for (const sql of ["insert into ws_records (tenant_id, kind, id, data, created_ms, updated_ms) values ($1, 'control', 'P-2', '{}', 1, 1)", "insert into ws_counters (tenant_id, kind, n) values ($1, 'y', 1)"])
+        expect(await code(app.tx({ tenantId: A, userId: wes, platform: true }, (q) => q.query(sql, [A])))).toBe("42501");
+      expect(await app.tx({ tenantId: A, userId: wes, platform: true }, (q) => q.query("update ws_records set data = '{}', version = version + 1 where tenant_id = $1 returning id", [A]))).toEqual([]);
+      await sup.close(wes, "done", "198.51.100.7", Date.now(), log(wes, null));
     });
   });
 

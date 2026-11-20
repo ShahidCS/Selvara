@@ -1,11 +1,11 @@
 import { Chip, Icon, Table } from "@/components/ui";
-import { DATA, controlsForFw, refreshFrameworkCounts } from "@/lib/data";
+import { DATA } from "@/lib/data";
 import { useModState } from "@/lib/store";
-import { REQ_PAGE, fwCanAdmin, fwEdits, seedReqCtrlFw, seedReqCtrl, registerFrameworkReqs, touchFw } from "@/lib/frameworks";
+import { REQ_PAGE, fwCanAdmin } from "@/lib/frameworks";
 import { FW_DOM, FW_TPL } from "@/features/frameworks/lib/fwTemplates";
-import { wsLog } from "@/lib/audit";
+import { uiMessage } from "@/lib/grcSod";
+import * as fw from "./services/frameworks";
 import { useLayer } from "@/hooks/useLayer";
-import { bumpData } from "@/lib/store";
 
 interface Add { tpl: string | null; short: string; fname: string; kind: string; region: string; version: string; text: string; err: string }
 const EMPTY: Add = { tpl: null, short: "", fname: "", kind: "Framework", region: "Global", version: "", text: "", err: "" };
@@ -26,19 +26,11 @@ export function FwAdd({ onAdded }: { onAdded: (id: string) => void }) {
   };
   const save = () => {
     if (!fwCanAdmin()) return;
-    const sh = (A.short || "").trim().slice(0, 40), fn = (A.fname || sh).trim().slice(0, 120);
-    if (!sh) { set({ err: "Give the framework a short name." }); return; }
-    const id = A.tpl || "custom-" + sh.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-    if (DATA.frameworks.some((f) => f.id === id)) { set({ err: "That framework is already in the library." }); return; }
-    const reqs = lines.map((l, i) => { const m = FW_DOM.find((x) => x[1].test(l)); return ["R" + (i + 1), l.slice(0, 200), "", m ? "Maps to " + m[0] + " control domain." : "No existing control domain matched; a new control is needed."]; });
-    registerFrameworkReqs(id, reqs);
-    const mapped = reqs.filter((r) => /Maps to/.test(r[3])).length; const pct = reqs.length ? Math.round((mapped / reqs.length) * 100) : 0;
-    DATA.frameworks.push({ id, name: fn, kind: A.kind, region: (A.region || "Global").trim(), pct, controls: 0, gaps: reqs.length - mapped, audit: "New, mapping draft", mapped: 0 });
-    refreshFrameworkCounts(); void controlsForFw;
-    if (!fwEdits.get().REQ_CTRL) seedReqCtrl(); seedReqCtrlFw(id);
-    wsLog("framework.added", fn, "Control"); L.toast("“" + sh + "” added to the library");
-    setA(EMPTY); bumpData(); touchFw(); onAdded(id);
+    fw.addFramework({ template: A.tpl, short: A.short || "", name: A.fname || "", kind: A.kind, region: A.region, version: A.version, lines })
+      .then((id) => { L.toast("“" + (A.short || "").trim().slice(0, 40) + "” added to the library"); setA(EMPTY); onAdded(id); })
+      .catch((e) => set({ err: uiMessage(e) }));
   };
+
 
   return (
     <section className="card"><div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>

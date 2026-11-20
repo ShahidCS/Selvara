@@ -1,3 +1,8 @@
+import { useSyncExternalStore } from "react";
+import { API_ON } from "@/lib/rbac";
+import { EVIDENCE_FILE_MAX, EVIDENCE_FILE_TYPES } from "@/lib/rulesWs";
+import { UPLOAD_DEFAULT } from "@/lib/security";
+import { wsMeta } from "@/services/ws";
 import { useState } from "react";
 import { LayerFoot, useLayer } from "@/hooks/useLayer";
 import { bumpData } from "@/lib/store";
@@ -53,6 +58,33 @@ export function ReasonModal({ title, label, min, confirm, danger, close, run }: 
 
 /** Attach file modal (source evAttach/evDoAttach). The prototype attaches a typed file name only; no file content is read or uploaded. */
 export function AttachFile({ id, close }: { id: string; close: () => void }) {
+  if (API_ON) return <UploadFile id={id} close={close} />;
+  return <AttachName id={id} close={close} />;
+}
+/** Production: a real file, checked here for type and size and again on the server (content too), stored privately for the company. */
+function UploadFile({ id, close }: { id: string; close: () => void }) {
+  const L = useLayer(); const configured = useSyncExternalStore(wsMeta.subscribe, () => wsMeta.get().filesConfigured, () => false);
+  const [file, setFile] = useState<File | null>(null); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const rule = { ...UPLOAD_DEFAULT, maxBytes: EVIDENCE_FILE_MAX, exts: Object.keys(EVIDENCE_FILE_TYPES) };
+  const submit = async () => {
+    if (busy) return; if (!file) { setErr("Choose a file."); return; }
+    const bad = validateUpload({ name: file.name, size: file.size }, rule); if (bad) { setErr(bad); return; }
+    setBusy(true);
+    try { await svc.uploadAttachment(id, file); close(); L.toast("File attached"); } catch (x) { setErr(uiMessage(x)); setBusy(false); }
+  };
+  if (!configured) return <><p style={{ margin: 0 }}>File storage is not configured yet. The platform owner creates the private evidence bucket first (SUPABASE.md section 4d).</p><LayerFoot><button className="btn btn-secondary" onClick={close}>Close</button></LayerFoot></>;
+  return (
+    <>
+      <div>
+        <div className="field"><label htmlFor="ev-file">File <Req /></label><input className="input" id="ev-file" data-focus type="file" accept={rule.exts.map((x) => "." + x).join(",")} onChange={(x) => { setFile(x.target.files?.[0] ?? null); setErr(""); }} aria-invalid={!!err} aria-describedby="ev-filehelp ev-fnerr" /></div>
+        <p className="field help" id="ev-filehelp">{rule.exts.join(", ")}; up to {EVIDENCE_FILE_MAX / 1024 / 1024} MB. Stored privately for your company; the file&apos;s content is checked.</p>
+        <p className="field help" id="ev-fnerr" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
+      </div>
+      <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" disabled={busy} onClick={submit}>{busy ? "Uploading…" : "Upload"}</button></LayerFoot>
+    </>
+  );
+}
+function AttachName({ id, close }: { id: string; close: () => void }) {
   const L = useLayer();
   const [fn, setFn] = useState("");
   const [err, setErr] = useState("");

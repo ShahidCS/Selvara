@@ -1,6 +1,9 @@
 import { DATA, FW_ID, testsForControl } from "@/lib/data";
 import { bumpData, setModState, useApp, useData } from "@/lib/store";
-import { roleReason } from "@/lib/grcSod";
+import { iAm, uiMessage } from "@/lib/grcSod";
+import { API_ON } from "@/lib/rbac";
+import { useState } from "react";
+import { MemberSelect } from "@/components/kit/MemberSelect";
 import { useGo } from "@/lib/route";
 import { Empty, Icon, Page, StatusChip } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
@@ -18,7 +21,9 @@ export function ControlDetail({ id }: { id: string }) {
   if (!c) return <Page title="Control not found" back={back}><Empty icon="controls" title="No such control">There is no control with the ID &ldquo;{id}&rdquo;. It may have been removed, or the link may be wrong.</Empty></Page>;
   svc.sweepExceptions();
   const attestWhy = svc.whyCannotAttest(c), statusWhy = svc.whyCannotSetStatus(c), mapWhy = svc.whyCannotManage(), excWhy = svc.whyCannotRequestException();
-  const ticketWhy = roleReason("creating tickets", "admin", "owner", "analyst");
+  const ticketWhy = svc.whyCannotTicket();
+  const askWhy = API_ON ? svc.whyCannotRunTests() : null;
+  const askEvidence = () => svc.requestEvidence(id).then(() => L.toast(API_ON ? "Evidence requested from " + c.owner : "Evidence request sent")).catch((e) => L.toast(uiMessage(e), false));
   const refresh = () => bumpData();
   const dis = (why: string | null) => ({ disabled: !!why, title: why || undefined });
   const tests = testsForControl(c.id);
@@ -31,7 +36,8 @@ export function ControlDetail({ id }: { id: string }) {
       <StatusChip s={c.status} />{c.custom ? <span className="tag">Custom</span> : null}
       <button className="btn btn-secondary" {...dis(ticketWhy)} onClick={() => ctrlJira(L, id)}><Icon name="ext" />Create Tasklane ticket</button>
       <button className="btn btn-secondary" onClick={() => ctrlWorkpaper(L, id)}><Icon name="download" />Export workpaper</button>
-      <button className="btn btn-primary" onClick={() => L.toast("Evidence request sent")}>Request evidence</button>
+      {API_ON ? <button className="btn btn-secondary" {...dis(mapWhy)} onClick={() => L.openModal(`Change owner, ${c.id}`, (close) => <OwnerForm id={c.id} current={c.ownerId} close={close} />)}><Icon name="user" />Change owner</button> : null}
+      <button className="btn btn-primary" {...dis(askWhy)} onClick={askEvidence}>Request evidence</button>
     </>}>
       <div className="scroll rec-scroll">
         <div className="rec-grid">
@@ -57,6 +63,7 @@ export function ControlDetail({ id }: { id: string }) {
                         <button className="btn btn-secondary sm" {...dis(dw)} onClick={() => openReasonModal(L, "Reject exception " + x.id, "Reason", "Reject", async (r) => { await svc.decideException(id, x.id, "reject", r); return "Exception rejected"; }, refresh)}><Icon name="x" />Reject</button>
                       </div>) : null}
                     {st === "Pending" && dw ? <p className="field help" style={{ margin: "6px 0 0" }}>{dw}</p> : null}
+                    {API_ON && st === "Pending" && iAm(x.requestedBy) ? <button className="btn btn-ghost sm" style={{ marginTop: 6 }} onClick={() => svc.withdrawException(id, x.id).then(() => L.toast("Exception request withdrawn")).catch((e) => L.toast(uiMessage(e), false))}><Icon name="x" />Withdraw request</button> : null}
                   </div>
                 );
               }) : <p className="field help" style={{ marginTop: 0 }}>No exceptions or waivers.</p>}
@@ -101,5 +108,24 @@ export function ControlDetail({ id }: { id: string }) {
         </div>
       </div>
     </Page>
+  );
+}
+
+/** Production: hands a control to another member (admin or owner; the server checks it and records the change). */
+function OwnerForm({ id, current, close }: { id: string; current: string; close: () => void }) {
+  const L = useLayer(); const [owner, setOwner] = useState(current); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const save = async () => {
+    if (busy) return; setBusy(true);
+    try { await svc.setControlOwner(id, owner); close(); L.toast("Owner changed"); } catch (e) { setErr(uiMessage(e)); setBusy(false); }
+  };
+  return (
+    <>
+      <MemberSelect id="co-owner" value={owner} onChange={(v) => { setOwner(v); setErr(""); }} help="The owner attests to the control and changes its status when no test applies." />
+      <p className="field help" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
+      <div className="btngrp" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+        <button className="btn btn-secondary" onClick={close}>Cancel</button>
+        <button className="btn btn-primary" disabled={busy || owner === current} onClick={save}>Change owner</button>
+      </div>
+    </>
   );
 }

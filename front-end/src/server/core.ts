@@ -15,11 +15,12 @@ import { checkRegistration, verifyAssertion } from "@/lib/webauthn";
 import { randomId, same, seal, sha256Hex, unseal } from "./crypto";
 import { adminRoutes } from "./admin";
 import { supportRoutes } from "./support";
+import { workspaceRoutes } from "./ws/routes";
 import { logFailure } from "./errors";
 import type { Company, Lockout, Log, Outcome } from "./directory";
 import type { Deps, Profile, SessionRow } from "./types";
 
-export interface Req { method: string; path: string[]; body: Record<string, unknown>; headers: Record<string, string | undefined>; cookies: Record<string, string>; ip: string }
+export interface Req { method: string; path: string[]; body: Record<string, unknown>; headers: Record<string, string | undefined>; cookies: Record<string, string>; ip: string; /** Raw bytes, only for the upload routes (RAW_ROUTES). */ raw?: Uint8Array }
 export interface Res { status: number; body?: unknown; cookies?: string[] }
 const ok = (body?: unknown, cookies?: string[]): Res => ({ status: body === undefined ? 204 : 200, body, cookies });
 const err = (status: number, error: string): Res => ({ status, body: { error } });
@@ -561,6 +562,9 @@ export const ROUTES: Record<string, H> = {
 };
 const helperEntry = (d: Deps, r: Req, p: Profile, a: Access, action: string, target: string) => entry(d, r, actorOf(p, a), action, target);
 Object.assign(ROUTES, adminRoutes({ signed, entry: helperEntry, randomId, sha256Hex }), supportRoutes({ signed, companyAdmin: admin, entry: helperEntry }));
+Object.assign(ROUTES, workspaceRoutes({ signed }));
+/** Routes that take raw bytes (application/octet-stream) instead of JSON: evidence file uploads (pages/api/[...path].ts reads them). */
+export const RAW_ROUTES = new Set(["POST ws/evidence/:id/files"]);
 
 /** Finds the handler for a request; `:name` segments match anything. */
 export function route(method: string, path: string[]): H | null { return match(method, path)?.[1] ?? null; }
@@ -577,7 +581,9 @@ export async function handle(d: Deps, r: Req): Promise<Res> {
   const [key, h] = found;
   if (r.method !== "GET") {
     if (r.headers.origin !== d.site.origin) return err(403, "Cross-site request refused.");
-    if (!/^application\/json/.test(r.headers["content-type"] || "")) return err(415, "Send JSON.");
+    const raw = RAW_ROUTES.has(key);
+    if (raw ? !r.raw || r.headers["content-type"] !== "application/octet-stream" : !/^application\/json/.test(r.headers["content-type"] || "")) return err(415, raw ? "Send the file's bytes." : "Send JSON.");
+    if (!raw && r.raw) return err(415, "Send JSON.");
   }
   // The person sees a generic message; the function log gets the route pattern, the failing step and Supabase's code (errors.ts), never values.
   try { return await h(d, r); } catch (e) { logFailure(key, e, r.headers["x-vercel-id"]); return err(500, "Something went wrong. Please try again."); }

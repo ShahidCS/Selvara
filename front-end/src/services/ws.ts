@@ -1,0 +1,84 @@
+/* Production (API mode) workspace data: loads the company's records from the server into the in-memory dataset the screens already read
+ * (DATA, the framework edits and the four-eyes requests), so every module keeps its full behaviour (production programme, decision D7). The
+ * server decides what a person may see; this only copies it in. Writes go through wsPost/wsPatch/wsUpload, which reload the data afterwards.
+ * Nothing here runs in the demonstration build. */
+import { DATA, FRAMEWORK_REQS, FW_ID, refreshFrameworkCounts } from "@/lib/data";
+import { fwEdits, touchFw } from "@/lib/frameworks";
+import { approvals, type Approval } from "@/lib/approvals";
+import { API_ON, modAllowed } from "@/lib/rbac";
+import { appStore, bumpData, createStore } from "@/lib/store";
+import { ApiError, apiFetch, API_BASE } from "./http";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export interface WsMember { id: string; name: string; role: string }
+/** The company's active members (owner and assignee pickers), and what the server says about optional services. */
+export const wsMeta = createStore<{ members: WsMember[]; library: any[]; filesConfigured: boolean; loaded: Record<string, boolean>; error: string }>({ members: [], library: [], filesConfigured: false, loaded: {}, error: "" });
+
+/** The modules whose data lives on the server, in the order they are loaded. Each group of the programme adds its own. */
+const LOADERS: Record<string, (b: any) => void> = {
+  frameworks(b) {
+    const state: Record<string, any> = b.state || {};
+    const custom: any[] = b.custom || [];
+    for (const c of custom) FRAMEWORK_REQS[c.id] = { g: [["", "General"]], r: c.reqs };
+    const reqCount = (id: string) => FRAMEWORK_REQS[id]?.r.length ?? 0;
+    DATA.frameworks = [...b.library, ...custom.map((c) => ({ id: c.id, name: c.name, kind: c.kind, region: c.region, version: c.version, custom: true }))]
+      .map((f) => ({ ...f, pct: 0, gaps: 0, controls: reqCount(f.id), audit: state[f.id]?.audit || "Not scheduled" }));
+    for (const f of DATA.frameworks) FW_ID[f.id] = f.name;
+    const E = fwEdits.get();
+    E.SCOPE = {}; E.SNOOZE = {}; E.NA = {}; E.MOD = {}; E.REQ_CTRL = {};
+    for (const f of DATA.frameworks) { // a company starts with every framework out of scope; nothing is ever seeded by hashing
+      const s = state[f.id] || {};
+      E.SCOPE[f.id] = s.scope === true; E.SNOOZE[f.id] = !!s.snooze; E.NA[f.id] = s.na || {}; E.MOD[f.id] = s.mod || {}; E.REQ_CTRL[f.id] = s.reqCtrl || {};
+    }
+    touchFw();
+  },
+  controls(b) {
+    DATA.controls = b.controls; DATA.tests = b.tests;
+    wsMeta.set({ library: b.library || [] });
+    setApprovals(["control.exception"], b.approvals);
+  },
+  evidence(b) {
+    DATA.evidence = b.evidence;
+    wsMeta.set({ filesConfigured: !!b.filesConfigured });
+    setApprovals(["evidence.delete"], b.approvals);
+  },
+};
+function setApprovals(kinds: string[], list: Approval[]) {
+  approvals.set((s) => ({ list: [...list, ...s.list.filter((a) => !kinds.includes(a.kind))] }));
+}
+
+let inflight: Promise<void> | null = null;
+/** Loads every server module the person's role may open. Safe to call often: concurrent calls share one load. */
+export function loadWorkspace(): Promise<void> {
+  if (!API_ON || !API_BASE) return Promise.resolve();
+  if (inflight) return inflight;
+  inflight = (async () => {
+    const role = appStore.get().role;
+    try {
+      const members = await apiFetch<WsMember[]>("/ws/members").catch(() => [] as WsMember[]);
+      const loaded: Record<string, boolean> = {};
+      for (const mod of Object.keys(LOADERS)) {
+        if (!modAllowed(role, "ws", mod)) continue;
+        LOADERS[mod](await apiFetch<any>(`/ws/data/${mod}`)); loaded[mod] = true;
+      }
+      refreshFrameworkCounts();
+      wsMeta.set({ members, loaded, error: "" });
+    } catch (e) {
+      wsMeta.set({ error: e instanceof ApiError && e.status > 0 && e.status < 500 ? e.message : "Could not load your workspace. Reload the page to try again." });
+    } finally { inflight = null; bumpData(); }
+  })();
+  return inflight;
+}
+
+const send = async <T,>(path: string, init: RequestInit): Promise<T> => { const out = await apiFetch<T>(path, init); await loadWorkspace(); return out; };
+/** A change on the server, then a reload of the workspace data so every screen shows the result. */
+export const wsPost = <T,>(path: string, body: unknown = {}) => send<T>(path, { method: "POST", body: JSON.stringify(body) });
+export const wsPatch = <T,>(path: string, body: unknown) => send<T>(path, { method: "PATCH", body: JSON.stringify(body) });
+/** Uploads a file's bytes (the server checks type, size and content). */
+export async function wsUpload<T>(path: string, file: File): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}${path.includes("?") ? "&" : "?"}name=${encodeURIComponent(file.name)}`, {
+    method: "POST", credentials: "include", headers: { "Content-Type": "application/octet-stream", Accept: "application/json" }, body: file,
+  });
+  if (!res.ok) { let m = `${res.status} ${res.statusText}`; try { const j = await res.json(); if (j && typeof j.error === "string") m = j.error; } catch { /* no JSON */ } throw new ApiError(res.status, m); }
+  const out = (res.status === 204 ? undefined : await res.json()) as T; await loadWorkspace(); return out;
+}

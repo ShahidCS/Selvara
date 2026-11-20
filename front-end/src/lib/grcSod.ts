@@ -6,7 +6,9 @@ import { getActor, hasRole, isSamePerson, SodError } from "./sod";
 export const FAIL_MSG = "Something went wrong. Please try again.";
 
 /** Toast text for a caught error: SodError messages are safe policy text; anything else becomes a generic message (ASVS 7.4.1). */
-export const uiMessage = (e: unknown): string => (e instanceof SodError ? e.message : FAIL_MSG);
+export const uiMessage = (e: unknown): string => (e instanceof SodError || isRefusal(e) ? (e as Error).message : FAIL_MSG);
+/** A refusal from the production API (4xx): the server's own words, written for people and free of internal details (services/http.ts ApiError). */
+const isRefusal = (e: unknown): boolean => { const st = e instanceof Error ? (e as Error & { status?: unknown }).status : undefined; return typeof st === "number" && st >= 400 && st < 500; };
 
 /** Stricter-than-isSamePerson name match for SoD checks. Seed data and personas use different short forms
  * ("J. Avery" / "Jordan A." / "Jordan Avery"): same first initial and the same surname, or one surname is an initial of the other.

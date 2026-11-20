@@ -73,6 +73,8 @@ export interface Directory {
 /** Thrown when an approved change can no longer be applied. The Postgres directory catches it inside the transaction and rolls back to a savepoint
  *  taken before the vote, so the vote and the change are undone together. */
 export class ApplyConflict extends Error {}
+/** The request kinds Team & Settings decides; other modules' requests are never decided through it. */
+export const TEAM_KINDS = ["team-role", "team-invite"];
 const INVITE_MS = INVITE_TTL_H * 3600_000;
 const facts = (a: ApprovalRow) => ({ status: a.status, expiresAt: a.expiresAt, approverRoles: a.approverRoles, requestedBy: a.requestedBy, forbid: a.forbid, votes: a.votes.map((v) => v.by) });
 /** The engine's rules, shared by both directories: who may decide (rules.ts), then expiry and state. */
@@ -169,11 +171,11 @@ export class PgDirectory implements Directory {
       return r[0].id;
     });
   }
-  async approvals(tenantId: string, actorId: string) { return this.db.tx({ tenantId, userId: actorId }, (q) => loadApprovals(q, tenantId)); }
+  async approvals(tenantId: string, actorId: string) { return this.db.tx({ tenantId, userId: actorId }, (q) => loadApprovals(q, tenantId, undefined, TEAM_KINDS)); }
   async decideApproval(tenantId: string, actor: { id: string; role: string }, id: string, approve: boolean, reason: string, at: number, log: Log): Promise<Outcome> {
     try {
       return await this.db.tx({ tenantId, userId: actor.id }, async (q) => {
-        const a = (await loadApprovals(q, tenantId, id))[0];
+        const a = (await loadApprovals(q, tenantId, id, TEAM_KINDS))[0];
         if (a && a.status === "Pending" && a.expiresAt <= at) {
           await q.query("update approvals set status = 'Expired' where id = $1", [id]); await q.query(auditSql, auditArgs(log(`approval.${a.kind}.expired`, `${a.title} (${a.id})`)));
         }
@@ -200,7 +202,7 @@ export class PgDirectory implements Directory {
   }
   async withdrawApproval(tenantId: string, actor: { id: string; role: string }, id: string, at: number, log: Log): Promise<Outcome> {
     return this.db.tx({ tenantId, userId: actor.id }, async (q) => {
-      const a = (await loadApprovals(q, tenantId, id))[0]; if (!a) return { ok: false, code: 404, error: "Request not found." };
+      const a = (await loadApprovals(q, tenantId, id, TEAM_KINDS))[0]; if (!a) return { ok: false, code: 404, error: "Request not found." };
       const why = withdrawBlock({ key: actor.id, base: actor.role }, a); if (why) return { ok: false, code: a.status !== "Pending" ? 409 : 403, error: why };
       await q.query("update approvals set status = 'Withdrawn' where id = $1", [id]);
       await q.query(auditSql, auditArgs(log(`approval.${a.kind}.withdrawn`, `${a.title} (${a.id})`)));
@@ -270,10 +272,13 @@ async function insertInvitation(q: Tx, tenantId: string, actorId: string, i: { e
   return r[0]?.id ?? null;
 }
 /** A company's requests (domain ws), or the platform's (tenant null, domain admin). With an id: that one request, locked for the decision. */
-export async function loadApprovals(q: Tx, tenantId: string | null, id?: string): Promise<ApprovalRow[]> {
+/** A company's (or, with no company, the platform's) most recent requests, newest first. `kinds` limits them to those kinds, so one module's
+ *  requests never push another's out of the window. */
+export async function loadApprovals(q: Tx, tenantId: string | null, id?: string, kinds?: string[]): Promise<ApprovalRow[]> {
   const rows = await q.query(`select a.*, coalesce(p.person, '') as requester from approvals a left join profiles p on p.id = a.requested_by
     where ${tenantId ? "a.tenant_id = $1 and a.domain = 'ws'" : "a.tenant_id is null and $1::uuid is null and a.domain = 'admin'"} and ($2::uuid is null or a.id = $2)
-    order by a.created_ms desc limit 100 ${id ? "for update of a" : ""}`, [tenantId, id ?? null]);
+      and ($3::text[] is null or a.kind = any($3::text[]))
+    order by a.created_ms desc limit 200 ${id ? "for update of a" : ""}`, [tenantId, id ?? null, kinds ?? null]);
   if (!rows.length) return [];
   const votes = await q.query(`select v.approval_id, v.by_user, coalesce(p.person, '') as person, v.at_ms, v.reason from approval_votes v left join profiles p on p.id = v.by_user
     where v.approval_id = any($1::uuid[]) order by v.at_ms`, [rows.map((r) => r.id)]);

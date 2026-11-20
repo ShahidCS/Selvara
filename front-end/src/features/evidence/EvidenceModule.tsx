@@ -1,3 +1,5 @@
+import { ModuleTip } from "@/components/kit/ModuleTip";
+import { API_ON } from "@/lib/rbac";
 import { DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData } from "@/lib/store";
@@ -36,6 +38,7 @@ function EvidenceList() {
   const n = (s: string) => DATA.evidence.filter((e: Ev) => status(e) === s).length;
   return (
     <Page mod="evidence" acts={<button className="btn btn-primary" disabled={!!writeWhy} title={writeWhy || undefined} onClick={() => go("/ws/evidence/new")}><Icon name="plus" />Add evidence</button>}>
+      <ModuleTip mod="evidence" force={API_ON && !DATA.evidence.length} />
       <KpiStrip label="Evidence summary">
         <KpiTile label="Evidence items" value={DATA.evidence.length} caption="On record" />
         <KpiTile label="Awaiting review" value={n("Pending review")} delta={n("Pending review") ? { tone: "bad", text: "Needs a reviewer" } : { tone: "good", text: "None" }} caption="Not yet accepted" />

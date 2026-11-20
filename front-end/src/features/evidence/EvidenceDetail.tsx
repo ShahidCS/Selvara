@@ -1,3 +1,4 @@
+import { API_ON } from "@/lib/rbac";
 import { Empty, Icon, Page, StatusChip, Table } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { bumpData, useApp, useData } from "@/lib/store";
@@ -27,6 +28,8 @@ export function EvidenceDetail({ id }: { id: string }) {
   const detach = async (ai: number) => {
     try { await svc.removeAttachment(id, ai); L.toast("File removed"); bumpData(); } catch (x) { L.toast(uiMessage(x), false); }
   };
+  /** Production: a link valid for 60 seconds, served by the storage service as a download (never shown inline here). */
+  const download = async (fileId: string) => { try { const { url } = await svc.attachmentLink(id, fileId); window.location.assign(url); } catch (x) { L.toast(uiMessage(x), false); } };
   const decide = (decision: "approve" | "reject") => L.openModal(decision === "approve" ? "Approve deletion" : "Reject deletion", (close) =>
     <ReasonModal title={`Deletion of ${e.name} requested by ${pend?.requestedBy}: ${e.deleteRequest?.reason}`} label={decision === "approve" ? "Approval reason" : "Reason"} min={10} confirm={decision === "approve" ? "Approve and delete" : "Reject"} danger={decision === "approve"} close={close}
       run={async (r) => { const done = await svc.decideDelete(id, decision, r); if (done) go("/ws/evidence"); return done ? "Evidence deleted (second admin approved)" : "Deletion rejected"; }} />);
@@ -71,9 +74,9 @@ export function EvidenceDetail({ id }: { id: string }) {
               <div className="c-body flush" style={{ padding: 0 }}>
                 {e.attachments.length ? (
                   <Table cols={[{ t: "File" }, { t: "Size" }, { t: "" }]}>
-                    {e.attachments.map((a: { name: string; size: string }, ai: number) => (
+                    {e.attachments.map((a: { id?: string; name: string; size: string }, ai: number) => (
                       <tr key={ai}><td className="strong"><Icon name="evidence" /> {safeFileName(a.name)}</td><td className="num" style={{ color: "var(--muted)" }}>{a.size}</td>
-                        <td className="r"><button className="btn btn-ghost sm" disabled={!!writeWhy} title={writeWhy || undefined} aria-label={`Remove ${safeFileName(a.name)}`} onClick={() => detach(ai)}><Icon name="x" />Remove</button></td></tr>
+                        <td className="r">{API_ON && a.id ? <button className="btn btn-ghost sm" aria-label={`Download ${safeFileName(a.name)}`} onClick={() => download(a.id!)}><Icon name="download" />Download</button> : null}<button className="btn btn-ghost sm" disabled={!!writeWhy} title={writeWhy || undefined} aria-label={`Remove ${safeFileName(a.name)}`} onClick={() => detach(ai)}><Icon name="x" />Remove</button></td></tr>
                     ))}
                   </Table>
                 ) : <Empty icon="evidence" title="No files attached">Attach the file this evidence refers to.</Empty>}

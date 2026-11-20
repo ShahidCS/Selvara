@@ -1,0 +1,64 @@
+/* Server-only. What every workspace module's routes share: which company roles may open which module (the same table the browser uses,
+   data/roles.json), the acting person from the session, turning refusals into answers, and the company's members for owner pickers. */
+import roles from "@/data/roles.json";
+import type { Ctx, Req, Res } from "../core";
+import type { Deps } from "../types";
+import { WsConflict, WsRefused, type Actor, type WsTx } from "./store";
+
+type H = (d: Deps, r: Req) => Promise<Res>;
+export type WsHandler = (d: Deps, r: Req, c: Ctx & { actor: Actor }) => Promise<Res>;
+export interface WsHelpers { signed: (h: (d: Deps, r: Req, c: Ctx) => Promise<Res>) => H }
+
+const MODS = (roles as unknown as { ROLE_MODS: Record<string, { ws?: string[] | "*" }> }).ROLE_MODS;
+/** Whether a company role may open a workspace module (deny by default; platform staff never). */
+export const modAllowed = (role: string, mod: string): boolean => { const m = MODS[role]?.ws; return m === "*" || (Array.isArray(m) && m.includes(mod)); };
+
+export const ok = (body?: unknown): Res => ({ status: body === undefined ? 204 : 200, body });
+export const err = (status: number, error: string): Res => ({ status, body: { error } });
+export const str = (v: unknown, max = 300) => String(v ?? "").slice(0, max);
+export const txt = (v: unknown, max = 500) => str(v, max * 2).trim().slice(0, max);
+
+/** A workspace route: a member of the session's company whose role may open `mod`. Refusals from rules and stale copies become answers. */
+export function wsRoute(h: WsHelpers, mod: string | null, fn: WsHandler): H {
+  return h.signed(async (d, r, c) => {
+    if (c.a.platform || !c.a.company) return err(403, "Not permitted.");
+    if (mod && !modAllowed(c.a.role, mod)) return err(403, "Not permitted.");
+    const actor: Actor = { id: c.p.id, name: c.p.person, role: c.a.role, tenantId: c.a.company.id, ip: r.ip };
+    try { return await fn(d, r, { ...c, actor }); }
+    catch (e) {
+      if (e instanceof WsRefused) return err(e.status, e.message);
+      if (e instanceof WsConflict) return err(409, e.message);
+      throw e;
+    }
+  });
+}
+/** Throws the first rule refusal (the same text the browser shows on the disabled button). */
+export function refuse(...reasons: (string | null | undefined)[]): void { const m = reasons.find((x) => !!x); if (m) throw new WsRefused(m); }
+export const invalid = (m: string): never => { throw new WsRefused(m, 400); };
+export const missing = (what: string): never => { throw new WsRefused(`${what} not found.`, 404); };
+
+/** The company's active members (id, name, role), for owners and assignees. */
+export async function membersOf(d: Deps, a: Actor) {
+  return (await d.dir.members(a.tenantId, a.id, "Active")).map((m) => ({ id: m.userId, name: m.person, role: m.role }));
+}
+/** Resolves an owner given as a member id (or, from older screens, an exact name) to an active member. */
+export async function memberRef(d: Deps, a: Actor, v: { id?: unknown; name?: unknown }, fallbackSelf = true): Promise<{ id: string; name: string }> {
+  const ms = await membersOf(d, a); const id = str(v.id, 100); const name = txt(v.name, 80).toLowerCase();
+  const m = (id && ms.find((x) => x.id === id)) || (name && ms.find((x) => x.name.toLowerCase() === name)) || null;
+  if (m) return { id: m.id, name: m.name };
+  if (!id && !name && fallbackSelf) return { id: a.id, name: a.name };
+  return invalid("Choose an active member of your company.");
+}
+
+/** Four-eyes requests as the browser's engine shows them (names, not ids). */
+export async function approvalsView(t: WsTx, kinds: string[], names: Map<string, string>) {
+  return (await t.approvals(kinds)).map((x) => ({
+    id: x.id, kind: x.kind, title: x.title, subject: x.subject ?? undefined, requestedBy: x.requestedByName, requestedById: x.requestedBy, requestedByRole: "", payload: x.payload,
+    needs: x.needs, approverRoles: x.approverRoles, forbid: x.forbid.map((f) => names.get(f) ?? f), approvals: x.votes.map((v) => ({ by: v.byName, at: new Date(v.at).toISOString(), reason: v.reason })),
+    status: x.status === "Pending" && x.expiresAt <= t.now ? "Expired" : x.status, createdAt: x.createdAt, expiresAt: x.expiresAt, decidedReason: x.decidedReason, domain: "ws" as const,
+  }));
+}
+/** Marks pending requests of these kinds that ran out as Expired, once, with their audit entry. */
+export async function sweepApprovals(t: WsTx, kinds: string[]) {
+  for (const a of await t.approvals(kinds)) if (a.status === "Pending" && a.expiresAt <= t.now) { await t.setApproval(a.id, "Expired"); await t.audit(`approval.${a.kind}.expired`, `${a.title} (${a.id})`, "Approval"); }
+}

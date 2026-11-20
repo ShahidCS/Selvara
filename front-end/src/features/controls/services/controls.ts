@@ -5,15 +5,21 @@ import { nowStamp, csvCell } from "@/lib/format";
 import { wsLog } from "@/lib/audit";
 import { getActor, SodError } from "@/lib/sod";
 import { approve as engineApprove, getApproval, reject as engineReject, requestApproval, whyCannotApprove as engineWhy } from "@/lib/approvals";
-import { guard, iAm, isoDay, parseIso, reasonText, roleReason, selfReason } from "@/lib/grcSod";
-import { apiFetch, viaApi } from "@/services/http";
+import { guard, iAm, isoDay, parseIso, reasonText, selfReason } from "@/lib/grcSod";
+import { viaApi } from "@/services/http";
+import { wsPost } from "@/services/ws";
+import { attestBlock, decideExceptionBlock, exceptionStateOf, manageControlsBlock, requestExceptionBlock, runTestsBlock, setStatusBlock, statusFromTests, ticketBlock } from "@/lib/rulesWs";
+import { API_ON } from "@/lib/rbac";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const MATRIX_FWS = ["iso27001", "soc2", "nistcsf", "gdpr", "pci"];
 export const CONTROL_DOMAINS = ["Governance", "Identity & Access", "Operations", "Cryptography", "Network", "Logging", "Business Continuity", "Third Party", "Privacy", "AI"];
 let TESTSEQ = 6; // source: let TESTSEQ=6
 
-const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
+/** Production: the same change on the server (path under /api/ws), then the workspace reloads. */
+const post = <T,>(path: string, body: unknown) => wsPost<T>(`/ws${path}`, body);
+/** Production: an export is built from the loaded data, as here, and recorded in the company's audit log by the server. */
+const logged = <T,>(make: () => T, action: string, target: string) => async () => { const out = make(); await wsPost("/ws/exports", { action, target }); return out; };
 const csv = (head: string[], rows: unknown[][]) =>
   [head.join(",")].concat(rows.map((r) => r.map(csvCell).join(","))).join("\n");
 
@@ -23,30 +29,20 @@ const need = (id: string) => { const c = DATA.controls.find((x) => x.id === id);
 const today = () => isoDay();
 
 /* ---------- reasons (null = allowed); services guard() the same functions the UI uses to disable buttons ---------- */
-export const whyCannotManage = (): string | null => roleReason("changing controls", "admin", "owner");
-export const whyCannotRunTests = (): string | null => roleReason("running tests", "admin", "owner", "analyst");
-export function whyCannotAttest(c: any): string | null {
-  return roleReason("attesting a control", "admin", "owner") || (iAm(c.owner) ? null : `Only the control owner (${c.owner}) can attest.`);
-}
+export const whyCannotManage = (): string | null => manageControlsBlock(getActor().base);
+export const whyCannotRunTests = (): string | null => runTestsBlock(getActor().base);
+export const whyCannotAttest = (c: any): string | null => attestBlock(getActor().base, iAm(c.owner), c.owner);
 /** Controls with linked automated tests take their status from the tests; a manual override is blocked (use an exception/waiver). */
-export function whyCannotSetStatus(c: any): string | null {
-  const n = testsForControl(c.id).length;
-  if (n) return `Status follows ${n} automated test${n > 1 ? "s" : ""}; it cannot be overridden manually. Request an exception with a compensating control instead.`;
-  return roleReason("changing control status", "admin", "owner") || (iAm(c.owner) ? null : `Only the control owner (${c.owner}) can change the status.`);
-}
-export const whyCannotRequestException = (): string | null => roleReason("requesting an exception", "admin", "owner");
+export const whyCannotSetStatus = (c: any): string | null => setStatusBlock(getActor().base, iAm(c.owner), c.owner, testsForControl(c.id).length);
+export const whyCannotRequestException = (): string | null => requestExceptionBlock(getActor().base);
 export function exceptionState(x: ControlException): "Pending" | "Active" | "Expired" | "Rejected" {
   const a = getApproval(x.approvalId);
-  if (!a || a.status === "Rejected" || a.status === "Withdrawn") return "Rejected";
-  if (a.status === "Pending") return x.expires < today() ? "Expired" : "Pending";
-  if (a.status === "Expired") return "Expired";
-  return x.expires < today() ? "Expired" : "Active";
+  return exceptionStateOf(a?.status, x.expires, today());
 }
 export const exceptionsOf = (c: any): ControlException[] => c.exceptions || [];
 export function whyCannotDecideException(c: any, x: ControlException): string | null {
   const a = getApproval(x.approvalId);
-  if (exceptionState(x) !== "Pending") return "This request is no longer pending.";
-  return roleReason("approving an exception", "admin", "owner") || selfReason("the requester and the control owner cannot approve the exception", x.requestedBy, c.owner) || (a ? engineWhy(a) : "Approval record not found.");
+  return decideExceptionBlock(exceptionState(x), getActor().base, !!selfReason("", x.requestedBy, c.owner)) || (a ? engineWhy(a) : "Approval record not found.");
 }
 /** Audit the expiry of waivers once (call from event handlers, never from render). */
 export function sweepExceptions(): void {
@@ -57,11 +53,11 @@ export function sweepExceptions(): void {
 /** Status derived from automated tests: any failure => Fail; all passing => Pass; otherwise Needs evidence. */
 function followTests(c: any): void {
   const ts = testsForControl(c.id); if (!ts.length) return;
-  const next = ts.some((t) => t.result === "Fail") ? "Fail" : ts.every((t) => t.result === "Pass") ? "Pass" : "Needs evidence";
+  const next = statusFromTests(ts.map((t) => t.result)) as string;
   if (c.status !== next) { const from = c.status; c.status = next; wsLog("control.status.followed-tests", `${c.id}: ${from} → ${next} (automated tests)`, "Control"); }
 }
 
-export function createControl(input: { title: string; domain: string; owner: string }) {
+export function createControl(input: { title: string; domain: string; owner: string; ownerId?: string }) {
   return viaApi(() => {
     guard(whyCannotManage());
     const pre = (input.domain.match(/[A-Z]/g) || ["C"]).slice(0, 3).join("");
@@ -122,8 +118,10 @@ export function addMapping(id: string, fw: string, ref: string) {
     return c.map;
   }, () => post<Record<string, string[]>>(`/controls/${encodeURIComponent(id)}/mappings`, { fw, ref }));
 }
+/** Tickets need a ticketing integration; production has none connected yet (the demonstration simulates one). */
+export const whyCannotTicket = (): string | null => (API_ON ? "No ticketing integration is connected yet." : ticketBlock(getActor().base));
 export function createTicket(id: string) {
-  return viaApi(() => (guard(roleReason("creating tickets", "admin", "owner", "analyst")), { key: "SEC-" + (1000 + Math.floor(Math.random() * 9000)) }),
+  return viaApi(() => (guard(whyCannotTicket()), { key: "SEC-" + (1000 + Math.floor(Math.random() * 9000)) }),
     () => post<{ key: string }>(`/controls/${encodeURIComponent(id)}/ticket`, {}));
 }
 export function createTest(input: { name: string; source: string; control: string; logic: string }) {
@@ -156,17 +154,30 @@ export function syncAllTests() {
 export function exportSoa() {
   return viaApi(() => csv(["Doc", "Control", "Title", "Domain", "Owner", "Status", "Frameworks"],
     DATA.controls.map((c) => ["SoA", c.id, c.title, c.domain, c.owner, c.status, Object.keys(c.map || {}).map((k) => FW_SHORT[k] || k).join("|")])),
-  () => post<string>("/controls/export/soa", {}));
+  logged(() => csv(["Doc", "Control", "Title", "Domain", "Owner", "Status", "Frameworks"],
+    DATA.controls.map((c) => ["SoA", c.id, c.title, c.domain, c.owner, c.status, Object.keys(c.map || {}).map((k) => FW_SHORT[k] || k).join("|")])), "controls.soa.exported", `${DATA.controls.length} controls`));
 }
 export function exportMatrix() {
   return viaApi(() => csv(["Control", "Domain", ...MATRIX_FWS.map((f) => FW_SHORT[f])],
     DATA.controls.map((c) => [c.id, c.domain, ...MATRIX_FWS.map((f) => ((c.map || {})[f] || []).join("|"))])),
-  () => post<string>("/controls/export/matrix", {}));
+  logged(() => csv(["Control", "Domain", ...MATRIX_FWS.map((f) => FW_SHORT[f])],
+    DATA.controls.map((c) => [c.id, c.domain, ...MATRIX_FWS.map((f) => ((c.map || {})[f] || []).join("|"))])), "controls.matrix.exported", `${DATA.controls.length} controls`));
 }
-export function exportWorkpaper(id: string) {
-  return viaApi(() => {
+function workpaper(id: string) {
     const c = DATA.controls.find((x) => x.id === id)!;
     const tests = testsForControl(c.id);
     return `LOCKED WORKPAPER — ${c.id} ${c.title}\nDomain: ${c.domain}\nOwner: ${c.owner}\nStatus: ${c.status}\nMappings: ${Object.keys(c.map || {}).map((k) => FW_SHORT[k] + " " + c.map[k].join("/")).join("; ")}\nAttestation: ${c.attestation ? c.attestation.by + " on " + c.attestation.at : "none"}\nTests:\n${tests.map((t) => " - " + t.id + " " + t.name + " [" + t.result + "]").join("\n") || " none"}\n\nDraft workpaper for audit support. Requires reviewer sign-off.`;
-  }, () => post<string>(`/controls/${encodeURIComponent(id)}/export/workpaper`, {}));
 }
+export function exportWorkpaper(id: string) {
+  return viaApi(() => workpaper(id), logged(() => workpaper(id), "control.workpaper.exported", id));
+}
+
+/* ---------- production only (the server keeps these records; the demonstration has no equivalent or simulates it) ---------- */
+export const withdrawException = (id: string, exId: string) => post<boolean>(`/controls/${encodeURIComponent(id)}/exceptions/${encodeURIComponent(exId)}`, { decision: "withdraw" });
+/** Asks the control's owner for evidence: an in-app notice to them, recorded in the audit log. */
+export const requestEvidence = (id: string) => viaApi(() => true, () => post<void>(`/controls/${encodeURIComponent(id)}/evidence-request`, {}).then(() => true));
+export const setControlOwner = (id: string, ownerId: string) => post<void>(`/controls/${encodeURIComponent(id)}/owner`, { ownerId });
+/** Adopts controls from the shared library, owned by a member. */
+export const adoptControls = (ids: string[], ownerId: string) => post<{ added: string[] }>("/controls/adopt", { ids, ownerId });
+/** A manual test's result, recorded by the person who checked (with a note on what they checked). */
+export const recordTestResult = (id: string, result: string, note: string) => post<boolean>(`/tests/${encodeURIComponent(id)}/result`, { result, note });

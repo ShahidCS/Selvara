@@ -6,6 +6,10 @@ export class UpstreamError extends Error {
   constructor(public step: string, public code?: string, public status?: number, public detail?: string) { super(step); this.name = "UpstreamError"; }
 }
 
+/** An expected refusal raised inside a unit of work (a rule, a stale copy). Db.tx rolls back and rethrows it unchanged, so the route can answer
+ *  with its message instead of a generic 500. */
+export class PassThrough extends Error {}
+
 /** Builds an UpstreamError from a Supabase error object (Postgrest or Auth), keeping only its code, status and a redacted message. */
 export function upstream(step: string, e: unknown, status?: number): UpstreamError {
   const o = (e && typeof e === "object" ? e : {}) as { code?: unknown; status?: unknown; message?: unknown };
