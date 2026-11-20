@@ -5,6 +5,12 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ## [Unreleased]
 
 ### Changed
+- Production programme, group 8b: **email**, the **standalone vendor portal** and the **anonymous public Trust Center**. No new migration.
+  - **Email**: Resend or Postmark over HTTPS, off until `MAIL_PROVIDER`, `MAIL_API_KEY` and `MAIL_FROM` are set. Sends invitations, first-admin links, join outcomes, MFA reset notices, invoices, vendor questionnaires and Trust Center decisions and updates. A title and a link only, 10 an hour per address, masked addresses in the audit log. Without it, links are shown as before.
+  - **Vendor portal** (`/vendor-portal`): the vendor contact opens the emailed link, confirms the invited address with a one-time code, answers with evidence, and submits. Clarifications reopen chosen questions as a new version.
+  - **Public Trust Center** (`/trust/<company code>`): off until a second admin or owner approves turning it on. Visitors verify a work email to request documents, accept the NDA and subscribe, with one-click unsubscribe.
+  - **Before deploying**: optional, the email variables (`SUPABASE.md` section 4h). Point Supabase Auth's SMTP at the same provider for password reset emails.
+  - Draft for security, privacy and compliance review. The email provider is a new sub-processor.
 - Production programme, group 8a: the Admin Console's **Billing**, **Exchange Rates & Tax**, **MFA Resets** and **Platform Security** (sign-in blocks), and the workspace's **Billing & Invoices**, run on the server in production. Migration `0010_platform_records.sql` (schema version 10).
   - **Ledger.** Billing accounts, invoices issued with the exchange rate and tax locked in, and payments, credits, refunds, manual payments, write-offs and voids as ledger entries with a reason and a ticket. Above USD 1,000, every write-off and every price-list change need a second elevated super admin.
   - **Card payments (optional).** With Stripe keys set, company admins pay on Stripe's hosted page and super admins create payment links; payments are recorded only from Stripe's signed webhook. Without them, bank transfer.

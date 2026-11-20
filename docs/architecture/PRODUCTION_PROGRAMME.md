@@ -58,8 +58,8 @@ The demonstration's screens are rich and already route every change through a se
 | 5 | Merged | `0009` | ShahidCS/Selvara#78 |
 | 6 | Merged | none (uses `0008`) | ShahidCS/Selvara#79 |
 | 7 | Merged | none (uses `0008`) | ShahidCS/Selvara#80 |
-| 8a | Built, in review | `0010` | group 8a PR |
-| 8b | Not started (email, standalone vendor portal, anonymous Trust Center) | | |
+| 8a | Merged | `0010` | ShahidCS/Selvara#81 |
+| 8b | Built, in review | none (uses `0008`) | group 8b PR |
 
 ### Group 3 decisions (Risk, Issues, My Work, Overview, Reports)
 
@@ -271,3 +271,36 @@ Where the inventory (`inventory/group8-admin-billing-email.md`) left a choice, p
   - Automatic invoicing, dunning and rate refresh need a Vercel cron (`vercel.json`).
   - Emailing invoices and payment links waits for email (group 8b).
   - Invoice PDF layout, numbering, retention and tax wording are drafts for finance and legal review.
+
+### Group 8b decisions (email; the standalone vendor portal; the anonymous public Trust Center)
+
+Where the inventory (`inventory/group8-admin-billing-email.md` section 6; `inventory/group4-vendors-portal-questionnaires-trust-commitments.md` sections 2B and 4) left a choice, production does the following.
+
+- **Email (owner decision: built, off until configured).**
+  - An HTTPS email API, Resend or Postmark, set by the owner as `MAIL_PROVIDER`, `MAIL_API_KEY` and `MAIL_FROM` (`SUPABASE.md` section 4h). It needs no mail library, so no dependency changes. SMTP was not built because it needs a library.
+  - Messages carry a title, a sentence and a link: no record detail, and never a secret except a one-time code sent to its own owner. At most 10 an hour to one address. A failure never undoes the change that asked for the message.
+  - The audit log records the template and a masked address, never the message.
+  - Sent when configured: team invitations and the first admin's link (the link is then no longer shown to the admin), the outcome of a request to join, MFA resets (member and admin level), issued invoices and "Send by email" on an invoice, vendor questionnaires and clarifications, Trust Center decisions for visitors, and Trust Center update emails.
+  - Without email, everything works as before: links are shown to the person who created them, and the screens say email is not set up.
+  - Password reset emails stay with Supabase Auth's own mailer; point its SMTP setting at the same provider (`SUPABASE.md` section 3).
+  - Not built: email copies of in-app notices, digests and scheduled report emails, which need a Vercel cron.
+- **Verified visitors.** People without an account prove a work email with a 6-digit code. The code works once, for 10 minutes, with 5 tries. At most 5 codes an hour per address and 30 per network address. Personal and temporary domains are refused. The session is bound to one company, one purpose and one subject: 15 minutes idle, 8 hours at most. It is never a member session.
+- **Standalone vendor portal.**
+  - Sending:
+    - An admin or owner sends the 12-question assessment to the vendor contact's work email (Vendors, "Send questionnaire"), due 7 to 45 days ahead. Sending to a member with the Vendor role stays available.
+    - The link lasts 30 days; a new one replaces it. Three other addresses end the link.
+  - Answering:
+    - Answers are Yes, Partially, No or Not applicable, with a comment of up to 2,000 characters. Evidence files are checked like evidence files: type, 4 MB, content.
+    - A critical "Yes" needs evidence. Submitting locks the answers.
+  - Clarification: the company chooses the questions to reopen. Each needs a new comment, and a "Yes" new evidence. The result is a new version.
+  - The company opens evidence through 60-second links.
+  - Files are not scanned for malware, because no scanner is configured; the portal says so.
+  - The demonstration's second factor (passkey or authenticator) and "prefill from a CAIQ or SIG file" are not built. The link and the emailed code are the two checks.
+- **Anonymous public Trust Center** (`/trust/<company code>`).
+  - Off until an admin or owner asks and a second one approves (four-eyes `trust.public-page`). Turning it off is immediate.
+  - It shows only what the company publishes: verified answers, approved sub-processors, control status by domain, documents and publications. Public documents open for anyone.
+  - Visitors verify a work email before they request a document, accept the NDA or subscribe. Decisions on their requests are emailed to them.
+  - Update emails go out after a publication is approved, each with a one-click unsubscribe. An unsubscribed address is removed.
+  - Chatbot questions: 20 an hour per network address, answered only from verified answers.
+- **Every visitor action** is in the company's audit log as "Visitor" or "Vendor contact" with a masked address.
+

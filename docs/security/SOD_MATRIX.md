@@ -56,6 +56,8 @@ Every decision below writes an audit entry (`wsLog`, and `adminLog` for platform
 | Billing (company) | Ask for another plan; pay an invoice on the provider's page | company admin | the platform accepts or declines the plan change | | nothing changes until accepted; a payment counts only when the provider confirms it |
 | Rates | Manual rate/tax override; release a held rate | super (elevated) | different super (elevated) | initiator != approver | numeric bounds; the held value must be unchanged when applied |
 | Rates | Reject a held rate; refresh from the feeds | super (elevated) | none (safe direction: the rate in force stays; held values need a person) | | reason + ticket for a rejection |
+| Trust Center | Turn the anonymous public page on | admin/owner | a different admin or owner (`trust.public-page`, 24 h) | requester != approver | turning it off: one admin or owner (safe direction) |
+| Vendor portal | Send the assessment by email; send a new link; ask for clarification on chosen questions | admin/owner | none (the vendor answers; the company reviews) | | the vendor contact proves the invited address with an emailed code |
 | Reports | Schedule external distribution | owner/admin | different admin | | |
 
 ## 4. Identity verification for MFA reset (admin and member)
