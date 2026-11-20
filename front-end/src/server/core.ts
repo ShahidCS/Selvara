@@ -7,6 +7,7 @@
    per company. Handlers take a plain request and return a plain response, so they are tested without a network. */
 import { sendMail } from "./mail";
 import { vendorPortalRoutes } from "./vendorportal";
+import { trustPublicRoutes } from "./trustpublic";
 import { CHALLENGE, CUSTOM_BOUNDS, LOCKOUT, MFA, REAUTH_MS, RESET, type LockoutRule } from "@/lib/accountSecurity";
 import { checkPassword, POLICY } from "@/lib/credentials";
 import { IP_POLICY, LEVEL_LABEL, REPUTATION } from "@/lib/ipGuard";
@@ -577,7 +578,7 @@ export const ROUTES: Record<string, H> = {
 };
 const helperEntry = (d: Deps, r: Req, p: Profile, a: Access, action: string, target: string) => entry(d, r, actorOf(p, a), action, target);
 Object.assign(ROUTES, adminRoutes({ signed, entry: helperEntry, randomId, sha256Hex }), supportRoutes({ signed, companyAdmin: admin, entry: helperEntry }));
-Object.assign(ROUTES, workspaceRoutes({ signed }), vendorPortalRoutes());
+Object.assign(ROUTES, workspaceRoutes({ signed }), vendorPortalRoutes(), trustPublicRoutes());
 Object.assign(ROUTES, v1Routes());
 Object.assign(ROUTES, admin8Routes({ signed, entry: helperEntry }), { "POST billing/stripe/webhook": stripeWebhook });
 /** Payment-provider webhooks: signed by the provider over the raw body (JSON), never by the session cookie. */

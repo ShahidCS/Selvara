@@ -11,7 +11,9 @@
    - The public page is built from the company's own records: its name, verified library answers (the FAQ), sub-processors (approved vendors
      that process customer data), published documents, and control status by domain. Nothing is invented.
    - A new public document is listed "On request, NDA" until its publication is approved. Names are unique.
-   - The anonymous public page (no sign-in) arrives with email (programme group 8): visitors must verify their address first. */
+   - The anonymous public page (group 8b, server/trustpublic.ts) is off until an admin or owner asks to turn it on and a second one approves
+     (four-eyes `trust.public-page`); turning it off is immediate. Visitors without an account verify their address by email before they
+     request a document, accept the NDA or subscribe. A decision on a visitor's request is emailed to them. */
 import { DOMAIN_RE, isoDayOf, trustManageBlock } from "@/lib/rulesWs";
 import type { Deps } from "../types";
 import { approvalsView, err, invalid, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
@@ -21,34 +23,35 @@ import { pendingOf, registerFourEyes } from "./foureyes";
 import type { Answer } from "./questionnaires";
 import type { Actor, Rec, WsTx } from "./store";
 import type { Vendor } from "./vendors";
+import { mailConfigured, sendMail } from "../mail";
 
 export interface Resource { id: string; name: string; access: "Public" | "On request, NDA"; status: "Active"; editedBy: string; editedById: string; approvedBy?: string; at: string; file?: { path: string; name: string; size: number; type: string } }
 export interface Account { id: string; company: string; domain: string; nda: string; ndaBy?: string; viewers: string[]; access: string[]; status: "Active" | "Revoked"; revokeReason?: string }
 export interface TrustRequest { id: string; who: string; whoId: string; company: string; resource: string; resourceId: string; reason: string; at: string; atMs: number; status: "Pending" | "Approved" | "Denied"; by?: string; byId?: string; note?: string; decidedAt?: string }
-interface Settings { chatbot: boolean; blocked: { domain: string; by: string; at: string }[]; unblocked: Record<string, string> }
-interface Chat { id: string; at: string; atMs: number; who: string; whoId: string; q: string; a: string; answered: boolean }
-export const TRUST_KINDS = ["trust.publish"];
-const NEEDS_PERSON = "Thanks — this one needs a person. Your question was passed to the security team, who will reply to you.";
-const domainOf = (email: string) => String(email).trim().toLowerCase().split("@").pop() || "";
-const labelOf = (email: string) => { const l = domainOf(email).split(".")[0] || ""; return l ? l.charAt(0).toUpperCase() + l.slice(1, 80) : "—"; };
+export interface Settings { chatbot: boolean; blocked: { domain: string; by: string; at: string }[]; unblocked: Record<string, string>; publicPage?: { on: boolean; name: string; ref: string; since: string; by: string } }
+export interface Chat { id: string; at: string; atMs: number; who: string; whoId: string; q: string; a: string; answered: boolean }
+export const TRUST_KINDS = ["trust.publish", "trust.public-page"];
+export const NEEDS_PERSON = "Thanks — this one needs a person. Your question was passed to the security team, who will reply to you.";
+export const domainOf = (email: string) => String(email).trim().toLowerCase().split("@").pop() || "";
+export const labelOf = (email: string) => { const l = domainOf(email).split(".")[0] || ""; return l ? l.charAt(0).toUpperCase() + l.slice(1, 80) : "—"; };
 
-async function settings(t: WsTx): Promise<Rec<Settings>> {
+export async function settings(t: WsTx): Promise<Rec<Settings>> {
   const s = await t.get<Settings>("trust-settings", "settings");
   if (s) return s;
   const fresh: Settings = { chatbot: true, blocked: [], unblocked: {} }; await t.insert("trust-settings", "settings", fresh);
   return (await t.get<Settings>("trust-settings", "settings"))!;
 }
 /** Best keyword overlap with the verified answers (the same matching as the demonstration); null when nothing scores. */
-function botAnswer(q: string, pool: { q: string; a: string }[]): string | null {
+export function botAnswer(q: string, pool: { q: string; a: string }[]): string | null {
   const ql = q.toLowerCase(); let best: string | null = null; let bestScore = 0;
   for (const a of pool) { const score = a.q.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 3 && ql.includes(w)).length; if (score > bestScore) { bestScore = score; best = a.a; } }
   return bestScore >= 1 ? best : null;
 }
 /** The public page's change history and viewer activity (Activity & history tab). */
 async function history(t: WsTx, change: string) { const id = `TH-${await t.next("trust-history", 0)}`; await t.insert("trust-history", id, { at: isoDayOf(t.now), who: t.actor.name, change: change.slice(0, 300) }); }
-async function activity(t: WsTx, what: string) { const id = `TV-${await t.next("trust-activity", 0)}`; await t.insert("trust-activity", id, { at: isoDayOf(t.now), who: t.actor.name, what: what.slice(0, 300) }); }
+export async function activity(t: WsTx, what: string) { const id = `TV-${await t.next("trust-activity", 0)}`; await t.insert("trust-activity", id, { at: isoDayOf(t.now), who: t.actor.name, what: what.slice(0, 300) }); }
 /** The blocklist entries a requester's address falls under (its domain or a parent domain). */
-const blockedBy = (email: string, domains: string[]) => { const dom = domainOf(email); return domains.filter((b) => dom === b || dom.endsWith("." + b)); };
+export const blockedBy = (email: string, domains: string[]) => { const dom = domainOf(email); return domains.filter((b) => dom === b || dom.endsWith("." + b)); };
 async function emailOf(d: Deps, id: string) { return (await d.store.profileById(id))?.email?.toLowerCase() ?? ""; }
 
 registerFourEyes("trust.publish", { mod: "trust", apply: async (_d, t, a, by) => {
@@ -58,6 +61,12 @@ registerFourEyes("trust.publish", { mod: "trust", apply: async (_d, t, a, by) =>
   rec.data.access = "Public"; rec.data.approvedBy = by; await t.update("trust-resource", rec.id, rec.data, rec.version);
   await history(t, `${rec.data.name} made public (approved by ${by})`);
   await t.audit("trust.visibility.changed", `${rec.data.name} → Public (approved by ${by}; requested by ${a.requestedByName})`, "Policy");
+} });
+registerFourEyes("trust.public-page", { mod: "trust", apply: async (_d, t, a, by) => {
+  const rec = await settings(t); const p = a.payload as { name: string; ref: string };
+  rec.data.publicPage = { on: true, name: String(p.name), ref: String(p.ref), since: isoDayOf(t.now), by }; await t.update("trust-settings", rec.id, rec.data, rec.version);
+  await history(t, `Public page turned on (approved by ${by})`);
+  await t.audit("trust.public_page.enabled", `/trust/${p.ref} (approved by ${by}; requested by ${a.requestedByName})`, "Policy");
 } });
 
 export function trustRoutes(h: WsHelpers) {
@@ -100,6 +109,7 @@ export function trustRoutes(h: WsHelpers) {
       requests: reqs.filter((x) => x.status === "Pending").reverse(),
       decisions: reqs.filter((x) => x.status !== "Pending").reverse().map((x) => ({ at: x.decidedAt ?? x.at, who: x.who, resource: x.resource, decision: x.status, by: x.by ?? "", note: x.note ?? "" })),
       blocked: s.blocked.map((b) => b.domain), chatbot: s.chatbot,
+      publicPage: { on: !!s.publicPage?.on, ref: s.publicPage?.ref ?? "", since: s.publicPage?.since ?? "", by: s.publicPage?.by ?? "", pending: pending.find((a) => a.kind === "trust.public-page")?.id ?? null, mail: mailConfigured(d) },
       chats: (await t.list<Chat>("trust-chat")).map((x) => x.data).reverse().slice(0, 200).map((x) => ({ at: x.at, who: x.who, q: x.q, a: x.a })),
       subscribers: (await t.list("trust-sub")).length,
       activity: (await t.list<{ at: string; who: string; what: string }>("trust-activity")).map((x) => x.data).reverse().slice(0, 50),
@@ -132,17 +142,22 @@ export function trustRoutes(h: WsHelpers) {
       }
       await t.audit("trust.access.approved", `${q.id}: ${q.company} → ${q.resource}`, "Policy");
       await t.notify(q.whoId, `Your request for ${q.resource} was approved. Accept the NDA on the Trust Center to open it.`);
-      return "ok";
+      return { who: q.who, visitor: !q.whoId, resource: q.resource, page: (await settings(t)).data.publicPage };
     });
-    return out === "blocked" ? err(403, "Blocked domain: this request cannot be approved.") : ok({ ok: true });
+    if (out === "blocked") return err(403, "Blocked domain: this request cannot be approved.");
+    // a visitor without an account has no bell: they are told by email
+    if (out.visitor && out.page) await sendMail(d, out.who, { t: "trust-decided", company: out.page.name, resource: out.resource, approved: true, note: "", link: `${d.site.origin}/trust/${out.page.ref}` }, { tenantId: me.tenantId, actor: me.name, ip: r.ip });
+    return ok({ ok: true });
   });
-  const deny = admin(async (_d, t, b, p, me) => {
+  const deny = admin(async (d, t, b, p, me) => {
     const rec = (await t.get<TrustRequest>("trust-request", str(p[3], 20))) ?? missing("Request"); const q = rec.data;
     if (q.status !== "Pending") invalid("This request was already decided.");
     const note = txt(b.note, 300);
     q.status = "Denied"; q.by = me.name; q.byId = me.id; q.note = note; q.decidedAt = isoDayOf(t.now); await t.update("trust-request", rec.id, q, rec.version);
     await t.audit("trust.access.denied", `${q.id}: ${q.company} → ${q.resource}${note ? `; note: ${note}` : ""}`, "Policy");
     await t.notify(q.whoId, `Your request for ${q.resource} was declined${note ? `: ${note}` : "."}`);
+    const page = (await settings(t)).data.publicPage;
+    if (!q.whoId && page) await sendMail(d, q.who, { t: "trust-decided", company: page.name, resource: q.resource, approved: false, note, link: `${d.site.origin}/trust/${page.ref}` }, { tenantId: me.tenantId, actor: me.name, ip: me.ip });
     return { ok: true };
   });
   const revoke = admin(async (_d, t, b, p) => {
@@ -169,6 +184,22 @@ export function trustRoutes(h: WsHelpers) {
     s.blocked = s.blocked.filter((x) => x.domain !== dom); s.unblocked[dom] = me.id; await t.update("trust-settings", rec.id, s, rec.version);
     await t.audit("trust.domain.unblocked", `${dom}; reason: ${reason}`, "Policy");
     return dom;
+  });
+  /** The anonymous public page: turning it on is a request a second admin or owner approves; turning it off is immediate. */
+  const publicPage = admin(async (d, t, b, _p, me) => {
+    const rec = await settings(t); const s = rec.data;
+    if (b.enabled !== true) {
+      if (!s.publicPage?.on) invalid("The public page is already off.");
+      s.publicPage = { ...s.publicPage!, on: false }; await t.update("trust-settings", rec.id, s, rec.version);
+      await history(t, "Public page turned off"); await t.audit("trust.public_page.disabled", `/trust/${s.publicPage.ref}`, "Policy");
+      return { on: false, pending: false };
+    }
+    if (s.publicPage?.on) invalid("The public page is already on.");
+    if ((await pendingOf(t, ["trust.public-page"])).length) invalid("Turning the public page on is already awaiting approval.");
+    const co = (await d.dir.companiesOf(me.id)).find((m) => m.company.id === me.tenantId)?.company; if (!co) invalid("Company not found.");
+    await t.request({ kind: "trust.public-page", title: `Turn on the public Trust Center page (/trust/${co!.ref})`, subject: "public-page", payload: { name: co!.name, ref: co!.ref }, needs: 1, approverRoles: ["admin", "owner"], forbid: [me.id], ttlMs: 24 * 3600_000 });
+    await t.audit("trust.public_page.requested", `/trust/${co!.ref}`, "Policy");
+    return { on: false, pending: true };
   });
   const chatbot = admin(async (_d, t, b) => {
     const on = b.enabled === true; const rec = await settings(t); rec.data.chatbot = on; await t.update("trust-settings", rec.id, rec.data, rec.version);
@@ -274,7 +305,7 @@ export function trustRoutes(h: WsHelpers) {
   return {
     "GET ws/data/trust": data,
     "POST ws/trust/requests/:id/approve": approve, "POST ws/trust/requests/:id/deny": deny, "POST ws/trust/accounts/:id/revoke": revoke,
-    "POST ws/trust/blocked-domains": block, "POST ws/trust/blocked-domains/:domain/delete": unblock, "POST ws/trust/chatbot": chatbot,
+    "POST ws/trust/blocked-domains": block, "POST ws/trust/blocked-domains/:domain/delete": unblock, "POST ws/trust/chatbot": chatbot, "POST ws/trust/public-page": publicPage,
     "POST ws/trust/resources": publish, "POST ws/trust/resources/:id/visibility": visibility, "POST ws/trust/resources/:id/file": upload, "GET ws/trust/resources/:id/link": link,
     "POST ws/trust/access-requests": requestAccess, "POST ws/trust/nda": nda, "POST ws/trust/subscriptions": subscribe, "POST ws/trust/questions": ask,
   };

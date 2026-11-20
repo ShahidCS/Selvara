@@ -19,9 +19,10 @@ export const err = (status: number, error: string): Res => ({ status, body: { er
 export const str = (v: unknown, max = 300) => String(v ?? "").slice(0, max);
 export const txt = (v: unknown, max = 500) => str(v, max * 2).trim().slice(0, max);
 
-let afterCommit: ((d: Deps, a: Actor) => Promise<void>) | null = null;
-/** Runs after a route's changes committed, with what was audited (outgoing webhooks, server/ws/webhooks.ts). */
-export const onCommitted = (fn: (d: Deps, a: Actor) => Promise<void>) => { afterCommit = fn; };
+const afterCommit: ((d: Deps, a: Actor) => Promise<void>)[] = [];
+/** Runs after a route's changes committed, with what was audited (outgoing webhooks, server/ws/webhooks.ts; Trust Center update emails,
+ *  server/trustpublic.ts). Each listener once per module load. */
+export const onCommitted = (fn: (d: Deps, a: Actor) => Promise<void>) => { if (!afterCommit.includes(fn)) afterCommit.push(fn); };
 /** A workspace route: a member of the session's company whose role may open `mod`. Refusals from rules and stale copies become answers. */
 export function wsRoute(h: WsHelpers, mod: string | null, fn: WsHandler): H {
   return h.signed(async (d, r, c) => {
@@ -30,7 +31,7 @@ export function wsRoute(h: WsHelpers, mod: string | null, fn: WsHandler): H {
     const actor: Actor = { id: c.p.id, name: c.p.person, role: c.a.role, tenantId: c.a.company.id, ip: r.ip, committed: [] };
     try {
       const out = await fn(d, r, { ...c, actor });
-      if (afterCommit && actor.committed?.length) await afterCommit(d, actor).catch(() => undefined); // never fails the change itself
+      if (actor.committed?.length) for (const fn of afterCommit) await fn(d, actor).catch(() => undefined); // never fails the change itself
       return out;
     }
     catch (e) {

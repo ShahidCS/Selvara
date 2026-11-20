@@ -32,7 +32,8 @@ export interface WsTrustPublic { company: string; chatbot: boolean; faq: { q: st
   controls: [string, string][]; account: { company: string; nda: string; access: string[] } | null; myRequests: { resource: string; status: string; at: string }[]; subscribed: boolean }
 /** Group 5: auditors who can be given access, and the company audit log's verification and evidence packages. */
 export interface WsAuditLog { firstBad: number | null; verifiedAt: string | null; verifiedBy?: string; packages: { id: string; at: string; by: string; entries: number; sha: string }[] }
-export const g4Meta = createStore<{ contacts: { id: string; name: string }[]; vendorQs: WsVendorQ[]; /** email is set up (the vendor portal can be used) */ mail?: boolean; assigned: WsVendorQ[]; trustPublic: WsTrustPublic | null; incidents: any[]; subscribers: number;
+export const g4Meta = createStore<{ contacts: { id: string; name: string }[]; vendorQs: WsVendorQ[]; /** email is set up (the vendor portal can be used) */ mail?: boolean;
+  /** The anonymous public Trust Center page (group 8b), for admins and owners. */ trustPage?: { on: boolean; ref: string; since: string; by: string; pending: string | null; mail: boolean } | null; assigned: WsVendorQ[]; trustPublic: WsTrustPublic | null; incidents: any[]; subscribers: number;
   auditors: { id: string; name: string }[]; auditlog: WsAuditLog }>({ contacts: [], vendorQs: [], assigned: [], trustPublic: null, incidents: [], subscribers: 0, auditors: [], auditlog: { firstBad: null, verifiedAt: null, packages: [] } });
 /** My Work as the server computes it for the signed-in person. */
 export interface WsWork {
@@ -98,11 +99,11 @@ const LOADERS: Record<string, (b: any) => void> = {
     g4Meta.set({ assigned: b.assigned }); if (b.filesConfigured) wsMeta.set({ filesConfigured: true });
   },
   trust(b) {
-    DATA.trust = b.resources; const p = b.public; g4Meta.set({ trustPublic: p, subscribers: b.subscribers ?? 0 });
+    DATA.trust = b.resources; const p = b.public; g4Meta.set({ trustPublic: p, subscribers: b.subscribers ?? 0, trustPage: b.publicPage ?? null });
     fill(TRUST_FAQ, p.faq); fill(TRUST_SUBPROC, p.subprocessors); fill(TRUST_UPDATES, p.updates);
     TRUST.accounts = b.accounts ?? []; TRUST.requests = b.requests ?? []; TRUST.decisions = b.decisions ?? []; TRUST.blocked = b.blocked ?? []; TRUST.chats = b.chats ?? [];
     TRUST.chatbot = b.chatbot ?? p.chatbot; TRUST.activity = b.activity ?? []; TRUST.modeHist = b.modeHist ?? [];
-    if (b.approvals) setApprovals(["trust.publish"], b.approvals);
+    if (b.approvals) setApprovals(["trust.publish", "trust.public-page"], b.approvals);
     if (b.filesConfigured) wsMeta.set({ filesConfigured: true });
   },
   commitments(b) {

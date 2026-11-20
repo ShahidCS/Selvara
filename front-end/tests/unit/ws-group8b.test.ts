@@ -162,3 +162,72 @@ describe("standalone vendor portal", () => {
     expect((await call("POST", `ws/vendors/${vendorId}/questionnaire/email`, { email: "contact@vendor.example" }, jordan.c)).status).toBe(400);
   });
 });
+
+describe("public Trust Center (anonymous visitors)", () => {
+  const PDF = new TextEncoder().encode("%PDF-1.7\n1 0 obj<<>>endobj\n");
+  type Data = { resources: { id: string; name: string; access: string }[]; approvals: { id: string; kind: string; status: string }[]; requests: { id: string; who: string }[]; publicPage: { on: boolean; pending: string | null } };
+  async function setup() {
+    const jordan = await member("jordan@acme.example", "admin", "Jordan Avery");
+    const casey = await member("casey@acme.example", "owner", "Casey Morgan");
+    const data = async () => body<Data>(await call("GET", "ws/data/trust", {}, jordan.c));
+    const approve = async (kind: string) => { const a = (await data()).approvals.find((x) => x.kind === kind && x.status === "Pending")!; expect((await call("POST", `ws/four-eyes/${a.id}/approve`, { reason: "Checked and agreed with the team" }, casey.c)).status).toBe(200); };
+    // two documents with files: one made public (four-eyes), one on request
+    for (const name of ["ISO certificate", "SOC 2 report"]) await call("POST", "ws/trust/resources", { name, access: "On request, NDA" }, jordan.c);
+    const [iso, soc] = (await data()).resources;
+    for (const x of [iso, soc]) expect((await call("POST", `ws/trust/resources/${x.id}/file`, { name: `${x.id}.pdf` }, jordan.c, PDF)).status).toBe(200);
+    await call("POST", `ws/trust/resources/${iso.id}/visibility`, {}, jordan.c); await approve("trust.publish");
+    return { jordan, casey, data, approve, iso, soc };
+  }
+  it("is off until a second person approves turning it on; a visit never reveals whether a company exists", async () => {
+    const { jordan, data, approve } = await setup();
+    expect((await call("GET", "trust-public/acme-eu")).status).toBe(404);
+    expect(body<{ error: string }>(await call("GET", "trust-public/no-such-co")).error).toBe("This Trust Center is not public.");
+    expect(body<{ pending: boolean }>(await call("POST", "ws/trust/public-page", { enabled: true }, jordan.c)).pending).toBe(true);
+    expect((await call("POST", `ws/four-eyes/${(await data()).approvals.find((x) => x.kind === "trust.public-page")!.id}/approve`, { reason: "My own request approved" }, jordan.c)).status).toBe(403);
+    await approve("trust.public-page");
+    const page = body<{ company: string; documents: { name: string; open: boolean }[]; visitor: unknown }>(await call("GET", "trust-public/acme-eu"));
+    expect(page.company).toBe("Acme Test Co"); expect(page.visitor).toBeNull();
+    expect(page.documents.map((x) => [x.name, x.open])).toEqual([["ISO certificate", true], ["SOC 2 report", false]]);
+    await call("POST", "ws/trust/public-page", { enabled: false }, jordan.c); // off at once
+    expect((await call("GET", "trust-public/acme-eu")).status).toBe(404);
+  });
+  it("lets a verified visitor request a document, emails the decision, and opens it only after the NDA", async () => {
+    const { jordan, casey, data, approve, iso, soc } = await setup();
+    await call("POST", "ws/trust/public-page", { enabled: true }, jordan.c); await approve("trust.public-page");
+    expect(body<{ url: string }>(await call("GET", `trust-public/acme-eu/documents/${iso.id}/link`)).url).toBeTruthy(); // public: anyone
+    expect((await call("GET", `trust-public/acme-eu/documents/${soc.id}/link`)).status).toBe(401);
+    expect((await call("POST", "trust-public/acme-eu/requests", { resourceId: soc.id })).status).toBe(401); // verify first
+    expect((await call("POST", "trust-public/acme-eu/code", { email: "buyer@hotmail.com" })).status).toBe(400); // a personal address
+    expect(body<{ to: string }>(await call("POST", "trust-public/acme-eu/code", { email: "buyer@customer.example" })).to).toBe("b•••@customer.example");
+    const otp = /is (\d{6})/.exec(last().text)![1];
+    const v = await call("POST", "trust-public/acme-eu/verify", { email: "buyer@customer.example", code: otp });
+    const vc = { [VCOOKIE]: v.cookies![0].match(new RegExp(`${VCOOKIE}=([^;]*)`))![1] };
+    expect((await call("GET", "ws/data/trust", {}, vc)).status).toBe(401); // a visitor is never a member
+    expect(body<{ queued: boolean }>(await call("POST", "trust-public/acme-eu/requests", { resourceId: soc.id, reason: "Vendor due diligence" }, vc)).queued).toBe(true);
+    const rq = (await data()).requests[0]; expect(rq.who).toBe("buyer@customer.example");
+    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, {}, casey.c)).status).toBe(200);
+    expect(last()).toMatchObject({ to: "buyer@customer.example", subject: "Acme Test Co Trust Center: SOC 2 report" });
+    expect((await call("GET", `trust-public/acme-eu/documents/${soc.id}/link`, {}, vc)).status).toBe(403); // the NDA first
+    expect((await call("POST", "trust-public/acme-eu/nda", {}, vc)).status).toBe(200);
+    expect(body<{ url: string }>(await call("GET", `trust-public/acme-eu/documents/${soc.id}/link`, {}, vc)).url).toBeTruthy();
+    expect(log("trust.nda.accepted")[0].actor).toBe("Visitor b•••@customer.example");
+    // the session is bound to this company's page
+    dir.addCompany("other-co", "Other Test Co");
+    expect(body<{ visitor: unknown }>(await call("GET", "trust-public/acme-eu", {}, vc)).visitor).not.toBeNull();
+  });
+  it("emails subscribers when a document is made public, with a working unsubscribe link; the chatbot is rate-limited", async () => {
+    const { jordan, approve, soc } = await setup();
+    await call("POST", "ws/trust/public-page", { enabled: true }, jordan.c); await approve("trust.public-page");
+    await call("POST", "trust-public/acme-eu/code", { email: "reader@customer.example" });
+    const v = await call("POST", "trust-public/acme-eu/verify", { email: "reader@customer.example", code: /is (\d{6})/.exec(last().text)![1] });
+    const vc = { [VCOOKIE]: v.cookies![0].match(new RegExp(`${VCOOKIE}=([^;]*)`))![1] };
+    expect((await call("POST", "trust-public/acme-eu/subscribe", {}, vc)).status).toBe(200);
+    await call("POST", `ws/trust/resources/${soc.id}/visibility`, {}, jordan.c); await approve("trust.publish");
+    const upd = sent.find((m) => m.subject === "Acme Test Co Trust Center update")!; expect(upd.to).toBe("reader@customer.example"); expect(upd.text).toContain("SOC 2 report");
+    const token = /#unsubscribe=([A-Za-z0-9_-]+)/.exec(upd.text)![1];
+    expect((await call("POST", "trust-public/acme-eu/unsubscribe", { token })).status).toBe(200);
+    expect((await call("POST", "trust-public/acme-eu/unsubscribe", { token })).status).toBe(404);
+    for (let i = 0; i < 20; i++) expect((await call("POST", "trust-public/acme-eu/questions", { q: "Do you encrypt data at rest?" }, {}, undefined, "203.0.113.9")).status).toBe(200);
+    expect((await call("POST", "trust-public/acme-eu/questions", { q: "One more?" }, {}, undefined, "203.0.113.9")).status).toBe(429);
+  });
+});
