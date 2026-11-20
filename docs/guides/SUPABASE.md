@@ -124,6 +124,20 @@ The AI Assistant and agents call Claude from the server. Without a key, every co
 
 Anthropic does not train models on API requests under its commercial terms. Check that your agreement with Anthropic and your own privacy notice cover sending company records to it before turning AI on for real customers.
 
+### 4f. Integrations (you, per project; production programme group 7; optional, per provider)
+
+Each connector needs credentials that Selvara's operator creates once in the provider and stores as **Sensitive** Vercel variables. A connector without them says "not set up" in Integrations; the others work. Companies never enter passwords or tokens: they install, consent or create a role on their side and enter identifiers.
+
+| Connector | Create (in the provider) | Vercel variables |
+|---|---|---|
+| GitHub | A private GitHub App. Permissions, all read-only: Administration, Metadata, Dependabot alerts, Secret scanning alerts (repository); Administration, Members (organisation). No webhook. Generate a private key. | `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY` (the PEM, newlines as `\n`), `GITHUB_APP_SLUG` |
+| AWS | In Selvara's own AWS account, a principal whose only permission is `sts:AssumeRole` on `arn:aws:iam::*:role/*` with the condition that the role trusts it. Companies create a role trusting it with the external id Selvara shows, and attach `SecurityAudit`. | `AWS_INTEGRATION_ACCESS_KEY_ID`, `AWS_INTEGRATION_SECRET_ACCESS_KEY`, `AWS_INTEGRATION_PRINCIPAL_ARN` |
+| Microsoft Entra ID | A multi-tenant app registration with application permissions `User.Read.All`, `AuditLog.Read.All`, `RoleManagement.Read.Directory`, `Application.Read.All`, `Policy.Read.All`, a client secret, and the redirect URI `<SITE_URL>/ws/integrations`. Client secrets expire: renew before they do. | `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET` |
+| Google Workspace | A service account in a Google Cloud project (Admin SDK API enabled), with a key. Companies authorise its client id for domain-wide delegation with the two read-only scopes Selvara shows. | `GOOGLE_SA_EMAIL`, `GOOGLE_SA_PRIVATE_KEY`, `GOOGLE_SA_CLIENT_ID` |
+| Okta | Nothing: each company creates a service app in its own Okta with the public key Selvara generates for it. | none |
+
+Verify each permission list against the provider's current documentation before use. Rotating `SERVER_SECRET` makes sealed values unreadable (Okta keys, webhook secrets): reconnect Okta and re-add webhooks after a rotation.
+
 ## 5. First accounts (you, per project)
 
 Requests to join need a company admin to approve them, so create the first admin by hand (5a), then their company (5b).

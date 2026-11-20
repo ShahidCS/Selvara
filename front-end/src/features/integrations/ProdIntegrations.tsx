@@ -136,7 +136,7 @@ function ConnectionPage({ id }: { id: string }) {
         {c.lastError ? <div className="card" style={{ boxShadow: "none", background: "var(--bad-bg)", borderColor: "transparent" }}><div className="c-body" role="alert" style={{ padding: "10px 14px", fontSize: 13, color: "var(--bad-ink)" }}>The last sync failed: {c.lastError}</div></div> : null}
         <div className="card"><div className="c-head"><h3>Details</h3></div><div className="c-body"><dl className="meta-grid">
           <dt>Reads</dt><dd>{c.scope}</dd><dt>Set up by</dt><dd>{c.createdBy}</dd><dt>Approved by</dt><dd>{c.approvedBy ?? "—"}</dd><dt>Connected</dt><dd>{c.connected || "—"}</dd><dt>Last sync</dt><dd>{c.lastSync}</dd>
-          {Object.keys(c.counts ?? {}).length ? <><dt>Last read</dt><dd>{Object.entries(c.counts).map(([k, n]) => `${n} ${k}`).join(", ")}</dd></> : null}
+          {Object.keys(c.counts ?? {}).length ? <><dt>Last read</dt><dd>{Object.entries(c.counts).map(([k, n]) => `${n} ${n === 1 ? String(k).replace(/ies$/, "y").replace(/s$/, "") : k}`).join(", ")}</dd></> : null}
         </dl><p className="field help" style={{ margin: "10px 0 0" }}>Read-only: Selvara never changes anything in {c.name}. Results become automated tests in Controls; AI applications people use appear under AI governance, Discovered AI; applications matching a vendor appear on that vendor.</p></div></div>
         {c.checks.length ? <div className="card"><div className="c-head"><h3>Checks</h3></div><div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {c.checks.map((t: Conn) => (

@@ -56,7 +56,8 @@ The demonstration's screens are rich and already route every change through a se
 | 3 | Merged | none (uses `0008`) | ShahidCS/Selvara#76 |
 | 4 | Merged | none (uses `0008`) | ShahidCS/Selvara#77 |
 | 5 | Merged | `0009` | ShahidCS/Selvara#78 |
-| 6 | Built, in review | none (uses `0008`) | group 6 PR |
+| 6 | Merged | none (uses `0008`) | ShahidCS/Selvara#79 |
+| 7 | Built, in review | none (uses `0008`) | group 7 PR |
 
 ### Group 3 decisions (Risk, Issues, My Work, Overview, Reports)
 
@@ -203,3 +204,36 @@ Where the inventory (`inventory/group6-ai-assistant-api.md`, sections 4 and 7) f
   - Owners cannot open the Assistant (`roles.json`). A service-account agent's raise or recertification needs two approvers besides the requester and creator, so a company needs at least three or four admins for it.
   - Agent schedules need a Vercel cron (`vercel.json`).
   - The company API returns records as the admin sees them, owner names included. Minimising them is a product choice.
+
+### Group 7 decisions (Integrations)
+
+Where the inventory (`inventory/group7-integrations.md`, sections 4, 5 and 7) left a choice, production does the following.
+
+- **Connectors.** Only the five read-only connectors the owner chose exist in production: GitHub (a GitHub App), AWS (a role in the company's account, assumed with an external id), Okta (a service app), Microsoft Entra ID (Selvara's multi-tenant app) and Google Workspace (Selvara's service account with domain-wide delegation). The demonstration's seven sample connectors are not shown.
+- **Credentials.**
+  - Platform credentials are set once by the owner as Vercel variables (`SUPABASE.md` section 4f). A connector whose credentials are missing says so and cannot be set up.
+  - A company admin never enters a password or token. They enter identifiers only: the installation id, role ARN and region, Okta domain and client id, Entra tenant id, or Google admin account.
+  - Selvara generates the per-company values: the AWS external id (confused-deputy protection) and, for Okta, a key pair whose private key is sealed (AES-256-GCM) and never shown.
+  - Okta domains must be Okta-hosted, and every other host is fixed, so no company value can point the server at another address. Redirects are not followed.
+- **Connecting.** One small read tests the connection. A second admin then approves it (`integration.connect`, 24 h), because it brings employee data in. A failed test is audited and nothing is requested.
+- **Syncs.**
+  - A sync reads only what its checks need, outside any database transaction. It runs on demand (one sync per connection every 5 minutes), and automatically once a day when an admin opens Integrations. There is no scheduler without a Vercel cron (`vercel.json`, needs the owner's approval).
+  - Results are automated tests in Controls (`AT-…`), recorded by System in the same way a person records one. Linked controls follow them, and `control.failed` webhooks fire.
+  - A failed sync, or a check the provider no longer answers, turns the test to Needs data, never a stale Pass. A refused credential shows as "Credential refused" and admins are told.
+  - An admin links a check to the controls it evidences.
+- **What is checked.**
+  - GitHub: organisation 2FA required, members with 2FA off, default branch protection (first 60 repositories), critical and high Dependabot alerts older than 30 days, open secret-scanning alerts.
+  - AWS (SecurityAudit): root MFA, password policy length, IAM console users without MFA, access keys older than 90 days, a multi-region CloudTrail trail, account-level S3 Block Public Access.
+  - Okta, Entra ID and Google: MFA for active accounts and administrators, accounts unused for 90 days (not Entra: sign-in activity needs more access), an Entra Conditional Access policy requiring MFA.
+  - Identity providers also flag accounts of people removed in Selvara that are still active in the provider.
+- **Personal data.**
+  - Stored per account: name, email, status, MFA yes or no, admin yes or no, last sign-in day. Accounts are matched to members by email.
+  - The account list is visible to admins only. Check items name at most 20 accounts as evidence.
+  - Disconnecting needs a reason, erases the account list and the sealed key, and turns the tests to Needs data. The admin is told to remove Selvara's access on the provider side.
+- **Discovery.** AI applications people use (Okta and Entra apps, Google apps people authorised, GitHub Apps on the organisation) become Discovered AI in AI governance. Applications whose name matches a vendor appear in that vendor's "Discovered applications".
+- **Not built (decisions for the owner).**
+  - Access-review populations and People device posture from connectors.
+  - A ticketing or training connector (not among the four).
+  - GitHub repository content scanning (it would need read access to source code).
+  - Scheduled syncs (needs a Vercel cron).
+  - The provider permission lists are written from documentation known at build time and must be verified with each provider before use.
