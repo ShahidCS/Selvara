@@ -53,7 +53,8 @@ The demonstration's screens are rich and already route every change through a se
 |---|---|---|---|
 | 1 | Merged | `0008` | ShahidCS/Selvara#74 |
 | 2 | Merged | none (uses `0008`) | ShahidCS/Selvara#75 |
-| 3 | Built, in review | none (uses `0008`) | group 3 PR |
+| 3 | Merged | none (uses `0008`) | ShahidCS/Selvara#76 |
+| 4 | Built, in review | none (uses `0008`) | group 4 PR |
 
 ### Group 3 decisions (Risk, Issues, My Work, Overview, Reports)
 
@@ -73,3 +74,39 @@ Where the inventory (`inventory/group3-risk-issues-work-overview-reports.md`, se
 - **Overview and the board pack.** Every Overview role sees the posture figures. A role sees the detail only of the modules it may open. For the others the server sends scores and statuses without titles, owners or text, and the board pack shows totals only. The static month-on-month texts are not shown in production. Exporting the board pack is recorded under System. For frameworks a role cannot open, the server sends only what readiness needs (no reasons, names or requirement text).
 - **My Work.** My Work lists the issues and risk actions the person owns, and the decisions waiting for them: risk approvals, Board evidence, imports, issue closures, external report distribution, policies they must approve, and access requests. A vendor request is stored on the server with length limits for the Vendors module (group 4).
 - **Landing page.** Every company role lands on the Overview in production, as in the demonstration.
+
+### Group 4 decisions (Vendors, the Vendor role, Questionnaires, Trust Center, Commitments)
+
+Where the inventory (`inventory/group4-vendors-portal-questionnaires-trust-commitments.md`, section 8) found a gap, production does the following.
+
+- **Nothing invented.** A vendor starts with no certificates, findings, monitoring signals or applications. The DPA line is not shown until it can be recorded. The Trust Center's public page is built from the company's own records:
+  - its name;
+  - verified library answers (the FAQ);
+  - approved vendors that process customer data (sub-processors);
+  - published documents (updates);
+  - control status by domain.
+- **Dates.** A vendor's next review is a real date (12, 24 or 36 months by tier), and overdue is worked out each day. Certificates carry a real expiry date and become Expiring (60 days) or Expired by themselves. A waiver ends on its date. Questionnaire due dates are real dates.
+- **Critical vendors.** The admin or owner who starts the approval is the first approver, and a second, different person completes it. SOD_MATRIX asks for "a second approver"; the demonstration needed three people.
+- **Reasons and outcomes.**
+  - Recorded with the change: blocking the gate, dismissing a request (the requester is told), closing a finding, revoking Trust Center access, unblocking a domain and closing an incident.
+  - Kept: a decided vendor request is kept with its outcome.
+- **The vendor's questionnaire.** "Send questionnaire" sends the company's vendor questionnaire to the vendor's contact: a member invited with the Vendor role. They answer it in their own workspace and see only what was sent to them. Submitting needs every required answer and locks it. An admin or owner can reopen it with a note.
+- **Standalone vendor portal.** The `/vendor-portal` page sends one-time codes by email, so it opens with email in group 8. In production it says so.
+- **Questionnaires.**
+  - A questionnaire becomes Complete (sent) only through the review, never by answering. It can be submitted only when every question is answered.
+  - Editing a library answer unpublishes it from the chatbot until someone verifies it again.
+  - Knowledge-base documents are real files.
+- **Trust Center access.**
+  - Documents are real files served through 60-second links. Public documents are open to everyone who sees the page. The others are open only to viewers of an active account whose NDA is accepted and whose access covers the document.
+  - Approving access never marks the NDA as signed.
+  - Neither the requester nor the person who unblocked the requester's domain can approve.
+- **Trust Center requests.**
+  - Requests use the member's own email: 3 an hour.
+  - Chatbot questions: 20 an hour.
+  - A new public document is listed "On request, NDA" until its publication is approved. Names are unique.
+- **Anonymous public page.** The public Trust Center page for visitors without an account comes with email in group 8, because visitors must verify their address first.
+- **Commitments.**
+  - The contract analysis compares each commitment's figures (hours, days, percentages) with the matching standard term and says whether it is stricter, the same or looser. It is a draft for legal review.
+  - A commitment is marked reviewed by an admin or owner other than its importer.
+  - The incident clock belongs to the company: summary, server start time, customer-notice deadline (48 hours), close with an outcome, and history. It is recorded in the company's audit log, not the platform's.
+- **Four-eyes route.** The group 4 approvals (`vendor.*`, `trust.publish`, `q.send`) go through one route (`server/ws/foureyes.ts`). The change happens in the same unit of work as the final approval, once. These approvals can also be decided from the bell.
