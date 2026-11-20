@@ -35,6 +35,7 @@ export function claudeFromEnv(env: Record<string, string | undefined>): AiClient
       if (!res.ok) throw new AiUnavailable("The AI service could not answer this request. Try again later.");
       const j = (await res.json()) as { content?: { type: string; text?: string }[]; stop_reason?: string; usage?: { input_tokens?: number; output_tokens?: number }; model?: string };
       if (j.stop_reason === "refusal") throw new AiUnavailable("The AI service declined this request.");
+      if (j.stop_reason === "max_tokens") throw new AiUnavailable("The answer was too long and was cut off. Ask a narrower question or attach fewer records.");
       const text = (j.content ?? []).filter((b) => b.type === "text").map((b) => b.text ?? "").join("").trim();
       if (!text) throw new AiUnavailable("The AI service returned no answer. Try again.");
       return { text, inputTokens: Number(j.usage?.input_tokens ?? 0), outputTokens: Number(j.usage?.output_tokens ?? 0), model: String(j.model ?? model) };

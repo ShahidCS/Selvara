@@ -19,7 +19,7 @@ import { registerFourEyes, pendingOf } from "./foureyes";
 import { approvalsView, invalid, memberRef, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
 import { createIssueIn } from "./issues";
 import { createRiskIn } from "./risk";
-import type { Actor, Rec, WsTx } from "./store";
+import { WsConflict, type Actor, type Rec, type WsTx } from "./store";
 
 export const AI_TIERS = ["High", "Medium", "Low"];
 export const AI_AUTONOMY = ["Suggests only", "Human-approved actions", "Human-in-the-loop", "Autonomous"];
@@ -91,11 +91,12 @@ export async function addAssistantSignal(t: WsTx, s: { sev: AiSignal["sev"]; sou
   const same = a.signals.find((x) => x.status === "Open" && x.day === day && x.source === s.source && x.text === s.text);
   if (same) { same.count = (same.count ?? 1) + 1; same.at = t.now; }
   else { a.signals.unshift({ id: `S-${await t.next("ai-signal", 0)}`, at: t.now, day, status: "Open", count: 1, ...s }); a.signals = a.signals.slice(0, 200); }
-  await t.update("ai-system", rec.id, a, rec.version);
+  // two requests blocked at the same moment: the other one counted it; the block and its audit entry stand
+  try { await t.update("ai-system", rec.id, a, rec.version); } catch (e) { if (!(e instanceof WsConflict)) throw e; }
 }
 /** Registers the AI Assistant itself in the AI register when a company turns AI on (once): it is an AI system the company now uses. */
 export async function ensureAssistantSystem(t: WsTx, owner: { id: string; name: string }, model: string) {
-  if ((await t.list<AiSystem>("ai-system")).some((x) => x.data.builtin === "assistant")) return;
+  if ((await t.list<AiSystem>("ai-system")).some((x) => x.data.builtin === "assistant" && x.data.status !== "Archived")) return; // an archived one is replaced
   const id = `AI-${String(await t.next("ai-system", 0)).padStart(2, "0")}`; const today = isoDayOf(t.now);
   const a: AiSystem = {
     id, name: "Selvara AI Assistant", purpose: "Drafts answers and summaries from records a person chooses; agents suggest changes for approval.", tier: "Medium", status: "In review", owner: owner.name, ownerId: owner.id,
@@ -226,9 +227,10 @@ export function aiRoutes(h: WsHelpers) {
     a.euDraft = r; a.euState = { ...a.euState, state: "Draft", draftBy: me.name, draftById: me.id }; // the class in force (and its confirmer) stay until confirmed
     await save(t, rec); await t.audit("ai.euact.drafted", `${a.id} ${a.name}: proposed ${r.cls}`, CAT);
   });
-  const euConfirm = edit(async (_d, t, rec, _b, _p, me) => {
+  const euConfirm = edit(async (_d, t, rec, b, _p, me) => {
     const a = rec.data; refuse(decideBlock(me, "confirming a classification"));
     if (a.euState.state !== "Draft" || !a.euDraft) invalid("There is no draft classification to confirm.");
+    if (b.cls !== undefined && String(b.cls) !== a.euDraft!.cls) invalid("The draft changed since you opened it. Reload and check it before confirming.");
     if (me.id === a.euState.draftById || me.id === a.ownerId) refuse("Segregation of duties: a different person than the drafter or the system owner must confirm this classification.");
     const r = a.euDraft!; const tighter = GUARDRAILS.indexOf(r.guardrail) > GUARDRAILS.indexOf(a.guardrail);
     const from = a.euClass; a.euClass = r.cls; a.euRationale = r.rationale; a.tier = r.tier; if (tighter) a.guardrail = r.guardrail; delete a.euDraft;

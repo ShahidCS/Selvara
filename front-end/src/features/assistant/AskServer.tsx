@@ -30,7 +30,7 @@ const SUGG: { q: string; pick: () => svc.AskRecord[] }[] = [
   { q: "Explain our identity and access controls", pick: () => DATA.controls.filter((c: any) => /identity|access/i.test(String(c.domain))).map((c: any) => recOf("controls", c)) },
   { q: "Draft a policy review update", pick: () => DATA.policies.map((p: any) => recOf("policies", p)) },
 ];
-interface Turn extends svc.Msg { draftId?: string; reviewed?: boolean; records?: string[]; masked?: boolean; model?: string; blocked?: { message: string; findings: { kind: string; where: string }[] } }
+interface Turn extends svc.Msg { notSent?: boolean; draftId?: string; reviewed?: boolean; records?: string[]; masked?: boolean; model?: string; blocked?: { message: string; findings: { kind: string; where: string }[] } }
 /** The thread of the signed-in person in this tab (cleared when someone else signs in here). */
 const THREAD: { who: string; turns: Turn[] } = { who: "", turns: [] };
 
@@ -62,8 +62,8 @@ export function AskServer({ scrollRef }: { scrollRef: React.RefObject<HTMLDivEle
     const q = text.trim(); if (!q || busy) return;
     setBusy(true);
     try {
-      const r = await svc.askServer(q, records, turns.filter((t) => !t.blocked));
-      if (r.blocked) setTurns((t) => [...t, { role: "user", text: q, records: records.map((x) => x.label) }, { role: "assistant", text: "", blocked: { message: r.message, findings: r.findings } }]);
+      const r = await svc.askServer(q, records, turns.filter((t) => !t.blocked && !t.notSent)); // a blocked question is never sent again as history
+      if (r.blocked) setTurns((t) => [...t, { role: "user", text: q, records: records.map((x) => x.label), notSent: true }, { role: "assistant", text: "", blocked: { message: r.message, findings: r.findings } }]);
       else { const g = r as Extract<svc.AskResult, { blocked: false }>; setTurns((t) => [...t, { role: "user", text: q, records: g.records }, { role: "assistant", text: g.text, draft: true, draftId: g.draftId, masked: g.masked, model: g.model }]); setText(""); }
     } catch (e) { L.toast(uiMessage(e) || "Could not draft an answer", false); }
     finally { setBusy(false); }
@@ -81,7 +81,7 @@ export function AskServer({ scrollRef }: { scrollRef: React.RefObject<HTMLDivEle
       {turns.length ? turns.map((m, i) => m.role === "user" ? (
         <div key={i} style={{ alignSelf: "flex-end", maxWidth: "85%" }}>
           <div style={{ background: "var(--accent-weak)", color: "var(--ink)", padding: "9px 13px", borderRadius: "13px 13px 3px 13px", fontSize: 13.5, lineHeight: 1.5, overflowWrap: "anywhere" }}>{m.text}</div>
-          <div style={{ fontSize: 11.5, color: "var(--muted)", textAlign: "right", marginTop: 3 }}>{m.records?.length ? `Sent with ${m.records.length} record${m.records.length === 1 ? "" : "s"}: ${m.records.join(", ")}` : "No records sent"}</div>
+          <div style={{ fontSize: 11.5, color: "var(--muted)", textAlign: "right", marginTop: 3 }}>{m.notSent ? "Not sent" : m.records?.length ? `Sent with ${m.records.length} record${m.records.length === 1 ? "" : "s"}: ${m.records.join(", ")}` : "No records sent"}</div>
         </div>
       ) : m.blocked ? (
         <div key={i} role="alert" className="card" style={{ alignSelf: "flex-start", maxWidth: "94%", boxShadow: "none", background: "var(--bad-bg)", borderColor: "transparent" }}>

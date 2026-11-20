@@ -19,7 +19,7 @@ import { isoDayOf } from "@/lib/rulesWs";
 import { AiUnavailable, type AiClient } from "../claude";
 import type { ApprovalRow } from "../directory";
 import type { Deps } from "../types";
-import { addAssistantSignal, ensureAssistantSystem } from "./ai";
+import { addAssistantSignal, ensureAssistantSystem, type AiSystem } from "./ai";
 import { approvalsView, invalid, membersOf, missing, modAllowed, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
 import { pendingOf, registerFourEyes } from "./foureyes";
 import type { Actor, Rec, WsTx } from "./store";
@@ -55,9 +55,13 @@ async function saveSettings(t: WsTx, patch: Partial<AiSettings>, what: string, b
   if (rec) await t.update("ai-settings", "company", next, rec.version); else await t.insert("ai-settings", "company", next);
 }
 /** Why a model call cannot happen now (null = it can). */
-function aiBlock(d: Deps, s: AiSettings): string | null {
+async function aiBlock(d: Deps, t: WsTx, s: AiSettings): Promise<string | null> {
   if (!d.ai) return "AI is not set up on this deployment yet: the platform operator adds the AI provider's key on the server.";
   if (!s.enabled) return "AI is off for your company. A company admin can turn it on in AI Assistant, Settings (a second admin approves).";
+  // the AI register governs the Assistant too: archived, Blocked or confirmed Prohibited stops every request
+  const sys = (await t.list<AiSystem>("ai-system")).find((x) => x.data.builtin === "assistant")?.data;
+  if (!sys || sys.status === "Archived") return "The AI Assistant is archived in the AI register. Turn AI off and on again to register it anew.";
+  if (sys.guardrail === "Blocked" || (sys.euState.state === "Confirmed" && sys.euClass === "Prohibited")) return `The AI Assistant is blocked in the AI register (${sys.id}: guardrail ${sys.guardrail}, ${sys.euClass}).`;
   return null;
 }
 
@@ -66,7 +70,7 @@ const MODS: Record<string, { kind: string; label: string }> = {
   controls: { kind: "control", label: "Control" }, risk: { kind: "risk", label: "Risk" }, issues: { kind: "issue", label: "Issue" }, policies: { kind: "policy", label: "Policy" },
   evidence: { kind: "evidence", label: "Evidence" }, vendors: { kind: "vendor", label: "Vendor" }, questionnaires: { kind: "questionnaire", label: "Questionnaire" }, ai: { kind: "ai-system", label: "AI system" }, audits: { kind: "audit", label: "Audit" },
 };
-const PEOPLE_KEY = /(owner|By$|^by$|Id$|^id$|assignee|contact|email|person|people|requester|approver|reviewer|author|creator|user|member|who|history|votes|^ip$|changeLog|reassessments|acceptance|tasks|access|attachments|answers|registered|signals)/i;
+const PEOPLE_KEY = /(owner|lead|auditor|signer|assigned|recordedBy|By$|^by$|Id$|^id$|assignee|contact|email|person|people|requester|approver|reviewer|author|creator|user|member|who|history|votes|^ip$|changeLog|reassessments|acceptance|tasks|access|attachments|answers|registered|signals)/i;
 /** The fields of a record that may leave: plain values and short lists, never people, histories or files. */
 export function project(data: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -94,13 +98,23 @@ function partsOf(ref: string, data: Record<string, unknown>, prefix = ""): PiiPa
 async function peopleNames(d: Deps, t: WsTx, a: Actor) {
   return [...(await membersOf(d, a)).map((m) => m.name), ...(await t.list<{ name: string }>("contractor")).map((x) => x.data.name)];
 }
-interface Sent { system: string; messages: { role: "user" | "assistant"; content: string }[]; findings: PiiFinding[]; masked: boolean; refs: string[] }
+/** A record as the model reads it: each value masked first (masking JSON text would miss a name split over lines), and "<" escaped so a
+ *  record cannot close the <records> block and pose as instructions. */
+function recordText(data: Record<string, unknown>, m: (s: string) => string): string {
+  const walk = (v: unknown): unknown => (typeof v === "string" ? m(v) : Array.isArray(v) ? v.map(walk) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)])) : v);
+  return JSON.stringify(walk(data)).replace(/</g, "\\u003c");
+}
+interface Sent { system: string; messages: { role: "user" | "assistant"; content: string }[]; findings: PiiFinding[]; masked: boolean; refs: string[]; residual?: boolean }
 /** Checks everything that would leave and either blocks (returns the findings) or returns what to send (masked when the company chose so). */
 function prepare(mode: AiSettings["mode"], names: string[], parts: PiiPart[], build: (mask: (s: string) => string) => Omit<Sent, "findings" | "masked">): Sent {
   const findings = findPii(parts, names);
   if (findings.length && mode === "block") return { system: "", messages: [], refs: [], findings, masked: false };
   const masked = findings.length > 0; const m = (s: string) => (masked ? maskPii(s, names) : s);
-  return { ...build(m), findings, masked };
+  const out = build(m);
+  // last line of defence: what would actually leave is checked again; anything still found blocks the request whatever the setting
+  const left = findPii(out.messages.map((x, i) => ({ where: i === out.messages.length - 1 ? "the request" : `earlier turn ${i + 1}`, text: x.content.replace(/\\[nrt]/g, " ") })), names);
+  if (left.length) return { system: "", messages: [], refs: [], findings: left, masked: false, residual: true };
+  return { ...out, findings, masked };
 }
 const where = (f: PiiFinding[]) => f.map((x) => `${x.where}: ${x.kind}`).slice(0, 12).join("; ");
 const SYSTEM = `You are the Selvara GRC assistant for one company. You write drafts that a compliance professional reviews before use.
@@ -277,7 +291,8 @@ export function assistantRoutes(h: WsHelpers) {
     if (refs.length > RECORDS_MAX) invalid(`Attach at most ${RECORDS_MAX} records.`);
     const history = (Array.isArray(r.body.history) ? r.body.history : []).slice(-HISTORY_MAX).map((x: { role?: unknown; text?: unknown }) => ({ role: x?.role === "assistant" ? "assistant" as const : "user" as const, text: txt(x?.text, 4000) })).filter((x) => x.text);
     const prep = await tx(d, c, async (t) => {
-      const s = await aiSettings(t); refuse(aiBlock(d, s));
+      const s = await aiSettings(t); refuse(await aiBlock(d, t, s));
+      await hourly(t, `aiq-${safeId(c.actor.id)}`, ASKS_PER_HOUR, `You can ask ${ASKS_PER_HOUR} questions an hour (blocked ones count too). Try again later.`);
       const items: { ref: string; data: Record<string, unknown> }[] = []; const seen = new Set<string>();
       for (const x of refs) {
         const m = MODS[str(x.mod, 20)]; const id = str(x.id, 40); if (!m || !id || seen.has(`${m.kind}/${id}`)) continue; seen.add(`${m.kind}/${id}`);
@@ -289,22 +304,21 @@ export function assistantRoutes(h: WsHelpers) {
       const parts: PiiPart[] = [{ where: "your question", text: q }, ...history.map((h, i) => ({ where: `earlier ${h.role === "user" ? "question" : "answer"} ${i + 1}`, text: h.text })), ...items.flatMap((x) => partsOf(x.ref, x.data))];
       const sent = prepare(s.mode, names, parts, (m) => ({
         system: SYSTEM, refs: items.map((x) => x.ref),
-        messages: [...history.map((h) => ({ role: h.role, content: m(h.text) })), { role: "user" as const, content: `<records>\n${items.map((x) => `${x.ref}: ${m(JSON.stringify(x.data))}`).join("\n") || "(none attached)"}\n</records>\n\nQuestion: ${m(q)}` }],
+        messages: [...history.map((h) => ({ role: h.role, content: m(h.text) })), { role: "user" as const, content: `<records>\n${items.map((x) => `${x.ref}: ${recordText(x.data, m)}`).join("\n") || "(none attached)"}\n</records>\n\nQuestion: ${m(q)}` }],
       }));
-      if (sent.findings.length && s.mode === "block") {
+      if (sent.findings.length && (s.mode === "block" || sent.residual)) {
         await t.audit("assistant.pii.blocked", where(sent.findings), "System");
         await addAssistantSignal(t, { sev: "Review", source: "PII blocker", text: `A request was blocked: ${[...new Set(sent.findings.map((f) => f.kind))].join(", ")} found`, rec: "Remind the team to keep personal data out of AI requests (acceptable-use policy)" });
         return { blocked: true as const, findings: sent.findings };
       }
       if (sent.masked) await t.audit("assistant.pii.masked", where(sent.findings), "System");
-      await hourly(t, `aiq-${safeId(c.actor.id)}`, ASKS_PER_HOUR, `You can ask ${ASKS_PER_HOUR} questions an hour. Try again later.`);
       // a request starts from a history whose turns alternate; the API needs the first message from the user
       while (sent.messages.length && sent.messages[0].role !== "user") sent.messages.shift();
       return { blocked: false as const, sent };
     });
     if (prep.blocked) return ok({ blocked: true, message: piiExplain(prep.findings), findings: prep.findings });
     let answer;
-    try { answer = await (d.ai as AiClient).ask({ system: prep.sent.system, messages: prep.sent.messages, maxTokens: 2000 }); }
+    try { answer = await (d.ai as AiClient).ask({ system: prep.sent.system, messages: prep.sent.messages, maxTokens: 4000 }); }
     catch (e) {
       if (!(e instanceof AiUnavailable)) throw e;
       await tx(d, c, (t) => t.audit("assistant.draft.failed", `${prep.sent.refs.length} records; ${e.message}`, "System"));
@@ -356,7 +370,7 @@ export function assistantRoutes(h: WsHelpers) {
   const run = wsRoute(h, "assistant", async (d, r, c) => {
     const prep = await tx(d, c, async (t) => {
       await sweepCerts(t);
-      const s = await aiSettings(t); refuse(aiBlock(d, s));
+      const s = await aiSettings(t); refuse(await aiBlock(d, t, s));
       const rec = await loadAgent(t, r.path[3]); const a = rec!.data;
       if (a.status !== "Active" || (await pendingOf(t, ["assistant.agent.enable"])).some((x) => x.subject === a.id)) invalid("Only an active agent can run.");
       if (!(await grantOf(t, "workspace-read"))) invalid("Grant the agents their tools first: the Selvara workspace (read) MCP grant is not in place.");
@@ -371,9 +385,9 @@ export function assistantRoutes(h: WsHelpers) {
       const names = await peopleNames(d, t, c.actor);
       const sent = prepare(s.mode, names, items.flatMap((x) => partsOf(x.ref, x.data)), (m) => ({
         system: SYSTEM, refs: items.map((x) => x.ref),
-        messages: [{ role: "user" as const, content: `<records>\n${items.map((x) => `${x.ref}: ${m(JSON.stringify(x.data))}`).join("\n")}\n</records>\n\n${a.trigger === "On schedule (weekly)" ? "Draft a short weekly posture summary for the company admins from these figures (at most 900 characters)." : `Trigger: ${a.trigger}. Draft one short reminder (at most 600 characters) for the owners of these records: what needs attention and the next step. Refer to records by their id.`}` }],
+        messages: [{ role: "user" as const, content: `<records>\n${items.map((x) => `${x.ref}: ${recordText(x.data, m)}`).join("\n")}\n</records>\n\n${a.trigger === "On schedule (weekly)" ? "Draft a short weekly posture summary for the company admins from these figures (at most 900 characters)." : `Trigger: ${a.trigger}. Draft one short reminder (at most 600 characters) for the owners of these records: what needs attention and the next step. Refer to records by their id.`}` }],
       }));
-      if (sent.findings.length && s.mode === "block") {
+      if (sent.findings.length && (s.mode === "block" || sent.residual)) {
         const id = `RUN-${await t.next("agent-run", 0)}`;
         await t.insert("agent-run", id, { id, ...base, change: `Not run: ${piiExplain(sent.findings).replace(/^Not sent: /, "")}`.slice(0, 600), draft: "", recipients: [], decision: "Blocked" } satisfies Run);
         await t.audit("assistant.pii.blocked", `agent ${a.name}: ${where(sent.findings)}`, "System");
@@ -384,10 +398,14 @@ export function assistantRoutes(h: WsHelpers) {
     });
     if (prep.done) return ok({ agent: prep.agent, suggest: true, nothing: true });
     let answer;
-    try { answer = await (d.ai as AiClient).ask({ system: prep.sent.system, messages: prep.sent.messages, maxTokens: 800 }); }
+    try { answer = await (d.ai as AiClient).ask({ system: prep.sent.system, messages: prep.sent.messages, maxTokens: 2000 }); }
     catch (e) { if (!(e instanceof AiUnavailable)) throw e; await tx(d, c, (t) => t.audit("assistant.agent.run_failed", `${prep.agent.name}: ${e.message}`, "System")); return invalid(e.message); }
     return tx(d, c, async (t) => {
       const rec = await loadAgent(t, prep.agent.id); const a = rec!.data;
+      // the state may have changed while the model was answering: AI turned off, the agent paused, the read grant revoked
+      refuse(await aiBlock(d, t, await aiSettings(t)));
+      if (a.status !== "Active") invalid("The agent was paused while it ran; nothing was recorded.");
+      if (!(await grantOf(t, "workspace-read"))) invalid("The Selvara workspace (read) grant was revoked while the agent ran; nothing was recorded.");
       const acting = rungOf(a.autonomy) > 0 && !!a.certifiedUntil && a.certifiedUntil > t.now && (await grantOf(t, "notices"));
       const id = `RUN-${await t.next("agent-run", 0)}`; const draft = answer.text.slice(0, 1200);
       const x: Run = { id, ...prep.base, change: `Send this note to ${prep.to.length} ${prep.to.length === 1 ? "person" : "people"}: ${draft}`.slice(0, 1400), draft, recipients: prep.to, decision: acting ? "Auto-applied" : "Waiting" };
@@ -405,7 +423,11 @@ export function assistantRoutes(h: WsHelpers) {
       const rec = (await t.get<Run>("agent-run", str(r.path[3], 20))) ?? missing("Run"); const x = rec!.data;
       if (x.decision !== "Waiting") invalid("This change was already decided.");
       if (x.requestedById === c.actor.id) refuse("Segregation of duties: you triggered this run, so another admin or owner must decide it.");
-      if (decision === "Approved & applied") await applyRun(t, x, x.agent, c.actor.name);
+      if (decision === "Approved & applied") {
+        if (!(await t.get<Agent>("agent", x.agentId))) invalid("The agent was deleted: its proposed change can only be rejected.");
+        if (!(await aiSettings(t)).enabled) invalid("AI is off for your company: its proposed change can only be rejected.");
+        await applyRun(t, x, x.agent, c.actor.name);
+      }
       x.decision = decision; x.decidedBy = c.actor.name; x.decidedReason = reason; await t.update("agent-run", rec!.id, x, rec!.version);
       await t.audit(decision === "Rejected" ? "assistant.run.rejected" : "assistant.run.approved", `${x.agent} (${x.id}): sent to ${x.recipients.length} (reason: ${reason})`.replace(": sent to", decision === "Rejected" ? ": not sent to" : ": sent to"), "System");
       return ok(runView(x));

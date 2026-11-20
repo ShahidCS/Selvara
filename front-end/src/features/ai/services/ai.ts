@@ -94,7 +94,7 @@ export function setTier(id: string, tier: string) {
   return viaApi<Res<{ tier: string }>>(() => {
     const g = gate(id, "Only the AI system owner or an admin can change this"); if (isFail(g)) return g;
     void tier; throw new SodError("The risk tier is set by the EU AI Act classification, which a second person must confirm.");
-  }, () => post<Res<{ tier: string }>>(`/ai/systems/${enc(id)}/tier`, { tier }));
+  }, async () => { void tier; throw new SodError("The risk tier is set by the EU AI Act classification, which a second person must confirm."); });
 }
 /** Prototype: aiAssign save. */
 export function assignOwner(id: string, owner: string, ownerId = "") {
@@ -180,7 +180,7 @@ export function confirmEu(id: string) {
     if (a.euDraft) { a.tier = a.euDraft.tier; a.guardrail = a.euDraft.guardrail; delete a.euDraft; }
     a.euState = { state: "Confirmed", draftBy: st.draftBy || a.owner, by: me.name + " (" + (me.base === "owner" ? "Owner" : "Admin") + ")", at: todayGB() };
     return { ok: true };
-  }, () => post<Res>(`/ai/systems/${enc(id)}/eu-classification/confirm`, {}));
+  }, () => post<Res>(`/ai/systems/${enc(id)}/eu-classification/confirm`, { cls: aiFind(id)?.euDraftClass })); // the class the confirmer saw
 }
 
 /* ---- impact assessment (FRIA / DPIA), submitter != approver ---- */

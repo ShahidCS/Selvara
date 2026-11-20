@@ -4,7 +4,7 @@ import { Empty, FormActions, FormMessage, FormSection, Page } from "@/components
 import { useLayer } from "@/hooks/useLayer";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { wsLog } from "@/lib/audit";
-import { bumpData, useApp } from "@/lib/store";
+import { bumpData, useApp, useData } from "@/lib/store";
 import { useGo } from "@/lib/route";
 import { clampText, isSafeWebhookUrl, logSafeUrl } from "@/lib/security";
 import { FAIL_MSG, uiMessage } from "@/lib/grcSod";
@@ -63,8 +63,11 @@ export function NewKeyPage() {
 export function NewWebhookPage() {
   const role = useApp((s) => s.role);
   const L = useLayer(); const go = useGo();
+  useData(); // production: the event list arrives with the workspace data, possibly after this page opened
   const ev0 = svc.WH_EVENTS.slice(0, 2);
-  const [url, setUrl] = useState(""); const [sel, setSel] = useState<string[]>(ev0); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const [url, setUrl] = useState(""); const [picked, setPicked] = useState<string[] | null>(null); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const sel = picked ?? ev0; // the first two events until the person changes the choice
+  const setSel = (f: (p: string[]) => string[]) => setPicked(f(sel));
   const dirty = !busy && (url !== "" || sel.join() !== ev0.join());
   const { allowLeave } = useUnsavedGuard(dirty, L);
   const ref = useRef<HTMLInputElement>(null); useEffect(() => { ref.current?.focus(); }, []);
@@ -73,6 +76,7 @@ export function NewWebhookPage() {
     e.preventDefault();
     const u = url.trim();
     if (!isSafeWebhookUrl(u)) { setErr("A valid https URL is required."); return; }
+    if (!sel.length) { setErr("Choose at least one event."); return; }
     setBusy(true);
     try {
       await svc.addWebhook({ url: u, events: svc.WH_EVENTS.filter((x) => sel.includes(x)) });

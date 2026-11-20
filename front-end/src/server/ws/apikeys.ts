@@ -16,7 +16,7 @@ import type { Req, Res } from "../core";
 import type { Deps } from "../types";
 import { approvalsView, err, invalid, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
 import { pendingOf, registerFourEyes } from "./foureyes";
-import type { Actor, WsTx } from "./store";
+import { WsConflict, type Actor, type WsTx } from "./store";
 import { deliverOne, seal, unseal, WEBHOOK_EVENTS, type Webhook } from "./webhooks";
 
 export const KEY_SCOPES = ["Read", "Read/Write"];
@@ -27,7 +27,7 @@ export const REVEAL_MIN = 60; const EVENT_CAP = 200; export const V1_PER_HOUR = 
 const API_KINDS = ["api.key", "api.webhook"]; const TTL = 24 * 3600_000;
 export const V1_COLLECTIONS: Record<string, string> = { controls: "control", risks: "risk", issues: "issue", policies: "policy", vendors: "vendor", evidence: "evidence", "ai-systems": "ai-system" };
 
-export interface ApiKey { id: string; label: string; scope: string; days: number; status: "Active" | "Approved" | "Revoked" | "Expired"; prefix: string; hash?: string; createdAt: number; createdBy: string; createdById: string; approvedAt?: number; expiresAt?: number; lastUsedAt?: number; uses: number }
+export interface ApiKey { id: string; label: string; scope: string; days: number; status: "Requested" | "Active" | "Approved" | "Revoked" | "Expired"; prefix: string; hash?: string; createdAt: number; createdBy: string; createdById: string; approvedAt?: number; expiresAt?: number; lastUsedAt?: number; uses: number }
 interface CustomTest { id: string; name: string; target: string; schedule: string; lastAt?: number; result: "Pending" | "Pass" | "Fail" | "No data"; eventId?: string }
 interface ApiEvent { id: string; ev: string; res: string; status: string; detail: string; at: number; source: string }
 
@@ -39,7 +39,7 @@ const newKey = (ref: string, id: string) => { const head = `sel_${ref}_${id.toLo
 const keyView = (k: ApiKey, pending: string | undefined, now: number, me: string) => ({
   id: k.id, label: k.label, scope: k.scope, prefix: k.status === "Active" || k.status === "Revoked" ? k.prefix || "—" : "—", created: day(k.createdAt), expires: k.expiresAt ? day(k.expiresAt) : `${k.days} days after issue`,
   lastUsed: k.lastUsedAt ? stamp(k.lastUsedAt) : "never", uses: k.uses, requestedBy: k.createdBy, approvalId: pending,
-  status: pending ? "Pending approval" : k.status === "Active" && k.expiresAt && k.expiresAt <= now ? "Expired" : k.status === "Approved" ? "Approved, not yet issued" : k.status,
+  status: pending ? "Pending approval" : k.status === "Requested" ? "Not approved" : k.status === "Active" && k.expiresAt && k.expiresAt <= now ? "Expired" : k.status === "Approved" ? "Approved, not yet issued" : k.status,
   revealable: k.status === "Approved" && k.createdById === me && !!k.approvedAt && now - k.approvedAt < REVEAL_MIN * 60_000,
 });
 const seq = (id: string) => Number(id.replace(/\D/g, "")) || 0;
@@ -67,8 +67,8 @@ async function sweepKeys(t: WsTx) {
 
 registerFourEyes("api.key", { mod: "api", apply: async (_d, t, ap, by) => {
   const rec = (await t.get<ApiKey>("api-key", String(ap.payload.id))) ?? missing("Key request"); const k = rec!.data;
-  if (k.status !== "Approved" || k.approvedAt) invalid("This key request is no longer open.");
-  k.approvedAt = t.now; await t.update("api-key", rec!.id, k, rec!.version);
+  if (k.status !== "Requested") invalid("This key request is no longer open.");
+  k.status = "Approved"; k.approvedAt = t.now; await t.update("api-key", rec!.id, k, rec!.version);
   await t.audit("api.key.approved", `${k.label} (${k.scope}; approved by ${by}; requested by ${ap.requestedByName}); the requester has ${REVEAL_MIN} minutes to open it`, "System");
   await t.notify(k.createdById, `Your API key "${k.label.slice(0, 60)}" was approved by ${by}. Open it within ${REVEAL_MIN} minutes in API, Webhooks & Custom Tests.`);
 } });
@@ -113,7 +113,7 @@ export function apiRoutes(h: WsHelpers) {
     const scope = KEY_SCOPES.includes(String(r.body.scope)) ? String(r.body.scope) : "Read"; const days = KEY_DAYS.includes(Number(r.body.days)) ? Number(r.body.days) : 90;
     return tx(d, c, async (t) => {
       const id = `K${await t.next("api-key", 0)}`;
-      const base: ApiKey = { id, label, scope, days, status: "Approved", prefix: "", createdAt: t.now, createdBy: c.actor.name, createdById: c.actor.id, uses: 0 };
+      const base: ApiKey = { id, label, scope, days, status: "Requested", prefix: "", createdAt: t.now, createdBy: c.actor.name, createdById: c.actor.id, uses: 0 };
       if (scope === "Read") {
         const { full, prefix } = newKey(c.a.company!.ref, id);
         await t.insert("api-key", id, { ...base, status: "Active", prefix, hash: hashKey(d.secret, full), approvedAt: t.now, expiresAt: t.now + days * 86_400_000 } satisfies ApiKey);
@@ -140,7 +140,7 @@ export function apiRoutes(h: WsHelpers) {
   const revoke = route(async (d, r, c) => tx(d, c, async (t) => {
     const rec = (await t.get<ApiKey>("api-key", str(r.path[2], 20))) ?? missing("Key"); const k = rec!.data;
     const pend = (await pendingOf(t, ["api.key"])).find((x) => x.subject === k.id);
-    if (k.status === "Revoked" || k.status === "Expired") invalid("This key is no longer active.");
+    if (k.status === "Revoked" || k.status === "Expired" || (k.status === "Requested" && !pend)) invalid("This key is no longer active.");
     if (pend) { await t.setApproval(pend.id, "Withdrawn"); await t.audit("approval.api.key.withdrawn", `${pend.title} (${pend.id}); the key was revoked`, "Approval"); }
     k.status = "Revoked"; delete k.hash; await t.update("api-key", rec!.id, k, rec!.version); await t.audit("api.key.revoked", `${k.label} (${k.id})`, "System");
     return ok({ ...keyView(k, undefined, t.now, c.actor.id) });
@@ -152,7 +152,8 @@ export function apiRoutes(h: WsHelpers) {
     const events = (Array.isArray(r.body.events) ? r.body.events : []).map(String).filter((e) => WEBHOOK_EVENTS.includes(e));
     if (!events.length) invalid("Choose at least one event.");
     return tx(d, c, async (t) => {
-      if ((await t.list<Webhook>("webhook")).length >= 20) invalid("A company can have at most 20 webhooks.");
+      const open = await pendingOf(t, ["api.webhook"]);
+      if ((await t.list<Webhook>("webhook")).filter((x) => x.data.approved || open.some((p) => p.subject === x.id)).length >= 20) invalid("A company can have at most 20 webhooks.");
       const id = `WH-${await t.next("webhook", 0)}`;
       await t.insert("webhook", id, { id, url, events: [...new Set(events)], status: "Active", approved: false, createdBy: c.actor.name, createdById: c.actor.id, lastDelivery: "", failures: 0 } satisfies Webhook);
       await t.request({ kind: "api.webhook", title: `Add webhook ${logSafeUrl(url).slice(0, 120)}`, subject: id, payload: { id }, needs: 1, approverRoles: ["admin"], forbid: [], ttlMs: TTL });
@@ -173,7 +174,7 @@ export function apiRoutes(h: WsHelpers) {
     const w = await tx(d, c, async (t) => { const rec = await hookOf(t, r.path[2]); return rec!.data; });
     if (!w.approved) refuse("This webhook has not been approved by a second admin.");
     if (w.status !== "Active") invalid("This webhook is paused. Resume it to send a test event.");
-    const out = await deliverOne(d, c.actor, w.id, "test.ping", { summary: `Test event sent by ${c.actor.name}` });
+    const out = await deliverOne(d, c.actor, w.id, "test.ping", { records: [] });
     await tx(d, c, (t) => t.audit("webhook.tested", `${logSafeUrl(w.url)}: ${out.status || out.error}`, "System"));
     return ok({ status: out.status, ms: out.ms, error: out.error ?? (out.status >= 200 && out.status < 300 ? "" : `HTTP ${out.status}`) });
   });
@@ -241,22 +242,32 @@ async function keyActor(d: Deps, r: Req, write: boolean): Promise<{ actor: Actor
   if (!k || have.length !== want.length || !timingSafeEqual(have, want) || k.status !== "Active") return err(401, "This API key is not valid.");
   if (k.expiresAt && k.expiresAt <= d.now()) return err(401, "This API key has expired.");
   if (write && k.scope !== "Read/Write") return err(403, "This API key can only read.");
+  // a key acts for the admin who created it: it stops working when that person is no longer an active admin of the company
+  const still = (await d.dir.members(tenantId, k.createdById, "Active")).some((m) => m.userId === k.createdById && m.role === "admin");
+  if (!still) return err(401, "This API key's creator is no longer an admin of the company. Ask an admin to create a new key.");
   return { actor: { id: k.createdById, name: `API key ${k.label}`, role: "admin", tenantId, ip: r.ip }, key: k };
 }
+/** Counts the call (counters take their own row lock, so parallel calls do not conflict); "last used" is written at most once a minute. */
 async function used(t: WsTx, k: ApiKey) {
   const n = await t.next(`apik-${k.id.toLowerCase()}-${Math.floor(t.now / 3600_000)}`, 0); if (n > V1_PER_HOUR) return false;
-  const rec = await t.get<ApiKey>("api-key", k.id); if (rec) await t.update("api-key", rec.id, { ...rec.data, lastUsedAt: t.now, uses: (rec.data.uses ?? 0) + 1 }, rec.version);
+  const total = await t.next(`apiu-${k.id.toLowerCase()}`, 0);
+  if (!k.lastUsedAt || t.now - k.lastUsedAt >= 60_000) {
+    const rec = await t.get<ApiKey>("api-key", k.id);
+    if (rec && (!rec.data.lastUsedAt || t.now - rec.data.lastUsedAt >= 60_000)) await t.update("api-key", rec.id, { ...rec.data, lastUsedAt: t.now, uses: total }, rec.version);
+  }
   return true;
 }
+/** Parallel calls that still collide answer 409 (try again), never a server error. */
+const retryable = async (f: () => Promise<Res>): Promise<Res> => { try { return await f(); } catch (e) { if (e instanceof WsConflict) return err(409, "Busy: try the call again."); throw e; } };
 const strip = (x: Record<string, unknown>) => { const o = { ...x }; if (Array.isArray(o.attachments)) o.attachments = (o.attachments as unknown[]).length; return o; };
 export function v1Routes() {
   const read = async (d: Deps, r: Req): Promise<Res> => {
     const kind = V1_COLLECTIONS[str(r.path[1], 30)]; if (!kind) return err(404, "Not found.");
     const a = await keyActor(d, r, false); if ("status" in a) return a;
-    return d.ws.tx(a.actor, d.now(), async (t) => {
+    return retryable(() => d.ws.tx(a.actor, d.now(), async (t) => {
       if (!(await used(t, a.key))) return err(429, `At most ${V1_PER_HOUR} calls an hour per key.`);
       return ok({ data: (await t.list<Record<string, unknown>>(kind)).map((x) => strip(x.data)) });
-    });
+    }));
   };
   const push = async (d: Deps, r: Req): Promise<Res> => {
     const a = await keyActor(d, r, true); if ("status" in a) return a;
@@ -264,12 +275,12 @@ export function v1Routes() {
     if (!/^[a-z][a-z0-9._-]{1,59}$/.test(ev)) return err(400, "event must be a lower-case name such as resource.checked.");
     if (!res) return err(400, "resource is required.");
     if (!["pass", "fail", "info", "ok", "error"].includes(status)) return err(400, "status must be pass, fail or info.");
-    return d.ws.tx(a.actor, d.now(), async (t) => {
+    return retryable(() => d.ws.tx(a.actor, d.now(), async (t) => {
       if (!(await used(t, a.key))) return err(429, `At most ${V1_PER_HOUR} calls an hour per key.`);
       const id = await pushEvent(t, { ev, res, status, detail: txt(r.body.detail, 500), source: `key ${a.key.label}` });
       await t.audit("api.event.pushed", `${ev} ${res} ${status} (${id}; key ${a.key.label})`, "System");
       return { status: 202, body: { id } };
-    });
+    }));
   };
   return { "GET v1/:collection": read, "POST v1/events": push };
 }

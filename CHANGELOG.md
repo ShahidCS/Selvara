@@ -5,6 +5,17 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ## [Unreleased]
 
 ### Changed
+- Production programme, group 6: **AI governance**, the **AI Assistant and agents**, and **API keys, webhooks and custom tests** run on the server in production, using the group 1 store (no new migration). The decisions are recorded in `docs/architecture/PRODUCTION_PROGRAMME.md` (group 6).
+  - **AI is off per company** until a company admin asks and a second admin approves. The key is set by the owner on the server (`SUPABASE.md` section 4e).
+  - **Only chosen records are sent**, without people fields. A **PII blocker** checks every request and blocks with an explanation (kind and place, audited without the value). A company may choose "mask then send" with a second admin's approval.
+  - **Claude** answers are drafts. Questions and answers are not stored; the audit log records who asked, what was sent, the model and token counts.
+  - **Agents** keep the autonomy ladder. A run drafts a note for the owners of its trigger's records, sent once someone other than the runner approves. Agents use two governed MCP grants.
+  - **AI governance** writes to the company's own log. Draft classifications are proposals until a second person confirms them, and guardrails must match the class. Signals become real risks and issues.
+  - **API keys** are real: hashed, shown once, expiring, and accepted by a new company API (`/api/v1`). Read/write keys need a second admin.
+  - **Webhooks** are real: signed, SSRF-safe deliveries with a delivery log. **Custom tests** read the events pushed for their target.
+  - **Protected file.** `rbac.ts` lists the three modules as server-ready (pre-approved change).
+  - **Before deploying.** Optional: add `ANTHROPIC_API_KEY` (`SUPABASE.md` section 4e).
+  - Draft for security and compliance review.
 - Production programme, group 5: **Audits**, **auditor access**, the company **Audit log** and **AppSec** run on the server in production. Migration `0009_company_audit_verify.sql` (schema version 9) lets a company admin verify their company's audit chain. The decisions are recorded in `docs/architecture/PRODUCTION_PROGRAMME.md` (group 5).
   - **Auditor access.** An engagement is shared with one named external auditor (a member with the Auditor role) until an end date, and access ends by itself. The auditor sees only their own engagements while access is live. They raise information requests and draft findings.
   - **Findings.** Management accepts a finding into a real issue or declines it with a reason.

@@ -16,8 +16,10 @@ import type { Actor, WsTx } from "./store";
 /** Events a webhook can subscribe to, and the audit entries that raise them. */
 export const WEBHOOK_EVENTS = ["control.failed", "audit.completed", "risk.updated", "evidence.updated", "policy.published", "access.revoked", "issue.created"];
 export function eventOf(action: string, target: string): string | null {
-  if ((action === "control.status.changed" || action === "test.result.recorded") && /fail/i.test(target)) return "control.failed";
-  if (action === "audit.stage.advanced" && /complete/i.test(target)) return "audit.completed";
+  // the new status, not words in a free-text reason ("… → Failing by …", "… : Fail by …", "… → Complete by …")
+  if (action === "control.status.changed" && /→ Fail\w* by /.test(target)) return "control.failed";
+  if (action === "test.result.recorded" && /^\S+ [^:]*: Fail\w* by /.test(target)) return "control.failed";
+  if (action === "audit.stage.advanced" && /→ Complete( by |$)/.test(target)) return "audit.completed";
   if (/^risk\.(created|scored|approved|accepted|closed|reopened)$/.test(action)) return "risk.updated";
   if (/^evidence\.(created|updated|version\.created)$/.test(action)) return "evidence.updated";
   if (action === "policy.published" || action === "policy.emergency.published") return "policy.published";
@@ -55,7 +57,8 @@ export function privateAddress(ip: string): boolean {
   if (v === 6) {
     const s = ip.toLowerCase();
     const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(s); if (mapped) return privateAddress(mapped[1]);
-    return s === "::" || s === "::1" || /^f[cd]/.test(s) || /^fe[89ab]/.test(s) || /^ff/.test(s) || s.startsWith("2001:db8") || s.startsWith("64:ff9b") || s.startsWith("::ffff:") || s.startsWith("100:");
+    // unspecified, loopback, IPv4-compatible/mapped, unique-local, link- and site-local, multicast, documentation, NAT64, 6to4, discard
+    return s === "::" || s === "::1" || /^::[0-9a-f.:]*$/.test(s) || /^f[cd]/.test(s) || /^fe[89a-f]/.test(s) || /^ff/.test(s) || s.startsWith("2001:db8") || s.startsWith("64:ff9b") || s.startsWith("2002:") || s.startsWith("100:");
   }
   return true;
 }
@@ -63,7 +66,7 @@ export function privateAddress(ip: string): boolean {
 export const httpsHookSender: HookSender = {
   async resolve(raw) {
     if (!isSafeWebhookUrl(raw)) throw new Error("A valid https URL is required.");
-    const url = new URL(raw); const host = url.hostname.replace(/\.$/, "");
+    const url = new URL(raw); if (url.port && url.port !== "443") throw new Error("Webhooks are delivered to port 443 only."); const host = url.hostname.replace(/\.$/, "");
     let addrs: { address: string; family: number }[];
     try { addrs = await lookup(host, { all: true, verbatim: true }); } catch { throw new Error("The endpoint's host name does not resolve."); }
     if (!addrs.length || addrs.some((a) => privateAddress(a.address))) throw new Error("The endpoint resolves to a private or reserved address.");
@@ -72,12 +75,13 @@ export const httpsHookSender: HookSender = {
   post(t, body, headers) {
     const start = Date.now();
     return new Promise((resolve) => {
+      const deadline = setTimeout(() => req.destroy(new Error("timed out")), 3000); // the whole exchange, not only idle time
       const req = request({
         host: t.address, family: t.family, servername: t.url.hostname, port: Number(t.url.port) || 443, path: `${t.url.pathname}${t.url.search}`, method: "POST", timeout: 4000,
         headers: { ...headers, host: t.url.host, "content-length": Buffer.byteLength(body) },
-      }, (res) => { res.resume(); res.on("end", () => resolve({ status: res.statusCode ?? 0, ms: Date.now() - start })); });
+      }, (res) => { clearTimeout(deadline); res.destroy(); resolve({ status: res.statusCode ?? 0, ms: Date.now() - start }); }); // the status is enough: the body is never read
       req.on("timeout", () => req.destroy(new Error("timed out")));
-      req.on("error", (e) => resolve({ status: 0, ms: Date.now() - start, error: /timed out/.test(e.message) ? "Timed out" : "Could not connect" }));
+      req.on("error", (e) => { clearTimeout(deadline); resolve({ status: 0, ms: Date.now() - start, error: /timed out/.test(e.message) ? "Timed out" : "Could not connect" }); });
       req.end(body);
     });
   },
@@ -98,7 +102,7 @@ async function send(d: Deps, p: Prepared): Promise<HookResult> {
   try {
     const target = await sender.resolve(p.url);
     const out = await sender.post(target, p.body, p.headers);
-    return out.status === 0 || out.status >= 500 ? await sender.post(target, p.body, p.headers) : out;
+    return (out.status === 0 && out.error !== "Timed out") || out.status >= 500 ? await sender.post(target, p.body, p.headers) : out; // a timeout is not retried
   } catch (e) { return { status: 0, ms: 0, error: e instanceof Error ? e.message.slice(0, 120) : "Could not deliver" }; }
 }
 const delivered = (r: HookResult) => r.status >= 200 && r.status < 300;
@@ -110,6 +114,8 @@ async function record(t: WsTx, p: Prepared, out: HookResult) {
   await t.update("webhook", rec.id, w, rec.version);
   if (!delivered(out)) { const u = new URL(w.url); await t.audit("webhook.delivery_failed", `${u.origin}${u.pathname} ${p.event} (${p.id}): ${out.error ?? `HTTP ${out.status}`}`, "System", true); }
 }
+/** The record ids an audit text names (RK-3, AI-01, R-61, AUD-02, ...), at most 10. */
+export const refsOf = (target: string) => [...new Set(target.match(/\b[A-Z]{1,5}-\d{1,6}\b/g) ?? [])].slice(0, 10);
 const quiet = (a: Actor): Actor => ({ ...a, committed: undefined });
 /** One delivery to one endpoint: prepared, sent and recorded. */
 export async function deliverOne(d: Deps, actor: Actor, hookId: string, event: string, data: Record<string, unknown>): Promise<HookResult> {
@@ -121,13 +127,14 @@ export async function deliverOne(d: Deps, actor: Actor, hookId: string, event: s
 }
 /** After a change committed: each event it raised goes to every active, approved endpoint that subscribed to it (at most 5 events and 5 endpoints). */
 async function emit(d: Deps, actor: Actor) {
-  const events = (actor.committed ?? []).map((x) => ({ ev: eventOf(x.action, x.target), ...x })).filter((x) => x.ev).slice(0, 5); actor.committed = [];
+  const events = (actor.committed ?? []).map((x) => ({ ev: eventOf(x.action, x.target), ...x })).filter((x) => x.ev).slice(0, 50); actor.committed = [];
   if (!events.length) return;
   const preps = await d.ws.tx(quiet(actor), d.now(), async (t) => {
     const hooks = (await t.list<Webhook>("webhook")).filter((x) => x.data.approved && x.data.status === "Active");
     const out: Prepared[] = [];
-    for (const e of events) for (const h of hooks.filter((x) => x.data.events.includes(e.ev!)).slice(0, 5)) { const p = await prepare(d, t, h.id, e.ev!, { action: e.action, summary: e.target.slice(0, 500) }); if (p) out.push(p); }
-    return out;
+    // what is sent: the event, the action and the record ids it names; never the audit text (it can hold names and free-text reasons)
+    for (const e of events) for (const h of hooks.filter((x) => x.data.events.includes(e.ev!))) { const p = await prepare(d, t, h.id, e.ev!, { action: e.action, records: refsOf(e.target) }); if (p) out.push(p); }
+    return out.slice(0, 25);
   });
   if (!preps.length) return;
   const results = await Promise.all(preps.map((p) => send(d, p)));
