@@ -4,10 +4,13 @@ import { useGo, useRoute } from "@/lib/route";
 import { INTEGRATIONS, intCanManage, type Integration } from "@/features/integrations/services/integrations";
 import { HealthChip, useIntegrationActions } from "./IntegrationUI";
 import { ConnectorDetail } from "./ConnectorDetail";
+import { ProdIntegrations } from "./ProdIntegrations";
+import { API_ON } from "@/lib/rbac";
 
 /** `/ws/integrations` is the connector register; `/ws/integrations/:name` is a connector page. */
 export default function IntegrationsModule() {
   const { param } = useRoute();
+  if (API_ON) return <ProdIntegrations id={param} />; // production: the real read-only connectors (server/ws/integrations.ts)
   if (param) return <ConnectorDetail name={param} />;
   return <IntegrationsList />;
 }

@@ -38,7 +38,7 @@ async function saveFw(t: WsTx, s: { id: string; data: FwState; version: number }
 }
 async function control(t: WsTx, id: string) { return (await t.get<Control>("control", id)) ?? missing("Control"); }
 /** Re-derives the status of these controls from their linked tests (automatic; audited when it changes). */
-async function followTests(t: WsTx, ids: string[]) {
+export async function followTests(t: WsTx, ids: string[]) {
   const tests = (await t.list<Test>("test")).map((x) => x.data);
   for (const id of new Set(ids)) {
     const c = await t.get<Control>("control", id); if (!c) continue;

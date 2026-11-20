@@ -10,7 +10,7 @@ import { wsPost } from "./ws";
 const SERVER_ROUTES: Record<string, string> = {
   "report.distribution": "/ws/report-approvals",
   "vendor.request.critical": "/ws/four-eyes", "vendor.gate": "/ws/four-eyes", "vendor.tier": "/ws/four-eyes", "vendor.waiver": "/ws/four-eyes", "trust.publish": "/ws/four-eyes", "q.send": "/ws/four-eyes",
-  ...Object.fromEntries(["ai.guardrail", "ai.archive", "ai.enable", "ai.mask", "assistant.agent.enable", "assistant.agent.autonomy", "assistant.agent.recertify", "assistant.mcp.grant", "api.key", "api.webhook"].map((k) => [k, "/ws/four-eyes"])),
+  ...Object.fromEntries(["ai.guardrail", "ai.archive", "ai.enable", "ai.mask", "assistant.agent.enable", "assistant.agent.autonomy", "assistant.agent.recertify", "assistant.mcp.grant", "api.key", "api.webhook", "integration.connect"].map((k) => [k, "/ws/four-eyes"])),
 };
 
 export type Decision = "approve" | "reject" | "withdraw";
