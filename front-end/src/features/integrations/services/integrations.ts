@@ -5,6 +5,7 @@
 import { assertRole, hasRole } from "@/lib/sod";
 import seed from "@/features/integrations/data/integrationsSeed.json";
 import { apiFetch, viaApi } from "@/services/http";
+import { wsPost } from "@/services/ws";
 
 export interface Integration { name: string; type: string; cat: string; status: string; order: number; scope: string; lastSync: string; records: string; health: string }
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -45,3 +46,15 @@ export function syncAllIntegrations() {
     return c.length;
   }, () => post<number>("/integrations/sync-all", {}));
 }
+
+/* ---- production only (server/ws/integrations.ts): the server re-checks every rule and writes the audit entries ---- */
+const ws = <T,>(path: string, body: unknown = {}) => wsPost<T>(`/ws/integrations${path}`, body);
+export const startConnection = (provider: string) => ws<{ id: string }>(`/${enc(provider)}/start`);
+export const connectConnection = (id: string, fields: Record<string, string>) => ws<{ id: string; label: string; pending: boolean }>(`/${enc(id)}/connect`, { fields });
+export const syncConnection = (id: string) => ws<{ ok: boolean; error?: string; health: string }>(`/${enc(id)}/sync`);
+export const syncAllConnections = () => ws<{ synced: number; of: number }>("/sync-all");
+export const syncDueConnections = () => ws<{ synced: number }>("/sync-due");
+export const disconnectConnection = (id: string, reason: string) => ws<{ id: string }>(`/${enc(id)}/disconnect`, { reason });
+export const linkCheck = (testId: string, controlId: string, on: boolean) => ws<{ ok: true }>(`/checks/${enc(testId)}/link`, { controlId, on });
+/** After the provider's sign-in: the server exchanges the code and binds the tenant it proves. */
+export const verifyCallback = (b: { code: string; state: string; installationId?: string }) => ws<{ id: string; choices: { id: string; label: string }[] | null; preselect: string | null }>("/callback", b);

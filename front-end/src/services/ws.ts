@@ -15,6 +15,7 @@ import { API_ON, modAllowed } from "@/lib/rbac";
 import { SERVER_KINDS } from "@/lib/rulesWs";
 import { appStore, bumpData, createStore } from "@/lib/store";
 import { clearG6, G6, g6Settings } from "@/lib/g6";
+import { clearG7, g7 } from "@/lib/g7";
 import { ApiError, apiFetch, API_BASE } from "./http";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -125,6 +126,8 @@ const LOADERS: Record<string, (b: any) => void> = {
     fill(G6.keys, b.keys); fill(G6.hooks, b.hooks); fill(G6.tests, b.tests); fill(G6.events, b.events); fill(G6.webhookEvents, b.webhookEvents); G6.revealMinutes = b.revealMinutes ?? 60;
     setApprovals(["api.key", "api.webhook"], b.approvals);
   },
+  /** Integrations: the connectors the platform offers, the company's connections (checks, matched accounts) and the sync history. */
+  integrations(b) { g7.set({ providers: b.providers, connections: b.connections, runs: b.runs }); setApprovals(["integration.connect"], b.approvals); },
   /** Posture figures of the modules the person cannot open (scores and statuses only, no titles or owners). Loaded last: it never replaces
    *  what a module the person can open has loaded. */
   overview(b) {
@@ -146,7 +149,7 @@ let loadedFor = "";
 /** Empties every server-backed collection (another company or role: nothing of the previous one may remain on screen). */
 function clearAll() {
   DATA.frameworks = []; DATA.controls = []; DATA.tests = []; DATA.evidence = []; DATA.policies = []; DATA.people = []; DATA.access = [];
-  DATA.risks = []; DATA.issues = []; DATA.reports = []; DATA.audits = []; fill(WS_AUDIT, []); DATA.vendors = []; DATA.questionnaires = []; DATA.trust = []; DATA.commitments = []; DATA.ai = []; clearG6();
+  DATA.risks = []; DATA.issues = []; DATA.reports = []; DATA.audits = []; fill(WS_AUDIT, []); DATA.vendors = []; DATA.questionnaires = []; DATA.trust = []; DATA.commitments = []; DATA.ai = []; clearG6(); clearG7();
   fill(ANSWER_LIB, []); fill(KB_DOCS, []); fill(TRUST_FAQ, []); fill(TRUST_SUBPROC, []); fill(TRUST_UPDATES, []); fill(STANDARD_TERMS, []);
   TRUST.accounts = []; TRUST.requests = []; TRUST.decisions = []; TRUST.blocked = []; TRUST.chats = []; TRUST.activity = []; TRUST.modeHist = [];
   g4Meta.set({ contacts: [], vendorQs: [], assigned: [], trustPublic: null, incidents: [], subscribers: 0, auditors: [], auditlog: { firstBad: null, verifiedAt: null, packages: [] } });

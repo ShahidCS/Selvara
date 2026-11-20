@@ -5,6 +5,15 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ## [Unreleased]
 
 ### Changed
+- Production programme, group 7: **Integrations** run on the server in production with real read-only connectors for **GitHub**, **AWS**, **Okta**, **Microsoft Entra ID** and **Google Workspace**. They use the group 1 store, so there is no new migration. The decisions are recorded in `docs/architecture/PRODUCTION_PROGRAMME.md` (group 7).
+  - **Credentials.** The platform credentials are set once in Vercel (`SUPABASE.md` section 4f). Companies enter identifiers only. Selvara generates the AWS external id and the Okta key pair, and keeps the Okta private key sealed.
+  - **Connecting.** A test call runs first, then a second admin approves. Disconnecting needs a reason and erases the account data.
+  - **Syncs** record automated tests in Controls that linked controls follow. A failed sync never leaves a stale Pass.
+  - **Accounts** are matched to members by email, and accounts of people who left are flagged.
+  - **Discovery.** AI apps people use appear as Discovered AI, and apps matching a vendor appear on that vendor.
+  - **Protected file.** `rbac.ts` lists `integrations` as server-ready (pre-approved change).
+  - **Before deploying.** Optional: add the connector credentials (`SUPABASE.md` section 4f).
+  - Draft for security and compliance review.
 - Production programme, group 6: **AI governance**, the **AI Assistant and agents**, and **API keys, webhooks and custom tests** run on the server in production, using the group 1 store (no new migration). The decisions are recorded in `docs/architecture/PRODUCTION_PROGRAMME.md` (group 6).
   - **AI is off per company** until a company admin asks and a second admin approves. The key is set by the owner on the server (`SUPABASE.md` section 4e).
   - **Only chosen records are sent**, without people fields. A **PII blocker** checks every request and blocks with an explanation (kind and place, audited without the value). A company may choose "mask then send" with a second admin's approval.

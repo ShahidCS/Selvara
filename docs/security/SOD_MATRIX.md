@@ -49,6 +49,7 @@ Every decision below writes an audit entry (`wsLog`, and `adminLog` for platform
 | Questionnaire | Send externally | author | reviewer != author | | |
 | Assistant | Run an agent action needing approval; enable a custom agent; raise an agent's autonomy (section 11) | requester | approver != requester (and != the agent's creator for enable and raise) | | |
 | API | Create key with write scope; add webhook | admin | second admin approves write scope keys | | webhook URL https-only (existing); keys shown once |
+| Integrations | Connect a read-only connector (GitHub, AWS, Okta, Entra ID, Google Workspace); disconnect; link a check to a control | admin | connect: a second admin approves after a passing test (`integration.connect`, 24 h); disconnect and linking: single admin, audited (safe direction / evidence mapping) | | read-only scopes only; companies enter identifiers, never secrets; account data erased on disconnect |
 | Billing (admin) | Credit, refund, write-off | super (elevated) | different super (super2), elevated, when amount > `SOD.FINANCE_DUAL_USD`; always for write-off | initiator != approver | reason + ticket |
 | Rates | Manual rate/tax override | super (elevated) | different super (elevated) | initiator != approver | numeric bounds as today |
 | Reports | Schedule external distribution | owner/admin | different admin | | |

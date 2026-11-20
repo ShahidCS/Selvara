@@ -195,4 +195,14 @@ export const MODULE_TIPS: Record<string, ModuleTipText> = {
       "Custom tests turn the events your systems push into Pass or Fail results.",
     ],
   },
+  integrations: {
+    title: "Getting started with integrations",
+    steps: [
+      "Set up a connector: GitHub, AWS, Okta, Microsoft Entra ID or Google Workspace. Each one reads only; Selvara never changes anything there.",
+      "Follow the steps for the provider's side, enter the identifiers, and test. A second admin approves before anything is read regularly.",
+      "Each sync turns what it reads into automated checks. Link a check to a control and the control follows its result.",
+      "AI applications people use appear under AI governance; accounts are matched to your members by email, and leavers still active are flagged.",
+    ],
+    note: "Connections bring employee data (names, emails, MFA status) into Selvara. Disconnecting erases it.",
+  },
 };

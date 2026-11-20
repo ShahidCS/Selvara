@@ -169,6 +169,9 @@ export function aiRoutes(h: WsHelpers) {
     return tx(d, c, async (t) => {
       const sh = (await t.get<{ name: string }>("ai-shadow", str(r.path[3], 20))) ?? missing("Discovered AI");
       await t.remove("ai-shadow", sh!.id, sh!.version); await t.audit("ai.shadow.dismissed", `${sh!.data.name}: ${reason}`, CAT);
+      // remembered, so an integration's next sync does not bring it back
+      const key = sh!.data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "app";
+      if (!(await t.get("ai-shadow-dismissed", key))) await t.insert("ai-shadow-dismissed", key, { name: sh!.data.name, by: c.actor.name, at: t.now, reason });
       return ok(true);
     });
   });
