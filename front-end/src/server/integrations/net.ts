@@ -16,7 +16,9 @@ export const httpsNet: Net = async (url, init = {}) => {
   try {
     const res = await fetch(url, { method: init.method ?? "GET", headers: { "user-agent": "Selvara-Integrations/1", ...(init.headers ?? {}) }, body: init.body, redirect: "manual", signal: ctl.signal });
     const headers: Record<string, string> = {}; res.headers.forEach((v, k) => { headers[k.toLowerCase()] = v; });
-    return { status: res.status, headers, text: await res.text() };
+    if (Number(headers["content-length"] ?? 0) > 20 * 1024 * 1024) throw new ProviderError("The provider's answer is too large.");
+    const text = await res.text(); if (text.length > 20 * 1024 * 1024) throw new ProviderError("The provider's answer is too large.");
+    return { status: res.status, headers, text };
   } catch { throw new ProviderError("The provider did not answer in time."); }
   finally { clearTimeout(timer); }
 };
@@ -68,3 +70,8 @@ export function sigV4(req: { method: string; url: string; headers: Record<string
 export const amzDateOf = (ms: number) => new Date(ms).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 /** The text of the first <tag> in an XML answer (AWS query APIs answer in XML; only a few known fields are read). */
 export const xmlTag = (xml: string, tag: string) => { const m = new RegExp(`<${tag}>([^<]*)</${tag}>`).exec(xml); return m ? m[1] : null; };
+/** The network with a time budget: once the deadline passes no further call starts, so a sync ends (and is recorded) before the server's
+ *  own time limit, and continues at the next sync. */
+export function budget(net: Net, deadline: number, now: () => number = Date.now): Net {
+  return (url, init) => { if (now() > deadline) throw new ProviderError("The sync ran out of time before it finished; it is completed at the next sync."); return net(url, init); };
+}

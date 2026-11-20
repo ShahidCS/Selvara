@@ -22,7 +22,28 @@ export const HealthOf = ({ c }: { c: Conn }) => (c.status !== "Connected" ? (c.s
   : c.health === "Healthy" ? <Chip cls="ok" icon="check">Healthy</Chip> : c.health === "Degraded" ? <Chip cls="warn" icon="alert">Some checks need data</Chip> : c.health === "Never synced" ? <Chip cls="neutral" icon="clock">Not synced yet</Chip> : <Chip cls="bad" icon="x">{c.health}</Chip>);
 const ResultChip = ({ r }: { r: string }) => (r === "Pass" ? <Chip cls="ok" icon="check">Pass</Chip> : r === "Fail" ? <Chip cls="bad" icon="x">Fail</Chip> : <Chip cls="neutral" icon="dot">Needs data</Chip>);
 
-export function ProdIntegrations({ id }: { id: string | null }) { return id ? <ConnectionPage id={id} /> : <ConnectionList />; }
+export function ProdIntegrations({ id }: { id: string | null }) { return id === "callback" ? <CallbackPage /> : id ? <ConnectionPage id={id} /> : <ConnectionList />; }
+
+/** Where GitHub, Microsoft and Google send the admin back after the sign-in that binds their organisation. */
+function CallbackPage() {
+  const go = useGo(); const done = useRef(false);
+  const q = () => new URLSearchParams(typeof window === "undefined" ? "" : window.location.search);
+  const [msg, setMsg] = useState(() => {
+    const p = q();
+    if (p.get("error")) return `The provider did not complete the sign-in: ${(p.get("error_description") ?? p.get("error") ?? "").slice(0, 200)}`;
+    if (p.get("admin_consent")) return "Consent was granted. Open the connection and select Test and request approval.";
+    if (!p.get("code") || !p.get("state")) return p.get("installation_id") ? "The Selvara GitHub App is installed. Open the connection and select Sign in with GitHub." : "Nothing to do here.";
+    return "Checking the sign-in…";
+  });
+  useEffect(() => {
+    const p = q(); const code = p.get("code") ?? ""; const state = p.get("state") ?? "";
+    if (done.current || p.get("error") || !code || !state) return; done.current = true;
+    svc.verifyCallback({ code, state, installationId: p.get("installation_id") ?? undefined })
+      .then((r) => go(`${LIST}/${encodeURIComponent(r.id)}${r.preselect ? `?installation=${encodeURIComponent(r.preselect)}` : ""}`))
+      .catch((e) => setMsg(uiMessage(e)));
+  }, [go]);
+  return <Page title="Connecting" back={{ href: LIST, label: "Integrations" }}><div className="card"><div className="c-body" role="status">{msg}</div></div></Page>;
+}
 
 function ConnectionList() {
   useData(); const L = useLayer(); const go = useGo(); const { providers, connections, runs } = useG7();
@@ -60,7 +81,7 @@ function ConnectionList() {
               <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.45, flex: "1 1 auto" }}>{p.scope}</div>
               {p.ready ? <p className="field help" style={{ margin: 0 }}>{p.ready}</p>
                 : p.active && p.id !== "aws" ? <Chip cls="ok" icon="check">Set up</Chip>
-                : <button className="btn btn-secondary sm" style={{ alignSelf: "flex-start" }} aria-label={`Set up ${p.name}`} onClick={() => start(p)}><Icon name="plus" />{p.id === "aws" && p.active ? "Add another AWS account" : "Set up"}</button>}
+                : <button className="btn btn-secondary sm" style={{ alignSelf: "flex-start" }} aria-label={p.id === "aws" && p.active ? "Add another AWS account" : `Set up ${p.name}`} onClick={() => start(p)}><Icon name="plus" />{p.id === "aws" && p.active ? "Add another AWS account" : "Set up"}</button>}
             </div>
           ))}
         </div></div>
@@ -80,11 +101,14 @@ function ConnectionList() {
 function SetupForm({ c }: { c: Conn }) {
   const L = useLayer();
   const [v, setV] = useState<Record<string, string>>(() => Object.fromEntries(c.fields.map((f: Conn) => [f.key, c.config?.[f.key] ?? ""])));
+  const choices: { id: string; label: string }[] = c.verified?.choices ?? [];
+  const [pick, setPick] = useState(() => new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("installation") ?? choices[0]?.id ?? "");
+  const needsSignIn = !!c.verify || (c.provider !== "aws" && c.provider !== "okta" && !c.verified);
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   const copy = async (text: string) => { try { await navigator.clipboard.writeText(text); L.toast("Copied"); } catch { L.toast("Select and copy it"); } };
   const go = async () => {
     setBusy(true); setErr("");
-    try { const r = await svc.connectConnection(c.id, v); L.toast(`${r.label}: the test passed. A second admin must approve the connection.`); }
+    try { const r = await svc.connectConnection(c.id, choices.length ? { ...v, installationId: pick } : v); L.toast(`${r.label}: the test passed. A second admin must approve the connection.`); }
     catch (e) { setErr(uiMessage(e)); }
     finally { setBusy(false); }
   };
@@ -93,27 +117,30 @@ function SetupForm({ c }: { c: Conn }) {
       <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.55, display: "flex", flexDirection: "column", gap: 6, overflowWrap: "anywhere" }}>{c.instructions.map((s: string, i: number) => <li key={i}>{s}</li>)}</ol>
       {c.externalId ? <div className="field"><label htmlFor="int-ext">External id (for the role&apos;s trust policy)</label><div style={{ display: "flex", gap: 8 }}><input className="input num" id="int-ext" readOnly value={c.externalId} /><button className="btn btn-secondary sm" onClick={() => copy(c.externalId)}>Copy</button></div></div> : null}
       {c.jwk ? <div className="field"><label htmlFor="int-jwk">Public key for Okta (JSON)</label><div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}><textarea className="input num" id="int-jwk" readOnly rows={3} value={c.jwk} style={{ fontSize: 11.5 }} /><button className="btn btn-secondary sm" onClick={() => copy(c.jwk)}>Copy</button></div><p className="field help">Selvara keeps the matching private key sealed; it is never shown.</p></div> : null}
+      {c.verify ? <div><a className="btn btn-primary" href={c.verify.url}><Icon name="access" />{c.verify.label}</a><p className="field help">You return here afterwards. Selvara keeps only what the provider says about your organisation, never your password.</p></div> : null}
+      {c.verified ? <p className="field help" style={{ margin: 0 }}><Chip cls="ok" icon="check">Organisation confirmed</Chip> by {c.verified.by}, {c.verified.at}{c.verified.config ? `: ${Object.values(c.verified.config).join(", ")}` : ""}</p> : null}
+      {choices.length > 1 ? <div className="field"><label htmlFor="int-inst">Installation</label><select className="select" id="int-inst" value={pick} onChange={(e) => setPick(e.target.value)}>{choices.map((ch) => <option key={ch.id} value={ch.id}>{ch.label} (installation {ch.id})</option>)}</select></div> : null}
       {c.fields.map((f: Conn) => (
         <div className="field" key={f.key}><label htmlFor={`int-${f.key}`}>{f.label} <span style={{ color: "var(--bad-ink)" }}>*</span></label>
-          <input className="input" id={`int-${f.key}`} placeholder={f.example} value={v[f.key] ?? ""} onChange={(e) => setV({ ...v, [f.key]: e.target.value })} aria-describedby={`int-${f.key}-help`} autoComplete="off" spellCheck={false} />
+          <input className="input" id={`int-${f.key}`} required aria-required="true" placeholder={f.example} value={v[f.key] ?? ""} onChange={(e) => setV({ ...v, [f.key]: e.target.value })} aria-describedby={`int-${f.key}-help`} autoComplete="off" spellCheck={false} />
           <p className="field help" id={`int-${f.key}-help`}>{f.help}</p></div>
       ))}
       {err ? <p className="field help" role="alert" style={{ color: "var(--bad-ink)" }}>{err}</p> : null}
-      <div className="btngrp"><button className="btn btn-primary" disabled={busy || c.status === "Pending approval"} onClick={go}><Icon name="check" />{busy ? "Testing…" : c.status === "Pending approval" ? "Waiting for approval" : "Test and request approval"}</button></div>
+      <div className="btngrp"><button className="btn btn-primary" disabled={busy || c.status === "Pending approval" || (needsSignIn && !c.verified)} onClick={go}><Icon name="check" />{busy ? "Testing…" : c.status === "Pending approval" ? "Waiting for approval" : "Test and request approval"}</button></div>
       <p className="field help" style={{ margin: 0 }}>Selvara makes one small read to test the connection. Nothing is read regularly until a second admin approves.</p>
     </div></div>
   );
 }
 
 function ConnectionPage({ id }: { id: string }) {
-  useData(); const L = useLayer(); const { connections, runs } = useG7();
+  useData(); const L = useLayer(); const go = useGo(); const { connections, runs } = useG7();
   const c = connections.find((x: Conn) => x.id === id);
   const back = { href: LIST, label: "Integrations" };
   if (!c) return <Page title="Connection not found" back={back}><Empty icon="ext" title="No such connection">There is no connection with the id &ldquo;{id}&rdquo;.</Empty></Page>;
   const sync = () => attempt(L, async () => { const r = await svc.syncConnection(c.id); L.toast(r.ok ? `${c.label} synced` : `Sync failed: ${r.error}`, r.ok); });
   const disconnect = () => askReason(L, { title: `Disconnect ${c.label}?`, label: "Why it is disconnected", danger: true, confirm: "Disconnect",
     intro: "Selvara stops reading, erases the account list and its sealed key, and its checks need data again. Also remove Selvara's access on the provider's side (the app, role or consent).",
-    run: async (reason) => { await svc.disconnectConnection(c.id, reason); return `${c.label} disconnected`; } });
+    run: async (reason) => { await svc.disconnectConnection(c.id, reason); if (c.status !== "Connected") go(LIST); return `${c.label} ${c.status === "Connected" ? "disconnected" : "set-up cancelled"}`; } });
   const link = (t: Conn) => askReason(L, { title: `Link "${t.name}" to a control`, label: "", confirm: "Link", select: DATA.controls.filter((x: Conn) => !t.controls.includes(x.id)).map((x: Conn) => ({ id: x.id, name: `${x.id} ${x.title}` })), selectLabel: "Control",
     intro: "The control then follows this check's result (with the other tests linked to it).", run: async (_t, pick) => { await svc.linkCheck(t.id, pick, true); return "Linked"; } });
   const unlink = (t: Conn, ctl: string) => attempt(L, async () => { await svc.linkCheck(t.id, ctl, false); L.toast("Link removed"); });
@@ -131,6 +158,7 @@ function ConnectionPage({ id }: { id: string }) {
       {c.status === "Connected" ? <><button className="btn btn-secondary" onClick={sync}><Icon name="refresh" />Sync now</button><button className="btn btn-ghost" onClick={disconnect}><Icon name="x" />Disconnect</button></> : null}
       {setup ? <button className="btn btn-ghost" onClick={disconnect}><Icon name="x" />Cancel setup</button> : null}</>}>
       <div className="scroll" style={{ flex: "1 1 auto" }}><div style={{ display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
+        <ApprovalsPanel prefix="integration." title="Connection approvals (second admin)" />
         {setup ? <SetupForm c={c} /> : null}
         {c.status === "Disconnected" ? <div className="card" style={{ boxShadow: "none", background: "var(--surface-2)" }}><div className="c-body" style={{ padding: "10px 14px", fontSize: 13 }}>Disconnected by {c.disconnectedBy}: {c.disconnectReason}. Its account list was erased.</div></div> : null}
         {c.lastError ? <div className="card" style={{ boxShadow: "none", background: "var(--bad-bg)", borderColor: "transparent" }}><div className="c-body" role="alert" style={{ padding: "10px 14px", fontSize: 13, color: "var(--bad-ink)" }}>The last sync failed: {c.lastError}</div></div> : null}
@@ -147,7 +175,7 @@ function ConnectionPage({ id }: { id: string }) {
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
                 <span style={{ fontSize: 12, color: "var(--muted)" }}>Controls:</span>
                 {t.controls.map((ctl: string) => <span key={ctl} className="tag" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>{ctl}<button className="icon-btn" style={{ width: 20, height: 20 }} aria-label={`Unlink ${ctl}`} onClick={() => unlink(t, ctl)}><Icon name="x" /></button></span>)}
-                <button className="btn btn-ghost sm" onClick={() => link(t)}><Icon name="plus" />Link control</button>
+                <button className="btn btn-ghost sm" aria-label={`Link a control to: ${t.name}`} onClick={() => link(t)}><Icon name="plus" />Link control</button>
               </div>
             </div>
           ))}

@@ -6,7 +6,8 @@ import { EVIDENCE_FILE_MAX } from "@/lib/rulesWs";
 /* The production API (/api/...), contract in docs/security/CONTROLS.md. Off (503) unless the Supabase environment is set.
    Bodies are read here, not by Next.js: JSON up to 16 KB everywhere, and the raw bytes of a file (at most 4 MB) only on
    POST /api/ws/evidence/<id>/files, /api/ws/kb-docs and /api/ws/trust/resources/<id>/file with Content-Type application/octet-stream and the file name in ?name=, up to 96 KB of JSON to add a framework, and up to 1 MB of JSON to import a risk register (at most 5,000 rows). The handlers check the rest. */
-export const config = { api: { bodyParser: false } };
+/** maxDuration: an integration sync needs more than the default time; each sync also stops itself well before this. */
+export const config = { api: { bodyParser: false }, maxDuration: 60 };
 const JSON_MAX = 16 * 1024;
 /** Adding a framework carries up to 300 requirement lines of 200 characters; a risk register import up to 5,000 converted rows. */
 const LARGE_JSON: Record<string, number> = { "POST ws/frameworks": 96 * 1024, "POST ws/risks/import": 1024 * 1024 };

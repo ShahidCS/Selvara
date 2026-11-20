@@ -16,7 +16,10 @@ import { WsConflict, type Rec, type WsTx } from "./store";
 
 export interface Exception { id: string; requestedBy: string; requestedById: string; at: string; reason: string; compensating: string; expires: string; approvalId: string; expiryLogged?: boolean }
 export interface Control { id: string; title: string; domain: string; owner: string; ownerId: string; status: string; map: Record<string, string[]>; custom?: boolean; library?: boolean; attestation?: { by: string; byId: string; at: string; note: string }; exceptions?: Exception[] }
-export interface Test { id: string; name: string; source: string; controls: string[]; logic: string; result: string; cadence: string; last: string; items: { item: string; result: string }[]; note?: string }
+export interface Test { id: string; name: string; source: string; controls: string[]; logic: string; result: string; cadence: string; last: string; items: { item: string; result: string }[]; note?: string; /** Automated (integration) tests: when the provider last answered. */ syncedAt?: number }
+/** An integration's automated test (server/ws/integrations.ts): recorded only by its sync, never by hand. */
+export const isAutomated = (id: string) => id.startsWith("AT-");
+const AUTOMATED_STALE = 3 * 86_400_000;
 export interface FwState { scope?: boolean; snooze?: boolean; na: Record<string, { reason: string; by: string; byId: string; date: string }>; mod: Record<string, { by: string; date: string }>; reqCtrl: Record<string, string[]>; audit?: string }
 export interface FwCustom { name: string; short: string; kind: string; region: string; version: string; reqs: string[][] }
 
@@ -82,8 +85,19 @@ async function controlsData(d: Deps, t: WsTx) {
     }
     if (changed) await t.update("control", c.id, c.data, c.version);
   }
+  // an automated Pass not refreshed for 3 days needs data again (no scheduler: syncs run when an admin opens Integrations)
+  const stale: string[] = [];
+  for (const x of await t.list<Test>("test")) {
+    if (isAutomated(x.id) && x.data.result === "Pass" && x.data.syncedAt && t.now - x.data.syncedAt > AUTOMATED_STALE) {
+      Object.assign(x.data, { result: "Needs data", items: [], note: "Not refreshed for 3 days: an admin opens Integrations to sync it." }); await t.update("test", x.id, x.data, x.version);
+      await t.audit("test.result.recorded", `${x.id} ${x.data.name}: Needs data by System: not refreshed for 3 days`, "Control", true); stale.push(...x.data.controls);
+    }
+  }
+  if (stale.length) await followTests(t, stale);
   const members = await membersOf(d, t.actor); const names = new Map(members.map((m) => [m.id, m.name]));
-  return { controls: (await t.list<Control>("control")).map((x) => x.data), tests: (await t.list<Test>("test")).map((x) => x.data), approvals: await approvalsView(t, EXC, names), members, library: LIB_CONTROLS };
+  // automated tests name employees' accounts as evidence: only admins (who see them in Integrations anyway) get those names
+  const tests = (await t.list<Test>("test")).map((x) => x.data).map((x) => (isAutomated(x.id) && t.actor.role !== "admin" && x.items.length ? { ...x, items: [{ item: `${x.items.length} item${x.items.length === 1 ? "" : "s"} (an admin sees them in Integrations)`, result: x.result }] } : x));
+  return { controls: (await t.list<Control>("control")).map((x) => x.data), tests, approvals: await approvalsView(t, EXC, names), members, library: LIB_CONTROLS };
 }
 async function frameworksData(t: WsTx) {
   const state: Record<string, FwState> = {}; for (const s of await t.list<FwState>("fw")) state[s.id] = s.data;
@@ -296,6 +310,7 @@ export function assuranceRoutes(h: WsHelpers) {
       }
       if (action === "result") { // a manual test: a person records what they found
         refuse(runTestsBlock(c.actor.role));
+        if (isAutomated(id)) refuse("This test is recorded by its integration. Sync it in Integrations instead.");
         const result = str(r.body.result, 20); if (!(TEST_RESULTS as readonly string[]).includes(result)) invalid("Choose Pass, Fail or Needs data.");
         const note = txt(r.body.note, 500); const bad = textBlock(note, 10, "A note on what was checked"); if (bad) invalid(bad);
         rec.data.result = result; rec.data.note = note; rec.data.last = stamp(t.now);
@@ -304,6 +319,7 @@ export function assuranceRoutes(h: WsHelpers) {
       }
       if (action === "deactivate") {
         refuse(manageControlsBlock(c.actor.role));
+        if (isAutomated(id)) refuse("This test belongs to an integration. Disconnect the integration, or unlink the test from controls in Integrations.");
         await t.remove("test", id, rec.version); await t.audit("test.deactivated", id);
         await followTests(t, rec.data.controls); return ok(true);
       }
@@ -313,7 +329,7 @@ export function assuranceRoutes(h: WsHelpers) {
   const testSync = wsRoute(h, "controls", async (d, _r, c) => {
     refuse(runTestsBlock(c.actor.role));
     return tx(d, c, async (t) => {
-      const all = await t.list<Test>("test");
+      const all = (await t.list<Test>("test")).filter((x) => !isAutomated(x.id)); // an automated test's time is its last sync, never re-stamped
       for (const x of all) { x.data.last = stamp(t.now); await t.update("test", x.id, x.data, x.version); }
       await t.audit("tests.synced", `${all.length} tests`);
       await followTests(t, all.flatMap((x) => x.data.controls)); return ok(true);

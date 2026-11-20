@@ -56,3 +56,5 @@ export const syncAllConnections = () => ws<{ synced: number; of: number }>("/syn
 export const syncDueConnections = () => ws<{ synced: number }>("/sync-due");
 export const disconnectConnection = (id: string, reason: string) => ws<{ id: string }>(`/${enc(id)}/disconnect`, { reason });
 export const linkCheck = (testId: string, controlId: string, on: boolean) => ws<{ ok: true }>(`/checks/${enc(testId)}/link`, { controlId, on });
+/** After the provider's sign-in: the server exchanges the code and binds the tenant it proves. */
+export const verifyCallback = (b: { code: string; state: string; installationId?: string }) => ws<{ id: string; choices: { id: string; label: string }[] | null; preselect: string | null }>("/callback", b);

@@ -20,6 +20,7 @@ const KEY = newKeyPair().privateKeyPem;
 const calls: { url: string; init?: NetRequest }[] = [];
 const routes: { re: RegExp; method?: string; res: (url: string, init?: NetRequest) => NetResponse }[] = [];
 const J = (status: number, body: unknown, headers: Record<string, string> = {}): NetResponse => ({ status, headers, text: JSON.stringify(body) });
+const idTok = (claims: Record<string, unknown>) => `e30.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.sig`;
 const on = (re: RegExp, res: NetResponse | ((url: string, init?: NetRequest) => NetResponse), method?: string) => routes.push({ re, method, res: typeof res === "function" ? res : () => res });
 beforeEach(() => {
   clock = 1_800_000_000_000; used.clear(); auth = new MemoryAuth(() => clock); store = new MemoryStore(() => clock); dir = new MemoryDirectory(store);
@@ -28,8 +29,8 @@ beforeEach(() => {
   calls.length = 0; routes.length = 0;
   d = { auth, store, dir, plat, sup: new MemorySupport(store, dir, plat), ws, files, site: { origin: ORIGIN, rpId: "app.example.test" }, secret: "x".repeat(40), now: () => clock,
     net: async (url: string, init?: NetRequest) => { calls.push({ url, init }); const r = routes.find((x) => x.re.test(url) && (!x.method || x.method === (init?.method ?? "GET"))); return r ? r.res(url, init) : { status: 404, headers: {}, text: "{}" }; },
-    intEnv: { github: { appId: "12345", privateKey: KEY, slug: "selvara-test" }, aws: { accessKeyId: "AKIDEXAMPLE", secretAccessKey: "secret-example", principalArn: "arn:aws:iam::111122223333:user/selvara" },
-      entra: { clientId: "00000000-1111-2222-3333-444444444444", clientSecret: "test-secret" }, google: { clientEmail: "reader@selvara-test.iam.example", privateKey: KEY, clientId: "1234567890" } } };
+    intEnv: { github: { appId: "12345", privateKey: KEY, slug: "selvara-test", clientId: "Iv1.test", clientSecret: "gh-secret" }, aws: { accessKeyId: "AKIDEXAMPLE", secretAccessKey: "secret-example", principalArn: "arn:aws:iam::111122223333:user/selvara" },
+      entra: { clientId: "00000000-1111-2222-3333-444444444444", clientSecret: "test-secret" }, google: { clientEmail: "reader@selvara-test.iam.example", privateKey: KEY, clientId: "1234567890", oauthClientId: "g-oauth", oauthClientSecret: "g-secret" } } };
 });
 const PW = "Lantern-orbit-Quince-71";
 async function call(method: string, path: string, body: Record<string, unknown> = {}, cookie?: string, raw?: Uint8Array): Promise<Res> {
@@ -67,8 +68,14 @@ async function team() {
 const four = (cookie: string, id: string, decision: string, reason = "Checked the connection request") => call("POST", `ws/four-eyes/${id}/${decision}`, { reason }, cookie);
 type Conn = { id: string; provider: string; status: string; label: string; health: string; externalId?: string; jwk?: string; checks: { id: string; name: string; result: string; items: { item: string }[]; controls: string[] }[]; accounts: { email: string; member: string | null; mfa: boolean | null }[] };
 const idata = async (cookie: string) => body<{ providers: { id: string; ready: string | null }[]; connections: Conn[]; approvals: { id: string; kind: string; status: string }[] }>(await call("GET", "ws/data/integrations", {}, cookie));
+/** The provider's sign-in that binds the tenant: the state comes from the sign-in link the server built. */
+async function verify(cookie: string, id: string, extra: Record<string, unknown> = {}) {
+  const url = (await conn(cookie, id) as Conn & { verify?: { url: string } }).verify!.url;
+  return call("POST", "ws/integrations/callback", { code: "test-code", state: new URL(url).searchParams.get("state"), ...extra }, cookie);
+}
 async function connect(t: Awaited<ReturnType<typeof team>>, provider: string, fields: Record<string, string>) {
   const id = body<{ id: string }>(await call("POST", `ws/integrations/${provider}/start`, {}, t.jordan.cookie)).id;
+  if (["github", "entra", "google"].includes(provider)) expect((await verify(t.jordan.cookie, id)).status).toBe(200);
   const r = await call("POST", `ws/integrations/${id}/connect`, { fields }, t.jordan.cookie);
   expect(r.status).toBe(200);
   const ap = (await idata(t.casey.cookie)).approvals.find((a) => a.status === "Pending")!;
@@ -80,6 +87,8 @@ const conn = async (cookie: string, id: string) => (await idata(cookie)).connect
 const result = (c: Conn, key: string) => c.checks.find((x) => x.id.endsWith(`-${key}`))?.result;
 
 function github() {
+  on(/github\.com\/login\/oauth\/access_token/, J(200, { access_token: "gho_user" }), "POST");
+  on(/api\.github\.com\/user\/installations/, J(200, { installations: [{ id: 777, app_id: 12345, account: { login: "acme-test", type: "Organization" } }] }));
   on(/api\.github\.com\/app\/installations\/777$/, J(200, { account: { login: "acme-test", type: "Organization" }, permissions: {} }));
   on(/\/app\/installations\/777\/access_tokens$/, J(201, { token: "ghs_test" }), "POST");
   on(/\/installation\/repositories/, J(200, { repositories: [{ name: "api", default_branch: "main", archived: false, owner: { login: "acme-test" } }, { name: "web", default_branch: "main", archived: false, owner: { login: "acme-test" } }] }));
@@ -99,7 +108,7 @@ describe("integrations on the server", () => {
     const t = await team(); github();
     expect((await call("GET", "ws/data/integrations", {}, t.owen.cookie)).status).toBe(403); // admins only
     const start = body<{ id: string }>(await call("POST", "ws/integrations/github/start", {}, t.jordan.cookie));
-    expect(body<{ error: string }>(await call("POST", `ws/integrations/${start.id}/connect`, { fields: { installationId: "abc" } }, t.jordan.cookie)).error).toMatch(/Installation id/);
+    expect(body<{ error: string }>(await call("POST", `ws/integrations/${start.id}/connect`, { fields: { installationId: "777" } }, t.jordan.cookie)).error).toMatch(/Sign in with GitHub first/); // a typed number is never enough
     await call("POST", `ws/integrations/${start.id}/disconnect`, { reason: "Started by mistake, redoing" }, t.jordan.cookie);
     const id = await connect(t, "github", { installationId: "777" });
     expect(log("integration.connected").length).toBe(1);
@@ -125,16 +134,22 @@ describe("integrations on the server", () => {
     await call("POST", `ws/integrations/${id}/sync`, {}, t.jordan.cookie);
     expect(await status()).toMatch(/Pass/);
     // a revoked installation: no stale Pass
-    routes.splice(0, routes.length); on(/access_tokens$/, J(401, {}), "POST"); on(/app\/installations\/777$/, J(200, { account: { login: "acme-test", type: "Organization" } }));
+    routes.splice(0, routes.length); on(/app\/installations\/777$/, J(404, {})); // the app was uninstalled
     clock += 6 * 60_000; t.jordan.cookie = await signIn("jordan@acme.example");
     await call("POST", `ws/integrations/${id}/sync`, {}, t.jordan.cookie);
     c = await conn(t.jordan.cookie, id);
-    expect(c.health).toBe("Credential refused"); expect(c.checks.every((x) => x.result === "Needs data")).toBe(true);
+    expect(c.health).toBe("Credential refused");
+    expect(result(c, "gh-branch")).toBe("Needs data"); expect(result(c, "gh-vuln-sla")).toBe("Fail"); // a Pass needs data again; a known Fail stays
     expect(await status()).not.toMatch(/Pass/);
+    // an automated test is never overwritten by hand in Controls
+    expect((await call("POST", `ws/tests/${tb}/result`, { result: "Pass", note: "Looks fine to me today" }, t.owen.cookie)).status).toBe(403);
+    // the owner sees how many accounts a check names, not who
+    const ownerView = body<{ tests: { id: string; items: { item: string }[] }[] }>(await call("GET", "ws/data/controls", {}, t.owen.cookie)).tests.find((x) => x.id.endsWith("gh-vuln-sla"))!;
+    expect(ownerView.items[0].item).toMatch(/item.*an admin sees them/);
     // disconnect: a reason, account data erased, tests need data
     expect((await call("POST", `ws/integrations/${id}/disconnect`, { reason: "short" }, t.jordan.cookie)).status).toBe(400);
     expect((await call("POST", `ws/integrations/${id}/disconnect`, { reason: "We moved to another code host" }, t.casey.cookie)).status).toBe(200);
-    expect(ws.rows.size && [...ws.rows.values()].some((r) => r.kind === "integration-accounts" && !r.deleted)).toBe(false);
+    expect([...ws.rows.values()].some((r) => (r.kind === "integration-accounts" || (r.kind === "test" && r.id.startsWith("AT-"))) && !r.deleted)).toBe(false);
     expect(JSON.stringify(store.auditLog)).not.toContain("ghs_test");
     const kai = await member("kai@other.example", "admin", "Kai Brandt", OTHER); // another company sees and reaches none of it
     expect((await idata(kai.cookie)).connections).toEqual([]);
@@ -150,7 +165,7 @@ describe("integrations on the server", () => {
       if (b.includes("GetCredentialReport")) return { status: 200, headers: {}, text: `<Content>${Buffer.from(`user,password_enabled,mfa_active,access_key_1_active,access_key_1_last_rotated,access_key_2_active,access_key_2_last_rotated,password_last_used\n<root_account>,not_supported,true,false,N/A,false,N/A,no_information\nops-user,true,false,true,${new Date(clock - 200 * 86400_000).toISOString()},false,N/A,${new Date(clock).toISOString()}`).toString("base64")}</Content>` };
       return { status: 200, headers: {}, text: "<ok/>" };
     }, "POST");
-    on(/cloudtrail\.eu-central-1/, J(200, { trailList: [{ IsMultiRegionTrail: true }] }), "POST");
+    on(/cloudtrail\.eu-central-1/, (_u, i) => (String(i?.body).includes("Name") ? J(200, { IsLogging: true }) : J(200, { trailList: [{ IsMultiRegionTrail: true, TrailARN: "arn:aws:cloudtrail:eu-central-1:123456789012:trail/main" }] })), "POST");
     on(/s3-control/, { status: 200, headers: {}, text: "<PublicAccessBlockConfiguration><BlockPublicAcls>true</BlockPublicAcls><IgnorePublicAcls>true</IgnorePublicAcls><BlockPublicPolicy>true</BlockPublicPolicy><RestrictPublicBuckets>true</RestrictPublicBuckets></PublicAccessBlockConfiguration>" });
     const id = await connect(t, "aws", { roleArn: "arn:aws:iam::123456789012:role/SelvaraAudit", region: "eu-central-1" });
     const sts = calls.find((x) => x.url.includes("sts.amazonaws.com"))!;
@@ -187,25 +202,59 @@ describe("integrations on the server", () => {
   });
   it("reads Entra ID and Google Workspace through Selvara's own apps, and refuses a connection whose test fails", async () => {
     const t = await team();
-    on(/login\.microsoftonline\.com/, J(200, { access_token: "graph-tok" }), "POST");
+    on(/login\.microsoftonline\.com/, J(200, { access_token: "graph-tok", id_token: idTok({ tid: "11111111-2222-3333-4444-555555555555" }) }), "POST");
     on(/graph\.microsoft\.com\/v1\.0\/users/, J(200, { value: [{ id: "e1", displayName: "Casey Morgan", mail: "casey@acme.example", userPrincipalName: "casey@acme.example", accountEnabled: true }] }));
     on(/userRegistrationDetails/, J(200, { value: [{ id: "e1", isMfaRegistered: true, isAdmin: true }] }));
-    on(/directoryRoles/, J(200, { value: [] }));
+    on(/directoryRoles\/r1\/members/, J(200, { value: [{ id: "e1" }] })); on(/directoryRoles\?/, J(200, { value: [{ id: "r1" }] }));
     on(/conditionalAccess/, J(200, { value: [{ displayName: "Require MFA", state: "enabled", grantControls: { builtInControls: ["mfa"] } }] }));
     on(/servicePrincipals/, J(200, { value: [{ displayName: "Claude for Work", servicePrincipalType: "Application" }] }));
-    const e = await connect(t, "entra", { tenantId: "11111111-2222-3333-4444-555555555555" });
+    const e = await connect(t, "entra", {});
     await call("POST", `ws/integrations/${e}/sync`, {}, t.jordan.cookie);
     const ce = await conn(t.jordan.cookie, e);
     expect([result(ce, "entra-mfa"), result(ce, "entra-admin-mfa"), result(ce, "entra-ca-mfa"), result(ce, "entra-leavers")]).toEqual(["Pass", "Pass", "Pass", "Pass"]);
     // Google: the token request is refused, so the connection is never created
-    on(/oauth2\.googleapis\.com\/token/, J(401, {}), "POST");
+    on(/oauth2\.googleapis\.com\/token/, (_u, i) => (String(i?.body).includes("authorization_code") ? J(200, { id_token: idTok({ email: "reader@acme.example", email_verified: true, hd: "acme.example" }) }) : J(401, {})), "POST");
     const g = body<{ id: string }>(await call("POST", "ws/integrations/google/start", {}, t.jordan.cookie)).id;
-    const r = await call("POST", `ws/integrations/${g}/connect`, { fields: { adminEmail: "reader@acme.example" } }, t.jordan.cookie);
+    const link = (await conn(t.jordan.cookie, g) as Conn & { verify?: { url: string } }).verify!.url;
+    const st = new URL(link).searchParams.get("state");
+    expect((await call("POST", "ws/integrations/callback", { code: "c1", state: st }, t.jordan.cookie)).status).toBe(200);
+    expect((await call("POST", "ws/integrations/callback", { code: "c2", state: st }, t.jordan.cookie)).status).toBe(400); // a sign-in link works once
+    const r = await call("POST", `ws/integrations/${g}/connect`, {}, t.jordan.cookie);
     expect(body<{ error: string }>(r).error).toMatch(/connection test failed.*credentials were refused/);
     expect(log("integration.connect_failed").length).toBe(1);
     expect((await idata(t.casey.cookie)).approvals.filter((a) => a.status === "Pending").length).toBe(0);
     // a provider whose platform credentials are missing cannot be started
     d.intEnv = { ...d.intEnv, google: undefined };
     expect(body<{ error: string }>(await call("POST", "ws/integrations/google/start", {}, t.jordan.cookie)).error).toMatch(/has not set up/);
+  });
+
+});
+
+describe("group 7 cross-check fixes", () => {
+  it("never lets one company connect another's GitHub organisation or Entra tenant", async () => {
+    const t = await team(); github();
+    on(/login\.microsoftonline\.com/, J(200, { access_token: "graph-tok", id_token: idTok({ tid: "11111111-2222-3333-4444-555555555555" }) }), "POST");
+    on(/graph\.microsoft\.com\/v1\.0\/users/, J(200, { value: [] }));
+    await connect(t, "entra", {});
+    // another company: its admins sign in, but GitHub shows them no installation of the app, and Microsoft names a tenant already bound
+    const kai = await member("kai@other.example", "admin", "Kai Brandt", OTHER); const lu = await member("lu@other.example", "admin", "Lu Chen", OTHER);
+    routes.splice(routes.findIndex((r) => r.re.source.includes("user\\/installations")), 1); on(/api\.github\.com\/user\/installations/, J(200, { installations: [] }));
+    const g = body<{ id: string }>(await call("POST", "ws/integrations/github/start", {}, kai.cookie)).id;
+    expect(body<{ error: string }>(await verify(kai.cookie, g, { installationId: "777" })).error).toMatch(/cannot see an installation/);
+    expect(body<{ error: string }>(await call("POST", `ws/integrations/${g}/connect`, { fields: { installationId: "777" } }, kai.cookie)).error).toMatch(/Sign in with GitHub first/);
+    const e = body<{ id: string }>(await call("POST", "ws/integrations/entra/start", {}, kai.cookie)).id;
+    expect((await verify(kai.cookie, e)).status).toBe(200);
+    expect(body<{ error: string }>(await call("POST", `ws/integrations/${e}/connect`, {}, kai.cookie)).error).toMatch(/already connected to another Selvara company/);
+    void lu;
+    // a state from one company's connection does nothing in another company
+    const url = (await conn(t.jordan.cookie, body<{ id: string }>(await call("POST", "ws/integrations/github/start", {}, t.jordan.cookie)).id) as Conn & { verify?: { url: string } }).verify!.url;
+    expect(body<{ error: string }>(await call("POST", "ws/integrations/callback", { code: "x", state: new URL(url).searchParams.get("state") }, kai.cookie)).error).toMatch(/already used or has expired|not found/);
+  });
+  it("refuses an AWS role that can be assumed without the company's external id", async () => {
+    const t = await team();
+    on(/sts\.amazonaws\.com/, { status: 200, headers: {}, text: "<AssumeRoleResponse><Credentials><AccessKeyId>ASIATEST</AccessKeyId><SecretAccessKey>s</SecretAccessKey><SessionToken>tok</SessionToken></Credentials><AssumedRoleUser><Arn>arn:aws:sts::123456789012:assumed-role/Open/x</Arn></AssumedRoleUser></AssumeRoleResponse>" }, "POST");
+    const id = body<{ id: string }>(await call("POST", "ws/integrations/aws/start", {}, t.jordan.cookie)).id;
+    const r = await call("POST", `ws/integrations/${id}/connect`, { fields: { roleArn: "arn:aws:iam::123456789012:role/Open", region: "eu-central-1" } }, t.jordan.cookie);
+    expect(body<{ error: string }>(r).error).toMatch(/assumed without the external id/);
   });
 });
