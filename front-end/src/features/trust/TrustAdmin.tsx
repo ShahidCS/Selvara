@@ -1,6 +1,9 @@
 import { Chip, Icon, Page, StatusChip, Table } from "@/components/ui";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
+import { API_ON } from "@/lib/rbac";
+import { askReason } from "@/components/kit/ReasonDialog";
+import { ModuleTip } from "@/components/kit/ModuleTip";
 import { wsLog } from "@/lib/audit";
 import { hasRole } from "@/lib/sod";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
@@ -27,12 +30,14 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
     L.toast("Access approved for " + r.who); bumpData();
   });
   const deny = (id: string) => { if (TRUST.requests.some((x) => x.id === id)) L.openModal("Deny access request", <DenyForm id={id} L={L} />); };
-  const revoke = (i: number) => attempt(L, async () => {
+  const revoke = (i: number) => API_ON ? askReason(L, { title: "Revoke Trust Center access", label: "Reason", confirm: "Revoke access", danger: true, intro: `${TRUST.accounts[i]?.company}'s viewers lose access to private documents at once.`,
+    run: async (why) => { await svc.revokeAccount(i, why); return `${TRUST.accounts[i]?.company ?? "Account"} access revoked`; } }) : attempt(L, async () => {
     const a = await svc.revokeAccount(i);
     if (!a) return;
     wsLog("trust.account.revoked", a.company, "Policy"); L.toast(a.company + " access revoked"); bumpData();
   });
-  const unblock = (d: string) => attempt(L, async () => { await svc.unblockDomain(d); wsLog("trust.domain.unblocked", d, "Policy"); L.toast(d + " unblocked"); bumpData(); });
+  const unblock = (d: string) => API_ON ? askReason(L, { title: "Unblock " + d, label: "Reason", confirm: "Unblock", intro: "Someone else must approve requests from this domain afterwards.",
+    run: async (why) => { await svc.unblockDomain(d, why); return d + " unblocked"; } }) : attempt(L, async () => { await svc.unblockDomain(d); wsLog("trust.domain.unblocked", d, "Policy"); L.toast(d + " unblocked"); bumpData(); });
   const toggleChatbot = () => attempt(L, async () => { const on = await svc.setChatbot(!TRUST.chatbot); wsLog("trust.chatbot." + (on ? "enabled" : "disabled"), "Trust Center chatbot", "Policy"); bumpData(); });
   const toggleVis = (i: number) => attempt(L, async () => {
     const t = await svc.toggleVisibility(i);
@@ -50,9 +55,13 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
         {DATA.trust.map((t, i) => (
           <div className="card" key={i}><div className="c-body">
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start" }}><div style={{ fontWeight: 600 }}>{t.name}</div><StatusChip s={t.status} /></div>
-            <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 8 }}><Icon name={t.access === "Public" ? "check" : "access"} /> {t.access}</div>
+            <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 8 }}><Icon name={t.access === "Public" ? "check" : "access"} /> {t.access}{API_ON && t.file ? ` · ${t.file.name}` : ""}</div>
             <div className="btngrp" style={{ marginTop: 12 }}>
-              <button className="btn btn-secondary sm" onClick={() => L.toast("Opened " + t.name + " (demo)")}><Icon name="ext" />View</button>
+              {API_ON ? <>
+                <button className="btn btn-secondary sm" disabled={!t.file} title={t.file ? undefined : "No file attached yet"} onClick={() => attempt(L, async () => { const { url } = await svc.resourceLink(i); window.open(url, "_blank", "noopener"); })}><Icon name="ext" />View</button>
+                {canAct ? <label className="btn btn-ghost sm" style={{ cursor: "pointer" }}><Icon name="plus" />{t.file ? "Replace file" : "Attach file"}
+                  <input type="file" style={{ display: "none" }} aria-label={"Attach file to " + t.name} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) attempt(L, async () => { await svc.uploadResourceFile(i, f); L.toast("File attached to " + t.name); bumpData(); }); }} /></label> : null}
+              </> : <button className="btn btn-secondary sm" onClick={() => L.toast("Opened " + t.name + " (demo)")}><Icon name="ext" />View</button>}
               <button className="btn btn-ghost sm" disabled={!canAct || !!t.publishPending} title={noRole || undefined} onClick={() => toggleVis(i)}>{t.access === "Public" ? "Make private" : t.publishPending ? "Awaiting approval" : "Request to make public"}</button>
             </div>
           </div></div>
@@ -162,6 +171,7 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
       <button className="btn btn-secondary" onClick={setPublic}><Icon name="ext" />Preview public page</button>
       {tab === "resources" ? <button className="btn btn-primary" disabled={!canAct} title={noRole || undefined} onClick={() => L.openModal("Publish resource", <PublishForm L={L} />)}><Icon name="plus" />Publish resource</button> : null}
     </>}>
+      <ModuleTip mod="trust" force={API_ON && !DATA.trust.length} />
       <div className="card" style={{ flex: "0 1 auto", minHeight: 0 }}>
         <div className="c-head"><div className="seg" role="tablist">{TABS.map((t) => (
           <button key={t[0]} role="tab" aria-selected={tab === t[0]} onClick={() => setTab(t[0])}>{t[1]}{t[0] === "access" && reqCount ? <> <span className="tag" style={{ marginLeft: 4 }}>{reqCount}</span></> : null}</button>

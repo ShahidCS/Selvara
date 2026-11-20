@@ -51,8 +51,9 @@ async function generate(t: WsTx, name: string): Promise<{ fileName: string; type
     return { fileName: "access-recertification-pack.csv", type: "text/csv", content: csv(["Review", "Name", "Review status", "Person", "System", "Level", "Decision", "Decided by"], [...rows, ...active]) };
   }
   if (name === "Vendor risk summary") {
-    const vendors = (await t.list<{ name?: string; tier?: string; status?: string; due?: string; risk?: string }>("vendor")).map((x) => x.data);
-    return { fileName: "vendor-risk-summary.csv", type: "text/csv", content: csv(["Vendor", "Tier", "Status", "Review due", "Risk"], vendors.map((v) => [v.name, v.tier, v.status, v.due, v.risk])) };
+    const vendors = (await t.list<{ name?: string; tier?: string; status?: string; nextReview?: string; score?: number; gate?: string; findings?: { status: string }[] }>("vendor")).map((x) => x.data);
+    return { fileName: "vendor-risk-summary.csv", type: "text/csv", content: csv(["Vendor", "Tier", "Risk score", "Status", "Procurement gate", "Next review", "Open findings"],
+      vendors.map((v) => [v.name, v.tier, v.score, v.status, v.gate, v.nextReview, (v.findings ?? []).filter((f) => f.status !== "Closed").length])) };
   }
   // Executive security posture
   const cs = await controls(); const rs = await risks(); const is = (await t.list<Issue>("issue")).map((x) => x.data);

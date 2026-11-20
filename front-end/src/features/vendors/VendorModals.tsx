@@ -1,5 +1,6 @@
 /* Short vendor dialogs: add certificate, flag finding, change tier. The record is a page (VendorDetail); add, reassess and waiver are form pages (VendorForms). */
 import { useState } from "react";
+import { API_ON } from "@/lib/rbac";
 import { LayerFoot, useLayer } from "@/components/shell/LayerProvider";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { bumpData } from "@/lib/store";
@@ -34,7 +35,8 @@ function CertForm({ id }: { id: string }) {
     <>
       <div>
         <div className="field"><label htmlFor="vc-type">Type <Req /></label><input className="input" id="vc-type" data-focus maxLength={120} placeholder="e.g. SOC 2 Type II" value={type} onChange={(e) => setType(e.target.value)} aria-invalid={err} aria-describedby={err ? "vc-err" : undefined} /></div>
-        <div className="field"><label htmlFor="vc-exp">Expires</label><input className="input" id="vc-exp" maxLength={40} placeholder="e.g. 30 Jun 2027" value={exp} onChange={(e) => setExp(e.target.value)} /></div>
+        {API_ON ? <div className="field"><label htmlFor="vc-exp">Expires <Req /></label><input className="input" type="date" id="vc-exp" value={exp} onChange={(e) => setExp(e.target.value)} /></div>
+          : <div className="field"><label htmlFor="vc-exp">Expires</label><input className="input" id="vc-exp" maxLength={40} placeholder="e.g. 30 Jun 2027" value={exp} onChange={(e) => setExp(e.target.value)} /></div>}
         {errP("vc-err", err, "Type is required.")}
       </div>
       <Foot L={L} label="Add" onSave={save} />

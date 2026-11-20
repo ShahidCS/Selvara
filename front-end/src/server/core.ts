@@ -564,7 +564,7 @@ const helperEntry = (d: Deps, r: Req, p: Profile, a: Access, action: string, tar
 Object.assign(ROUTES, adminRoutes({ signed, entry: helperEntry, randomId, sha256Hex }), supportRoutes({ signed, companyAdmin: admin, entry: helperEntry }));
 Object.assign(ROUTES, workspaceRoutes({ signed }));
 /** Routes that take raw bytes (application/octet-stream) instead of JSON: evidence file uploads (pages/api/[...path].ts reads them). */
-export const RAW_ROUTES = new Set(["POST ws/evidence/:id/files"]);
+export const RAW_ROUTES = new Set(["POST ws/evidence/:id/files", "POST ws/kb-docs", "POST ws/trust/resources/:id/file"]);
 
 /** Finds the handler for a request; `:name` segments match anything. */
 export function route(method: string, path: string[]): H | null { return match(method, path)?.[1] ?? null; }

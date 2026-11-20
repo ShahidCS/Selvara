@@ -9,7 +9,7 @@ import { delegations } from "@/lib/delegation";
 import { setAcks, setTasks } from "@/lib/me";
 import { ACCESS_REQUESTS, ACCESS_REVIEWS, VENDOR_REQS } from "@/lib/requests";
 import { RISK_ENT, RISK_PARTIES, RISK_SNAPSHOTS } from "@/lib/risk";
-import { SCHED_PACKS } from "@/lib/trustData";
+import { ANSWER_LIB, INCIDENT, KB_DOCS, SCHED_PACKS, STANDARD_TERMS, TRUST, TRUST_FAQ, TRUST_SUBPROC, TRUST_UPDATES } from "@/lib/trustData";
 import { API_ON, modAllowed } from "@/lib/rbac";
 import { SERVER_KINDS } from "@/lib/rulesWs";
 import { appStore, bumpData, createStore } from "@/lib/store";
@@ -19,6 +19,12 @@ import { ApiError, apiFetch, API_BASE } from "./http";
 export interface WsMember { id: string; name: string; role: string }
 /** The company's active members (owner and assignee pickers), and what the server says about optional services. */
 export interface WsTask { id: string; title: string; policyId: string; kind: "ack" | "approve" | "publish" | "emergency" }
+/** Group 4 data the screens read beside DATA: the vendor's contacts and questionnaires, what was sent to a Vendor-role member, the Trust
+ *  Center's public page and the incident history. */
+export interface WsVendorQ { id: string; vendorId: string; vendor: string; contact: string; contactId: string; customer: string; questions: { q: string; required: boolean }[]; answers: string[]; status: string; sentBy: string; at: string; submittedAt?: string; note?: string }
+export interface WsTrustPublic { company: string; chatbot: boolean; faq: { q: string; a: string }[]; subprocessors: { name: string; purpose: string; region: string }[]; updates: { at: string; title: string }[];
+  controls: [string, string][]; account: { company: string; nda: string; access: string[] } | null; myRequests: { resource: string; status: string; at: string }[]; subscribed: boolean }
+export const g4Meta = createStore<{ contacts: { id: string; name: string }[]; vendorQs: WsVendorQ[]; assigned: WsVendorQ[]; trustPublic: WsTrustPublic | null; incidents: any[]; subscribers: number }>({ contacts: [], vendorQs: [], assigned: [], trustPublic: null, incidents: [], subscribers: 0 });
 /** My Work as the server computes it for the signed-in person. */
 export interface WsWork {
   issues: { id: string; title: string; sev: string; status: string; dueDate: string; due: string }[];
@@ -77,6 +83,24 @@ const LOADERS: Record<string, (b: any) => void> = {
   issues(b) { DATA.issues = b.issues; setApprovals(["issue.close"], b.approvals); },
   reports(b) { DATA.reports = b.reports.map((x: any) => ({ ...x })); fill(SCHED_PACKS, b.schedules); setApprovals(["report.distribution"], b.approvals); },
   work(b) { wsMeta.set({ work: b }); },
+  vendors(b) { DATA.vendors = b.vendors; fill(VENDOR_REQS, b.requests); setApprovals(["vendor.request.critical", "vendor.gate", "vendor.tier", "vendor.waiver"], b.approvals); g4Meta.set({ contacts: b.contacts, vendorQs: b.questionnaires }); },
+  questionnaires(b) {
+    DATA.questionnaires = b.questionnaires; fill(ANSWER_LIB, b.answers); fill(KB_DOCS, b.docs); setApprovals(["q.send"], b.approvals);
+    g4Meta.set({ assigned: b.assigned }); if (b.filesConfigured) wsMeta.set({ filesConfigured: true });
+  },
+  trust(b) {
+    DATA.trust = b.resources; const p = b.public; g4Meta.set({ trustPublic: p, subscribers: b.subscribers ?? 0 });
+    fill(TRUST_FAQ, p.faq); fill(TRUST_SUBPROC, p.subprocessors); fill(TRUST_UPDATES, p.updates);
+    TRUST.accounts = b.accounts ?? []; TRUST.requests = b.requests ?? []; TRUST.decisions = b.decisions ?? []; TRUST.blocked = b.blocked ?? []; TRUST.chats = b.chats ?? [];
+    TRUST.chatbot = b.chatbot ?? p.chatbot; TRUST.activity = []; TRUST.modeHist = [];
+    if (b.approvals) setApprovals(["trust.publish"], b.approvals);
+    if (b.filesConfigured) wsMeta.set({ filesConfigured: true });
+  },
+  commitments(b) {
+    DATA.commitments = b.commitments; fill(STANDARD_TERMS, b.terms);
+    for (const k of Object.keys(INCIDENT)) delete (INCIDENT as any)[k];
+    Object.assign(INCIDENT, b.incident); g4Meta.set({ incidents: b.incidents });
+  },
   /** Posture figures of the modules the person cannot open (scores and statuses only, no titles or owners). Loaded last: it never replaces
    *  what a module the person can open has loaded. */
   overview(b) {
@@ -84,7 +108,9 @@ const LOADERS: Record<string, (b: any) => void> = {
     if (b.controls) DATA.controls = b.controls;
     if (b.risks) DATA.risks = b.risks;
     if (b.issues) DATA.issues = b.issues;
+    if (b.vendors) DATA.vendors = b.vendors;
   },
+
 };
 function setApprovals(kinds: string[], list: Approval[]) {
   approvals.set((s) => ({ list: [...list, ...s.list.filter((a) => !kinds.includes(a.kind))] }));
@@ -95,7 +121,10 @@ let loadedFor = "";
 /** Empties every server-backed collection (another company or role: nothing of the previous one may remain on screen). */
 function clearAll() {
   DATA.frameworks = []; DATA.controls = []; DATA.tests = []; DATA.evidence = []; DATA.policies = []; DATA.people = []; DATA.access = [];
-  DATA.risks = []; DATA.issues = []; DATA.reports = [];
+  DATA.risks = []; DATA.issues = []; DATA.reports = []; DATA.vendors = []; DATA.questionnaires = []; DATA.trust = []; DATA.commitments = [];
+  fill(ANSWER_LIB, []); fill(KB_DOCS, []); fill(TRUST_FAQ, []); fill(TRUST_SUBPROC, []); fill(TRUST_UPDATES, []); fill(STANDARD_TERMS, []);
+  TRUST.accounts = []; TRUST.requests = []; TRUST.decisions = []; TRUST.blocked = []; TRUST.chats = []; TRUST.activity = []; TRUST.modeHist = [];
+  g4Meta.set({ contacts: [], vendorQs: [], assigned: [], trustPublic: null, incidents: [], subscribers: 0 });
   fill(ACCESS_REQUESTS, []); fill(ACCESS_REVIEWS, []); setAcks("", {}); setTasks([]); delegations.set({ list: [] });
   fill(RISK_PARTIES, []); fill(RISK_SNAPSHOTS, []); fill(RISK_ENT, []); fill(SCHED_PACKS, []); fill(VENDOR_REQS, []);
   approvals.set((s) => ({ list: s.list.filter((a) => !SERVER_KINDS.includes(a.kind)) }));

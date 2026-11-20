@@ -1,6 +1,9 @@
 import { DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, Table, type DTColumn } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { DATA } from "@/lib/data";
+import { API_ON } from "@/lib/rbac";
+import { askReason } from "@/components/kit/ReasonDialog";
+import { ModuleTip } from "@/components/kit/ModuleTip";
 import { wsLog } from "@/lib/audit";
 import { adminLog } from "@/lib/adminAudit";
 import { hasRole } from "@/lib/sod";
@@ -22,8 +25,11 @@ export default function CommitmentsModule() {
     { key: "name", header: "Commitment", value: (c) => c.name, locked: true, render: (c) => <span className="strong">{c.name}</span> },
     { key: "detail", header: "Detail", value: (c) => c.detail, render: (c) => c.detail },
     { key: "status", header: "Status", value: (c) => c.status, render: (c) => <StatusChip s={c.status} /> },
+    ...(API_ON ? [{ key: "act", header: "", value: () => "", render: (c: Commitment) => (c.status === "Review" && can ? <button className="btn btn-ghost sm" aria-label={"Mark " + c.name + " reviewed"} onClick={() => askReason(L, { title: "Mark reviewed: " + c.name, label: "What did you check?", confirm: "Mark reviewed",
+      run: async (note) => { await svc.reviewCommitment(c.id, note); return c.name + " reviewed"; } })}>Mark reviewed</button> : c.reviewedBy ? <span className="sub">by {c.reviewedBy}</span> : null) }] as DTColumn<Commitment>[] : []),
   ];
-  const closeIncident = () => attempt(L, async () => {
+  const closeIncident = () => API_ON ? askReason(L, { title: "Close incident", label: "Outcome", max: 500, confirm: "Close incident", intro: "Record what happened and whether customers were notified.",
+    run: async (outcome) => { await svc.closeIncident(outcome); return "Incident closed"; } }) : attempt(L, async () => {
     await svc.closeIncident();
     wsLog("incident.closed", "incident resolved", "Policy");
     adminLog("incident.closed", "incident resolved", { categories: ["Incident"], basis: "Legal obligation" });
@@ -33,7 +39,7 @@ export default function CommitmentsModule() {
     <div className="card" style={{ background: "var(--bad-bg,var(--warn-bg))", borderColor: "transparent", marginBottom: 12 }}>
       <div className="c-body" style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 10, color: "var(--bad-ink)" }} role="alert">
         <Icon name="alert" />
-        <div style={{ flex: "1 1 auto" }}><div style={{ fontWeight: 600 }}>Incident mode active</div><div style={{ fontSize: 12.5 }}>Breach clock started {INCIDENT.started}{INCIDENT.startedBy ? " by " + INCIDENT.startedBy : ""}. Customer notice obligations are in effect (48h).</div></div>
+        <div style={{ flex: "1 1 auto" }}><div style={{ fontWeight: 600 }}>Incident mode active</div><div style={{ fontSize: 12.5 }}>Breach clock started {INCIDENT.started}{INCIDENT.startedBy ? " by " + INCIDENT.startedBy : ""}. Customer notice obligations are in effect (48h){INCIDENT.deadline ? `: notify affected customers by ${INCIDENT.deadline}` : ""}.{INCIDENT.overdue ? " The notice deadline has passed." : ""}{INCIDENT.summary ? ` ${INCIDENT.summary}.` : ""}</div></div>
         <button className="btn btn-secondary sm" disabled={!can} title={why} onClick={closeIncident}><Icon name="check" />Close incident</button>
       </div>
     </div>
@@ -45,6 +51,7 @@ export default function CommitmentsModule() {
         <button className="btn btn-primary" disabled={!can} title={why} onClick={() => L.openModal("Start incident clock", <StartIncidentForm L={L} />)}><Icon name="alert" />Start incident</button>
       </>
     )}>
+      <ModuleTip mod="commitments" force={API_ON && !DATA.commitments.length} />
       {banner}
       <KpiStrip label="Commitments summary">
         <KpiTile label="Commitments" value={DATA.commitments.length} delta={{ tone: "flat", text: "Tracked" }} caption="Made to customers in contracts" />
@@ -56,7 +63,7 @@ export default function CommitmentsModule() {
           <div className="card">
             <div className="c-head"><h3>Commitments</h3><button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} onClick={() => openAnalysis(L)}><Icon name="ext" />Run contract analysis</button></div>
             <div className="c-body flush" style={{ padding: 0 }}>
-              <DataTable<Commitment> id="commitments" label="Commitments" rows={DATA.commitments} rowKey={(c) => c.name} columns={cols} searchText={(c) => `${c.name} ${c.detail}`}
+              <DataTable<Commitment> id="commitments" label="Commitments" rows={DATA.commitments} rowKey={(c) => c.id ?? c.name} columns={cols} searchText={(c) => `${c.name} ${c.detail}`}
                 filters={[{ key: "status", label: "Status", options: Array.from(new Set<string>(DATA.commitments.map((c: Commitment) => String(c.status)))), get: (c: Commitment) => c.status }]} exportName="commitments" />
             </div>
           </div>

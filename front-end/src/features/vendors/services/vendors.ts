@@ -12,11 +12,13 @@ import { nowStamp } from "@/lib/format";
 import { clampText, isIsoDate } from "@/lib/security";
 import { VENDOR_REQS } from "@/lib/requests";
 import { FINDING_SEVS, REASSESS_OUTCOMES, TIER_WINDOW, VENDOR_TIERS, parseScore, personOnly, vFind, vInit } from "@/features/vendors/lib/vendors";
-import { apiFetch, viaApi } from "@/services/http";
+import { viaApi } from "@/services/http";
+import { wsPost } from "@/services/ws";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type Res<T = object> = ({ ok: true } & T) | { ok: false; msg: string };
-const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
+/** Production: the same change on the server (under /api/ws), then the workspace reloads. */
+const post = <T,>(path: string, body: unknown) => wsPost<T>(`/ws${path}`, body);
 const enc = encodeURIComponent;
 const fail = (msg: string): { ok: false; msg: string } => ({ ok: false, msg });
 const NOT_FOUND = fail("Vendor not found");
@@ -87,16 +89,16 @@ export function approveRequest(id: string) {
     }
     const v = onboard(r, getActor().name);
     return { ok: true, name: v.name as string, pending: false };
-  }, () => post<Res<{ name: string; pending: boolean }>>(`/vendors/requests/${enc(id)}/approve`, {}));
+  }, () => post<Res<{ name: string; pending: boolean }>>(`/vendor-requests/${enc(id)}/approve`, {}));
 }
 /** Prototype: vReqDismiss. Admin/owner only (the source card was only hidden for other roles). */
-export function dismissRequest(id: string) {
+export function dismissRequest(id: string, reason = "") {
   return viaApi<Res<{ name: string }>>(() => {
     gate();
     const ix = VENDOR_REQS.findIndex((x) => x.id === id); if (ix < 0) return fail("Request not found");
     if (stillPending(VENDOR_REQS[ix].pendingApproval)) return fail("This request is awaiting approval; withdraw the approval first");
     const r = VENDOR_REQS[ix]; VENDOR_REQS.splice(ix, 1); return { ok: true, name: r.name as string };
-  }, () => post<Res<{ name: string }>>(`/vendors/requests/${enc(id)}/dismiss`, {}));
+  }, () => post<Res<{ name: string }>>(`/vendor-requests/${enc(id)}/dismiss`, { reason }));
 }
 
 /** Prototype: vendorSave. Fix: the source's `parseInt(..)||75` turned an entered 0 into 75. A blank score defaults to 75; anything else must be 0-100. */
@@ -113,7 +115,7 @@ export function createVendor(input: { name: string; cat: string; tier: string; s
   }, () => post<Res<{ name: string; tier: string }>>("/vendors", input));
 }
 /** Prototype: vendorGate. Block is immediate (safe direction). Approve: not the person who requested/added the vendor; Critical needs two approvers. */
-export function setGate(id: string, decision: string) {
+export function setGate(id: string, decision: string, reason = "") {
   return viaApi<Res<{ name: string; pending: boolean }>>(() => {
     gate();
     const v = vFind(id); if (!v) return NOT_FOUND;
@@ -127,7 +129,7 @@ export function setGate(id: string, decision: string) {
     }
     v.gate = "Approved"; if (v.status === "Needs evidence") v.status = "Active";
     return { ok: true, name: v.name as string, pending: false };
-  }, () => post<Res<{ name: string; pending: boolean }>>(`/vendors/${enc(id)}/gate`, { decision }));
+  }, () => post<Res<{ name: string; pending: boolean }>>(`/vendors/${enc(id)}/gate`, { decision, reason }));
 }
 /** Prototype: vendorDoCert. */
 export function addCert(id: string, input: { type: string; expires: string }) {
@@ -166,21 +168,21 @@ export function addFinding(id: string, input: { title: string; sev: string }) {
   }, () => post<Res<{ title: string; name: string }>>(`/vendors/${enc(id)}/findings`, input));
 }
 /** Prototype: vendorCloseFinding (source addressed the finding by index; a second close of a closed finding is a no-op here). */
-export function closeFinding(id: string, fi: number) {
+export function closeFinding(id: string, fi: number, reason = "") {
   return viaApi<Res<{ title: string }>>(() => {
     gate();
     const v = vFind(id); if (!v) return NOT_FOUND;
     const f = Number.isInteger(fi) ? v.findings[fi] : null; if (!f) return fail("Finding not found");
     f.status = "Closed"; return { ok: true, title: f.title as string };
-  }, () => post<Res<{ title: string }>>(`/vendors/${enc(id)}/findings/${fi}/close`, {}));
+  }, () => post<Res<{ title: string }>>(`/vendors/${enc(id)}/findings/${enc(vFind(id)?.findings?.[fi]?.id ?? "")}/close`, { reason }));
 }
 /** Prototype: vendorSendQ. The source only flips the status; nothing is sent. */
-export function sendQuestionnaire(id: string) {
+export function sendQuestionnaire(id: string, contactId = "") {
   return viaApi<Res<{ name: string }>>(() => {
     gate();
     const v = vFind(id); if (!v) return NOT_FOUND;
     v.status = "In review"; return { ok: true, name: v.name as string };
-  }, () => post<Res<{ name: string }>>(`/vendors/${enc(id)}/questionnaire`, {}));
+  }, () => post<Res<{ name: string }>>(`/vendors/${enc(id)}/questionnaire`, { contactId }));
 }
 /** Prototype: vendorDoReassess. Fix: score is parsed as a decimal 0-100 (the source's parseInt turned "7.9" into 7 and "12abc" into 12). The recorder is always the signed-in person. */
 export function reassess(id: string, input: { score: string; outcome: string; by: string }) {
@@ -207,4 +209,9 @@ export function changeTier(id: string, tier: string) {
     v.tierPending = ap.id;
     return { ok: true, changed: true, pending: true, name: v.name as string, from, to: nt };
   }, () => post<Res<{ changed: boolean; pending: boolean; name: string; from: string; to: string }>>(`/vendors/${enc(id)}/tier`, { tier }));
+}
+
+/** Production: reopen a submitted vendor questionnaire with a note (a clarification round). */
+export function reopenVendorQuestionnaire(id: string, note: string) {
+  return post<{ ok: boolean }>(`/vendor-questionnaires/${enc(id)}/reopen`, { note });
 }

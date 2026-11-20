@@ -1,6 +1,7 @@
 import { Empty, Icon, Page, Ring, StatusChip } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { DATA } from "@/lib/data";
+import { API_ON } from "@/lib/rbac";
 import { wsLog } from "@/lib/audit";
 import { bumpData, useApp, useData } from "@/lib/store";
 import { getApproval } from "@/lib/approvals";
@@ -34,7 +35,7 @@ export function QuestionnaireDetail({ id }: { id: string }) {
       {q.status !== "Complete" ? (<>
         <button className="btn btn-secondary" disabled={waiting} onClick={advance}><Icon name="check" />Answer next 10</button>
         <button className="btn btn-primary" disabled={waiting} onClick={complete}><Icon name="check" />{waiting ? "Awaiting review" : "Submit for review"}</button>
-      </>) : <button className="btn btn-secondary" onClick={() => L.toast("Exported responses (demo)")}><Icon name="download" />Export responses</button>}
+      </>) : API_ON ? <span className="sub">Sent by {q.sentBy}, reviewed by {q.reviewedBy}</span> : <button className="btn btn-secondary" onClick={() => L.toast("Exported responses (demo)")}><Icon name="download" />Export responses</button>}
     </>}>
       <div className="scroll rec-scroll">
         <div className="rec-grid">

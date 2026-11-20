@@ -7,7 +7,10 @@ import { apiFetch, viaApi } from "./http";
 import { wsPost } from "./ws";
 
 /** Production routes for the kinds already on the server (programme groups); the rest are not reachable in production yet. */
-const SERVER_ROUTES: Record<string, string> = { "report.distribution": "/ws/report-approvals" };
+const SERVER_ROUTES: Record<string, string> = {
+  "report.distribution": "/ws/report-approvals",
+  "vendor.request.critical": "/ws/four-eyes", "vendor.gate": "/ws/four-eyes", "vendor.tier": "/ws/four-eyes", "vendor.waiver": "/ws/four-eyes", "trust.publish": "/ws/four-eyes", "q.send": "/ws/four-eyes",
+};
 
 export type Decision = "approve" | "reject" | "withdraw";
 export function decide(id: string, decision: Decision, reason: string) {

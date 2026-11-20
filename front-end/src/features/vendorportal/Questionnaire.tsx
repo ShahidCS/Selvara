@@ -36,7 +36,7 @@ export default function Questionnaire({ a, onSubmit, onToast, busy }: { a: Answe
       <Section pad={18} gap={12}>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", alignItems: "center" }}>
           <div role="status" style={{ fontSize: 13, color: r.ready ? "var(--ok-ink)" : "var(--warn-ink)" }}>{r.note}</div>
-          <button type="button" className={"btn lg " + (r.ready ? "btn-primary" : "btn-secondary")} aria-disabled={!r.ready || busy} onClick={() => { if (!busy) onSubmit(); }}
+          <button type="button" className={"btn lg " + (r.ready ? "btn-primary" : "btn-secondary")} aria-disabled={!r.ready || busy} onClick={() => { if (!busy && r.ready) onSubmit(); }}
             style={{ height: 48, borderRadius: 999, padding: "0 18px", cursor: r.ready ? "pointer" : "not-allowed", opacity: r.ready ? 1 : 0.7 }}>Submit to {INVITE.customerName}</button>
         </div>
       </Section>

@@ -22,7 +22,18 @@ const STAGE_AT: Partial<Record<Step, number>> = { verify: 0, otp: 1, mfa: 2, por
 
 /** External vendor assessment portal (board: vendor-assessment-portal). Standalone, no workspace role/RBAC, no audit-log import.
  *  Never logs, stores or echoes the email or code. All state is in memory. */
-export default function VendorPortalPage() {
+/** Production: the standalone portal needs email (one-time codes to the invited address), which arrives with programme group 8. Until then a
+ *  vendor's contact answers inside Selvara (Vendor role, Questionnaires). */
+export default function VendorPortalPage() { return API_MODE === "http" ? <PortalNotice /> : <VendorPortalDemo />; }
+function PortalNotice() {
+  return (
+    <main style={{ maxWidth: 560, margin: "64px auto", padding: "0 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <h1 style={{ fontSize: 22, margin: 0 }}>Vendor assessment portal</h1>
+      <p style={{ margin: 0, color: "var(--ink-2)" }}>This portal opens once your customer has set up email for their workspace. Until then, your customer invites your contact to their Selvara workspace with the Vendor role, and you answer the security questionnaire there.</p>
+    </main>
+  );
+}
+function VendorPortalDemo() {
   const [step, setStep] = useState<Step>("verify");
   const [masked, setMasked] = useState("");
   const [toast, setToast] = useState("");
