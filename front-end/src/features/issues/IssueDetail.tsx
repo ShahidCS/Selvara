@@ -88,7 +88,7 @@ export function IssueDetail({ id }: { id: string }) {
 
           <aside className="rec-side">
             <div className="card"><div className="c-head"><h3>Details</h3></div><div className="c-body">
-              <dl className="meta-grid"><dt>Severity</dt><dd><StatusChip s={i.sev} /></dd><dt>Owner</dt><dd>{i.owner}</dd><dt>Due</dt><dd><DueText due={i.due} /></dd><dt>Status</dt><dd><StatusChip s={i.status} /></dd>
+              <dl className="meta-grid"><dt>Severity</dt><dd><StatusChip s={i.sev} /></dd><dt>Owner</dt><dd>{i.owner}</dd><dt>Due</dt><dd><DueText due={i.due} />{i.dueDate ? <span style={{ color: "var(--muted)" }}> ({i.dueDate})</span> : null}</dd><dt>Status</dt><dd><StatusChip s={i.status} /></dd>
                 {i.verification ? <><dt>Verified closure</dt><dd>{i.verification.by} on {i.verification.at}: {i.verification.note} (proposed by {i.verification.proposedBy})</dd></> : null}</dl>
             </div></div>
             <div className="card"><div className="c-head"><h3>Linked controls &amp; risks</h3></div><div className="c-body">

@@ -13,21 +13,24 @@ import { usersFor } from "@/lib/tenantUsers";
 import { clampText } from "@/lib/security";
 import { nowStamp } from "@/lib/format";
 import { SCHED_PACKS, SchedPack } from "@/lib/trustData";
+import { API_ON } from "@/lib/rbac";
 import { apiFetch, viaApi } from "@/services/http";
+import { wsPost } from "@/services/ws";
 
-const send = <T,>(method: string, path: string, body?: unknown) =>
-  apiFetch<T>(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
-
-/** source reportGenerate content (plain text, draft). */
+export interface GeneratedReport { fileName: string; type: string; content: string }
+/** The demonstration writes a plain-text placeholder; production builds the pack on the server from the company's records (draft). */
 export function generateReport(name: string) {
-  return viaApi(() => (assertRole("generating a report", "admin", "owner"), "REPORT (DRAFT) — " + name + "\nGenerated " + nowStamp() + "\n\nSynthetic demo content. Requires review before distribution."),
-    () => send<string>("POST", "/reports/generate", { name }));
+  return viaApi<GeneratedReport>(() => {
+    assertRole("generating a report", "admin", "owner");
+    return { fileName: name.replace(/[^a-z0-9]+/gi, "-").toLowerCase() + ".txt", type: "text/plain", content: "REPORT (DRAFT) — " + name + "\nGenerated " + nowStamp() + "\n\nSynthetic demo content. Requires review before distribution." };
+  }, () => apiFetch<GeneratedReport>("/ws/reports/generate", { method: "POST", body: JSON.stringify({ name }) }));
 }
 const INTERNAL_GROUPS = ["board", "exec team", "executive team", "exec", "leadership", "management", "risk committee", "audit committee", "security team", "compliance team", "all staff", "employees", "ciso", "cfo", "ceo"];
 /** Recipients that are NOT a known internal group or an address on the signed-in workspace's own email domain (free text, deny by default). */
 export function externalRecipients(recip: string): string[] {
   const tenant = roleOf(appStore.get().role).tenant;
-  const own = new Set(usersFor(tenant || "").map((u) => u.email.split("@")[1]?.toLowerCase()).filter(Boolean));
+  // production: the server knows the company's email domains and decides; this hint lists everything that is not a known internal group
+  const own = new Set(API_ON ? [] : usersFor(tenant || "").map((u) => u.email.split("@")[1]?.toLowerCase()).filter(Boolean));
   return String(recip || "").split(/[,;\n]/).map((t) => t.trim()).filter((t) => t && t !== "—").filter((t) => {
     if (INTERNAL_GROUPS.includes(t.toLowerCase())) return false;
     const at = t.lastIndexOf("@"); return !(at > 0 && own.has(t.slice(at + 1).toLowerCase()));
@@ -49,7 +52,7 @@ registerApprovalHandler("report.distribution", {
 });
 
 /** Saves an internal-only schedule at once; an external one becomes a pending approval (nothing is distributed until a different admin approves). */
-export function saveSchedule(rec: SchedPack) {
+export function saveSchedule(rec: SchedPack, reason = "") {
   return viaApi<{ rec: SchedPack; pending: boolean }>(() => {
     assertRole("scheduling a report", "admin", "owner");
     const ext = externalRecipients(rec.recip);
@@ -57,8 +60,9 @@ export function saveSchedule(rec: SchedPack) {
     if (pendingFor(rec.name)) throw new SodError("A schedule for this pack is already awaiting approval.");
     const ap = requestApproval({ kind: "report.distribution", title: `Schedule external distribution of "${clampText(rec.name, 80)}" (${rec.freq}) to ${clampText(ext.join(", "), 120)}`, subject: rec.name, payload: { name: rec.name, rec }, needs: 1, approverRoles: ["admin"] });
     requestIds.set(rec.name, ap.id); return { rec, pending: true };
-  }, () => send<{ rec: SchedPack; pending: boolean }>("PUT", "/reports/schedules", rec));
+  }, () => wsPost<{ rec: SchedPack; pending: boolean }>("/ws/reports/schedules", { ...rec, reason }));
 }
-export function removeSchedule(i: number) {
-  return viaApi(() => { assertRole("removing a schedule", "admin", "owner"); const r = SCHED_PACKS[i]; if (r) SCHED_PACKS.splice(i, 1); return r || null; }, () => send<SchedPack | null>("DELETE", `/reports/schedules/${i}`));
+export function removeSchedule(i: number, reason = "") {
+  return viaApi(() => { assertRole("removing a schedule", "admin", "owner"); const r = SCHED_PACKS[i]; if (r) SCHED_PACKS.splice(i, 1); return r || null; },
+    () => wsPost<SchedPack | null>(`/ws/reports/schedules/${encodeURIComponent(SCHED_PACKS[i]?.id ?? "")}/delete`, { reason }));
 }

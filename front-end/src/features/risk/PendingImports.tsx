@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { Chip } from "@/components/ui";
 import { useLayer } from "@/components/shell/LayerProvider";
-import { approvals, whyCannotApprove, withdraw } from "@/lib/approvals";
+import { approvals, whyCannotApprove } from "@/lib/approvals";
 import { riskCanEdit } from "@/lib/risk";
 import { bumpData, useApp, useData } from "@/lib/store";
 import { hasRole } from "@/lib/sod";
-import { IMPORT_KIND, decideRiskImport } from "@/features/risk/services/riskImport";
+import { IMPORT_KIND, decideRiskImport, withdrawRiskImport } from "@/features/risk/services/riskImport";
 import { attemptR } from "./util";
 
 export default function PendingImports() {
@@ -23,7 +23,7 @@ export default function PendingImports() {
     else L.toast("Import rejected. No risk was changed.");
     setReasons((p) => ({ ...p, [id]: "" })); bumpData();
   });
-  const wd = (id: string) => attemptR(L, () => { withdraw(id); L.toast("Import withdrawn. No risk was changed."); bumpData(); });
+  const wd = (id: string) => attemptR(L, async () => { await withdrawRiskImport(id); L.toast("Import withdrawn. No risk was changed."); bumpData(); });
   return (
     <section className="card" aria-label="Pending imports"><div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <h3 style={{ margin: 0 }}>Pending imports</h3>

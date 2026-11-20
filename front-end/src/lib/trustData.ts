@@ -35,5 +35,5 @@ export const STANDARD_TERMS: { term: string; val: string }[] = clone(seed.STANDA
 
 /** "On demand" was missing from the source list although the form branch and the seeded "Audit evidence pack" use it (made reachable). */
 export const REPORT_FREQ: string[] = [...clone(seed.REPORT_FREQ), ...(seed.REPORT_FREQ.includes("On demand") ? [] : ["On demand"])];
-export interface SchedPack { name: string; freq: string; detail: string; recip: string; next: string; external?: boolean; approvedBy?: string; approvalId?: string }
-export const SCHED_PACKS: SchedPack[] = clone(seed.SCHED_PACKS);
+export interface SchedPack { id?: string; name: string; freq: string; detail: string; recip: string; next: string; external?: boolean; approvedBy?: string; approvalId?: string }
+export const SCHED_PACKS: SchedPack[] = (process.env.NEXT_PUBLIC_API_MODE || "mock") === "http" ? [] : clone(seed.SCHED_PACKS); // production: from the server

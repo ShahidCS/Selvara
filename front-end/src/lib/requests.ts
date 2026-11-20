@@ -7,4 +7,4 @@ const PRODUCTION = (process.env.NEXT_PUBLIC_API_MODE || "mock") === "http"; // p
 export const ACCESS_REQUESTS: any[] = PRODUCTION ? [] : clone(access.ACCESS_REQUESTS);
 export const ACCESS_REVIEWS: any[] = PRODUCTION ? [] : clone(access.ACCESS_REVIEWS);
 /** Mutated by reassignment in the source (`VENDOR_REQS=VENDOR_REQS.filter(...)`); here it is a stable array: use .splice. */
-export const VENDOR_REQS: any[] = clone(vreq.VENDOR_REQS);
+export const VENDOR_REQS: any[] = PRODUCTION ? [] : clone(vreq.VENDOR_REQS);

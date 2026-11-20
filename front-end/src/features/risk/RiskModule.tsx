@@ -13,6 +13,8 @@ import * as svc from "@/features/risk/services/risks";
 import { openImportWizard } from "./import/openImportWizard";
 import { K_SEL, K_TAB, riskOpenDetail, riskSetTab } from "./nav";
 import { AddRiskForm } from "./RiskForms";
+import { ModuleTip } from "@/components/kit/ModuleTip";
+import { API_ON as TIP_API } from "@/lib/rbac";
 import RiskCrit from "./RiskCrit";
 import RiskDash from "./RiskDash";
 import RiskGov from "./RiskGov";
@@ -68,6 +70,7 @@ export default function RiskModule() {
   );
   return (
     <Page mod="risk" acts={acts}>
+      <ModuleTip mod="risk" force={TIP_API && !DATA.risks.length} />
       <div className="seg" role="tablist" style={{ flex: "0 0 auto", marginBottom: 12 }}>
         {TABS.map((t) => <button key={t[0]} role="tab" aria-selected={tab === t[0]} onClick={() => riskSetTab(t[0])}>{t[1]}</button>)}
       </div>

@@ -196,5 +196,89 @@ export function accessDecideBlock(d: { role: string; isRequester: boolean; isBen
     || (d.isFirstApprover ? "Segregation of duties: a different admin or owner must give the second approval." : null);
 }
 
+/* ---------- risk (group 3) ---------- */
+export const RISK_BOARD_THRESHOLD = 15;
+export const RISK_APPETITE_SCORE = 11;
+export const RISK_CATEGORIES = ["Technology", "People", "Third party", "AI", "Operational", "Compliance", "AML"] as const;
+export const RISK_TREATMENTS = ["Mitigate", "Transfer", "Accept", "Avoid"] as const;
+export const RISK_SCORES = ["l", "i", "cl", "ci", "rl", "ri"] as const;
+export const RISK_BOARD_TTL_H = 72;
+export const RISK_IMPORT_TTL_H = 72;
+export const RISK_IMPORT_MAX_ROWS = 5000;
+/** Category -> owning team, and the lowest authority that may accept each residual band (ISO/IEC 27005 ladder). */
+export const RISK_CAT_TEAM: Record<string, string> = { Technology: "Engineering", People: "Security", "Third party": "Vendor risk", AI: "Data science", Operational: "Operations", Compliance: "Compliance", AML: "Financial crime" };
+export const RISK_ACCEPT_AUTH: Record<string, string> = { Low: "Risk owner", Medium: "Department head", High: "CISO", Extreme: "Board / CEO" };
+export const RISK_ACCEPT_RANK: Record<string, number> = { "Risk owner": 0, "Department head": 1, CISO: 2, "Board / CEO": 3 };
+/** Rating band of a 5x5 score: Low 1-5, Medium 6-10, High 11-19, Extreme 20-25. */
+export const riskBand = (score: number): "Low" | "Medium" | "High" | "Extreme" => (score >= 20 ? "Extreme" : score >= 11 ? "High" : score >= 6 ? "Medium" : "Low");
+export const riskScore = (v: unknown) => Math.max(1, Math.min(5, Math.trunc(Number(v)) || 1));
+export const riskEditBlock = (role: string) => roleBlock(role, "changing risks", "admin", "owner", "analyst");
+export const riskApproveRoleBlock = (role: string) => roleBlock(role, "approving risks", "admin");
+/** Submitting for approval: from a draft (or after changes were requested), with at least one mapped control. */
+export function riskSubmitBlock(review: string, mapped: number): string | null {
+  if (review !== "Draft" && review !== "Changes requested") return review === "Submitted" ? "The risk is already awaiting approval." : "The risk is already approved. Change it first.";
+  return mapped ? null : "Map at least one control before submitting";
+}
+/** Approving or requesting changes: only a submitted risk, by an admin who neither last edited nor submitted it (approve). */
+export function riskDecideBlock(p: { role: string; review: string; isEditorOrSubmitter: boolean; approve: boolean }): string | null {
+  if (p.review !== "Submitted") return "Only a risk awaiting approval can be decided.";
+  return riskApproveRoleBlock(p.role) || (p.approve && p.isEditorOrSubmitter ? "Segregation of duties: you edited or submitted this risk, so a different person must approve it." : null);
+}
+/** Ladder acceptance (residual at most 15): the chosen authority must rank at least the residual band's authority; Board / CEO is never chosen here. */
+export function riskLadderBlock(by: string, residual: number): string | null {
+  if (!(by in RISK_ACCEPT_RANK)) return "Choose an accepting authority.";
+  if (by === "Board / CEO") return `Board / CEO acceptance applies only above ${RISK_BOARD_THRESHOLD} and needs Board approval evidence.`;
+  const need = RISK_ACCEPT_AUTH[riskBand(residual)];
+  return RISK_ACCEPT_RANK[by] < RISK_ACCEPT_RANK[need] ? `Residual rating needs at least ${need} to accept.` : null;
+}
+export const riskAcceptSodBlock = (isOwnerEditorOrSubmitter: boolean) =>
+  isOwnerEditorOrSubmitter ? "Segregation of duties: you own, edited or submitted this risk, so a different person must record its acceptance." : null;
+/** Closing: no open treatment actions; never the last editor; never the owner when the risk has actions. */
+export function riskCloseBlock(p: { openActions: number; isLastEditor: boolean; isOwner: boolean; hasActions: boolean }): string | null {
+  if (p.openActions) return "Close or cancel the open actions first.";
+  if (p.isLastEditor) return "Segregation of duties: you last edited this risk, so a different person must close it.";
+  if (p.hasActions && p.isOwner) return "Segregation of duties: you own this risk, so a different person must close it.";
+  return null;
+}
+
+/* ---------- issues (group 3) ---------- */
+export const ISSUE_SEVERITIES = ["Critical", "High", "Medium", "Low"] as const;
+export const ISSUE_STATES = ["Open", "In progress", "Closed"] as const;
+export const ISSUE_CLOSE_TTL_H = 24 * 14;
+export const isHighSeverity = (sev: unknown) => sev === "High" || sev === "Critical";
+export const issueWriteBlock = (role: string) => roleBlock(role, "changing issues", "admin", "owner", "analyst");
+export const issueCoreBlock = (role: string) => roleBlock(role, "changing owner, due date or severity", "admin", "owner");
+/** "Overdue 3d", "Due today" or "Due 5d" for a due date (YYYY-MM-DD) on a given day: the text every screen reads. */
+export function issueDueText(due: string, today: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(due)) return due || "";
+  const d = Math.round((Date.parse(due + "T00:00:00Z") - Date.parse(today + "T00:00:00Z")) / 86400_000);
+  return d < 0 ? `Overdue ${-d}d` : d === 0 ? "Due today" : `Due ${d}d`;
+}
+export function issueDeleteBlock(p: { sev: string; status: string; referenced: boolean; role: string }): string | null {
+  if (isHighSeverity(p.sev) && p.status !== "Closed") return "High/Critical issues cannot be deleted; close them through verification.";
+  if (p.referenced) return "An audit finding references this issue.";
+  return roleBlock(p.role, "deleting an issue", "admin", "owner");
+}
+
+/* ---------- reports (group 3) ---------- */
+export const REPORT_FREQS = ["Weekly", "Monthly", "Quarterly", "Bi-annually", "Yearly", "Custom", "On demand"] as const;
+export const REPORT_CATALOGUE = [
+  { name: "Executive security posture", cat: "Executive", updated: "Monthly" },
+  { name: "ISO 27001 Statement of Applicability", cat: "Audit", updated: "On demand" },
+  { name: "Risk register export", cat: "Risk", updated: "On demand" },
+  { name: "Access recertification pack", cat: "Audit", updated: "Quarterly" },
+  { name: "Vendor risk summary", cat: "Third party", updated: "Monthly" },
+] as const;
+export const REPORT_INTERNAL_GROUPS = ["board", "exec team", "executive team", "exec", "leadership", "management", "risk committee", "audit committee", "security team", "compliance team", "all staff", "employees", "ciso", "cfo", "ceo"];
+export const REPORT_DIST_TTL_H = 24;
+export const reportRoleBlock = (role: string) => (["admin", "owner"].includes(role) ? null : "Only admin or owner can schedule or generate reports.");
+/** Recipients outside the company: anything that is not a known internal group or an address on one of the company's own email domains. */
+export function externalRecipientsOf(recip: string, ownDomains: Set<string>): string[] {
+  return String(recip || "").split(/[,;\n]/).map((t) => t.trim()).filter((t) => t && t !== "—").filter((t) => {
+    if (REPORT_INTERNAL_GROUPS.includes(t.toLowerCase())) return false;
+    const at = t.lastIndexOf("@"); return !(at > 0 && ownDomains.has(t.slice(at + 1).toLowerCase()));
+  });
+}
+
 /** Four-eyes kinds the server owns in production: the browser's engine shows them but never decides or applies them there. */
-export const SERVER_KINDS = ["control.exception", "evidence.delete", "policy.emergency", "mfa-reset-member", "offboard", "access-request"];
+export const SERVER_KINDS = ["control.exception", "evidence.delete", "policy.emergency", "mfa-reset-member", "offboard", "access-request", "risk.board-evidence", "risk.import", "issue.close", "report.distribution"];

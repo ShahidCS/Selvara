@@ -1,4 +1,6 @@
-import { modAllowed } from "@/lib/rbac";
+import { API_ON, modAllowed } from "@/lib/rbac";
+import { uiMessage } from "@/lib/grcSod";
+import { wsPost } from "@/services/ws";
 import { appStore } from "@/lib/store";
 import { useState } from "react";
 import { useLayer } from "@/hooks/useLayer";
@@ -53,9 +55,14 @@ export function VendorRequestForm({ close }: { close: () => void }) {
   const L = useLayer(); const route = useRoute();
   const [name, setName] = useState(""); const [cat, setCat] = useState(""); const [crit, setCrit] = useState("Medium"); const [reason, setReason] = useState(""); const [data, setData] = useState(false);
   const [err, setErr] = useState(false);
-  const submit = () => {
-    const n = name.trim(), r = reason.trim();
+  const submit = async () => {
+    const n = name.trim().slice(0, 120), r = reason.trim().slice(0, 500);
     if (!n || !r) { setErr(true); return; }
+    if (API_ON) { // production: stored on the server for the Vendors module (procurement decides there)
+      try { await wsPost("/ws/vendor-requests", { name: n, cat: cat.trim(), crit, reason: r, data }); close(); L.toast("Vendor request submitted to procurement"); }
+      catch (e) { L.toast(uiMessage(e), false); }
+      return;
+    }
     VENDOR_REQS.unshift({ id: "VR-" + String(VENDOR_REQS.length + 4).padStart(2, "0"), name: n, cat: cat.trim() || "General", reason: r, requester: getMe().name, data, crit, at: nowStamp().slice(0, 10) });
     wsLog("vendor.requested", n + " (" + crit + " tier)", "Vendor"); close(); L.toast("Vendor request submitted to procurement"); bumpData();
     void route;
@@ -63,12 +70,12 @@ export function VendorRequestForm({ close }: { close: () => void }) {
   return (
     <>
       <p style={{ margin: "0 0 10px", fontSize: 13 }}>Ask Security to assess a new supplier before procurement. Your request enters the vendor review queue.</p>
-      <div className="field"><label htmlFor="vr-name">Vendor name <Req /></label><input className="input" id="vr-name" data-focus placeholder="e.g. Northstar Analytics" value={name} onChange={(e) => setName(e.target.value)} /></div>
+      <div className="field"><label htmlFor="vr-name">Vendor name <Req /></label><input className="input" id="vr-name" data-focus maxLength={120} placeholder="e.g. Northstar Analytics" value={name} onChange={(e) => setName(e.target.value)} /></div>
       <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <div className="field"><label htmlFor="vr-cat">Category</label><input className="input" id="vr-cat" placeholder="e.g. Analytics" value={cat} onChange={(e) => setCat(e.target.value)} /></div>
+        <div className="field"><label htmlFor="vr-cat">Category</label><input className="input" id="vr-cat" maxLength={60} placeholder="e.g. Analytics" value={cat} onChange={(e) => setCat(e.target.value)} /></div>
         <div className="field"><label htmlFor="vr-crit">Business criticality</label><select className="select" id="vr-crit" value={crit} onChange={(e) => setCrit(e.target.value)}><option>Critical</option><option>Medium</option><option>Low</option></select></div>
       </div>
-      <div className="field"><label htmlFor="vr-reason">What will it be used for? <Req /></label><input className="input" id="vr-reason" placeholder="e.g. Marketing attribution" value={reason} onChange={(e) => setReason(e.target.value)} /></div>
+      <div className="field"><label htmlFor="vr-reason">What will it be used for? <Req /></label><input className="input" id="vr-reason" maxLength={500} placeholder="e.g. Marketing attribution" value={reason} onChange={(e) => setReason(e.target.value)} /></div>
       <label className="listrow" style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer" }}><input type="checkbox" id="vr-data" checked={data} onChange={(e) => setData(e.target.checked)} /> <span>It will process our customer or personal data</span></label>
       <p className="field help" id="vr-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>Vendor name and purpose are required.</p>
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={submit}>Submit request</button></LayerFoot>

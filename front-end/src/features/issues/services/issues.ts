@@ -5,7 +5,8 @@ import { wsLog } from "@/lib/audit";
 import { getActor, SodError } from "@/lib/sod";
 import { approve as engineApprove, getApproval, reject as engineReject, requestApproval, sweepExpired, whyCannotApprove as engineWhy, withdraw as engineWithdraw } from "@/lib/approvals";
 import { guard, isoDay, reasonText, roleReason, samePerson, selfReason } from "@/lib/grcSod";
-import { apiFetch, viaApi } from "@/services/http";
+import { viaApi } from "@/services/http";
+import { wsPost } from "@/services/ws";
 import { nextId } from "@/services/audits";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -13,7 +14,8 @@ export const ISSUE_STATUSES = ["Open", "In progress", "Closed"];
 export const ISSUE_SEVS = ["Critical", "High", "Medium", "Low"];
 export const isHighSev = (sev: unknown) => sev === "High" || sev === "Critical";
 const WRITERS = ["admin", "owner", "analyst"];
-const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
+/** Production: the same change on the server (under /api/ws), then the workspace reloads. */
+const post = <T,>(path: string, body: unknown) => wsPost<T>(`/ws${path}`, body);
 const enc = encodeURIComponent;
 
 export const issFind = (id: string) => DATA.issues.find((i) => i.id === id);
@@ -52,7 +54,9 @@ export const whyCannotDelete = (i: any): string | null => {
   return roleReason("deleting an issue", "admin", "owner");
 };
 
-export function createIssue(input: { title: string; sev: string; owner: string; due: string }) {
+/** `ownerId` (a member) and a due date (YYYY-MM-DD) in production; the demonstration keeps a typed owner and due text. */
+export interface IssueInput { title: string; sev: string; owner: string; due: string; ownerId?: string }
+export function createIssue(input: IssueInput) {
   return viaApi(() => {
     guard(whyCannotWrite());
     const me = getActor();
@@ -62,7 +66,7 @@ export function createIssue(input: { title: string; sev: string; owner: string; 
     return { id };
   }, () => post<{ id: string }>("/issues", input));
 }
-export function updateIssue(id: string, input: { title: string; sev: string; owner: string; due: string }) {
+export function updateIssue(id: string, input: IssueInput) {
   return viaApi(() => {
     const i = need(id); guard(whyCannotWrite());
     const core = i.sev !== input.sev || i.owner !== input.owner || i.due !== input.due;

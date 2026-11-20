@@ -5,8 +5,9 @@
    In-memory demo; the real API must enforce every rule again. */
 import { approvals, whyCannotApprove, type Approval } from "./approvals";
 import { hasApprovalHandler } from "./approvalKit";
-import { modAllowed } from "./rbac";
+import { API_ON, modAllowed } from "./rbac";
 import { getActor, hasRole } from "./sod";
+import { SERVER_KINDS } from "./rulesWs";
 
 /** Approval kind prefix -> the workspace module that shows and decides it. */
 const HOMES: [prefix: string, mod: string][] = [["ai.", "ai"], ["vendor.", "vendors"], ["api.", "api"], ["assistant.", "assistant"], ["report.", "reports"], ["trust.", "trust"], ["q.", "questionnaires"]];
@@ -19,7 +20,7 @@ export function inlineApprovalsFor(role: string): Approval[] {
   if (me.roleId !== role) return [];
   return approvals.get().list.filter((a) => {
     const mod = inlineHome(a.kind);
-    return !!mod && a.domain === "ws" && a.status === "Pending" && a.expiresAt > now && hasApprovalHandler(a.kind)
+    return !!mod && a.domain === "ws" && a.status === "Pending" && a.expiresAt > now && (hasApprovalHandler(a.kind) || (API_ON && SERVER_KINDS.includes(a.kind)))
       && modAllowed(role, "ws", mod) && hasRole(role, ...a.approverRoles) && whyCannotApprove(a) === null;
   });
 }

@@ -64,4 +64,50 @@ export const MODULE_TIPS: Record<string, ModuleTipText> = {
       "Admins and owners can delegate their approvals to another admin or owner while away (up to 14 days).",
     ],
   },
+  overview: {
+    title: "Your security posture at a glance",
+    steps: [
+      "The figures come from your frameworks, controls, risks and issues. They fill in as your team adds them.",
+      "Above appetite means an open risk whose current score is 11 or more.",
+      "Export board pack builds a draft report for your board. Review it before you share it.",
+    ],
+    note: "You see the detail of the modules your role can open. For the others you see only totals.",
+  },
+  work: {
+    title: "Your work",
+    steps: [
+      "This page lists issues you own and risk treatment actions assigned to you, with their due dates.",
+      "Reviews and approvals lists the decisions waiting for you. Open an item to decide it on its page.",
+      "Use Request access or Request a new vendor to ask the right team without email.",
+    ],
+  },
+  risk: {
+    title: "Getting started with the risk register",
+    steps: [
+      "Add a risk, or import your existing register from Excel or CSV. An import that changes existing risks needs a second admin's approval.",
+      "Score each risk three times: inherent, current and residual. Map at least one control, then submit it for approval.",
+      "A company admin who did not edit or submit the risk approves it.",
+      "To accept a risk, name an authority senior enough for its residual rating. Above 15 you need Board evidence, and a second person verifies it.",
+      "Close a risk once its treatment actions are done or cancelled. The person who closes it cannot be its last editor.",
+    ],
+    note: "Scores, acceptances and snapshots are records for your risk process. Qualified risk staff must review them.",
+  },
+  issues: {
+    title: "Tracking remediation",
+    steps: [
+      "Create an issue for each finding that needs fixing. Give it an owner from your company and a due date.",
+      "Overdue issues appear in the bell and on the Overview.",
+      "Medium and Low issues close directly. A High or Critical issue closes only after someone other than its owner and proposer verifies the fix.",
+      "Link the controls and risks an issue affects. Record the root cause and the corrective action.",
+    ],
+  },
+  reports: {
+    title: "Reports and schedules",
+    steps: [
+      "Generate now builds a draft pack from your current records. Review it before you share it.",
+      "A schedule to people in your company saves at once. A schedule to anyone outside it starts only after a different admin approves it.",
+      "Removing or replacing a schedule that sends outside the company needs a reason.",
+    ],
+    note: "Packs are not emailed until your administrator sets up email.",
+  },
 };
