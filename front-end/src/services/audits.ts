@@ -6,6 +6,8 @@ import { wsLog } from "@/lib/audit";
 import { getActor, SodError } from "@/lib/sod";
 import { guard, isoDay, reasonText, roleReason, samePerson } from "@/lib/grcSod";
 import { apiFetch, viaApi } from "./http";
+import { API_ON } from "@/lib/rbac";
+import { wsPost } from "./ws";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const AUDIT_FWS = ["ISO 27001", "SOC 2", "GDPR", "PCI DSS", "NIST CSF", "-"];
@@ -13,7 +15,8 @@ export const PBC_ORDER = ["Requested", "Outstanding", "Received"];
 /** Progress per stage index (source: [0,40,85,100][i+1]). */
 export const STAGE_PROGRESS = [0, 40, 85, 100];
 
-const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
+/** Production: the same change on the server (under /api/ws), then the workspace reloads. */
+const post = <T,>(path: string, body: unknown) => wsPost<T>(`/ws${path}`, body);
 const enc = encodeURIComponent;
 
 export const FINDING_SEVS = ["Critical", "High", "Medium", "Low"];
@@ -42,11 +45,14 @@ export const whyCannotManage = (): string | null => roleReason("managing an audi
 const leadName = (a: any) => String(a.lead).replace(/^[^,]+,\s*/, "");
 /** Auditor actions (raise information requests, draft findings) need the auditor role, an engagement assigned to them and shared access. */
 export function whyCannotAuditorAct(a: any): string | null {
+  // production: the server sends an auditor only the engagements assigned to them while access is live
+  if (API_ON) return roleReason("this auditor action", "auditor") || (a.auditorAccess === "granted" ? null : a.auditorAccess === "ended" ? "Auditor access for this engagement has ended." : "Auditor access has not been granted for this engagement yet.");
   return roleReason("this auditor action", "auditor")
     || (/External/.test(a.lead) && samePerson(getActor().name, leadName(a)) ? null : "You are not the assigned auditor for this engagement.")
     || (a.auditorAccess === "granted" ? null : a.auditorAccess === "ended" ? "Auditor access for this engagement has ended." : "Auditor access has not been granted for this engagement yet.");
 }
-const openIrs = (a: any) => (a.irs || []).filter((r: any) => r.status !== "Closed");
+/** Production: an answered request is closed with the engagement, so only open ones block completion. */
+const openIrs = (a: any) => (a.irs || []).filter((r: any) => (API_ON ? r.status === "Open" : r.status !== "Closed"));
 const draftFindings = (a: any) => (a.findings || []).filter((f: any) => f.status === "Draft");
 /** Reasons the engagement cannot be closed yet (null = may close). Open findings or outstanding requests only need a recorded reason. */
 export function whyCannotComplete(a: any): string | null {
@@ -67,8 +73,8 @@ export function createAudit(input: { name: string; fw: string; auditor: string; 
     return { id };
   }, () => post<{ id: string }>("/audits", input));
 }
-export function grantAuditorAccess(id: string) {
-  return viaApi(() => { const a = need(id); guard(whyCannotManage()); a.auditorAccess = "granted"; return true; }, () => post<boolean>(`/audits/${enc(id)}/auditor-access`, {}));
+export function grantAuditorAccess(id: string, auditorId = "", until = "") {
+  return viaApi(() => { const a = need(id); guard(whyCannotManage()); a.auditorAccess = "granted"; return true; }, () => post<boolean>(`/audits/${enc(id)}/auditor-access`, { auditorId, until }));
 }
 /** Completes the engagement and revokes the external auditor. Blocked while drafts/requests are pending; open items need a recorded reason. */
 export function endAuditorAccess(id: string, reason = "") {
@@ -84,7 +90,7 @@ export function endAuditorAccess(id: string, reason = "") {
 export function freezePopulations(id: string) {
   return viaApi(() => { const a = need(id); guard(whyCannotManage()); a.populationsFrozen = true; return true; }, () => post<boolean>(`/audits/${enc(id)}/populations/freeze`, {}));
 }
-export function advanceStage(id: string) {
+export function advanceStage(id: string, reason = "") {
   return viaApi(() => {
     const a = need(id); guard(whyCannotManage());
     const i = DATA.auditStages.indexOf(a.stage);
@@ -97,7 +103,7 @@ export function advanceStage(id: string) {
       a.stage = next; a.progress = Math.min(100, STAGE_PROGRESS[i + 1]); return { stage: a.stage as string };
     }
     return null;
-  }, () => post<{ stage: string } | null>(`/audits/${enc(id)}/advance`, {}));
+  }, () => post<{ stage: string } | null>(`/audits/${enc(id)}/advance`, { reason }));
 }
 /** Management PBC items: only management advances them (auditors raise information requests instead). */
 export function cyclePbc(id: string, pid: string) {
@@ -126,7 +132,7 @@ export function promoteFinding(id: string, fid: string) {
     f.issue = iid; if (wasDraft) { f.status = "Open"; f.acceptedBy = me.name; f.acceptedAt = today(); }
     wsLog("audit.finding.promoted", `${a.id} ${f.id} → ${iid}${wasDraft ? " (accepted draft by " + f.draftedBy + ")" : ""} by ${me.name}`, "Audit");
     return { iid, title: f.title as string };
-  }, () => post<{ iid: string; title: string } | null>(`/audits/${enc(id)}/findings/${enc(fid)}/issue`, {}));
+  }, async () => { const r = await post<{ issue: string }>(`/audits/${enc(id)}/findings/${enc(fid)}/issue`, {}); return { iid: r.issue, title: "" }; });
 }
 export function rejectFinding(id: string, fid: string, reason: string) {
   return viaApi(() => {
@@ -178,5 +184,10 @@ export function exportReport(id: string) {
   return viaApi(() => {
     const a = findAudit(id)!;
     return `AUDIT REPORT (DRAFT) — ${a.name}\nFramework: ${a.fw}\nAuditor: ${a.auditor}\nStage: ${a.stage}\nScope: ${a.scope}\n\nRequests: ${a.pbc.map((p: any) => p.id + " " + p.item + " [" + p.status + "]").join("; ")}\nTests: ${a.tests.map((t: any) => t.id + " " + t.ctrl + " " + t.result).join("; ")}\nFindings:\n${a.findings.filter((f: any) => f.status !== "Draft").map((f: any) => " - [" + f.sev + "] " + f.title + " (" + f.status + ")" + (f.issue ? " -> " + f.issue : "")).join("\n")}\n\nDraft only. Requires human review before use.`;
-  }, () => post<string>(`/audits/${enc(id)}/export/report`, {}));
+  }, async () => (await apiFetch<{ content: string }>(`/ws/audits/${enc(id)}/report`, { method: "POST", body: "{}" })).content);
+}
+
+/** Production: a risk register snapshot shared with this engagement's auditor, as JSON text for download. */
+export async function sharedSnapshot(id: string, sid: string): Promise<string> {
+  return JSON.stringify(await apiFetch<unknown>(`/ws/audits/${enc(id)}/snapshots/${enc(sid)}`), null, 2);
 }

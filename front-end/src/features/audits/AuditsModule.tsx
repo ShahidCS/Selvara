@@ -1,3 +1,5 @@
+import { ModuleTip } from "@/components/kit/ModuleTip";
+import { API_ON } from "@/lib/rbac";
 import { DataTable, Icon, Page, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { setModState, useApp, useData } from "@/lib/store";
@@ -35,6 +37,7 @@ export default function AuditsModule({ param: propParam }: { param?: string | nu
     <Page mod="audits" acts={auditorView
       ? <button className="btn btn-secondary" disabled={!pool.length} onClick={() => { setModState("audits.tab", "ir"); go("/ws/audits/" + encodeURIComponent(pool[0].id)); }}><Icon name="evidence" />Information requests</button>
       : <button className="btn btn-primary" disabled={!!whyCannotManage()} title={whyCannotManage() || undefined} onClick={newAudit}><Icon name="plus" />New audit</button>}>
+      {auditorView ? null : <ModuleTip mod="audits" force={API_ON && !DATA.audits.length} />}
       <div className="card" style={{ flex: "1 1 auto" }}><div className="c-body scroll">
         {auditorView ? (
           <div className="card" style={{ background: "var(--accent-weak)", borderColor: "transparent", marginBottom: 12 }}><div className="c-body" style={{ padding: 14 }}>

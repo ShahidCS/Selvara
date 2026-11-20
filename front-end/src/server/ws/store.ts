@@ -41,7 +41,12 @@ export interface WsTx {
   setApproval(id: string, status: ApprovalStatus, reason?: string): Promise<void>;
   /** An in-app notice for one person. */
   notify(userId: string, text: string): Promise<void>;
+  /** The company's own audit log, newest first: entries before chain number `before` (all when null), at most `limit`. */
+  auditPage(before: number | null, limit: number): Promise<CompanyAuditEntry[]>;
+  /** The first chain number of the company's log that does not verify, or null when every entry does (0009). */
+  auditVerify(): Promise<number | null>;
 }
+export interface CompanyAuditEntry { chainN: number; at: number; actor: string; action: string; target: string; cat: string; hash: string; prevHash: string }
 export interface WsStore { tx<T>(actor: Actor, now: number, work: (t: WsTx) => Promise<T>): Promise<T> }
 
 const entry = (a: Actor, at: number, action: string, target: string, cat = "Control", system = false): AuditRow =>
@@ -106,6 +111,12 @@ export class PgWsStore implements WsStore {
           },
           async setApproval(id, status, reason) { await q.query("update approvals set status = $2, decided_reason = coalesce($3, decided_reason) where id = $1", [id, status, reason ?? null]); },
           async notify(userId, text) { if (isUuid(userId)) notices.push({ userId, text }); }, // sent only once the change has committed
+          async auditPage(before, limit) {
+            const r = await q.query(`select chain_n, at_ms, actor, action, target, cat, hash, prev_hash from audit_log where tenant_id = $1 and chain_n is not null
+              and ($2::bigint is null or chain_n < $2) order by chain_n desc limit $3`, [actor.tenantId, before, Math.min(500, Math.max(1, limit))]);
+            return r.map((x) => ({ chainN: Number(x.chain_n), at: Number(x.at_ms), actor: String(x.actor), action: String(x.action), target: String(x.target), cat: String(x.cat), hash: String(x.hash ?? ""), prevHash: String(x.prev_hash ?? "") }));
+          },
+          async auditVerify() { const r = await q.query<{ v: string | null }>("select public.company_audit_verify() as v"); return r[0]?.v == null ? null : Number(r[0].v); },
         };
         return work(t);
       });
@@ -162,6 +173,12 @@ export class MemoryWsStore implements WsStore {
       },
       async setApproval(id, status, reason) { const r = st.requests.find((x) => x.id === id)!; r.status = status; if (reason) r.decidedReason = reason; },
       async notify(userId, text) { pending2.push({ userId, text }); },
+      async auditPage(before, limit) { // the stand-in has no hash chain: numbered in order, no hashes
+        const log = (store as unknown as { auditLog: AuditRow[] }).auditLog.map((e, i) => ({ e, n: i + 1 })).filter((x) => x.e.tenantId === actor.tenantId)
+          .map((x, i) => ({ chainN: i + 1, at: x.e.at, actor: x.e.actor, action: x.e.action, target: x.e.target, cat: x.e.cat, hash: "", prevHash: "" }));
+        return log.filter((x) => before == null || x.chainN < before).reverse().slice(0, limit);
+      },
+      async auditVerify() { return null; },
     };
     try {
       const out = await work(t);

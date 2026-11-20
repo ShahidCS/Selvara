@@ -7,6 +7,11 @@ import { downloadText } from "@/lib/format";
 import { safeFileName } from "@/lib/security";
 import { useGo } from "@/lib/route";
 import { useLayer } from "@/hooks/useLayer";
+import { useSyncExternalStore } from "react";
+import { API_ON } from "@/lib/rbac";
+import { DATA } from "@/lib/data";
+import { askReason } from "@/components/kit/ReasonDialog";
+import { g4Meta } from "@/services/ws";
 import * as svc from "@/services/audits";
 import { AddPbcForm, AuditReportBody, openDraftFinding, openEndAccess, openRaiseIr, openRejectFinding, openRespondIr } from "./AuditModals";
 import { hasRole } from "@/lib/sod";
@@ -28,9 +33,10 @@ export function AuditDetail({ id }: { id: string }) {
   useData();
   const L = useLayer(); const go = useGo();
   const role = useApp((s) => s.role);
+  const auditors = useSyncExternalStore(g4Meta.subscribe, () => g4Meta.get().auditors, () => g4Meta.get().auditors);
   const [tab, setTab] = useModState("audits.tab", "over");
   const a = svc.findAudit(id);
-  if (!a || (role === "auditor" && !/External/.test(a.lead))) return <AuditNotFound />; // auditors only see external engagements (the API must scope per engagement)
+  if (!a || (!API_ON && role === "auditor" && !/External/.test(a.lead))) return <AuditNotFound />; // auditors only see external engagements (the API must scope per engagement)
   svc.auditInit(a);
   const canManage = auditCanManage(role);
   const manageWhy = svc.whyCannotManage();
@@ -39,7 +45,9 @@ export function AuditDetail({ id }: { id: string }) {
   const dis = (why: string | null) => ({ disabled: !!why, title: why || undefined });
   const open = a.findings.filter(svc.isOpenFinding).length;
 
-  const grant = () => attempt(L, async () => {
+  const grant = () => API_ON ? askReason(L, { title: "Send to auditor", label: "Access ends on", textType: "date", min: 10, confirm: "Grant access", select: auditors, selectLabel: "External auditor",
+    intro: auditors.length ? "The auditor sees this engagement only, until the end date, and can raise requests and draft findings. Access ends by itself." : "Invite the external auditor in Team & Settings with the Auditor role first.",
+    run: async (until, auditorId) => { await svc.grantAuditorAccess(id, auditorId, until); return "Auditor access granted"; } }) : attempt(L, async () => {
     await svc.grantAuditorAccess(id);
     wsLog("audit.auditor.access.granted", a.name + " → " + a.auditor, "Audit"); L.toast("Auditor access granted for " + a.auditor); bumpData();
   });
@@ -48,7 +56,9 @@ export function AuditDetail({ id }: { id: string }) {
     await svc.freezePopulations(id);
     wsLog("audit.populations.frozen", a.name, "Audit"); L.toast("Populations frozen for " + a.name); bumpData();
   });
-  const advance = () => attempt(L, async () => {
+  const nextIsComplete = DATA.auditStages[DATA.auditStages.indexOf(a.stage) + 1] === "Complete";
+  const advance = () => API_ON && nextIsComplete ? askReason(L, { title: "Complete " + a.name, label: svc.needsCloseReason(a) ? "Reason for closing with open findings or outstanding requests" : "Closing note (optional)", min: svc.needsCloseReason(a) ? 10 : 0, max: 500, confirm: "Complete engagement",
+    intro: "Completing locks the engagement.", run: async (why) => { await svc.advanceStage(id, why); return a.name + " completed"; } }) : attempt(L, async () => {
     const r = await svc.advanceStage(id);
     if (r) { wsLog("audit.stage.advanced", `${a.id} ${a.name} → ${r.stage}`, "Audit"); L.toast(a.name + " moved to " + r.stage); bumpData(); }
   });
@@ -67,8 +77,8 @@ export function AuditDetail({ id }: { id: string }) {
       <button className="btn btn-primary" onClick={() => attempt(L, async () => {
         const txt = await svc.exportReport(id);
         downloadText(safeFileName(a.id + "-report.txt", "audit-report.txt"), txt);
-        adminLog("audit.report.generated", a.name, { categories: ["Audit"], basis: "Legal obligation" });
-        wsLog("audit.report.generated", a.name, "Audit"); L.closeLayer(); L.toast("Report exported (demo)");
+        if (!API_ON) adminLog("audit.report.generated", a.name, { categories: ["Audit"], basis: "Legal obligation" }); // production: the company's log (server)
+        wsLog("audit.report.generated", a.name, "Audit"); L.closeLayer(); L.toast(API_ON ? "Report exported (draft)" : "Report exported (demo)");
       })}><Icon name="download" />Export</button>
     </>);
 
@@ -91,10 +101,14 @@ export function AuditDetail({ id }: { id: string }) {
             {a.auditorAccess === "granted" ? <Chip cls="ok" icon="check">Auditor access granted</Chip> : a.auditorAccess === "ended" ? <Chip cls="neutral" icon="check">Auditor access ended</Chip> : <Chip cls="warn" icon="clock">Not yet shared with auditor</Chip>}
             {a.populationsFrozen ? <Chip cls="ok" icon="check">Populations frozen</Chip> : <Chip cls="neutral" icon="dot">Populations live</Chip>}
           </div>
+          {API_ON && a.access?.auditor ? <p className="field help" style={{ margin: "0 0 8px" }}>{a.access.auditor}, {a.access.from} to {a.access.until}{a.access.endedAt ? ` (ended ${a.access.endedAt} by ${a.access.endedBy})` : ""}.{a.frozenAt ? ` Populations frozen ${String(a.frozenAt).slice(0, 10)} by ${a.frozenBy}.` : ""}</p> : null}
+          {API_ON && a.snapshots?.length ? <div style={{ margin: "0 0 10px" }}><div className="sectitle" style={{ margin: "0 0 6px" }}>Risk register snapshots shared with the auditor</div>
+            {a.snapshots.map((s: any) => <div key={s.id} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}><span className="num strong">{s.id}</span> {s.at} · {s.count} risks · SHA-256 {s.hash}
+              <button className="btn btn-ghost sm" onClick={() => attempt(L, async () => { downloadText(safeFileName(`${s.id}.json`), await svc.sharedSnapshot(id, s.id)); })}>Download</button></div>)}</div> : null}
           {canManage ? (
             <>
               <div className="btngrp">
-                {a.auditorAccess === "none" ? <button className="btn btn-secondary sm" onClick={grant}><Icon name="ext" />Send to auditor</button> : null}
+                {a.auditorAccess === "none" && (!API_ON || a.stage !== "Complete") ? <button className="btn btn-secondary sm" onClick={grant}><Icon name="ext" />Send to auditor</button> : null}
                 {!a.populationsFrozen ? <button className="btn btn-secondary sm" onClick={freeze}><Icon name="check" />Freeze populations now</button> : null}
                 {a.auditorAccess === "granted" && a.stage !== "Complete" ? <button className="btn btn-secondary sm" {...dis(completeWhy)} onClick={end}><Icon name="check" />Complete &amp; end auditor access</button> : null}
                 {a.auditorAccess === "ended" && a.populationsFrozen ? <span className="field help" style={{ margin: 0, alignSelf: "center" }}>Engagement closed and locked.</span> : null}
@@ -138,7 +152,7 @@ export function AuditDetail({ id }: { id: string }) {
                 <td><StatusChip s={r.status === "Closed" ? "Done" : r.status === "Answered" ? "Approved" : "Pending"} /> <span style={{ fontSize: 12 }}>{r.status}</span></td><td>{r.response || "—"}</td>
                 <td className="r"><div className="btngrp" style={{ justifyContent: "flex-end" }}>
                   {r.status === "Open" ? <button className="btn btn-ghost sm" {...dis(manageWhy)} onClick={() => openRespondIr(L, id, r.id)}><Icon name="check" />Respond</button> : null}
-                  {r.status !== "Closed" ? <button className="btn btn-ghost sm" {...dis(audWhy)} onClick={() => attempt(L, async () => { await svc.closeInformationRequest(id, r.id); L.toast("Request closed"); bumpData(); })}><Icon name="x" />Close</button> : null}
+                  {r.status !== "Closed" ? <button className="btn btn-ghost sm" {...dis(API_ON && canManage && r.status === "Answered" ? null : audWhy)} onClick={() => attempt(L, async () => { await svc.closeInformationRequest(id, r.id); L.toast("Request closed"); bumpData(); })}><Icon name="x" />Close</button> : null}
                 </div></td></tr>
             ))}
           </Table>
@@ -173,7 +187,7 @@ export function AuditDetail({ id }: { id: string }) {
                 <td className="strong num">{f.id}</td>
                 <td><div>{f.title}</div><div style={{ fontSize: 11.5, color: "var(--muted)" }}>{f.rec}</div></td>
                 <td><StatusChip s={f.sev} /></td><td><StatusChip s={f.status} />{f.status === "Draft" ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>by {f.draftedBy}</div> : null}{f.status === "Rejected" ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{f.rejectedReason}</div> : null}</td>
-                <td className="num">{f.issue ? <Link href="/ws/issues" onClick={(e) => { e.preventDefault(); go("/ws/issues"); }}>{f.issue}</Link> : <span style={{ color: "var(--muted)" }}>—</span>}</td>
+                <td className="num">{f.issue ? <Link href={`/ws/issues/${encodeURIComponent(f.issue)}`} onClick={(e) => { e.preventDefault(); go(`/ws/issues/${encodeURIComponent(f.issue)}`); }}>{f.issue}</Link> : <span style={{ color: "var(--muted)" }}>—</span>}</td>
                 <td className="r">{f.issue || f.status === "Closed" || f.status === "Rejected" ? null : (
                   <div className="btngrp" style={{ justifyContent: "flex-end" }}>
                     <button className="btn btn-ghost sm" {...dis(manageWhy)} onClick={() => promote(f.id)}><Icon name="plus" />{f.status === "Draft" ? "Accept into issue" : "Create issue"}</button>

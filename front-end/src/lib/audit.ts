@@ -16,6 +16,7 @@ const body = (e: { at: string; actor: string; action: string; target: string; ca
 
 export const WS_AUDIT: WsEntry[] = [];
 (function init() {
+  if (API_ON) return; // production: the company's real log comes from the server (services/ws.ts)
   let prev = ZERO;
   (seed as unknown as { at: string; actor: string; action: string; target: string; cat: string }[]).forEach((e, i) => {
     const seq = i + 1;

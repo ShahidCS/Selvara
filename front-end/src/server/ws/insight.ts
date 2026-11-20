@@ -16,6 +16,7 @@ import type { Policy } from "./policies";
 import type { Risk } from "./risk";
 import type { AccessRequest } from "./access";
 import { vendorDueText, type Vendor } from "./vendors";
+import type { Audit } from "./audits";
 import type { Actor, WsTx } from "./store";
 
 export interface VendorRequest { id: string; name: string; cat: string; reason: string; requester: string; requesterId: string; data: boolean; crit: string; at: string; status: "Pending" | "Approved" | "Rejected" }
@@ -74,6 +75,7 @@ async function overview(t: WsTx, role: string) {
     out.frameworks = { library: LIB_FRAMEWORKS, state: figures, custom: (await t.list<FwCustom>("fw-custom")).map((x) => ({ id: x.id, name: x.data.name, short: x.data.short, kind: x.data.kind, region: x.data.region, version: x.data.version, reqs: x.data.reqs.map((q) => [q[0], "", ...q.slice(2)]) })) };
   }
   if (!modAllowed(role, "vendors")) out.vendors = (await t.list<Vendor>("vendor")).map((x, n) => ({ id: `#${n + 1}`, name: "", cat: "", tier: x.data.tier, status: x.data.status, due: vendorDueText(x.data.nextReview, isoDayOf(t.now)) }));
+  if (!modAllowed(role, "audits")) out.audits = (await t.list<Audit>("audit")).map((x, n) => ({ id: `#${n + 1}`, name: "", fw: "", auditor: "", period: "", stage: x.data.stage, progress: x.data.progress }));
   if (!modAllowed(role, "controls")) out.controls = (await t.list<Control>("control")).map((x) => ({ id: x.data.id, title: "", owner: "", domain: x.data.domain, status: x.data.status, map: x.data.map }));
   return out;
 }

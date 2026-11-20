@@ -527,6 +527,15 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
       expect((await ws.tx(me(casey, B), Date.now(), (t) => t.approvals(["control.exception"])))).toEqual([]);
       expect(await ws.tx(me(casey, B), Date.now(), (t) => t.approval(ap.id, ["control.exception"]))).toBeNull();
     });
+    it("the company audit log (migration 0009): a company admin reads and verifies only their own chain; other roles cannot verify", async () => {
+      await ws.tx(me(casey, B, "Casey B"), Date.now(), (t) => t.audit("audit.created", "AUD-01 Company B engagement", "Audit"));
+      const page = await ws.tx(me(casey, B), Date.now(), (t) => t.auditPage(null, 50));
+      expect(page[0]).toMatchObject({ action: "audit.created", cat: "Audit" }); expect(page[0].hash).toMatch(/^[0-9a-f]{64}$/);
+      expect(page.every((e) => !/Company A/.test(e.target))).toBe(true);
+      expect(await ws.tx(me(casey, B), Date.now(), (t) => t.auditVerify())).toBeNull();
+      expect(await ws.tx(me(alex, A), Date.now(), (t) => t.auditVerify())).toBe(2); // the tampering test above, A's own chain only
+      expect(await code(ws.tx(me(blair, A, "Blair", "owner"), Date.now(), (t) => t.auditVerify()))).toBe("42501"); // owners are not admins
+    });
     it("a request about a contractor (a non-uuid id) is stored: only member ids go into the uuid forbid list", async () => {
       const ap = await ws.tx(me(alex, A, "Alex Kim"), Date.now(), (t) => t.request({ kind: "offboard", title: "Offboard Grace Lin", subject: "Grace Lin", payload: { personId: "PP-1" }, needs: 1, approverRoles: ["admin", "owner"], forbid: ["PP-1", blair], ttlMs: 3600_000 }));
       expect(ap.forbid).toEqual([blair]);

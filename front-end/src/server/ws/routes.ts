@@ -16,10 +16,11 @@ import { vendorRoutes } from "./vendors";
 import { questionnaireRoutes } from "./questionnaires";
 import { trustRoutes } from "./trust";
 import { commitmentRoutes } from "./commitments";
+import { auditRoutes } from "./audits";
 
 /** Export kinds the audit log accepts, and the module each belongs to. */
 const EXPORTS: Record<string, string> = {
-  "controls.soa.exported": "controls", "controls.matrix.exported": "controls", "control.workpaper.exported": "controls", "framework.gap.exported": "frameworks", "risk.register.exported": "risk",
+  "controls.soa.exported": "controls", "controls.matrix.exported": "controls", "control.workpaper.exported": "controls", "framework.gap.exported": "frameworks", "risk.register.exported": "risk", "ropa.exported": "auditlog",
 };
 export function workspaceRoutes(h: WsHelpers) {
   /** The company's active members (id, name, role) for owner and assignee pickers; any member may see them. */
@@ -34,6 +35,7 @@ export function workspaceRoutes(h: WsHelpers) {
       if (action === "controls.soa.exported" || action === "controls.matrix.exported") target = `${(await t.list("control")).length} controls`;
       else if (action === "control.workpaper.exported") { const id = txt(r.body.target, 40); if (!(await t.get("control", id))) invalid("Control not found."); target = id; }
       else if (action === "risk.register.exported") target = `${(await t.list("risk")).length} risks`;
+      else if (action === "ropa.exported") { if (c.actor.role !== "admin") refuse("Not permitted."); target = `RoPA register, ${txt(r.body.target, 4) === "csv" ? "CSV" : "JSON"}`; }
       else { const m = /^(.{1,160}), (\d{1,5}) gaps$/.exec(txt(r.body.target, 200)); if (!m) invalid("Unknown export."); target = `${m![1]}, ${m![2]} gaps`; }
       await t.audit(action, target);
     });
@@ -41,5 +43,5 @@ export function workspaceRoutes(h: WsHelpers) {
   });
   return { "GET ws/members": members, "POST ws/exports": exported, ...assuranceRoutes(h), ...evidenceRoutes(h), ...policyRoutes(h), ...delegationRoutes(h), ...peopleRoutes(h), ...accessRoutes(h), ...flowRoutes(h),
     ...riskRoutes(h), ...issueRoutes(h), ...reportRoutes(h), ...insightRoutes(h),
-    ...fourEyesRoutes(h), ...vendorRoutes(h), ...questionnaireRoutes(h), ...trustRoutes(h), ...commitmentRoutes(h) };
+    ...fourEyesRoutes(h), ...vendorRoutes(h), ...questionnaireRoutes(h), ...trustRoutes(h), ...commitmentRoutes(h), ...auditRoutes(h) };
 }

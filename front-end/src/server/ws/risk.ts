@@ -407,8 +407,11 @@ export function riskRoutes(h: WsHelpers) {
       const content = pool.map((x) => ({ id: x.id, title: x.title, cat: x.cat, owner: x.owner, l: x.l, i: x.i, cl: x.cl, ci: x.ci, rl: x.rl, ri: x.ri, treat: x.treat, status: x.status, review: x.review, reviewed: x.reviewed, linked: x.linked, acceptance: x.acceptance ? { by: x.acceptance.by, until: x.acceptance.until, board: x.acceptance.board?.ref ?? null } : null }));
       const sha256 = createHash("sha256").update(JSON.stringify(content)).digest("hex");
       const id = `RS-${String(await t.next("risk-snapshot", 0)).padStart(3, "0")}`;
+      // shared with the auditor of any engagement whose access is live now (they download it from the engagement, server/ws/audits.ts)
+      const today = isoDayOf(t.now);
+      const shared = (await t.list<{ access?: { status: string; until?: string } }>("audit")).some((x) => x.data.access?.status === "granted" && (x.data.access.until ?? "") >= today);
       const at = new Date(t.now).toISOString().slice(0, 16).replace("T", " ");
-      await t.insert("risk-snapshot", id, { id, at, count: pool.length, scope: scope === "approved" ? "Approved risks" : "All risks", hash: sha256.slice(0, 12), sha256, by: c.actor.name, byId: c.actor.id, shared: false, content } satisfies RiskSnapshot);
+      await t.insert("risk-snapshot", id, { id, at, count: pool.length, scope: scope === "approved" ? "Approved risks" : "All risks", hash: sha256.slice(0, 12), sha256, by: c.actor.name, byId: c.actor.id, shared, content } satisfies RiskSnapshot);
       await t.audit("risk.register.snapshot", `${pool.length} risks (${scope}), SHA-256 ${sha256}`, "Risk");
       return ok({ ok: true, count: pool.length, scope, hash: sha256.slice(0, 12) });
     });
