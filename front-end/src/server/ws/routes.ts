@@ -21,6 +21,7 @@ import { aiRoutes } from "./ai";
 import { assistantRoutes } from "./assistant";
 import { apiRoutes } from "./apikeys";
 import { integrationRoutes } from "./integrations";
+import { billingWsRoutes } from "./billingws";
 
 /** Export kinds the audit log accepts, and the module each belongs to. */
 const EXPORTS: Record<string, string> = {
@@ -48,5 +49,5 @@ export function workspaceRoutes(h: WsHelpers) {
   return { "GET ws/members": members, "POST ws/exports": exported, ...assuranceRoutes(h), ...evidenceRoutes(h), ...policyRoutes(h), ...delegationRoutes(h), ...peopleRoutes(h), ...accessRoutes(h), ...flowRoutes(h),
     ...riskRoutes(h), ...issueRoutes(h), ...reportRoutes(h), ...insightRoutes(h),
     ...fourEyesRoutes(h), ...vendorRoutes(h), ...questionnaireRoutes(h), ...trustRoutes(h), ...commitmentRoutes(h), ...auditRoutes(h),
-    ...aiRoutes(h), ...assistantRoutes(h), ...apiRoutes(h), ...integrationRoutes(h) };
+    ...aiRoutes(h), ...assistantRoutes(h), ...apiRoutes(h), ...integrationRoutes(h), ...billingWsRoutes(h) };
 }

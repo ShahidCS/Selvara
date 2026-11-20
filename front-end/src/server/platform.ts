@@ -7,13 +7,18 @@ import type { Db, Tx } from "./db";
 import { ApplyConflict, auditArgs, auditSql, loadApprovals, names, refuse, type ApprovalRow, type Log, type MemoryDirectory, type Outcome } from "./directory";
 import { UpstreamError } from "./errors";
 import type { AuditRow, Store } from "./types";
+import { WsConflict, WsRefused } from "./ws/store";
 
 export interface ElevationRow { id: string; reason: string; ticket: string; startedAt: number; expiresAt: number }
 export type CompanyStatus = "Active" | "Suspended" | "Closed";
 export interface PlatformCompany { id: string; ref: string; name: string; status: CompanyStatus; createdAt: number; members: number; admins: number; pendingInvites: number }
 export interface PlatformAuditRow { seq: number; at: number; actor: string; action: string; target: string; ip: string; chainN: number | null; hash: string | null }
-export type PlatformKind = "platform-company-create" | "platform-company-suspend" | "platform-company-reactivate";
-export interface NewPlatformApproval { kind: PlatformKind; title: string; subject: string; payload: Record<string, unknown>; ttlMs: number }
+export type PlatformKind = "platform-company-create" | "platform-company-suspend" | "platform-company-reactivate" | (string & {});
+/** `forbid`: people who may never approve (the requester always excluded); a payload's `named` approver is enforced by the admin routes. */
+export interface NewPlatformApproval { kind: PlatformKind; title: string; subject: string; payload: Record<string, unknown>; ttlMs: number; forbid?: string[] }
+/** The change an approved request of a group 8 kind makes, inside the decision's transaction (Pg) or before the in-memory decision is kept. */
+export type ApplyExtra = (q: Tx | null, a: ApprovalRow, approvers: string) => Promise<void>;
+const COMPANY_KINDS = ["platform-company-create", "platform-company-suspend", "platform-company-reactivate"];
 
 export interface Platform {
   /** The person's live, unexpired elevation, or null. */
@@ -26,7 +31,7 @@ export interface Platform {
   /** Platform requests are decided by another platform super admin (one vote). */
   requestApproval(userId: string, a: NewPlatformApproval, at: number, entry: AuditRow): Promise<string>;
   approvals(userId: string): Promise<ApprovalRow[]>;
-  decideApproval(actor: { id: string; role: string }, id: string, approve: boolean, reason: string, at: number, log: Log): Promise<Outcome>;
+  decideApproval(actor: { id: string; role: string }, id: string, approve: boolean, reason: string, at: number, log: Log, extra?: ApplyExtra): Promise<Outcome>;
   withdrawApproval(actor: { id: string; role: string }, id: string, at: number, log: Log): Promise<Outcome>;
   /** Sets the link of a new company's pending admin invitation. Null when there is none (accepted, revoked, expired or not from the platform). */
   adminInviteLink(userId: string, companyId: string, tokenHash: string, at: number, entry: AuditRow): Promise<{ email: string; expiresAt: number } | null>;
@@ -36,6 +41,8 @@ export interface Platform {
   superAdmins(userId: string): Promise<string[]>;
   /** The first chain position that does not verify, or null when the whole platform chain verifies. */
   verifyAudit(userId: string): Promise<number | null>;
+  /** Every company's admins and owners (for admin-level MFA resets, 0010): no other member. */
+  companyAdmins(userId: string): Promise<{ tenantId: string; ref: string; company: string; userId: string; person: string; email: string; role: string }[]>;
 }
 
 const CONFLICT: Record<string, string> = {
@@ -43,6 +50,8 @@ const CONFLICT: Record<string, string> = {
   "22023": "The request can no longer be applied (its details are not valid any more, or the admin email now belongs to platform staff). Reject this request.",
   "42501": "Elevate to make changes.",
 };
+/** A rule's refusal while applying (the group 8 kinds raise the workspace store's refusals): the request stays pending, with the reason. */
+const refusal = (e: unknown): string | null => (e instanceof WsRefused || e instanceof WsConflict ? e.message : null);
 const elev = (r: Record<string, unknown>): ElevationRow => ({ id: String(r.id), reason: String(r.reason), ticket: String(r.ticket), startedAt: Number(r.started_ms), expiresAt: Number(r.expires_ms) });
 
 export class PgPlatform implements Platform {
@@ -80,13 +89,13 @@ export class PgPlatform implements Platform {
   async requestApproval(userId: string, a: NewPlatformApproval, at: number, entry: AuditRow) {
     return this.tx(userId, async (q) => {
       const r = await q.query<{ id: string }>(`insert into approvals (tenant_id, kind, title, subject_ref, payload, needs, approver_roles, forbid, requested_by, created_ms, expires_ms, domain)
-        values (null, $1, $2, $3, $4, 1, '{super}', '{}', $5, $6, $7, 'admin') returning id`, [a.kind, a.title, a.subject, JSON.stringify(a.payload), userId, at, at + a.ttlMs]);
+        values (null, $1, $2, $3, $4, 1, '{super}', $8::uuid[], $5, $6, $7, 'admin') returning id`, [a.kind, a.title, a.subject, JSON.stringify(a.payload), userId, at, at + a.ttlMs, (a.forbid ?? []).filter((x) => /^[0-9a-f-]{36}$/i.test(x))]);
       await q.query(auditSql, auditArgs({ ...entry, target: `${entry.target} (${r[0].id})` }));
       return r[0].id;
     });
   }
   async approvals(userId: string) { return this.tx(userId, (q) => loadApprovals(q, null)); }
-  async decideApproval(actor: { id: string; role: string }, id: string, approve: boolean, reason: string, at: number, log: Log): Promise<Outcome> {
+  async decideApproval(actor: { id: string; role: string }, id: string, approve: boolean, reason: string, at: number, log: Log, extra?: ApplyExtra): Promise<Outcome> {
     return this.tx(actor.id, async (q) => {
       const a = (await loadApprovals(q, null, id))[0];
       if (a && a.status === "Pending" && a.expiresAt <= at) { await q.query("update approvals set status = 'Expired' where id = $1", [id]); await q.query(auditSql, auditArgs(log(`approval.${a.kind}.expired`, `${a.title} (${a.id})`))); }
@@ -102,10 +111,11 @@ export class PgPlatform implements Platform {
         await q.query("update approvals set status = 'Approved', decided_reason = $2 where id = $1", [id, reason]);
         await q.query(auditSql, auditArgs(log(`approval.${a.kind}.approved`, `${a.title} (${a.id}); reason: ${reason}`)));
         const me = (await q.query<{ person: string }>("select person from profiles where id = $1", [actor.id]))[0]?.person;
-        await applyPg(q, a, log, names(a, me));
+        if (COMPANY_KINDS.includes(a.kind)) await applyPg(q, a, log, names(a, me));
+        else if (extra) await extra(q, a, names(a, me)); else throw new ApplyConflict("This request cannot be applied here.");
         return { ok: true, status: "Approved" } as Outcome;
       } catch (e) {
-        const msg = e instanceof ApplyConflict ? e.message : e instanceof UpstreamError && e.code && CONFLICT[e.code] ? CONFLICT[e.code] : null;
+        const msg = e instanceof ApplyConflict ? e.message : e instanceof UpstreamError && e.code && CONFLICT[e.code] ? CONFLICT[e.code] : refusal(e);
         if (!msg) throw e;
         await q.query("rollback to savepoint decide"); return { ok: false, code: 409, error: msg } as Outcome;
       }
@@ -139,6 +149,10 @@ export class PgPlatform implements Platform {
   async verifyAudit(userId: string) {
     const r = await this.tx(userId, (q) => q.query<{ bad: string | null }>("select platform_audit_verify() as bad"));
     return r[0]?.bad == null ? null : Number(r[0].bad);
+  }
+  async companyAdmins(userId: string) {
+    const r = await this.tx(userId, (q) => q.query("select * from platform_company_admins()"));
+    return r.map((x) => ({ tenantId: String(x.tenant_id), ref: String(x.ref), company: String(x.company), userId: String(x.user_id), person: String(x.person), email: String(x.email), role: String(x.role) }));
   }
 }
 
@@ -184,11 +198,11 @@ export class MemoryPlatform implements Platform {
   async pendingApproval(_userId: string, kind: PlatformKind, subject: string, at: number) { return this.requests.some((a) => a.kind === kind && a.subject === subject && a.status === "Pending" && a.expiresAt > at); }
   async requestApproval(userId: string, a: NewPlatformApproval, at: number, entry: AuditRow) {
     const id = `c0000000-0000-4000-8000-${String(this.requests.length + 1).padStart(12, "0")}`;
-    this.requests.unshift({ id, kind: a.kind, title: a.title, subject: a.subject, payload: a.payload, needs: 1, approverRoles: ["super"], forbid: [], requestedBy: userId, requestedByName: await this.person(userId), status: "Pending", createdAt: at, expiresAt: at + a.ttlMs, votes: [] });
+    this.requests.unshift({ id, kind: a.kind, title: a.title, subject: a.subject, payload: a.payload, needs: 1, approverRoles: ["super"], forbid: a.forbid ?? [], requestedBy: userId, requestedByName: await this.person(userId), status: "Pending", createdAt: at, expiresAt: at + a.ttlMs, votes: [] });
     await this.store.audit({ ...entry, target: `${entry.target} (${id})` }); return id;
   }
   async approvals() { return structuredClone(this.requests); }
-  async decideApproval(actor: { id: string; role: string }, id: string, approve: boolean, reason: string, at: number, log: Log): Promise<Outcome> {
+  async decideApproval(actor: { id: string; role: string }, id: string, approve: boolean, reason: string, at: number, log: Log, extra?: ApplyExtra): Promise<Outcome> {
     const a = this.requests.find((x) => x.id === id);
     if (a && a.status === "Pending" && a.expiresAt <= at) { a.status = "Expired"; await this.store.audit(log(`approval.${a.kind}.expired`, `${a.title} (${a.id})`)); }
     const no = refuse(a, actor, at); if (no || !a) return no!;
@@ -196,6 +210,14 @@ export class MemoryPlatform implements Platform {
     if (!this.elevatedSuper(actor.id, at)) return { ok: false, code: 409, error: CONFLICT["42501"] };
     const p = a.payload; const who = await this.person(actor.id); const by = `requested by ${a.requestedByName}, approved by ${names(a, who)}`;
     let after: () => Promise<void>;
+    if (!COMPANY_KINDS.includes(a.kind)) {
+      if (!extra) return { ok: false, code: 409, error: "This request cannot be applied here." };
+      a.votes.push({ by: actor.id, byName: who, at, reason }); a.status = "Approved"; a.decidedReason = reason;
+      try { await extra(null, a, names(a, who)); }
+      catch (e) { const m = refusal(e); if (!m) throw e; a.votes.pop(); a.status = "Pending"; delete a.decidedReason; return { ok: false, code: 409, error: m }; }
+      await this.store.audit(log(`approval.${a.kind}.approved`, `${a.title} (${a.id}); reason: ${reason}`));
+      return { ok: true, status: "Approved" };
+    }
     if (a.kind === "platform-company-create") {
       if ([...this.dir.companies.values()].some((c) => c.ref === p.ref)) return { ok: false, code: 409, error: CONFLICT["23505"] };
       after = async () => {
@@ -234,4 +256,12 @@ export class MemoryPlatform implements Platform {
   }
   async superAdmins() { return [...this.dir.staff.entries()].filter(([, r]) => r === "super").map(([id]) => id); }
   async verifyAudit() { return null; }
+  async companyAdmins() {
+    const out = [];
+    for (const m of this.dir.memberships.filter((x) => x.status === "Active" && (x.role === "admin" || x.role === "owner"))) {
+      const c = this.dir.companies.get(m.tenantId); const p = await this.store.profileById(m.userId); if (!c || !p || c.status === "Closed") continue;
+      out.push({ tenantId: c.id, ref: c.ref, company: c.name, userId: p.id, person: p.person, email: p.email, role: m.role });
+    }
+    return out;
+  }
 }

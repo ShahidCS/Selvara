@@ -17,6 +17,7 @@ import { adminRoutes } from "./admin";
 import { supportRoutes } from "./support";
 import { workspaceRoutes } from "./ws/routes";
 import { v1Routes } from "./ws/apikeys";
+import { admin8Routes, stripeWebhook } from "./admin8";
 import { logFailure } from "./errors";
 import type { Company, Lockout, Log, Outcome } from "./directory";
 import type { Deps, Profile, SessionRow } from "./types";
@@ -80,6 +81,8 @@ async function ipFail(d: Deps, r: Req) {
     const next = rec.lastBlockAt && now - rec.lastBlockAt < IP_POLICY.RESET_MS ? Math.min(rec.level + 1, IP_POLICY.LADDER.length) : 1;
     rec.level = next; rec.until = now + IP_POLICY.LADDER[next - 1]; rec.lastBlockAt = now; rec.blocks += 1; rec.fails = [];
     await d.store.audit({ at: now, actor: "Sign-in protection", action: "auth.ip.blocked", target: `${r.ip}: ${LEVEL_LABEL[next - 1]}`, cat: "Security", space: "admin", ip: r.ip });
+    // an index of blocked addresses, so platform staff can list them (Admin Console, Platform security)
+    const idx = (await d.store.kvGet<string[]>("ipblocks", "index")) ?? []; if (!idx.includes(r.ip)) await d.store.kvSet("ipblocks", "index", [r.ip, ...idx].slice(0, 500));
   }
   await d.store.kvSet("ip", r.ip, rec, IP_POLICY.RESET_MS);
 }
@@ -565,8 +568,11 @@ const helperEntry = (d: Deps, r: Req, p: Profile, a: Access, action: string, tar
 Object.assign(ROUTES, adminRoutes({ signed, entry: helperEntry, randomId, sha256Hex }), supportRoutes({ signed, companyAdmin: admin, entry: helperEntry }));
 Object.assign(ROUTES, workspaceRoutes({ signed }));
 Object.assign(ROUTES, v1Routes());
+Object.assign(ROUTES, admin8Routes({ signed, entry: helperEntry }), { "POST billing/stripe/webhook": stripeWebhook });
+/** Payment-provider webhooks: signed by the provider over the raw body (JSON), never by the session cookie. */
+const WEBHOOK_ROUTES = new Set(["POST billing/stripe/webhook"]);
 /** The company API (/api/v1): authenticated by an API key in the Authorization header, never by the session cookie, so the cross-site check does not apply. */
-const KEY_ROUTES = new Set(["POST v1/events"]);
+const KEY_ROUTES = new Set(["POST v1/events", "POST billing/stripe/webhook"]);
 /** Routes that take raw bytes (application/octet-stream) instead of JSON: evidence file uploads (pages/api/[...path].ts reads them). */
 export const RAW_ROUTES = new Set(["POST ws/evidence/:id/files", "POST ws/kb-docs", "POST ws/trust/resources/:id/file"]);
 
@@ -585,9 +591,10 @@ export async function handle(d: Deps, r: Req): Promise<Res> {
   const [key, h] = found;
   if (r.method !== "GET") {
     if (!KEY_ROUTES.has(key) && r.headers.origin !== d.site.origin) return err(403, "Cross-site request refused.");
-    const raw = RAW_ROUTES.has(key);
-    if (raw ? !r.raw || r.headers["content-type"] !== "application/octet-stream" : !/^application\/json/.test(r.headers["content-type"] || "")) return err(415, raw ? "Send the file's bytes." : "Send JSON.");
-    if (!raw && r.raw) return err(415, "Send JSON.");
+    const raw = RAW_ROUTES.has(key); const hook = WEBHOOK_ROUTES.has(key);
+    if (hook) { if (!r.raw || !/^application\/json/.test(r.headers["content-type"] || "")) return err(415, "Send JSON."); }
+    else if (raw ? !r.raw || r.headers["content-type"] !== "application/octet-stream" : !/^application\/json/.test(r.headers["content-type"] || "")) return err(415, raw ? "Send the file's bytes." : "Send JSON.");
+    if (!raw && !hook && r.raw) return err(415, "Send JSON.");
   }
   // The person sees a generic message; the function log gets the route pattern, the failing step and Supabase's code (errors.ts), never values.
   try { return await h(d, r); } catch (e) { logFailure(key, e, r.headers["x-vercel-id"]); return err(500, "Something went wrong. Please try again."); }
