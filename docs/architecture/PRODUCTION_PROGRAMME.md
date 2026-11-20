@@ -215,11 +215,19 @@ Where the inventory (`inventory/group7-integrations.md`, sections 4, 5 and 7) le
   - A company admin never enters a password or token. They enter identifiers only: the installation id, role ARN and region, Okta domain and client id, Entra tenant id, or Google admin account.
   - Selvara generates the per-company values: the AWS external id (confused-deputy protection) and, for Okta, a key pair whose private key is sealed (AES-256-GCM) and never shown.
   - Okta domains must be Okta-hosted, and every other host is fixed, so no company value can point the server at another address. Redirects are not followed.
-- **Connecting.** One small read tests the connection. A second admin then approves it (`integration.connect`, 24 h), because it brings employee data in. A failed test is audited and nothing is requested.
+- **Binding a tenant to a company.**
+  - GitHub, Entra ID and Google trust one Selvara app for every customer. A company therefore proves its organisation with a sign-in by one of its people (GitHub OAuth, Microsoft and Google OpenID Connect, with a one-time state).
+  - Selvara takes the identifier from the provider's answer: the installations the GitHub account can see, the Microsoft tenant id, or the Google Workspace account and domain. An identifier typed by an admin is never enough.
+  - One provider tenant can be connected to one Selvara company at a time (a platform-wide binding, released on disconnect).
+  - An AWS role that can be assumed without the company's external id is refused at the test. Okta uses a per-company key pair.
+- **Connecting.** One small read tests the connection. A second admin then approves it (`integration.connect`, 24 h), because it brings employee data in. The approval names the identifier (installation, role ARN, tenant, account). A failed test is audited and nothing is requested.
 - **Syncs.**
   - A sync reads only what its checks need, outside any database transaction. It runs on demand (one sync per connection every 5 minutes), and automatically once a day when an admin opens Integrations. There is no scheduler without a Vercel cron (`vercel.json`, needs the owner's approval).
   - Results are automated tests in Controls (`AT-…`), recorded by System in the same way a person records one. Linked controls follow them, and `control.failed` webhooks fire.
-  - A failed sync, or a check the provider no longer answers, turns the test to Needs data, never a stale Pass. A refused credential shows as "Credential refused" and admins are told.
+  - After a failed sync, or when the provider no longer answers a check, a Pass turns to Needs data and a known Fail stays a Fail. A refused credential or an uninstalled app shows as "Credential refused", and admins are told.
+  - A Pass not refreshed for 3 days needs data again.
+  - Automated tests cannot be recorded, re-stamped or deactivated by hand in Controls.
+  - Each sync has a 40-second time budget and a lock. An interrupted sync is retried an hour later. Lists read only in part never Pass. API routes allow up to 60 seconds.
   - An admin links a check to the controls it evidences.
 - **What is checked.**
   - GitHub: organisation 2FA required, members with 2FA off, default branch protection (first 60 repositories), critical and high Dependabot alerts older than 30 days, open secret-scanning alerts.
@@ -228,9 +236,11 @@ Where the inventory (`inventory/group7-integrations.md`, sections 4, 5 and 7) le
   - Identity providers also flag accounts of people removed in Selvara that are still active in the provider.
 - **Personal data.**
   - Stored per account: name, email, status, MFA yes or no, admin yes or no, last sign-in day. Accounts are matched to members by email.
-  - The account list is visible to admins only. Check items name at most 20 accounts as evidence.
-  - Disconnecting needs a reason, erases the account list and the sealed key, and turns the tests to Needs data. The admin is told to remove Selvara's access on the provider side.
-- **Discovery.** AI applications people use (Okta and Entra apps, Google apps people authorised, GitHub Apps on the organisation) become Discovered AI in AI governance. Applications whose name matches a vendor appear in that vendor's "Discovered applications".
+  - The account list is visible to admins only. Check items name at most 20 accounts as evidence. Other roles that open Controls see only how many accounts a check names.
+  - Disconnecting needs a reason. It erases the account list, the sealed key, the connector's automated tests (unlinked, so controls follow their other tests), its vendor matches and the platform binding. The admin is told to remove Selvara's access on the provider side.
+- **Discovery.**
+  - AI applications people use become Discovered AI in AI governance: Okta apps, Entra third-party apps (Microsoft's own apps excluded), Google apps people authorised, and GitHub Apps on the organisation. A dismissed one does not come back.
+  - Applications whose name matches a vendor as a whole word appear in that vendor's "Discovered applications". They are marked sanctioned when assigned in an identity provider, and not when people authorised them themselves. These updates are audited.
 - **Not built (decisions for the owner).**
   - Access-review populations and People device posture from connectors.
   - A ticketing or training connector (not among the four).
