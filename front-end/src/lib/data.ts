@@ -12,7 +12,10 @@ export interface DataShape {
   commitments: any[]; reports: any[]; tests: any[];
 }
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
-export const DATA: DataShape = clone(seed) as unknown as DataShape;
+/** In production (API mode) nothing from the synthetic seed is shown: every collection starts empty and is filled from the server
+ *  (services/ws.ts) for the modules the person may open. The demonstration keeps the seed. */
+const PRODUCTION = (process.env.NEXT_PUBLIC_API_MODE || "mock") === "http";
+export const DATA: DataShape = (PRODUCTION ? Object.fromEntries(Object.keys(seed).map((k) => [k, []])) : clone(seed)) as unknown as DataShape;
 /** Requirement catalogue per framework: { g: [groupId, title][], r: [id, title, groupId, guidance][] } */
 export const FRAMEWORK_REQS: Record<string, { g: string[][]; r: string[][] }> = clone(reqs) as any;
 export const ANNEXA: { id: string; title: string; theme: string }[] = annex as any;

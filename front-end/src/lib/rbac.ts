@@ -27,7 +27,7 @@ export const allowedSpaces = (roleId: string) => roleOf(roleId).spaces;
  *  offering actions the server does not have. Each module joins this list when its server slice ships. The account page (/auth) is always
  *  reachable. The demonstration (mock mode) shows every module. */
 export const API_ON = (process.env.NEXT_PUBLIC_API_MODE || "mock") === "http";
-export const SERVER_READY: Record<"ws" | "admin", readonly string[]> = { ws: ["team"], admin: ["customers", "elevation", "adminlog"] };
+export const SERVER_READY: Record<"ws" | "admin", readonly string[]> = { ws: ["team", "frameworks", "controls", "evidence"], admin: ["customers", "elevation", "adminlog"] };
 const ready = (space: string, key: string, apiOn: boolean) => !apiOn || (SERVER_READY[space as "ws" | "admin"] ?? []).includes(key);
 
 /** Deny by default: the role must list the module (or "*"), and in production the module must have a server API. */

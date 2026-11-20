@@ -3,10 +3,10 @@
    transaction-local settings, so the database itself refuses rows of another company even if a query forgets its filter. Supabase Auth stays
    on supabase-js (supabase.ts). */
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
-import { UpstreamError, upstream } from "./errors";
+import { PassThrough, UpstreamError, upstream } from "./errors";
 
 /** The database version this code needs (schema_version). Older databases are refused: the server fails closed instead of half-working. */
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 /** Who is acting. The tenant comes from the session, never from the request. */
 export interface DbCtx { tenantId: string | null; userId: string | null; platform?: boolean }
@@ -39,7 +39,7 @@ export class Db {
       return out;
     } catch (e) {
       await c.query("rollback").catch(() => { /* the connection is discarded below */ });
-      throw e instanceof UpstreamError ? e : upstream("db.tx", e);
+      throw e instanceof UpstreamError || e instanceof PassThrough ? e : upstream("db.tx", e);
     } finally { c.release(); }
   }
 

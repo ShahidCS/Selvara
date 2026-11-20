@@ -2,6 +2,7 @@ import { ReactNode, useEffect } from "react";
 import { useRouter } from "next/router";
 import { appStore, loadPersisted, persist, useApp, useData } from "@/lib/store";
 import { restoreSession } from "@/lib/session";
+import { loadWorkspace } from "@/services/ws";
 import { confirmSession } from "@/services/authApi";
 import { API_MODE } from "@/services/http";
 import { getWelcome, welcomeText } from "@/lib/accountSecurity";
@@ -30,6 +31,9 @@ function Frame({ children }: { children: ReactNode }) {
   }, [L]);
   // signed out: every shell route goes to the sign-in page (DEMO ONLY: the real API must authenticate every request, see lib/session.ts)
   useEffect(() => { if (s.hydrated && !s.signedIn) router.replace("/login"); }, [s.hydrated, s.signedIn, router]);
+  // Production: load the company's workspace records once signed in, and again whenever the company or role changes (company switch).
+  const companyRef = s.company?.ref ?? null;
+  useEffect(() => { if (API_MODE === "http" && s.hydrated && s.signedIn) void loadWorkspace(); }, [s.hydrated, s.signedIn, s.role, companyRef]);
   // after sign-in: when and where the previous sign-in was, and failed attempts since (shown once; also on the account page)
   useEffect(() => {
     const w = getWelcome(); if (!s.signedIn || !w || w.shown) return;

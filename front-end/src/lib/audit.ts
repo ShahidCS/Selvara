@@ -2,7 +2,7 @@
 import seed from "@/data/wsAuditSeed.json";
 import { nowStamp } from "./format";
 import { appStore, bumpData } from "./store";
-import { roleOf } from "./rbac";
+import { API_ON, roleOf } from "./rbac";
 
 export interface WsEntry { seq: number; prev: string; hash: string; at: string; actor: string; action: string; target: string; cat: string }
 const ZERO = "0".repeat(8);
@@ -30,12 +30,17 @@ export function verifyWsChain(): boolean {
   return true;
 }
 /** Current signed-in persona (prototype: ME). */
-export function getMe() { const r = roleOf(appStore.get().role); return { name: r.person, role: r.name, initials: r.initials }; }
+export function getMe() {
+  const { role, who } = appStore.get(); const r = roleOf(role);
+  if (API_ON && who) return { name: who, role: r.name, initials: who.split(/\s+/).map((x) => x[0] || "").join("").slice(0, 2).toUpperCase() };
+  return { name: r.person, role: r.name, initials: r.initials };
+}
 /** `actor` overrides the signed-in person, only for events with nobody signed in (a password reset, a request to join). */
 export function wsLog(action: string, target: string, cat?: string, actor?: string): WsEntry {
   const prev = wsLastHash(); const seq = WS_AUDIT.length + 1;
   const e = { at: nowStamp(), actor: actor || getMe().name, action, target, cat: cat || "System" };
   const entry = { seq, prev, ...e, hash: hashStr(body(e, prev, seq)) } as WsEntry;
+  if (API_ON) return entry; // production: the server writes the company's audit log in the same transaction as the change
   WS_AUDIT.push(entry); bumpData(); return entry;
 }
 /** Canonical string that is hashed for a workspace entry (exported so the chain view can re-check each link). */

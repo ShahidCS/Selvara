@@ -3,10 +3,11 @@ import { Chip, DonutChart, Empty, Icon, KpiStrip, KpiTile, Page, ReqStatusPill, 
 import { ANNEXA, DATA, FRAMEWORK_REQS, annexCovered, controlsForFw } from "@/lib/data";
 import { useModState, setModState } from "@/lib/store";
 import {
-  REQ_PAGE, REQ_ST, fwBand, fwCanAdmin, fwEdits, fwGroupMap, fwGroupStat, fwReqControls, fwScore, fwSnoozed, clearReqNA, reqStatus, setReqNA, toggleReqControl, touchFw,
+  REQ_PAGE, REQ_ST, fwBand, fwCanAdmin, fwEdits, fwGroupMap, fwGroupStat, fwReqControls, fwScore, fwSnoozed, reqStatus,
 } from "@/lib/frameworks";
-import { csvCell, downloadText, nowStamp } from "@/lib/format";
-import { getMe, wsLog } from "@/lib/audit";
+import { csvCell, downloadText } from "@/lib/format";
+import { uiMessage } from "@/lib/grcSod";
+import * as fw from "./services/frameworks";
 import { useLayer } from "@/hooks/useLayer";
 import { useGo } from "@/lib/route";
 import { useOpenControl } from "@/features/controls";
@@ -38,7 +39,7 @@ export function FwDetail({ fwId }: { fwId: string }) {
     });
     const csv = [head].concat(body).map((r) => r.map(csvCell).join(",")).join("\r\n");
     if (!downloadText("gap-assessment-" + f.id + ".csv", csv, "text/csv;charset=utf-8")) { L.toast("Download not available in this view"); return; }
-    wsLog("framework.gap.exported", f.name + ", " + body.length + " gaps", "Control");
+    void fw.logGapExport(f.name, body.length).catch((e) => L.toast(uiMessage(e), false));
     L.toast("Gap assessment exported (" + body.length + " row" + (body.length !== 1 ? "s" : "") + ")");
   };
   const viewInControls = () => { setModState("controls.fw", f.id); setModState("controls.status", "All"); setModState("controls.q", ""); setModState("controls.page", 1); go("/ws/controls"); };
@@ -170,20 +171,18 @@ function ReqRow({ fwId, r }: { fwId: string; r: string[] }) {
   const mapCtrl = (ctrlId: string) => {
     if (!fwCanAdmin()) return;
     const c = DATA.controls.find((x) => x.id === ctrlId); if (!c) return;
-    const res = toggleReqControl(fwId, id, ctrlId, getMe().name, nowStamp().slice(0, 10));
-    if (res === "unmapped") { wsLog("framework.req.unmap", fwId + " " + id + " ✕ " + ctrlId, "Control"); L.toast(ctrlId + " unmapped from " + id); }
-    else { wsLog("framework.req.map", fwId + " " + id + " ← " + ctrlId, "Control"); L.toast(ctrlId + " mapped to " + id); }
-    setPick((p) => { const n = { ...p }; delete n[id]; return n; }); setE(id, null); touchFw();
+    fw.toggleRequirementControl(fwId, id, ctrlId).then((res) => {
+      L.toast(res === "unmapped" ? ctrlId + " unmapped from " + id : ctrlId + " mapped to " + id);
+      setPick((p) => { const n = { ...p }; delete n[id]; return n; }); setE(id, null);
+    }).catch((e) => setE(id, uiMessage(e)));
   };
   const doMap = () => { const cid = pick[id]; if (!cid) { setE(id, "Choose a control first."); return; } mapCtrl(cid); };
   const toggleNA = () => {
     if (!fwCanAdmin()) return;
-    if (clearReqNA(fwId, id)) { wsLog("framework.req.applicable", fwId + " " + id, "Control"); L.toast(id + " back in scope"); setE(id, null); touchFw(); return; }
-    const why = String(nat[id] || "").trim();
-    if (why.length < 15) { setE(id, "Justify why it does not apply (at least 15 characters); auditors review this."); return; }
-    setReqNA(fwId, id, why, getMe().name, nowStamp().slice(0, 10));
-    setNat((p) => { const n = { ...p }; delete n[id]; return n; }); setE(id, null);
-    wsLog("framework.req.na", fwId + " " + id, "Control"); L.toast(id + " marked not applicable"); touchFw();
+    if (na) { fw.makeApplicable(fwId, id).then(() => { L.toast(id + " back in scope"); setE(id, null); }).catch((e) => setE(id, uiMessage(e))); return; }
+    fw.markNotApplicable(fwId, id, String(nat[id] || "")).then(() => {
+      setNat((p) => { const n = { ...p }; delete n[id]; return n; }); setE(id, null); L.toast(id + " marked not applicable");
+    }).catch((e) => setE(id, uiMessage(e)));
   };
 
   const admin = fwCanAdmin(); const picked = pick[id] || ""; const pickedMapped = !!picked && mc.some((c) => c.id === picked);

@@ -1,9 +1,13 @@
 import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, type DTColumn } from "@/components/ui";
 import { DATA, FRAMEWORK_REQS } from "@/lib/data";
 import { setModState, useApp, useData } from "@/lib/store";
-import { useFwEdits, REQ_PAGE, fwBand, fwCanAdmin, fwLegend, fwReadiness, fwScopeIn, fwScore, fwSnoozed, fwEdits, touchFw } from "@/lib/frameworks";
+import { useFwEdits, REQ_PAGE, fwBand, fwCanAdmin, fwLegend, fwReadiness, fwScopeIn, fwScore, fwSnoozed, fwEdits } from "@/lib/frameworks";
 import { useGo, useRoute } from "@/lib/route";
-import { wsLog } from "@/lib/audit";
+import { uiMessage } from "@/lib/grcSod";
+import { ModuleTip } from "@/components/kit/ModuleTip";
+import { API_ON } from "@/lib/rbac";
+import { useLayer } from "@/hooks/useLayer";
+import * as fw from "./services/frameworks";
 import { FwDetail } from "./FwDetail";
 import { FwAdd } from "./FwAdd";
 import { FwSegsBar } from "./FwSegsBar";
@@ -43,8 +47,10 @@ function FrameworksList() {
   const go = useGo();
   const admin = fwCanAdmin();
   const open = (id: string) => { resetReqView(); go(`/ws/frameworks/${encodeURIComponent(id)}`); };
-  const toggleSnooze = (id: string) => { if (!fwCanAdmin()) return; const S = fwEdits.get().SNOOZE; S[id] = !S[id]; wsLog("framework." + (S[id] ? "snoozed" : "resumed"), id, "Control"); touchFw(); };
-  const toggleScope = (id: string) => { if (!fwCanAdmin()) return; const S = fwEdits.get().SCOPE; S[id] = fwScopeIn(id) ? false : true; wsLog("framework.scope." + (S[id] === false ? "out" : "in"), id, "Control"); touchFw(); };
+  const L = useLayer();
+  const run = (p: Promise<unknown>) => { p.catch((e) => L.toast(uiMessage(e), false)); };
+  const toggleSnooze = (id: string) => { if (fwCanAdmin()) run(fw.toggleSnooze(id)); };
+  const toggleScope = (id: string) => { if (fwCanAdmin()) run(fw.toggleScope(id)); };
 
   const rows: Fw[] = [...DATA.frameworks].sort((a, b) => (KORD[a.kind] || 3) - (KORD[b.kind] || 3) || (a.name < b.name ? -1 : 1));
   const regions = Array.from(new Set(DATA.frameworks.map((f) => f.region).filter(Boolean))).sort() as string[];
@@ -80,6 +86,7 @@ function FrameworksList() {
 
   return (
     <Page mod="frameworks" acts={<button className="btn btn-secondary" onClick={() => go("/ws/frameworks/new")}><Icon name="plus" />Add framework</button>}>
+      <ModuleTip mod="frameworks" force={API_ON && !Object.values(fwEdits.get().SCOPE).some(Boolean)} />
       <KpiStrip label="Library summary">
         <KpiTile label="In the library" value={DATA.frameworks.length} caption={`${inScope.length} in scope`} />
         <KpiTile label="Average readiness" value={avg + "%"} caption="Frameworks in scope" />

@@ -6,17 +6,18 @@ import { nowStamp } from "@/lib/format";
 import { wsLog } from "@/lib/audit";
 import { getActor, SodError } from "@/lib/sod";
 import { approve as engineApprove, getApproval, reject as engineReject, requestApproval, sweepExpired, whyCannotApprove as engineWhy, withdraw as engineWithdraw } from "@/lib/approvals";
-import { guard, reasonText, roleReason, selfReason } from "@/lib/grcSod";
-import { apiFetch, viaApi } from "@/services/http";
+import { guard, reasonText, selfReason } from "@/lib/grcSod";
+import { viaApi } from "@/services/http";
+import { wsPatch, wsPost, wsUpload } from "@/services/ws";
+import { evidenceDecideDeleteBlock, evidenceRequestDeleteBlock, evidenceReviewBlock, evidenceWriteBlock } from "@/lib/rulesWs";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const EVIDENCE_TYPES = ["Screenshot", "PDF", "Report", "Record", "CSV"];
 export const REVIEW_STATES = ["Pending review", "Accepted", "Rejected"];
 const EXT: Record<string, string> = { Screenshot: "png", PDF: "pdf", Report: "pdf", Record: "pdf", CSV: "csv" };
-const WRITERS = ["admin", "owner", "analyst"];
 
-const send = <T,>(method: string, path: string, body?: unknown) =>
-  apiFetch<T>(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
+/** Production: the same change on the server (under /api/ws), then the workspace reloads. */
+const send = <T,>(method: "POST" | "PATCH", path: string, body: unknown = {}) => (method === "PATCH" ? wsPatch<T>(`/ws${path}`, body) : wsPost<T>(`/ws${path}`, body));
 const enc = encodeURIComponent;
 
 /** Tombstones of deleted evidence (who, why, who approved). In a real system this is an immutable server-side record. */
@@ -37,10 +38,9 @@ const need = (id: string) => { const e = findEvidence(id); if (!e) throw new Sod
 /** Everyone who collected, versioned or attached: none of them may accept the evidence. */
 export const contributors = (e: any): string[] =>
   [e.by, ...(e.history || []).map((h: any) => h.by), ...(e.attachments || []).map((a: any) => a.by)].filter(Boolean);
-export const whyCannotWrite = (): string | null => roleReason("changing evidence", ...WRITERS);
+export const whyCannotWrite = (): string | null => evidenceWriteBlock(getActor().base);
 export function whyCannotReview(e: any): string | null {
-  if (e.review?.status === "Accepted") return "Already accepted.";
-  return roleReason("reviewing evidence", ...WRITERS) || selfReason("the collector or a contributor cannot accept their own evidence", ...contributors(e));
+  return evidenceReviewBlock(e.review?.status ?? "Pending review", getActor().base, !!selfReason("", ...contributors(e)));
 }
 /** The pending deletion request (approval record), if any. */
 export function pendingDelete(e: any) {
@@ -49,11 +49,11 @@ export function pendingDelete(e: any) {
   return a && a.status === "Pending" ? a : undefined;
 }
 export function whyCannotRequestDelete(e: any): string | null {
-  return roleReason("requesting deletion", "admin") || (pendingDelete(e) ? "A deletion request is already pending." : null);
+  return evidenceRequestDeleteBlock(getActor().base, !!pendingDelete(e));
 }
 export function whyCannotDecideDelete(e: any): string | null {
-  const a = pendingDelete(e); if (!a) return "No pending deletion request.";
-  return roleReason("deciding a deletion", "admin") || selfReason("the requesting admin cannot approve the deletion", a.requestedBy) || engineWhy(a);
+  const a = pendingDelete(e);
+  return evidenceDecideDeleteBlock(!!a, getActor().base, !!a && !!selfReason("", a.requestedBy)) || (a ? engineWhy(a) : null);
 }
 
 /** Any content change to accepted evidence invalidates the acceptance (a new version needs a new review). */
@@ -96,7 +96,7 @@ export function reviewEvidence(id: string, decision: "Accepted" | "Rejected", no
     e.review = { status: decision, by: getActor().name, at: today(), note: n };
     wsLog("evidence." + (decision === "Accepted" ? "accepted" : "rejected"), `${e.id} v${e.ver} by ${e.review.by} (collector ${e.by})`, "Control");
     return e;
-  }, () => send<any>("POST", `/evidence/${enc(id)}/review`, { decision, note }));
+  }, () => send<any>("POST", `/evidence/${enc(id)}/review`, { decision, note, seen: findEvidence(id)?._v }));
 }
 /** Step 1 of deletion: an admin requests it with a reason. Nothing is deleted until a DIFFERENT admin approves. */
 export function requestDelete(id: string, reason: string) {
@@ -120,13 +120,13 @@ export function decideDelete(id: string, decision: "approve" | "reject", reason:
     DATA.evidence = DATA.evidence.filter((x) => x.id !== id);
     wsLog("evidence.deleted", `${e.id} v${e.ver}; requested by ${a.requestedBy}, approved by ${me} (${a.id})`, "Control");
     return true;
-  }, () => send<boolean>("POST", `/evidence/${enc(id)}/delete-requests/decision`, { decision, reason }));
+  }, () => send<boolean>("POST", `/evidence/${enc(id)}/delete-requests/${decision}`, { reason, seen: findEvidence(id)?._v }).then(() => decision === "approve"));
 }
 export function withdrawDelete(id: string) {
   return viaApi(() => {
     const e = need(id); const a = pendingDelete(e); if (!a) throw new SodError("No pending deletion request.");
     engineWithdraw(a.id); wsLog("evidence.delete.withdrawn", `${e.id} (${a.id})`, "Control"); return true;
-  }, () => send<boolean>("DELETE", `/evidence/${enc(id)}/delete-requests`));
+  }, () => send<boolean>("POST", `/evidence/${enc(id)}/delete-requests/withdraw`));
 }
 export function addAttachment(id: string, name: string) {
   return viaApi(() => {
@@ -135,7 +135,7 @@ export function addAttachment(id: string, name: string) {
     touch(e, "attachment added");
     wsLog("evidence.attachment.added", `${e.id} v${e.ver}: ${name}`, "Control");
     return e;
-  }, () => send<any>("POST", `/evidence/${enc(id)}/attachments`, { name }));
+  }, () => Promise.reject(new SodError("Choose a file to upload.")));
 }
 export function removeAttachment(id: string, index: number) {
   return viaApi(() => {
@@ -145,7 +145,10 @@ export function removeAttachment(id: string, index: number) {
     touch(e, "attachment removed");
     wsLog("evidence.attachment.removed", `${e.id} v${e.ver}: ${f ? f.name : ""}`, "Control");
     return f as { name: string; size: string } | undefined;
-  }, () => send<any>("DELETE", `/evidence/${enc(id)}/attachments/${index}`));
+  }, async () => {
+    const f = findEvidence(id)?.attachments?.[index]; if (!f?.id) throw new SodError("File not found.");
+    await send<void>("POST", `/evidence/${enc(id)}/files/${enc(f.id)}/remove`); return f as { name: string; size: string };
+  });
 }
 export function createVersion(id: string, note: string) {
   return viaApi(() => {
@@ -157,3 +160,9 @@ export function createVersion(id: string, note: string) {
     return e;
   }, () => send<any>("POST", `/evidence/${enc(id)}/versions`, { note }));
 }
+
+/* ---------- production only: real files (the demonstration records a typed name) ---------- */
+/** Uploads a file (at most 4 MB; the server checks its type and content and stores it privately for the company). */
+export const uploadAttachment = (id: string, file: File) => wsUpload<{ id: string }>(`/ws/evidence/${enc(id)}/files`, file);
+/** A short-lived download link for a stored file (the download is recorded in the audit log). */
+export const attachmentLink = (id: string, fileId: string) => wsPost<{ url: string }>(`/ws/evidence/${enc(id)}/files/${enc(fileId)}/download`);

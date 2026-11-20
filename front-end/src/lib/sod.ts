@@ -1,7 +1,7 @@
 /* Segregation-of-duties (SoD) and privileged-role helpers. Contract: docs/security/SOD_MATRIX.md.
  * UI gating is NOT a control: the same rules must be enforced by the API. Services call these helpers so the rule lives in one place. */
 import { appStore } from "./store";
-import { roleOf } from "./rbac";
+import { API_ON, roleOf } from "./rbac";
 import { INVITE_TTL_H } from "./rules";
 
 export interface Actor { roleId: string; base: string; name: string; roleName: string }
@@ -11,8 +11,9 @@ export const baseRole = (roleId: string): string => roleId.replace(/2$/, "");
 export const hasRole = (roleId: string, ...bases: string[]): boolean => bases.includes(baseRole(roleId));
 
 export function getActor(): Actor {
-  const id = appStore.get().role; const r = roleOf(id);
-  return { roleId: id, base: baseRole(id), name: r.person, roleName: r.name };
+  const { role: id, who } = appStore.get(); const r = roleOf(id);
+  // In production the person is the session's own (the server sends their name); the demonstration's personas are never used.
+  return { roleId: id, base: baseRole(id), name: API_ON && who ? who : r.person, roleName: r.name };
 }
 /** "J. Avery", "Jordan Avery", "Avery, Jordan" -> "j avery". Seed data uses short names; personas use full names. */
 export function personKey(name: unknown): string {

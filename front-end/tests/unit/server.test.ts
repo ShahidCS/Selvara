@@ -4,6 +4,8 @@ import { MemoryAuth, MemoryStore } from "@/server/memory";
 import { MemoryDirectory } from "@/server/directory";
 import { MemoryPlatform } from "@/server/platform";
 import { MemorySupport } from "@/server/support";
+import { MemoryWsStore } from "@/server/ws/store";
+import { MemoryFileStore } from "@/server/ws/files";
 import { sha256Hex } from "@/server/crypto";
 import type { Deps } from "@/server/types";
 import { totpAt } from "@/lib/totp";
@@ -12,11 +14,11 @@ import { safeMessage, upstream } from "@/server/errors";
 
 /* The production auth API (src/server), run through `handle` exactly as /api does, against in-memory stand-ins for Supabase Auth and Postgres. */
 const ORIGIN = "https://app.example.test";
-let clock = 1_800_000_000_000; let d: Deps; let auth: MemoryAuth; let store: MemoryStore; let dir: MemoryDirectory; let plat: MemoryPlatform; let sup: MemorySupport; let ACME = "";
+let clock = 1_800_000_000_000; let d: Deps; let auth: MemoryAuth; let store: MemoryStore; let dir: MemoryDirectory; let plat: MemoryPlatform; let sup: MemorySupport; let ws: MemoryWsStore; let files: MemoryFileStore; let ACME = "";
 beforeEach(() => {
-  clock = 1_800_000_000_000; auth = new MemoryAuth(() => clock); used.clear(); store = new MemoryStore(() => clock); dir = new MemoryDirectory(store); plat = new MemoryPlatform(store, dir); sup = new MemorySupport(store, dir, plat);
+  clock = 1_800_000_000_000; auth = new MemoryAuth(() => clock); used.clear(); store = new MemoryStore(() => clock); dir = new MemoryDirectory(store); plat = new MemoryPlatform(store, dir); sup = new MemorySupport(store, dir, plat); ws = new MemoryWsStore(store); files = new MemoryFileStore();
   ACME = dir.addCompany("acme-eu", "Acme Test Co");
-  d = { auth, store, dir, plat, sup, site: { origin: ORIGIN, rpId: "app.example.test" }, secret: "x".repeat(40), now: () => clock };
+  d = { auth, store, dir, plat, sup, ws, files, site: { origin: ORIGIN, rpId: "app.example.test" }, secret: "x".repeat(40), now: () => clock };
 });
 const PW = "Lantern-orbit-Quince-71"; const NEW = "Copper-harbour-Violet-58";
 async function call(method: string, path: string, body: Record<string, unknown> = {}, o: { cookie?: string; ip?: string; origin?: string | null } = {}): Promise<Res> {

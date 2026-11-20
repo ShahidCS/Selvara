@@ -8,6 +8,9 @@ import { DataTable, Icon, Page, StatusChip, type DTColumn } from "@/components/u
 import { useLayer } from "@/components/shell/LayerProvider";
 import * as svc from "@/features/controls/services/controls";
 import { testChip } from "./controlDialogs";
+import { AdoptForm } from "./AdoptForm";
+import { ModuleTip } from "@/components/kit/ModuleTip";
+import { API_ON } from "@/lib/rbac";
 import { ControlDetail } from "./ControlDetail";
 import { TestDetail } from "./TestDetail";
 import { ControlFormPage, ExceptionFormPage, TestFormPage } from "./ControlForms";
@@ -56,14 +59,18 @@ function ControlsList() {
   );
 
   const soa = async () => {
-    downloadText("statement-of-applicability.csv", await svc.exportSoa());
-    wsLog("controls.soa.exported", DATA.controls.length + " controls", "Control");
-    L.toast("Statement of Applicability exported");
+    try {
+      downloadText("statement-of-applicability.csv", await svc.exportSoa());
+      wsLog("controls.soa.exported", DATA.controls.length + " controls", "Control");
+      L.toast("Statement of Applicability exported");
+    } catch (e) { L.toast(uiMessage(e), false); }
   };
   const matrixExport = async () => {
-    downloadText("cross-framework-matrix.csv", await svc.exportMatrix());
-    wsLog("controls.matrix.exported", DATA.controls.length + " controls", "Control");
-    L.toast("Matrix exported");
+    try {
+      downloadText("cross-framework-matrix.csv", await svc.exportMatrix());
+      wsLog("controls.matrix.exported", DATA.controls.length + " controls", "Control");
+      L.toast("Matrix exported");
+    } catch (e) { L.toast(uiMessage(e), false); }
   };
   const syncAll = async () => {
     try {
@@ -77,6 +84,7 @@ function ControlsList() {
     <>
       <button className="btn btn-secondary" onClick={() => go("/ws/frameworks")}><Icon name="frameworks" />Frameworks</button>
       <button className="btn btn-secondary" onClick={soa}><Icon name="download" />Export SoA</button>
+      {API_ON ? <button className="btn btn-secondary" disabled={!!manageWhy} title={manageWhy || undefined} onClick={() => L.openModal("Adopt controls from the library", (close) => <AdoptForm close={close} />)}><Icon name="controls" />Adopt from library</button> : null}
       <button className="btn btn-primary" disabled={!!manageWhy} title={manageWhy || undefined} onClick={() => go("/ws/controls/new")}><Icon name="plus" />Add custom control</button>
     </>
   ) : view === "tests" ? (
@@ -151,6 +159,7 @@ function ControlsList() {
 
   return (
     <Page mod="controls" acts={acts}>
+      <ModuleTip mod="controls" force={API_ON && !DATA.controls.length} />
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head" style={{ flexWrap: "wrap", gap: 10 }}>
           {seg}

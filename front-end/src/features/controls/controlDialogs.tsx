@@ -20,10 +20,12 @@ export async function ctrlJira(L: LayerApi, id: string) {
   } catch (e) { L.toast(uiMessage(e), false); }
 }
 export async function ctrlWorkpaper(L: LayerApi, id: string) {
-  const txt = await svc.exportWorkpaper(id);
-  downloadText(id + "-workpaper.txt", txt);
-  wsLog("control.workpaper.exported", id, "Control");
-  L.toast("Workpaper exported");
+  try {
+    const txt = await svc.exportWorkpaper(id);
+    downloadText(id + "-workpaper.txt", txt);
+    wsLog("control.workpaper.exported", id, "Control");
+    L.toast("Workpaper exported");
+  } catch (e) { L.toast(uiMessage(e), false); }
 }
 
 /* ---------------- attestation modal ---------------- */

@@ -39,7 +39,9 @@ In **each** project (staging and production separately), open SQL Editor → New
 
 7. [`supabase/migrations/0007_support_access.sql`](../../supabase/migrations/0007_support_access.sql) (from v0.1.12): support access. A company admin gives Selvara support a read-only grant (8 hours at most, revocable) in Team & Settings, Support access; platform staff then open a support session in that company (reason, ticket, 60 minutes at most) from Customers & Usage, Support access. The database shows a company to platform staff only during such a session, refuses every platform write to company data, and writes the session and each view to the company's own audit log. Run it just before you deploy v0.1.12 (v0.1.12 refuses a database without it; v0.1.11 keeps working with it).
 
-All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `7`.
+8. [`supabase/migrations/0008_workspace_records.sql`](../../supabase/migrations/0008_workspace_records.sql) (production programme, group 1): the workspace modules' records (Frameworks, Controls and Tests, Evidence; later groups add theirs), one row per record, walled off per company by row level security, never deleted (a removed record keeps its row), read-only to platform staff. Evidence **files** are not stored in the database but in Supabase Storage (section 4d). Run it with the release that needs schema version 8.
+
+All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `8`.
 
 Supabase may warn that a script contains destructive operations: the `drop ... if exists` lines only remove the script's own triggers and policies to recreate them. No data is deleted.
 
@@ -98,7 +100,17 @@ The site is built by GitHub Actions, not by Vercel, so a `NEXT_PUBLIC_API_MODE` 
 2. GitHub → **Settings** → **Environments** → `production` → **Environment variables** → **Add variable**: name `API_MODE`, value `http`.
 3. Deploy: push the next release tag, or re-run the **Production** job of the latest release (the build runs again with the new value).
 
-What changes: the sign-in page uses your real account (no demo accounts), and only modules with a server API are shown (decision D4). Today that is **Team & Settings** for company admins (members and their roles, invitations, requests to join, the second-admin requests, account lockout) and **Your account** for everyone; other roles land on Your account. Each further module appears when its server slice ships. From v0.1.11 platform staff get the Admin Console: Customers & Usage, Elevated Access (super admins only) and the Admin Audit Log. To go back to the demonstration, set `API_MODE` to `mock` (or delete it) and deploy again.
+What changes: the sign-in page uses your real account (no demo accounts), and only modules with a server API are shown (decision D4). Today that is **Team & Settings** for company admins (members and their roles, invitations, requests to join, the second-admin requests, account lockout), **Frameworks**, **Controls & Tests** and **Evidence** for the roles that have them (production programme group 1), and **Your account** for everyone; roles with none of these land on Your account. Each further module appears when its server slice ships. From v0.1.11 platform staff get the Admin Console: Customers & Usage, Elevated Access (super admins only) and the Admin Audit Log. To go back to the demonstration, set `API_MODE` to `mock` (or delete it) and deploy again.
+
+### 4d. Evidence file storage (you, per project; production programme group 1)
+
+Evidence files are kept in a **private** Supabase Storage bucket that only the server reaches (with the service key it already has). Nothing is public: downloads are links valid for 60 seconds, sent as a download, and each download is recorded in the company's audit log.
+
+1. Supabase → **Storage** → **New bucket**: name `evidence`, **Public bucket: off**. Optional limits on the bucket: file size limit `4 MB`; allowed MIME types `application/pdf, image/png, image/jpeg, text/plain, text/csv, text/markdown, application/json, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` (Selvara checks the same list, and the file's content, before storing it).
+2. Do **not** add storage policies for the `anon` or `authenticated` roles: the browser never talks to Storage directly.
+3. Vercel → the project → **Settings** → **Environment Variables**: name `EVIDENCE_BUCKET`, value `evidence` (not a secret), for the environment of this project. Redeploy.
+
+Until this is done, attaching a file says "File storage is not configured yet"; everything else in Evidence works. Files are stored under the company's id (`<company>/<evidence id>/<random id>.<ext>`); deleting evidence (after the second admin's approval) deletes its files and keeps a tombstone with each file's name and SHA-256.
 
 ## 5. First accounts (you, per project)
 
