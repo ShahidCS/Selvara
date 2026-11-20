@@ -120,7 +120,8 @@ export default function OverviewModule() {
             <div className="sectitle">Audits in motion</div>
             <div className="feed">
               {!audits.length ? <p className="field help" style={{ margin: "4px 0 8px" }}>No audits in progress.</p> : null}
-              {audits.map((a) => (
+              {API_ON && !can("audits") && audits.length ? <p className="field help" style={{ margin: "4px 0 8px" }}>{audits.length} audit{audits.length === 1 ? "" : "s"} in progress. Your role does not open Audits.</p> : null}
+              {(API_ON && !can("audits") ? [] : audits).map((a) => (
                 <div key={a.id || a.name} className="feed-item clickable" {...activate(() => go("/ws/audits"))}>
                   <span className="dot" style={{ marginTop: 5, background: "var(--accent)" }} />
                   <div className="fi"><div className="ft" title={a.name}>{a.name}</div><div className="fm">{a.auditor}, {a.period}</div></div>

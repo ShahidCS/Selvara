@@ -3,6 +3,7 @@
  * server decides what a person may see; this only copies it in. Writes go through wsPost/wsPatch/wsUpload, which reload the data afterwards.
  * Nothing here runs in the demonstration build. */
 import { DATA, FRAMEWORK_REQS, FW_ID, refreshFrameworkCounts } from "@/lib/data";
+import { WS_AUDIT } from "@/lib/audit";
 import { fwEdits, touchFw } from "@/lib/frameworks";
 import { approvals, type Approval } from "@/lib/approvals";
 import { delegations } from "@/lib/delegation";
@@ -24,7 +25,10 @@ export interface WsTask { id: string; title: string; policyId: string; kind: "ac
 export interface WsVendorQ { id: string; vendorId: string; vendor: string; contact: string; contactId: string; customer: string; questions: { q: string; required: boolean }[]; answers: string[]; status: string; sentBy: string; at: string; submittedAt?: string; note?: string }
 export interface WsTrustPublic { company: string; chatbot: boolean; faq: { q: string; a: string }[]; subprocessors: { name: string; purpose: string; region: string }[]; updates: { at: string; title: string }[];
   controls: [string, string][]; account: { company: string; nda: string; access: string[] } | null; myRequests: { resource: string; status: string; at: string }[]; subscribed: boolean }
-export const g4Meta = createStore<{ contacts: { id: string; name: string }[]; vendorQs: WsVendorQ[]; assigned: WsVendorQ[]; trustPublic: WsTrustPublic | null; incidents: any[]; subscribers: number }>({ contacts: [], vendorQs: [], assigned: [], trustPublic: null, incidents: [], subscribers: 0 });
+/** Group 5: auditors who can be given access, and the company audit log's verification and evidence packages. */
+export interface WsAuditLog { firstBad: number | null; verifiedAt: string | null; verifiedBy?: string; packages: { id: string; at: string; by: string; entries: number; sha: string }[] }
+export const g4Meta = createStore<{ contacts: { id: string; name: string }[]; vendorQs: WsVendorQ[]; assigned: WsVendorQ[]; trustPublic: WsTrustPublic | null; incidents: any[]; subscribers: number;
+  auditors: { id: string; name: string }[]; auditlog: WsAuditLog }>({ contacts: [], vendorQs: [], assigned: [], trustPublic: null, incidents: [], subscribers: 0, auditors: [], auditlog: { firstBad: null, verifiedAt: null, packages: [] } });
 /** My Work as the server computes it for the signed-in person. */
 export interface WsWork {
   issues: { id: string; title: string; sev: string; status: string; dueDate: string; due: string }[];
@@ -101,6 +105,13 @@ const LOADERS: Record<string, (b: any) => void> = {
     for (const k of Object.keys(INCIDENT)) delete (INCIDENT as any)[k];
     Object.assign(INCIDENT, b.incident); g4Meta.set({ incidents: b.incidents });
   },
+  audits(b) { DATA.audits = b.audits; DATA.auditStages = b.stages; g4Meta.set({ auditors: b.auditors }); },
+  /** The company's real audit log (newest 500), its verification and the evidence packages. */
+  auditlog(b) {
+    fill(WS_AUDIT, (b.entries as any[]).slice().reverse());
+    const v = b.verification; // the last verification (verifying recomputes the whole chain, so it runs only when asked)
+    g4Meta.set({ auditlog: { firstBad: v?.firstBad ?? null, verifiedAt: v?.at ?? null, verifiedBy: v?.by, packages: b.packages ?? [] } });
+  },
   /** Posture figures of the modules the person cannot open (scores and statuses only, no titles or owners). Loaded last: it never replaces
    *  what a module the person can open has loaded. */
   overview(b) {
@@ -109,6 +120,7 @@ const LOADERS: Record<string, (b: any) => void> = {
     if (b.risks) DATA.risks = b.risks;
     if (b.issues) DATA.issues = b.issues;
     if (b.vendors) DATA.vendors = b.vendors;
+    if (b.audits) DATA.audits = b.audits;
   },
 
 };
@@ -121,10 +133,10 @@ let loadedFor = "";
 /** Empties every server-backed collection (another company or role: nothing of the previous one may remain on screen). */
 function clearAll() {
   DATA.frameworks = []; DATA.controls = []; DATA.tests = []; DATA.evidence = []; DATA.policies = []; DATA.people = []; DATA.access = [];
-  DATA.risks = []; DATA.issues = []; DATA.reports = []; DATA.vendors = []; DATA.questionnaires = []; DATA.trust = []; DATA.commitments = [];
+  DATA.risks = []; DATA.issues = []; DATA.reports = []; DATA.audits = []; fill(WS_AUDIT, []); DATA.vendors = []; DATA.questionnaires = []; DATA.trust = []; DATA.commitments = [];
   fill(ANSWER_LIB, []); fill(KB_DOCS, []); fill(TRUST_FAQ, []); fill(TRUST_SUBPROC, []); fill(TRUST_UPDATES, []); fill(STANDARD_TERMS, []);
   TRUST.accounts = []; TRUST.requests = []; TRUST.decisions = []; TRUST.blocked = []; TRUST.chats = []; TRUST.activity = []; TRUST.modeHist = [];
-  g4Meta.set({ contacts: [], vendorQs: [], assigned: [], trustPublic: null, incidents: [], subscribers: 0 });
+  g4Meta.set({ contacts: [], vendorQs: [], assigned: [], trustPublic: null, incidents: [], subscribers: 0, auditors: [], auditlog: { firstBad: null, verifiedAt: null, packages: [] } });
   fill(ACCESS_REQUESTS, []); fill(ACCESS_REVIEWS, []); setAcks("", {}); setTasks([]); delegations.set({ list: [] });
   fill(RISK_PARTIES, []); fill(RISK_SNAPSHOTS, []); fill(RISK_ENT, []); fill(SCHED_PACKS, []); fill(VENDOR_REQS, []);
   approvals.set((s) => ({ list: s.list.filter((a) => !SERVER_KINDS.includes(a.kind)) }));

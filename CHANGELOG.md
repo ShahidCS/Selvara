@@ -5,6 +5,16 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ## [Unreleased]
 
 ### Changed
+- Production programme, group 5: **Audits**, **auditor access**, the company **Audit log** and **AppSec** run on the server in production. Migration `0009_company_audit_verify.sql` (schema version 9) lets a company admin verify their company's audit chain. The decisions are recorded in `docs/architecture/PRODUCTION_PROGRAMME.md` (group 5).
+  - **Auditor access.** An engagement is shared with one named external auditor (a member with the Auditor role) until an end date, and access ends by itself. The auditor sees only their own engagements while access is live. They raise information requests and draft findings.
+  - **Findings.** Management accepts a finding into a real issue or declines it with a reason.
+  - **Completion.** The same rules apply on every path to Complete, and a completed engagement is locked.
+  - **Risk snapshots.** Snapshots taken during the engagement are shared with its auditor.
+  - **Audit log.** It shows the company's real SHA-256-chained log. Admins verify, export (recorded, at most 10 an hour) and build evidence packages.
+  - **AppSec.** It stays a read-only specification.
+  - **Protected file.** `rbac.ts` lists the three modules as server-ready (pre-approved change).
+  - **Before deploying.** Run `0009` (`SUPABASE.md` section 2).
+  - Draft for security and compliance review.
 - Production programme, group 4: **Third parties (Vendors)**, the **Vendor role's questionnaires**, **Questionnaires**, **Trust Center** and **Commitments** run on the server in production, using the group 1 store (no new migration). The decisions are recorded in `docs/architecture/PRODUCTION_PROGRAMME.md` (group 4).
   - **Vendors.** Requests from My Work are approved by someone other than the requester. A Critical vendor and its onboarding gate need a second approver. Tier changes and certificate waivers need an approver other than the person who requested or added the vendor. Nothing about a vendor is invented. Review dates and certificate expiries are real dates and go overdue or expire by themselves.
   - **The vendor's questionnaire.** It goes to the vendor's contact, who answers in their own workspace. It locks when submitted and can be reopened with a note.

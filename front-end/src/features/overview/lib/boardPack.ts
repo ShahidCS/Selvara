@@ -42,7 +42,7 @@ export function boardPackHTML(): string {
  const issues=DATA.issues.filter(i=>i.status!=='Closed').slice(0,8);
  const issRows=!sees("issues")?hidden(M.openIssues,"open issues"):issues.length?issues.map(i=>`<tr><td class="bp-id">${esc(i.id)}</td><td>${esc(i.title)}</td><td><span class="bp-sev bp-sev-${(i.sev||'').toLowerCase()}">${esc(i.sev)}</span></td><td>${esc(i.owner)}</td><td>${esc(i.due)}</td></tr>`).join(""):`<tr><td colspan="5" class="bp-empty">No open issues.</td></tr>`;
  const audits=DATA.audits.filter(a=>a.stage!=='Complete');
- const audRows=audits.length?audits.map(a=>`<tr><td>${esc(a.name)}</td><td>${esc(a.fw)}</td><td>${esc(a.auditor)}</td><td>${esc(a.stage)}</td><td class="bp-ctr">${a.progress}%</td></tr>`).join(""):`<tr><td colspan="5" class="bp-empty">No audits in progress.</td></tr>`;
+ const audRows=!sees("audits")?hidden(audits.length,"audits in progress"):audits.length?audits.map(a=>`<tr><td>${esc(a.name)}</td><td>${esc(a.fw)}</td><td>${esc(a.auditor)}</td><td>${esc(a.stage)}</td><td class="bp-ctr">${a.progress}%</td></tr>`).join(""):`<tr><td colspan="5" class="bp-empty">No audits in progress.</td></tr>`;
  const kpi=(v: any,l: any,tone?: string)=>`<div class="bp-kpi${tone?' bp-kpi-'+tone:''}"><div class="bp-kpi-v">${v}</div><div class="bp-kpi-l">${l}</div></div>`;
  const css=`*{box-sizing:border-box;margin:0;padding:0}
   :root{--t:#0E7C78;--t-d:#0A4A47;--ink:#15181C;--mut:#5B636D;--line:#E5E8EC;--line2:#EEF1F4}

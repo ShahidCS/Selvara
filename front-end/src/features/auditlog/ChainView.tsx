@@ -1,10 +1,11 @@
 import { Chip, Icon, Table } from "@/components/ui";
 import { WS_AUDIT, wsLastHash } from "@/lib/audit";
+import { API_ON } from "@/lib/rbac";
 import { DEMO_HASH_NOTE, linkOk } from "@/features/auditlog/services/auditlog";
 
 /** Prototype: wsChainView. The algorithm row says FNV-1a (the source said "SHA-256 (demo)", which was inaccurate; see checklist). */
 export function ChainView({ ok, onVerify, can }: { ok: boolean; onVerify: () => void; can: boolean }) {
-  const genesis = WS_AUDIT.length ? WS_AUDIT[0].prev : "—";
+  const genesis = WS_AUDIT.length ? (API_ON ? WS_AUDIT[0].prev.slice(0, 16) + "…" : WS_AUDIT[0].prev) : "—";
   return (
     <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
       <div className="card" style={{ boxShadow: "none", background: ok ? "var(--accent-weak)" : "var(--warn-bg)", borderColor: "transparent" }}>
@@ -17,7 +18,7 @@ export function ChainView({ ok, onVerify, can }: { ok: boolean; onVerify: () => 
           <button className="btn btn-primary sm" disabled={!can} onClick={onVerify}><Icon name="check" />Verify chain</button>
         </div>
       </div>
-      <p className="field help" style={{ margin: 0, maxWidth: "none" }}>{DEMO_HASH_NOTE}</p>
+      <p className="field help" style={{ margin: 0, maxWidth: "none" }}>{API_ON ? "The server seals every entry with SHA-256 over its fields and the previous entry's hash, per company, and the database refuses any change or deletion. Verify chain asks the database to recompute the whole chain." : DEMO_HASH_NOTE}</p>
       <div className="panels" style={{ gridTemplateColumns: "1.5fr 1fr", alignItems: "stretch" }}>
         <div className="card"><div className="c-head"><h3>How the chain of evidence works</h3></div><div className="c-body"><ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7, color: "var(--ink-2)", fontSize: 13 }}>
           <li>Each workspace event records the time, actor, action, target and category, and the GDPR Article 30 processing activity it belongs to.</li>
@@ -27,7 +28,7 @@ export function ChainView({ ok, onVerify, can }: { ok: boolean; onVerify: () => 
         <div className="card"><div className="c-head"><h3>Chain summary</h3></div><div className="c-body"><dl className="meta-grid">
           <dt>Status</dt><dd>{ok ? <Chip cls="ok" icon="check">Intact</Chip> : <Chip cls="bad" icon="x">Broken</Chip>}</dd>
           <dt>Entries sealed</dt><dd className="num">{WS_AUDIT.length}</dd><dt>Genesis hash</dt><dd className="num">{genesis}</dd>
-          <dt>Anchored head</dt><dd className="num">{wsLastHash()}</dd><dt>Algorithm</dt><dd>FNV-1a 32-bit (demo, not cryptographic)</dd>
+          <dt>Anchored head</dt><dd className="num">{API_ON ? wsLastHash().slice(0, 16) + "…" : wsLastHash()}</dd><dt>Algorithm</dt><dd>{API_ON ? "SHA-256 (server, per company)" : "FNV-1a 32-bit (demo, not cryptographic)"}</dd>
         </dl></div></div>
       </div>
       <div className="card"><div className="c-head"><h3>Chain links</h3><span className="tag" style={{ marginLeft: "auto" }}>{WS_AUDIT.length} entries</span></div>
@@ -37,7 +38,7 @@ export function ChainView({ ok, onVerify, can }: { ok: boolean; onVerify: () => 
               <tr key={l.seq}>
                 <td className="num" style={{ color: "var(--muted)" }}>{l.seq}</td><td className="num" style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{l.at}</td>
                 <td className="strong">{l.actor}</td><td className="num">{l.action}</td><td>{l.target}</td>
-                <td className="num" style={{ color: "var(--muted)", fontSize: 11 }}>{l.prev}</td><td className="num" style={{ fontSize: 11 }}>{l.hash}</td>
+                <td className="num" style={{ color: "var(--muted)", fontSize: 11 }}>{API_ON ? l.prev.slice(0, 12) + "…" : l.prev}</td><td className="num" style={{ fontSize: 11 }}>{API_ON ? l.hash.slice(0, 12) + "…" : l.hash}</td>
                 <td>{linkOk(l, i) ? <Chip cls="ok" icon="check">Sealed</Chip> : <Chip cls="bad" icon="x">Broken</Chip>}</td>
               </tr>
             ))}

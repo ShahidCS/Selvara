@@ -148,4 +148,22 @@ export const MODULE_TIPS: Record<string, ModuleTipText> = {
     ],
     note: "The analysis is a draft for legal review.",
   },
+  audits: {
+    title: "Running an audit",
+    steps: [
+      "Create the engagement, then add the requests (PBC) your team must provide. Give each request an owner from your company.",
+      "Send to auditor gives an external auditor access to this engagement only, until an end date. Invite them first in Team & Settings with the Auditor role.",
+      "The auditor raises information requests and drafts findings. You answer the requests and accept findings into issues or decline them with a reason.",
+      "Complete the engagement when no draft or open request remains. With open findings or outstanding requests you record a reason.",
+    ],
+    note: "Risk register snapshots taken while the auditor has access are shared with them on the engagement.",
+  },
+  auditlog: {
+    title: "Your company's audit log",
+    steps: [
+      "Every change in your workspace is recorded here by the server, sealed in a SHA-256 chain that cannot be edited or deleted.",
+      "Verify chain asks the database to recompute the whole chain.",
+      "Export the log, or build an evidence package for your auditors. Every export is recorded, at most 10 an hour.",
+    ],
+  },
 };
