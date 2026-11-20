@@ -1,3 +1,4 @@
+import { API_ON } from "@/lib/rbac";
 import { Chip, Empty, Icon, Page, Ring, Stepper, StatusChip, Table, Timeline, type TimelineItem } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { wsLog } from "@/lib/audit";
@@ -99,6 +100,10 @@ export function PolicyDetail({ id }: { id: string }) {
               ) : <p className="field help" role="note">Read-only for your role. Employees read and acknowledge policies; auditors have read access.</p>}
             </div></div>
 
+            <div className="card"><div className="c-head"><h3>Policy text</h3><span className="sub">{live ? `Published v${live.ver}` : work ? `Draft v${work.ver}, not published` : ""}</span></div><div className="c-body">
+              {(live?.body || (manager ? work?.body : "")) ? <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.55, maxWidth: "75ch" }}>{live?.body || work?.body}</div>
+                : <p className="field help" style={{ margin: 0 }}>{live ? "No text has been written for this version." : "The text is shown here once the policy is published."}</p>}
+            </div></div>
             <div className="card"><div className="c-head"><h3>Version history</h3><span className="sub">Immutable once approved</span></div><div className="c-body flush" style={{ padding: 0 }}>
               <Table cols={[{ t: "Version" }, { t: "State" }, { t: "Author / last editor" }, { t: "Approved by" }, { t: "Effective" }, { t: "Why" }]}>
                 {p.versions.slice().reverse().map((v: svc.PolicyVersion, i: number) => (
@@ -115,7 +120,7 @@ export function PolicyDetail({ id }: { id: string }) {
                 <>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                     <Ring pct={a.required ? Math.round((a.done / a.required) * 100) : 0} size={60} color="var(--accent)" />
-                    <div><div style={{ fontWeight: 600 }}>{a.done} / {a.required} accepted</div><div style={{ fontSize: 12, color: "var(--muted)" }}>Workforce acknowledgement of v{live.ver} (demo figures)</div></div>
+                    <div><div style={{ fontWeight: 600 }}>{a.done} / {a.required} accepted</div><div style={{ fontSize: 12, color: "var(--muted)" }}>{API_ON ? `Active members who acknowledged v${live.ver}` : `Workforce acknowledgement of v${live.ver} (demo figures)`}</div></div>
                   </div>
                   <div className="btngrp">
                     {manager ? btn("Remind outstanding", "bell", null, () => remind(), "btn-ghost") : null}

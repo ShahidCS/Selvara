@@ -3,6 +3,7 @@
  * generate and hash recovery codes server-side and return the plaintext once; revoke sessions server-side (refresh/session tokens). */
 import { recordAck, generateRecoveryCodes, type Ack } from "@/lib/me";
 import { apiFetch, viaApi } from "./http";
+import { wsPost } from "./ws";
 import { hasRecentAuth } from "@/lib/accountSecurity";
 import { signOutOtherSessions } from "@/lib/session";
 import { SodError } from "@/lib/sod";
@@ -10,7 +11,7 @@ import { SodError } from "@/lib/sod";
 const send = <T,>(method: string, path: string, body?: unknown) => apiFetch<T>(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
 
 export function acknowledge(user: string, policyId: string): Promise<Ack | null> {
-  return viaApi(() => recordAck(user, policyId), () => send<Ack>("POST", `/me/acknowledgements`, { policyId }));
+  return viaApi(() => recordAck(user, policyId), () => wsPost<Ack>("/ws/me/acknowledgements", { policyId }));
 }
 /** Ends every other session of the signed-in person (safe direction, no re-authentication). Returns how many ended. */
 export function signOutOthers(): Promise<number> {

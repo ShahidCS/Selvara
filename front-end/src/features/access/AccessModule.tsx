@@ -1,3 +1,6 @@
+import { ModuleTip } from "@/components/kit/ModuleTip";
+import { RecordGrantForm } from "./GrantForms";
+import { API_ON } from "@/lib/rbac";
 import { Icon, Page } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData, useModState } from "@/lib/store";
@@ -24,9 +27,12 @@ export default function AccessModule() {
     ? <button className="btn btn-primary" onClick={() => L.openModal("Request access", (close) => <AccessRequestForm close={close} />)}><Icon name="plus" />Request access</button>
     : view === "reviews" && canAct
       ? <button className="btn btn-primary" onClick={() => L.openModal("Create access review", (close) => <ReviewForm close={close} />)}><Icon name="plus" />Create access review</button>
-      : undefined;
+      : view === "inventory" && canAct && API_ON
+        ? <button className="btn btn-secondary" onClick={() => L.openModal("Record existing access", (close) => <RecordGrantForm close={close} />)}><Icon name="plus" />Record existing access</button>
+        : undefined;
   return (
     <Page mod="access" acts={acts}>
+      <ModuleTip mod="access" force={API_ON && !DATA.access.length} />
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head">
           <div className="seg" role="tablist">

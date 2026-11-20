@@ -29,6 +29,8 @@ export class MemoryAuth implements AuthProvider {
   async setPassword(id: string, password: string) { const u = this.users.get(id); if (u) u.hash = await sha256Hex(u.salt + password); }
   async sendResetEmail(email: string) { const u = this.byEmail(email); if (u) { const t = this.tok(u.id, true); this.outbox.push({ email, token: Buffer.from(JSON.stringify(t)).toString("base64url") }); } }
   async userOfRecovery(t: { access: string }) { const x = this.tokens.get(t.access); return x?.recovery ? x.userId : null; }
+  async mfaEnrolled(userId: string) { return !!this.users.get(userId)?.factor?.verified; }
+  async resetMfa(userId: string) { const u = this.users.get(userId); if (u) delete u.factor; }
   /** Test helper: the factor secret an authenticator app would hold. */
   secretOf(email: string) { return this.byEmail(email)?.factor?.secret; }
 }

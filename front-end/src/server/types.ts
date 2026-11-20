@@ -22,6 +22,10 @@ export interface AuthProvider {
   sendResetEmail(email: string, redirectTo: string): Promise<void>;
   /** The user of a recovery session from a reset link, or null. */
   userOfRecovery(t: { access: string; refresh: string }): Promise<string | null>;
+  /** Whether the person has a verified authenticator (admin API, no session needed). */
+  mfaEnrolled(userId: string): Promise<boolean>;
+  /** Removes every authenticator factor of the person (an approved MFA reset): they enrol again at their next sign-in. */
+  resetMfa(userId: string): Promise<void>;
 }
 /** Supabase Postgres (or the test stand-in). Only the server reaches it, with the service key; row level security denies everyone else. */
 export interface Store {

@@ -11,11 +11,12 @@ import { approve as engineApprove, reject as engineReject, requestApproval, getA
 import {
   addBusinessDays, addMonths, eligiblePeople, fmtDay, guard, iAm, isoDay, parseDay, parseIso, personByName, reasonText, roleReason, samePerson, selfReason,
 } from "@/lib/grcSod";
-import { apiFetch, viaApi } from "@/services/http";
+import { viaApi } from "@/services/http";
+import { wsPatch, wsPost } from "@/services/ws";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const send = <T,>(method: string, path: string, body?: unknown) =>
-  apiFetch<T>(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
+/** Production: the same change on the server (under /api/ws), then the workspace reloads. */
+const send = <T,>(method: string, path: string, body: unknown = {}) => (method === "PATCH" ? wsPatch<T>(`/ws${path}`, body) : wsPost<T>(`/ws${path}`, body));
 const enc = encodeURIComponent;
 
 export type VersionStatus = "Draft" | "In review" | "Approved" | "Published" | "Superseded";

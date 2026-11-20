@@ -4,6 +4,7 @@
  * `decideApproval` / `withdrawApproval` add the rules the generic engine does not know: NAMED approver, reason length for reject,
  * elevation for admin-domain approvals. In-memory demo; the real API must do all of this server-side.
  * ADD-only shared lib (does not edit approvals.ts). */
+import { SERVER_KINDS } from "./rulesWs";
 import { approvals, approve, reject, sweepExpired, whyCannotApprove, withdraw } from "./approvals";
 import type { Approval } from "./approvals";
 import { assertElevated, elevationActive } from "./elevation";
@@ -27,11 +28,13 @@ export const handlerFor = (kind: string) => handlers.get(kind);
 export const knownKind = (kind: string) => handlers.has(kind);
 
 /** Applies/cleans up every request that reached a final state since the last call (also sweeps expiry). Idempotent. */
+const PRODUCTION = (process.env.NEXT_PUBLIC_API_MODE || "mock") === "http";
 export function settle(): void {
   sweepExpired();
   let ran = false;
   approvals.get().list.slice().forEach((a) => {
     if (a.status === "Pending" || settled.has(a.id)) return;
+    if (PRODUCTION && SERVER_KINDS.includes(a.kind)) return; // production: the server applied it in the decision's transaction
     const h = handlers.get(a.kind); if (!h) return;
     settled.add(a.id); ran = true;
     try { if (a.status === "Approved") h.apply(a); else h.closed?.(a); } catch { /* never let one handler block the others */ }
@@ -82,6 +85,8 @@ export function withdrawApproval(id: string): Approval {
   const out = withdraw(id); settle(); return out;
 }
 /** Message for a toast: SodError text only; anything else gets the generic fallback (never raw exception text). */
-export const sodMessage = (e: unknown, fallback: string): string => (e instanceof SodError ? e.message : fallback);
+export const sodMessage = (e: unknown, fallback: string): string => (e instanceof SodError || refusal(e) ? (e as Error).message : fallback);
+/** A refusal from the production API (4xx): the server's own words. */
+const refusal = (e: unknown): boolean => { const st = e instanceof Error ? (e as Error & { status?: unknown }).status : undefined; return typeof st === "number" && st >= 400 && st < 500; };
 export const TICKET_RE = /^[A-Z]{2,6}-\d{1,6}$/;
 export const hoursLeft = (a: Approval) => Math.max(0, Math.ceil((a.expiresAt - Date.now()) / 3600_000));

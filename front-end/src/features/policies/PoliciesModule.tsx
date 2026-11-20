@@ -1,3 +1,5 @@
+import { API_ON } from "@/lib/rbac";
+import { ModuleTip } from "@/components/kit/ModuleTip";
 import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData } from "@/lib/store";
@@ -44,6 +46,7 @@ function PoliciesList() {
   ];
   return (
     <Page mod="policies" acts={<button className="btn btn-primary" disabled={!canCreate} title={canCreate ? undefined : "Read-only for your role: employees read and acknowledge, auditors read."} onClick={() => go("/ws/policies/new")}><Icon name="plus" />New policy</button>}>
+      <ModuleTip mod="policies" force={API_ON && !DATA.policies.length} />
       <KpiStrip label="Policy summary">
         <KpiTile label="Policies" value={DATA.policies.length} caption="In the library" />
         <KpiTile label="Active" value={DATA.policies.filter((p) => p.status === "Active").length} caption="Approved and in force" />

@@ -5,6 +5,8 @@
  * The real API MUST re-enforce all of it server-side with the actor taken from the authenticated session (never from the client), require step-up
  * authentication for requester and approver, verify identity out-of-band against contact data on file (never data supplied in the ticket), notify the
  * affected admin at ALL contact points and their other admins, rate-limit requests per admin/customer, and expire requests itself. */
+import { API_ON } from "@/lib/rbac";
+import { wsMeta } from "./ws";
 import { MFA_REQUESTS, TENANT_ADMINS, CUSTOMERS } from "@/lib/platform";
 import { adminLog } from "@/lib/adminAudit";
 import { settle, registerKind, TICKET_RE } from "@/lib/approvalFlow";
@@ -58,6 +60,7 @@ export function validateResetFields(i: ResetFields, eligible: string[]): ResetCl
 /** People holding one of the base roles, minus the requester and the subject. */
 export function eligibleApprovers(bases: string[], ...exclude: unknown[]): string[] {
   const me = getActor().name; const out: string[] = [];
+  if (API_ON && !bases.includes("super")) return wsMeta.get().members.filter((m) => bases.includes(m.role) && m.name !== me && !exclude.some((x) => isSamePerson(m.name, x))).map((m) => m.name);
   ROLES.forEach((r) => {
     if (!hasRole(r.id, ...bases)) return;
     if (isSamePerson(r.person, me) || exclude.some((x) => isSamePerson(r.person, x)) || out.some((o) => isSamePerson(o, r.person))) return;

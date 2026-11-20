@@ -34,6 +34,14 @@ export class SupabaseAuth implements AuthProvider {
     const { data, error } = await this.service().auth.admin.createUser({ email, password, email_confirm: false, user_metadata: { name: person } });
     if (error || !data.user) throw upstream("auth.create-user", error); return data.user.id;
   }
+  async mfaEnrolled(userId: string) {
+    const { data, error } = await this.service().auth.admin.mfa.listFactors({ userId }); if (error) throw upstream("auth.mfa-list", error);
+    return (data?.factors ?? []).some((f) => f.status === "verified");
+  }
+  async resetMfa(userId: string) {
+    const { data, error } = await this.service().auth.admin.mfa.listFactors({ userId }); if (error) throw upstream("auth.mfa-list", error);
+    for (const f of data?.factors ?? []) { const r = await this.service().auth.admin.mfa.deleteFactor({ id: f.id, userId }); if (r.error) throw upstream("auth.mfa-delete", r.error); }
+  }
   async confirmUser(id: string) { const { error } = await this.service().auth.admin.updateUserById(id, { email_confirm: true }); if (error) throw upstream("auth.confirm-user", error); }
   async setPassword(id: string, password: string) { const { error } = await this.service().auth.admin.updateUserById(id, { password }); if (error) throw upstream("auth.set-password", error); }
   async sendResetEmail(email: string, redirectTo: string) { await this.anon().auth.resetPasswordForEmail(email, { redirectTo }); }

@@ -2,6 +2,11 @@
 import { assuranceRoutes } from "./assurance";
 import { invalid, modAllowed, ok, membersOf, refuse, txt, wsRoute, type WsHelpers } from "./common";
 import { evidenceRoutes } from "./evidence";
+import { accessRoutes } from "./access";
+import { delegationRoutes } from "./delegation";
+import { flowRoutes } from "./flow";
+import { peopleRoutes } from "./people";
+import { policyRoutes } from "./policies";
 
 /** Export kinds the audit log accepts, and the module each belongs to. */
 const EXPORTS: Record<string, string> = {
@@ -24,5 +29,5 @@ export function workspaceRoutes(h: WsHelpers) {
     });
     return ok();
   });
-  return { "GET ws/members": members, "POST ws/exports": exported, ...assuranceRoutes(h), ...evidenceRoutes(h) };
+  return { "GET ws/members": members, "POST ws/exports": exported, ...assuranceRoutes(h), ...evidenceRoutes(h), ...policyRoutes(h), ...delegationRoutes(h), ...peopleRoutes(h), ...accessRoutes(h), ...flowRoutes(h) };
 }

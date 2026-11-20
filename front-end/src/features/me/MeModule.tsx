@@ -1,3 +1,5 @@
+import { ModuleTip } from "@/components/kit/ModuleTip";
+import { API_ON } from "@/lib/rbac";
 import { Empty, Page } from "@/components/ui";
 import { getMe } from "@/lib/audit";
 import { toAcknowledge } from "@/lib/me";
@@ -27,16 +29,17 @@ function MeBody({ role }: { role: string }) {
   const first = me.name.split(" ")[0];
   return (
     <Page title={`Good morning, ${first}`} sub={`You have ${open} open tasks · ${toAck} policies to acknowledge`}>
+      <ModuleTip mod="me" />
       <div className="banner info">
-        <strong>Member access.</strong> You can read published policies, add remarks on policies you are invited to, and acknowledge policies. Only a policy&apos;s creator can edit it; settings and team management are for company admins.
+        <strong>Member access.</strong> You can read published policies{API_ON ? "" : ", add remarks on policies you are invited to,"} and acknowledge policies. Only a policy&apos;s creator can edit it; settings and team management are for company admins.
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "stretch" }}>
         <MyTasks role={role} />
-        <MyRemarks role={role} />
+        {API_ON ? null : <MyRemarks role={role} />}
       </div>
       <PublishedPolicies />
       <DelegationCard />
-      <AccountSecurity />
+      {API_ON ? null : <AccountSecurity /> /* production: Your account (/auth) */}
     </Page>
   );
 }

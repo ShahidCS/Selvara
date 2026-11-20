@@ -5,6 +5,9 @@ import { decideApproval, handlerFor, hoursLeft, myRequest, settle, sodMessage, w
 import { approvals } from "@/lib/approvals";
 import type { Approval } from "@/lib/approvals";
 import { useElevation } from "@/lib/elevation";
+import { API_ON } from "@/lib/rbac";
+import { SERVER_KINDS } from "@/lib/rulesWs";
+import { wsPost } from "@/services/ws";
 import { useApp, useData } from "@/lib/store";
 
 /** Reason prompt for Approve / Reject (>= 10 characters, enforced again by the service). */
@@ -31,12 +34,20 @@ export function PendingApprovals({ kinds, title = "Pending approval", subjectLab
   const recent = all.filter((a) => a.status !== "Pending").slice(0, 5);
   const decide = (a: Approval, ok: boolean) => L.openModal(`${ok ? "Approve" : "Reject"}: ${a.title}`, (close) => (
     <DecisionForm title={ok ? "Your approval is recorded in the audit log with this reason." : "The request ends as rejected."} verb={ok ? "Approve" : "Reject"} close={close}
-      onSubmit={(reason) => {
-        try { const r = decideApproval(a.id, ok, reason); close(); L.toast(ok ? (r.status === "Approved" ? "Approved, change applied" : `Approval recorded (${r.approvals.length}/${r.needs})`) : "Request rejected"); }
-        catch (e) { L.toast(sodMessage(e, "Could not record the decision"), false); }
+      onSubmit={async (reason) => {
+        try {
+          if (API_ON && SERVER_KINDS.includes(a.kind)) { // production: the server decides and applies it
+            const r = await wsPost<{ status: string; votes?: number; needs?: number }>(`/ws/approvals/${encodeURIComponent(a.id)}/${ok ? "approve" : "reject"}`, { reason }); close();
+            L.toast(ok ? (r.status === "Approved" ? "Approved, change applied" : `Approval recorded (${r.votes}/${r.needs})`) : "Request rejected"); return;
+          }
+          const r = decideApproval(a.id, ok, reason); close(); L.toast(ok ? (r.status === "Approved" ? "Approved, change applied" : `Approval recorded (${r.approvals.length}/${r.needs})`) : "Request rejected");
+        } catch (e) { L.toast(sodMessage(e, "Could not record the decision"), false); }
       }} />
   ));
-  const withdrawIt = (a: Approval) => { try { withdrawApproval(a.id); L.toast("Request withdrawn"); } catch (e) { L.toast(sodMessage(e, "Could not withdraw the request"), false); } };
+  const withdrawIt = async (a: Approval) => {
+    try { if (API_ON && SERVER_KINDS.includes(a.kind)) await wsPost(`/ws/approvals/${encodeURIComponent(a.id)}/withdraw`); else withdrawApproval(a.id); L.toast("Request withdrawn"); }
+    catch (e) { L.toast(sodMessage(e, "Could not withdraw the request"), false); }
+  };
   if (!pending.length && !recent.length) return null;
   return (
     <div className="card" style={pending.length ? { borderColor: "var(--warn-ink)" } : undefined}>

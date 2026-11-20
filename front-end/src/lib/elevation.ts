@@ -67,7 +67,9 @@ export function startElevation(roleId: string, reasonRaw: unknown, minutesRaw: u
 }
 
 /** Message safe to show in a toast: SodError text only; anything else gets the fallback (never raw exception text). */
-export const sodMessage = (e: unknown, fallback: string): string => (e instanceof SodError ? e.message : fallback);
+export const sodMessage = (e: unknown, fallback: string): string => (e instanceof SodError || refusal(e) ? (e as Error).message : fallback);
+/** A refusal from the production API (4xx): the server's own words. */
+const refusal = (e: unknown): boolean => { const st = e instanceof Error ? (e as Error & { status?: unknown }).status : undefined; return typeof st === "number" && st >= 400 && st < 500; };
 
 /** True only while THIS actor (the current role) holds an unexpired elevation. A role switch to another person never inherits it.
  *  Services call this through assertElevated(); UI calls it (or useElevation) to disable buttons. Not a trust boundary: the API must check its own record. */

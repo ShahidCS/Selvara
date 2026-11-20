@@ -1,6 +1,8 @@
 /* Shared helpers for the GRC modules (policies, evidence, controls, issues, audits). ADD-ONLY companion to src/lib/sod.ts.
  * Contract: docs/security/SOD_MATRIX.md. UI gating is NOT a control: the API must enforce every rule again. */
-import { ROLES } from "./rbac";
+import { API_ON, ROLES } from "./rbac";
+import { ROLE_LABEL } from "./rules";
+import { wsMeta } from "@/services/ws";
 import { getActor, hasRole, isSamePerson, SodError } from "./sod";
 
 export const FAIL_MSG = "Something went wrong. Please try again.";
@@ -52,6 +54,7 @@ export function reasonText(v: unknown, min: number, what = "A reason"): string {
 export interface Person { roleId: string; name: string; roleName: string }
 /** Workspace personas holding one of the base roles (the pool "named approver" / "successor" are chosen from). */
 export function eligiblePeople(...bases: string[]): Person[] {
+  if (API_ON) return wsMeta.get().members.filter((m) => bases.includes(m.role)).map((m) => ({ roleId: m.role, name: m.name, roleName: ROLE_LABEL[m.role] ?? m.role }));
   const seen = new Set<string>();
   return ROLES.filter((r) => r.spaces.includes("ws") && r.tenant && hasRole(r.id, ...bases))
     .filter((r) => (seen.has(r.person) ? false : (seen.add(r.person), true)))

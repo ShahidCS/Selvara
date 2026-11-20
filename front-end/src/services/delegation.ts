@@ -6,9 +6,11 @@ import { clampText } from "@/lib/security";
 import { ROLES } from "@/lib/rbac";
 import { assertRole, getActor, hasRole, isSamePerson, SodError } from "@/lib/sod";
 import { bumpData } from "@/lib/store";
-import { apiFetch, viaApi } from "./http";
+import { viaApi } from "./http";
+import { wsPost } from "./ws";
 
-const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
+/** Production: the server records it (under /api/ws), then the workspace reloads. */
+const post = <T,>(path: string, body: unknown) => wsPost<T>(`/ws${path}`, body);
 const fmt = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace("T", " ") + " UTC";
 export const delegationUntil = fmt;
 

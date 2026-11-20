@@ -68,6 +68,8 @@ export interface Directory {
   /** Uses the invitation: the person becomes an active member with the invited role. False when it was used, revoked or expired meanwhile, or
    *  the person is already an active member. */
   acceptInvitation(tenantId: string, userId: string, id: string, at: number, entry: AuditRow): Promise<boolean>;
+  /** Offboarding (production programme group 2): the active member leaves the company. Refused when they are its last admin. */
+  removeMember(tenantId: string, actorId: string, userId: string, reason: string, at: number, entry: AuditRow): Promise<"ok" | "last-admin" | "not-active">;
 }
 
 /** Thrown when an approved change can no longer be applied. The Postgres directory catches it inside the transaction and rolls back to a savepoint
@@ -236,6 +238,9 @@ export class PgDirectory implements Directory {
     const r = await this.db.tx({ tenantId: null, userId: null }, (q) => q.query<{ id: string; tenant_id: string; email: string; role: string; expires_ms: string }>("select * from invitation_by_token($1)", [tokenHash]));
     return r[0] ? { id: r[0].id, tenantId: r[0].tenant_id, email: r[0].email, role: r[0].role, expiresAt: Number(r[0].expires_ms) } : null;
   }
+  async removeMember(tenantId: string, actorId: string, userId: string, reason: string, at: number, entry: AuditRow) {
+    return this.db.tx({ tenantId, userId: actorId }, async (q) => { const r = await removeActive(q, tenantId, actorId, userId, reason, at); if (r === "ok") await q.query(auditSql, auditArgs(entry)); return r; });
+  }
   async acceptInvitation(tenantId: string, userId: string, id: string, at: number, entry: AuditRow) {
     return this.db.tx({ tenantId, userId }, async (q) => {
       await q.query("savepoint accept");
@@ -260,6 +265,12 @@ async function acceptPg(q: Tx, tenantId: string, userId: string, id: string, at:
 
 const inv = (r: Record<string, unknown>): InvitationRow => ({ id: String(r.id), email: String(r.email), role: String(r.role), status: r.status as InvitationStatus, invitedBy: String(r.person), createdAt: Number(r.created_ms), expiresAt: Number(r.expires_ms), linkAt: r.link_ms == null ? undefined : Number(r.link_ms), approvalId: (r.approval_id as string | null) ?? undefined });
 /** Locks the company's admin rows first, so two concurrent demotions cannot both pass the last-admin check. */
+async function removeActive(q: Tx, tenantId: string, actorId: string, userId: string, reason: string, at: number): Promise<"ok" | "last-admin" | "not-active"> {
+  const admins = await q.query<{ user_id: string }>("select user_id from memberships where tenant_id = $1 and role = 'admin' and status = 'Active' order by user_id for update", [tenantId]);
+  if (admins.length === 1 && admins[0].user_id === userId) return "last-admin";
+  const r = await q.query("update memberships set status = 'Removed', decided_by = $3, decided_ms = $4, reason = $5 where tenant_id = $1 and user_id = $2 and status = 'Active' returning user_id", [tenantId, userId, actorId, at, reason]);
+  return r.length ? "ok" : "not-active";
+}
 async function changeRole(q: Tx, tenantId: string, userId: string, from: string, to: string): Promise<boolean> {
   const admins = await q.query("select user_id from memberships where tenant_id = $1 and role = 'admin' and status = 'Active' order by user_id for update", [tenantId]);
   if (from === "admin" && to !== "admin" && admins.length <= 1) return false;
@@ -410,6 +421,11 @@ export class MemoryDirectory implements Directory {
   async invitationByToken(tokenHash: string) {
     const x = this.invites.find((v) => v.tokenHash === tokenHash && v.status === "Pending" && this.company(v.tenantId));
     return x ? { id: x.id, tenantId: x.tenantId, email: x.email, role: x.role, expiresAt: x.expiresAt } : null;
+  }
+  async removeMember(tenantId: string, actorId: string, userId: string, reason: string, at: number, entry: AuditRow) {
+    const m = this.memberships.find((x) => x.tenantId === tenantId && x.userId === userId && x.status === "Active"); if (!m) return "not-active" as const;
+    if (m.role === "admin" && (await this.admins(tenantId)).length <= 1) return "last-admin" as const;
+    Object.assign(m, { status: "Removed", decidedBy: actorId, decidedAt: at, reason }); await this.store.audit(entry); return "ok" as const;
   }
   async acceptInvitation(tenantId: string, userId: string, id: string, at: number, entry: AuditRow) {
     const x = this.invites.find((v) => v.tenantId === tenantId && v.id === id && v.status === "Pending" && v.expiresAt > at); if (!x) return false;

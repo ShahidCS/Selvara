@@ -60,5 +60,5 @@ export async function approvalsView(t: WsTx, kinds: string[], names: Map<string,
 }
 /** Marks pending requests of these kinds that ran out as Expired, once, with their audit entry. */
 export async function sweepApprovals(t: WsTx, kinds: string[]) {
-  for (const a of await t.approvals(kinds)) if (a.status === "Pending" && a.expiresAt <= t.now) { await t.setApproval(a.id, "Expired"); await t.audit(`approval.${a.kind}.expired`, `${a.title} (${a.id})`, "Approval"); }
+  for (const a of await t.approvals(kinds)) if (a.status === "Pending" && a.expiresAt <= t.now) { await t.setApproval(a.id, "Expired"); await t.audit(`approval.${a.kind}.expired`, `${a.title} (${a.id})`, "Approval", true); }
 }
