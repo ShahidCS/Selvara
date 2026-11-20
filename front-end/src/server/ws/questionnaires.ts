@@ -15,7 +15,7 @@ import type { Actor, Rec, WsTx } from "./store";
 import type { VendorQuestionnaire } from "./vendors";
 
 export interface Questionnaire { qid: string; name: string; total: number; answered: number; status: "Not started" | "In progress" | "Complete"; dueDate: string; author: string; authorId: string; editors: { id: string; name: string }[]; sentBy?: string; reviewedBy?: string }
-export interface Answer { id: string; q: string; a: string; verified: boolean; uses: number; author: string; authorId: string; editedBy?: string; editedById?: string; verifiedBy?: string; verifiedById?: string }
+export interface Answer { id: string; q: string; a: string; verified: boolean; uses: number; author: string; authorId: string; editedBy?: string; editedById?: string; editorIds?: string[]; verifiedBy?: string; verifiedById?: string }
 export interface KbDoc { id: string; name: string; type: string; size: number; path: string; by: string; at: string }
 export const Q_KINDS = ["q.send"];
 const fmt = (iso: string) => (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? new Date(iso + "T00:00:00Z").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }) : iso || "TBD");
@@ -100,7 +100,7 @@ export function questionnaireRoutes(h: WsHelpers) {
     const q = txt(r.body.q, 300); const a = txt(r.body.a, 2000); if (!q || !a) invalid("Question and answer are required.");
     return tx(d, c, async (t) => {
       const rec = (await t.get<Answer>("answer", str(r.path[2], 20))) ?? missing("Answer"); const x = rec.data;
-      const was = x.verified; x.q = q; x.a = a; x.verified = false; x.editedBy = c.actor.name; x.editedById = c.actor.id; delete x.verifiedBy; delete x.verifiedById;
+      const was = x.verified; x.q = q; x.a = a; x.verified = false; x.editedBy = c.actor.name; x.editedById = c.actor.id; x.editorIds = [...new Set([...(x.editorIds ?? []), c.actor.id])]; delete x.verifiedBy; delete x.verifiedById;
       await t.update("answer", rec.id, x, rec.version);
       await t.audit("answer.edited", `${q.slice(0, 40)}${was ? " (unpublished from the chatbot until verified again)" : ""}`, "Vendor");
       return ok(x);
@@ -108,7 +108,7 @@ export function questionnaireRoutes(h: WsHelpers) {
   });
   const verify = wsRoute(h, "questionnaires", async (d, r, c) => tx(d, c, async (t) => {
     const rec = (await t.get<Answer>("answer", str(r.path[2], 20))) ?? missing("Answer"); const x = rec.data;
-    refuse(answerVerifyBlock(c.actor.role, x.authorId === c.actor.id || x.editedById === c.actor.id));
+    refuse(answerVerifyBlock(c.actor.role, x.authorId === c.actor.id || (x.editorIds ?? [x.editedById]).includes(c.actor.id))); // everyone who ever edited it
     if (x.verified) invalid("This answer is already verified.");
     x.verified = true; x.verifiedBy = c.actor.name; x.verifiedById = c.actor.id; await t.update("answer", rec.id, x, rec.version);
     await t.audit("answer.verified", `${x.q.slice(0, 40)} (author ${x.author}; published to the public chatbot)`, "Vendor");

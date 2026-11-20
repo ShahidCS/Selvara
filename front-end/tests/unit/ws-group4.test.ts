@@ -237,6 +237,49 @@ describe("trust center", () => {
   });
 });
 
+describe("review findings (group 4 cross-check)", () => {
+  it("a block withdraws a pending Critical gate approval; a public file change needs approval again; unblocking a parent domain still bars approval; revoke clears access; denials are recorded", async () => {
+    const { jordan, casey, owen, val } = await team();
+    await call("POST", "ws/vendors", { name: "Ledgerly", tier: "Critical" }, owen.cookie);
+    await call("POST", "ws/vendors/V-001/gate", { decision: "Approved" }, jordan.cookie);
+    const gate = (await vdata(jordan.cookie)).approvals[0];
+    await call("POST", "ws/vendors/V-001/gate", { decision: "Blocked", reason: "Sanctions hit found today" }, owen.cookie);
+    expect((await four(casey.cookie, gate.id, "approve")).body).toEqual({ error: "Request is withdrawn." });
+    expect((await vendor(casey.cookie, "V-001")).gate).toBe("Blocked");
+    // trust: replacing a public file sends it back to "on request" until approved again
+    const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31]);
+    const id = body<{ id: string }>(await call("POST", "ws/trust/resources", { name: "SOC 2 summary", access: "Public" }, jordan.cookie)).id;
+    expect((await call("POST", `ws/trust/resources/${id}/file`, { name: "soc2.pdf" }, casey.cookie, pdf)).status).toBe(400); // publication pending
+    const tap = body<{ approvals: { id: string }[] }>(await call("GET", "ws/data/trust", {}, jordan.cookie)).approvals[0];
+    await four(casey.cookie, tap.id, "approve");
+    expect((await call("POST", `ws/trust/resources/${id}/file`, { name: "internal.pdf" }, owen.cookie, pdf)).status).toBe(200);
+    const res = body<{ resources: { id: string; access: string }[] }>(await call("GET", "ws/data/trust", {}, val.cookie)).resources.find((x) => x.id === id)!;
+    expect(res).toEqual({ id, name: "SOC 2 summary", access: "On request, NDA", status: "Active", file: { name: "internal.pdf" } }); // trimmed for visitors
+    // a parent-domain unblock
+    await call("POST", "ws/trust/blocked-domains", { domain: "customer.example" }, jordan.cookie);
+    const valSub = await member("val2@sub.customer.example", "viewer", "Val Two");
+    await call("POST", "ws/trust/access-requests", { resourceId: id }, valSub.cookie);
+    const rq = body<{ requests: { id: string }[] }>(await call("GET", "ws/data/trust", {}, jordan.cookie)).requests[0];
+    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, {}, casey.cookie)).status).toBe(403);
+    expect(log("trust.access.approve.denied")).toHaveLength(1); // recorded although refused
+    await call("POST", "ws/trust/blocked-domains/customer.example/delete", { reason: "Confirmed customer" }, casey.cookie);
+    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, {}, casey.cookie)).body).toEqual({ error: "Segregation of duties: you unblocked this domain, so another admin or owner must approve its requests." });
+    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, {}, jordan.cookie)).status).toBe(200);
+    const a1 = (await call("GET", "ws/data/trust", {}, jordan.cookie)).body as { accounts: { id: string; access: string[] }[]; modeHist: unknown[] };
+    expect(a1.modeHist.length).toBeGreaterThan(0);
+    await call("POST", `ws/trust/accounts/${a1.accounts[0].id}/revoke`, { reason: "Contract ended" }, jordan.cookie);
+    expect(((await call("GET", "ws/data/trust", {}, jordan.cookie)).body as { accounts: { access: string[] }[] }).accounts[0].access).toEqual([]);
+  });
+  it("an answer cannot be verified by anyone who ever edited it", async () => {
+    const { jordan, casey, priya } = await team();
+    const { id } = body<{ id: string }>(await call("POST", "ws/answer-library", { q: "Is data encrypted?", a: "Yes." }, priya.cookie));
+    await call("POST", `ws/answer-library/${id}`, { q: "Is data encrypted?", a: "Yes, AES-256." }, casey.cookie);
+    await call("POST", `ws/answer-library/${id}`, { q: "Is data encrypted?", a: "Yes, AES-256 at rest." }, priya.cookie);
+    expect((await call("POST", `ws/answer-library/${id}/verify`, {}, casey.cookie)).status).toBe(403);
+    expect((await call("POST", `ws/answer-library/${id}/verify`, {}, jordan.cookie)).status).toBe(200);
+  });
+});
+
 describe("commitments", () => {
   it("real analysis against the standard terms, review by another person, and the company's incident clock", async () => {
     const { jordan, casey, priya } = await team();

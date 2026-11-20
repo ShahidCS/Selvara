@@ -10,7 +10,7 @@ const demo = <T,>(x: T, empty: T): T => (PRODUCTION ? empty : clone(x));
 export const TRUST_FAQ: { q: string; a: string }[] = demo(seed.TRUST_FAQ, []);
 export const TRUST_SUBPROC: { name: string; purpose: string; region: string }[] = demo(seed.TRUST_SUBPROC, []);
 export const TRUST_UPDATES: { at: string; title: string }[] = demo(seed.TRUST_UPDATES, []);
-export interface TrustAccount { id?: string; company: string; domain: string; nda: string; viewers: string[]; access: string; status: string }
+export interface TrustAccount { id?: string; company: string; domain: string; nda: string; viewers: string[]; access: string | string[]; status: string }
 export interface TrustRequest { resourceId?: string; id: string; who: string; company: string; resource: string; reason: string; at: string; enteredBy?: string }
 export interface TrustDecision { at: string; who: string; resource: string; decision: string; by: string; note: string }
 export interface TrustChat { at: string; who: string; q: string; a: string }

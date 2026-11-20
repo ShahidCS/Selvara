@@ -99,7 +99,7 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
                 <td className="strong">{a.company}<div style={{ fontSize: 11.5, color: "var(--muted)" }}>{a.domain}</div></td>
                 <td style={{ fontSize: 12 }}>{a.nda === "Pending" ? <Chip cls="warn" icon="clock">Pending</Chip> : <Chip cls="ok" icon="check">{a.nda}</Chip>}</td>
                 <td style={{ fontSize: 12 }}>{a.viewers.length ? a.viewers.map((v, j) => <span key={j}>{j ? <br /> : null}{v}</span>) : <span style={{ color: "var(--muted)" }}>None yet</span>}</td>
-                <td style={{ fontSize: 12 }}>{a.access}</td><td><StatusChip s={a.status} /></td>
+                <td style={{ fontSize: 12 }}>{Array.isArray(a.access) ? a.access.join(", ") || "—" : a.access}</td><td><StatusChip s={a.status} /></td>
                 <td className="r">{a.status === "Active" ? <button className="btn btn-ghost sm" disabled={!canAct} title={noRole || undefined} onClick={() => revoke(i)}>Revoke</button> : null}</td>
               </tr>
             ))}

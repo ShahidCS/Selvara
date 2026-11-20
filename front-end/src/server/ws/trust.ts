@@ -12,9 +12,9 @@
      that process customer data), published documents, and control status by domain. Nothing is invented.
    - A new public document is listed "On request, NDA" until its publication is approved. Names are unique.
    - The anonymous public page (no sign-in) arrives with email (programme group 8): visitors must verify their address first. */
-import { DOMAIN_RE, domainBlocked, isoDayOf, trustManageBlock } from "@/lib/rulesWs";
+import { DOMAIN_RE, isoDayOf, trustManageBlock } from "@/lib/rulesWs";
 import type { Deps } from "../types";
-import { approvalsView, invalid, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
+import { approvalsView, err, invalid, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
 import type { Control } from "./assurance";
 import { checkFile } from "./files";
 import { pendingOf, registerFourEyes } from "./foureyes";
@@ -44,11 +44,19 @@ function botAnswer(q: string, pool: { q: string; a: string }[]): string | null {
   for (const a of pool) { const score = a.q.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 3 && ql.includes(w)).length; if (score > bestScore) { bestScore = score; best = a.a; } }
   return bestScore >= 1 ? best : null;
 }
+/** The public page's change history and viewer activity (Activity & history tab). */
+async function history(t: WsTx, change: string) { const id = `TH-${await t.next("trust-history", 0)}`; await t.insert("trust-history", id, { at: isoDayOf(t.now), who: t.actor.name, change: change.slice(0, 300) }); }
+async function activity(t: WsTx, what: string) { const id = `TV-${await t.next("trust-activity", 0)}`; await t.insert("trust-activity", id, { at: isoDayOf(t.now), who: t.actor.name, what: what.slice(0, 300) }); }
+/** The blocklist entries a requester's address falls under (its domain or a parent domain). */
+const blockedBy = (email: string, domains: string[]) => { const dom = domainOf(email); return domains.filter((b) => dom === b || dom.endsWith("." + b)); };
 async function emailOf(d: Deps, id: string) { return (await d.store.profileById(id))?.email?.toLowerCase() ?? ""; }
 
 registerFourEyes("trust.publish", { mod: "trust", apply: async (_d, t, a, by) => {
   const rec = (await t.get<Resource>("trust-resource", String(a.payload.resourceId))) ?? missing("Resource");
+  // whoever changed the document after the request was raised can never approve its publication
+  if (rec.data.editedById === t.actor.id) refuse("Segregation of duties: you edited this document, so a different admin or owner must approve publishing it.");
   rec.data.access = "Public"; rec.data.approvedBy = by; await t.update("trust-resource", rec.id, rec.data, rec.version);
+  await history(t, `${rec.data.name} made public (approved by ${by})`);
   await t.audit("trust.visibility.changed", `${rec.data.name} → Public (approved by ${by}; requested by ${a.requestedByName})`, "Policy");
 } });
 
@@ -83,7 +91,7 @@ export function trustRoutes(h: WsHelpers) {
     const pending = await pendingOf(t, TRUST_KINDS);
     const resources = (await t.list<Resource>("trust-resource")).map((x) => ({ ...x.data, file: x.data.file ? { name: x.data.file.name, size: x.data.file.size } : undefined, publishPending: pending.find((a) => a.payload.resourceId === x.id)?.id }));
     const pub = await publicView(d, t, c.actor);
-    if (trustManageBlock(c.actor.role)) return { resources, public: pub, filesConfigured: d.files.configured };
+    if (trustManageBlock(c.actor.role)) return { resources: resources.map((x) => ({ id: x.id, name: x.name, access: x.access, status: x.status, file: x.file ? { name: x.file.name } : undefined })), public: pub, filesConfigured: false };
     const s = (await settings(t)).data; const names = new Map((await membersOf(d, c.actor)).map((m) => [m.id, m.name]));
     const reqs = (await t.list<TrustRequest>("trust-request")).map((x) => x.data);
     return {
@@ -94,31 +102,39 @@ export function trustRoutes(h: WsHelpers) {
       blocked: s.blocked.map((b) => b.domain), chatbot: s.chatbot,
       chats: (await t.list<Chat>("trust-chat")).map((x) => x.data).reverse().slice(0, 200).map((x) => ({ at: x.at, who: x.who, q: x.q, a: x.a })),
       subscribers: (await t.list("trust-sub")).length,
+      activity: (await t.list<{ at: string; who: string; what: string }>("trust-activity")).map((x) => x.data).reverse().slice(0, 50),
+      modeHist: (await t.list<{ at: string; who: string; change: string }>("trust-history")).map((x) => x.data).reverse().slice(0, 50),
       approvals: await approvalsView(t, TRUST_KINDS, names),
     };
   })));
 
   /* ----- administration ----- */
-  const approve = admin(async (d, t, _b, p, me) => {
-    const rec = (await t.get<TrustRequest>("trust-request", str(p[3], 20))) ?? missing("Request"); const q = rec.data;
-    if (q.status !== "Pending") invalid("This request was already decided.");
-    const s = (await settings(t)).data;
-    if (domainBlocked(q.who, s.blocked.map((b) => b.domain))) { await t.audit("trust.access.approve.denied", `${q.id} (blocked domain)`, "Policy"); refuse("Blocked domain: this request cannot be approved."); }
-    if (q.whoId === me.id) refuse("Segregation of duties: you raised this request, so another admin or owner must approve it.");
-    if (s.unblocked[domainOf(q.who)] === me.id) refuse("Segregation of duties: you unblocked this domain, so another admin or owner must approve its requests.");
-    q.status = "Approved"; q.by = me.name; q.byId = me.id; q.decidedAt = isoDayOf(t.now); await t.update("trust-request", rec.id, q, rec.version);
-    const accs = await t.list<Account>("trust-account"); const acc = accs.find((x) => x.data.domain === domainOf(q.who));
-    if (acc) {
-      const a = acc.data; if (!a.viewers.includes(q.who)) a.viewers.push(q.who); if (!a.access.includes(q.resource)) a.access.push(q.resource);
-      if (a.status === "Revoked") { a.status = "Active"; a.nda = "Pending"; delete a.ndaBy; } // a revoked account starts over: the NDA is accepted again
-      await t.update("trust-account", acc.id, a, acc.version);
-    } else {
-      const id = `TA-${await t.next("trust-account", 0)}`;
-      await t.insert("trust-account", id, { id, company: q.company, domain: domainOf(q.who), nda: "Pending", viewers: [q.who], access: [q.resource], status: "Active" } satisfies Account);
-    }
-    await t.audit("trust.access.approved", `${q.id}: ${q.company} → ${q.resource}`, "Policy");
-    await t.notify(q.whoId, `Your request for ${q.resource} was approved. Accept the NDA on the Trust Center to open it.`);
-    return { ok: true };
+  const approve = wsRoute(h, "trust", async (d, r, c) => {
+    refuse(trustManageBlock(c.actor.role)); const me = c.actor;
+    // a refusal for a blocked domain is recorded: that unit of work commits, then the refusal is answered
+    const out = await tx(d, c, async (t) => {
+      const rec = (await t.get<TrustRequest>("trust-request", str(r.path[3], 20))) ?? missing("Request"); const q = rec.data;
+      if (q.status !== "Pending") invalid("This request was already decided.");
+      const s = (await settings(t)).data;
+      if (blockedBy(q.who, s.blocked.map((b) => b.domain)).length) { await t.audit("trust.access.approve.denied", `${q.id} (blocked domain)`, "Policy"); return "blocked"; }
+      if (q.whoId === me.id) refuse("Segregation of duties: you raised this request, so another admin or owner must approve it.");
+      if (blockedBy(q.who, Object.keys(s.unblocked)).some((dom) => s.unblocked[dom] === me.id)) refuse("Segregation of duties: you unblocked this domain, so another admin or owner must approve its requests.");
+      q.status = "Approved"; q.by = me.name; q.byId = me.id; q.decidedAt = isoDayOf(t.now); await t.update("trust-request", rec.id, q, rec.version);
+      const accs = await t.list<Account>("trust-account"); const acc = accs.find((x) => x.data.domain === domainOf(q.who));
+      if (acc) {
+        const a = acc.data;
+        if (a.status === "Revoked") { a.status = "Active"; a.nda = "Pending"; delete a.ndaBy; a.access = []; a.viewers = []; } // a revoked account starts over
+        if (!a.viewers.includes(q.who)) a.viewers.push(q.who); if (!a.access.includes(q.resource)) a.access.push(q.resource);
+        await t.update("trust-account", acc.id, a, acc.version);
+      } else {
+        const id = `TA-${await t.next("trust-account", 0)}`;
+        await t.insert("trust-account", id, { id, company: q.company, domain: domainOf(q.who), nda: "Pending", viewers: [q.who], access: [q.resource], status: "Active" } satisfies Account);
+      }
+      await t.audit("trust.access.approved", `${q.id}: ${q.company} → ${q.resource}`, "Policy");
+      await t.notify(q.whoId, `Your request for ${q.resource} was approved. Accept the NDA on the Trust Center to open it.`);
+      return "ok";
+    });
+    return out === "blocked" ? err(403, "Blocked domain: this request cannot be approved.") : ok({ ok: true });
   });
   const deny = admin(async (_d, t, b, p, me) => {
     const rec = (await t.get<TrustRequest>("trust-request", str(p[3], 20))) ?? missing("Request"); const q = rec.data;
@@ -133,7 +149,7 @@ export function trustRoutes(h: WsHelpers) {
     const rec = (await t.get<Account>("trust-account", str(p[3], 20))) ?? missing("Account"); const a = rec.data;
     if (a.status === "Revoked") invalid("Access is already revoked.");
     const reason = txt(b.reason, 300); if (reason.length < 10) invalid("Give a reason of at least 10 characters.");
-    a.status = "Revoked"; a.viewers = []; a.revokeReason = reason; await t.update("trust-account", rec.id, a, rec.version);
+    a.status = "Revoked"; a.viewers = []; a.access = []; a.revokeReason = reason; await t.update("trust-account", rec.id, a, rec.version);
     await t.audit("trust.account.revoked", `${a.company}; reason: ${reason}`, "Policy");
     return a;
   });
@@ -167,14 +183,14 @@ export function trustRoutes(h: WsHelpers) {
     if (wantsPublic) {
       await t.request({ kind: "trust.publish", title: `Publish "${name.slice(0, 100)}" publicly`, subject: id, payload: { resourceId: id, mode: "new" }, needs: 1, approverRoles: ["admin", "owner"], forbid: [me.id], ttlMs: 24 * 3600_000 });
       await t.audit("trust.resource.publish_requested", `${name} (public)`, "Policy");
-    } else await t.audit("trust.resource.published", name, "Policy");
+    } else { await t.audit("trust.resource.published", name, "Policy"); await history(t, `${name} published on request, NDA`); }
     return { name, pending: wantsPublic, id };
   });
   const visibility = admin(async (_d, t, _b, p, me) => {
     const rec = (await t.get<Resource>("trust-resource", str(p[3], 20))) ?? missing("Resource"); const x = rec.data;
     if (x.access === "Public") {
       x.access = "On request, NDA"; x.editedBy = me.name; x.editedById = me.id; await t.update("trust-resource", rec.id, x, rec.version);
-      await t.audit("trust.visibility.changed", `${x.name} → On request, NDA`, "Policy");
+      await t.audit("trust.visibility.changed", `${x.name} → On request, NDA`, "Policy"); await history(t, `${x.name} made private`);
       return { name: x.name, access: x.access, pending: false };
     }
     if ((await pendingOf(t, TRUST_KINDS)).some((a) => a.payload.resourceId === x.id)) invalid("Publishing is already awaiting approval.");
@@ -191,11 +207,14 @@ export function trustRoutes(h: WsHelpers) {
     const f = chk as { name: string; ext: string; type: string };
     return tx(d, c, async (t) => {
       const rec = (await t.get<Resource>("trust-resource", str(r.path[3], 20))) ?? missing("Resource"); const x = rec.data;
+      if ((await pendingOf(t, TRUST_KINDS)).some((a) => a.payload.resourceId === x.id)) invalid("Publishing is awaiting approval. Withdraw it before changing the file.");
+      const wasPublic = x.access === "Public"; if (wasPublic) { x.access = "On request, NDA"; delete x.approvedBy; } // a new file is approved again before it is public
       const path = `${c.actor.tenantId}/TRUST/${crypto.randomUUID()}.${f.ext}`; await d.files.put(path, r.raw!, f.type);
       const old = x.file?.path; x.file = { path, name: f.name, size: r.raw!.length, type: f.type }; x.editedBy = c.actor.name; x.editedById = c.actor.id;
       await t.update("trust-resource", rec.id, x, rec.version);
       if (old) await d.files.remove([old]).catch(() => undefined);
-      await t.audit("trust.resource.file", `${x.name}: ${f.name}`, "Policy");
+      await t.audit("trust.resource.file", `${x.name}: ${f.name}${wasPublic ? "; back to on request until its publication is approved again" : ""}`, "Policy");
+      await history(t, `${x.name}: file ${f.name}${wasPublic ? " (back to on request)" : ""}`);
       return ok({ name: f.name });
     });
   });
@@ -211,7 +230,7 @@ export function trustRoutes(h: WsHelpers) {
       if (!acct!.nda.startsWith("Accepted")) refuse("Accept the NDA first.");
     }
     const url = await d.files.link(x.file!.path, x.file!.name, 60);
-    await t.audit("trust.document.viewed", `${x.name} by ${me.name}`, "Policy");
+    await t.audit("trust.document.viewed", `${x.name} by ${me.name}`, "Policy"); await activity(t, `Opened ${x.name}`);
     return { url };
   });
   const requestAccess = visitor(async (d, t, b, _p, me) => {

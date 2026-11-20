@@ -110,3 +110,12 @@ Where the inventory (`inventory/group4-vendors-portal-questionnaires-trust-commi
   - A commitment is marked reviewed by an admin or owner other than its importer.
   - The incident clock belongs to the company: summary, server start time, customer-notice deadline (48 hours), close with an outcome, and history. It is recorded in the company's audit log, not the platform's.
 - **Four-eyes route.** The group 4 approvals (`vendor.*`, `trust.publish`, `q.send`) go through one route (`server/ws/foureyes.ts`). The change happens in the same unit of work as the final approval, once. These approvals can also be decided from the bell.
+- **Cross-check fixes.**
+  - Blocking a vendor's gate withdraws a pending Critical gate approval, and an approval never overrides a block.
+  - Changing a public Trust document's file returns it to "On request, NDA" until its publication is approved again. Files cannot change while publication waits.
+  - The person who unblocked any matching domain, including a parent domain, cannot approve its requests.
+  - Revoking an account clears its document access.
+  - A refused approval for a blocked domain is still recorded.
+  - Visitors receive only document names and access.
+  - Nobody who ever edited a library answer can verify it.
+  - The Trust Center's activity and change history are recorded and shown.

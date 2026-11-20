@@ -1,6 +1,8 @@
 import { DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, Table, type DTColumn } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { DATA } from "@/lib/data";
+import { useSyncExternalStore } from "react";
+import { g4Meta } from "@/services/ws";
 import { API_ON } from "@/lib/rbac";
 import { askReason } from "@/components/kit/ReasonDialog";
 import { ModuleTip } from "@/components/kit/ModuleTip";
@@ -19,6 +21,7 @@ type Commitment = any;
 export default function CommitmentsModule() {
   useData();
   const L = useLayer();
+  const incidents = useSyncExternalStore(g4Meta.subscribe, () => g4Meta.get().incidents, () => g4Meta.get().incidents) as { id: string; summary: string; started: string; startedBy: string; closed: string; closedBy: string; outcome: string }[];
   const can = hasRole(useApp((s) => s.role), "admin", "owner");
   const why = can ? undefined : "Only admin or owner can start or close an incident.";
   const cols: DTColumn<Commitment>[] = [
@@ -67,6 +70,7 @@ export default function CommitmentsModule() {
                 filters={[{ key: "status", label: "Status", options: Array.from(new Set<string>(DATA.commitments.map((c: Commitment) => String(c.status)))), get: (c: Commitment) => c.status }]} exportName="commitments" />
             </div>
           </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div className="card">
             <div className="c-head"><h3>Standard terms</h3></div>
             <div className="c-body flush" style={{ padding: 0 }}>
@@ -74,6 +78,17 @@ export default function CommitmentsModule() {
                 {STANDARD_TERMS.map((t) => <tr key={t.term}><td className="strong">{t.term}</td><td>{t.val}</td></tr>)}
               </Table>
             </div>
+          </div>
+          {API_ON && incidents.length ? (
+            <div className="card">
+              <div className="c-head"><h3>Incident history</h3></div>
+              <div className="c-body flush" style={{ padding: 0 }}>
+                <Table cols={[{ t: "Incident" }, { t: "Started" }, { t: "Closed" }, { t: "Outcome" }]}>
+                  {incidents.map((x) => <tr key={x.id}><td className="strong">{x.id} {x.summary}</td><td>{x.started} by {x.startedBy}</td><td>{x.closed ? `${x.closed} by ${x.closedBy}` : "Open"}</td><td>{x.outcome || "—"}</td></tr>)}
+                </Table>
+              </div>
+            </div>
+          ) : null}
           </div>
         </div>
       </div>

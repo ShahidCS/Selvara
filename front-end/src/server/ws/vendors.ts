@@ -75,6 +75,7 @@ registerFourEyes("vendor.request.critical", { mod: "vendors", apply: async (_d, 
 } });
 registerFourEyes("vendor.gate", { mod: "vendors", apply: async (_d, t, a, by) => {
   const rec = await load(t, String(a.payload.vendorId)); const v = rec.data;
+  if (v.gate !== "Pending") invalid(`The gate is ${v.gate.toLowerCase()} now; this approval no longer applies.`);
   v.gate = "Approved"; if (v.status === "Needs evidence") v.status = "Active"; await save(t, rec);
   await t.audit("vendor.gate.approved", `${v.name} (Critical, approved by ${a.requestedByName}, ${by})`, "Vendor");
 } });
@@ -162,6 +163,10 @@ export function vendorRoutes(h: WsHelpers) {
     if (decision !== "Approved" && decision !== "Blocked") invalid("Invalid decision");
     if (decision === "Blocked") {
       const reason = txt(b.reason, 300); if (reason.length < 10) invalid("Give a reason of at least 10 characters for blocking.");
+      // blocking wins: a pending Critical gate approval is withdrawn so it can never override the block
+      for (const a of (await pendingOf(t, ["vendor.gate"])).filter((x) => x.payload.vendorId === v.id)) {
+        await t.setApproval(a.id, "Withdrawn", `gate blocked by ${t.actor.name}`); await t.audit("approval.vendor.gate.withdrawn", `${a.title} (${a.id}); gate blocked`, "Approval");
+      }
       v.gate = "Blocked"; v.gateReason = reason; v.status = "In review"; await save(t, rec);
       await t.audit("vendor.gate.blocked", `${v.name}; reason: ${reason}`, "Vendor");
       return { name: v.name, pending: false };

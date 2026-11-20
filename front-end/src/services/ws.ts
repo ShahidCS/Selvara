@@ -92,7 +92,7 @@ const LOADERS: Record<string, (b: any) => void> = {
     DATA.trust = b.resources; const p = b.public; g4Meta.set({ trustPublic: p, subscribers: b.subscribers ?? 0 });
     fill(TRUST_FAQ, p.faq); fill(TRUST_SUBPROC, p.subprocessors); fill(TRUST_UPDATES, p.updates);
     TRUST.accounts = b.accounts ?? []; TRUST.requests = b.requests ?? []; TRUST.decisions = b.decisions ?? []; TRUST.blocked = b.blocked ?? []; TRUST.chats = b.chats ?? [];
-    TRUST.chatbot = b.chatbot ?? p.chatbot; TRUST.activity = []; TRUST.modeHist = [];
+    TRUST.chatbot = b.chatbot ?? p.chatbot; TRUST.activity = b.activity ?? []; TRUST.modeHist = b.modeHist ?? [];
     if (b.approvals) setApprovals(["trust.publish"], b.approvals);
     if (b.filesConfigured) wsMeta.set({ filesConfigured: true });
   },
