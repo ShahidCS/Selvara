@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from "react";
 import { useRouter } from "next/router";
-import { appStore, loadPersisted, persist, useApp, useData } from "@/lib/store";
+import { appStore, loadPersisted, persist, setModState, useApp, useData } from "@/lib/store";
 import { restoreSession } from "@/lib/session";
 import { loadWorkspace } from "@/services/ws";
 import { StepUpHost } from "@/components/kit/StepUp";
@@ -79,7 +79,7 @@ function Frame({ children }: { children: ReactNode }) {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); L.openPalette(); }
       else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") { e.preventDefault(); appStore.set((x) => ({ collapsed: !x.collapsed })); persist(); }
-      else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") { if (modAllowed(appStore.get().role, "ws", "assistant")) { e.preventDefault(); go("/ws/assistant"); } }
+      else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") { if (modAllowed(appStore.get().role, "ws", "assistant")) { e.preventDefault(); setModState("assistant.from", window.location.pathname); go("/ws/assistant"); } }
       else if ((e.metaKey || e.ctrlKey) && e.key === "/") { e.preventDefault(); openShortcuts(L); }
       else if (e.key === "Escape" && appStore.get().mobOpen) appStore.set({ mobOpen: false });
     };

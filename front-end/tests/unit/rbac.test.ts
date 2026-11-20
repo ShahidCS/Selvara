@@ -18,7 +18,8 @@ describe("module access in production (API mode) and in the demonstration", () =
     expect(modAllowed("admin", "ws", "overview", true)).toBe(true);
     expect(modAllowed("admin", "ws", "vendors", true)).toBe(true); // group 4
     expect(modAllowed("admin", "ws", "audits", true)).toBe(true); // group 5
-    expect(modAllowed("admin", "ws", "ai", true)).toBe(false); // not on the server yet
+    expect(modAllowed("admin", "ws", "ai", true)).toBe(true); // group 6
+    expect(modAllowed("admin", "ws", "integrations", true)).toBe(false); // not on the server yet (group 7)
     expect(modAllowed("super", "admin", "billing", true)).toBe(false);
     expect(modAllowed("super", "admin", "customers", true)).toBe(true); // Admin Console, slice 3a
     expect(modAllowed("admin", "ws", "team", true)).toBe(true);

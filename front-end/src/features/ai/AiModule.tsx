@@ -10,6 +10,9 @@ import { AI_DISCOVERY, AI_SHADOW, aiInit } from "@/features/ai/lib/ai";
 import { useLayer } from "@/hooks/useLayer";
 import * as svc from "@/features/ai/services/ai";
 import { ApprovalsPanel, attempt } from "@/components/kit/sodKit";
+import { askReason } from "@/components/kit/ReasonDialog";
+import { ModuleTip } from "@/components/kit/ModuleTip";
+import { API_ON } from "@/lib/rbac";
 import { AiDetail } from "./AiDetail";
 import { AiEditPage, AiRegisterPage } from "./AiForms";
 import { AiEuChip, AiFriaChip, AiGuardChip } from "./AiChips";
@@ -29,13 +32,13 @@ export default function AiModule() {
 function AiList() {
   useData();
   const L = useLayer(); const go = useGo();
-  const canReg = hasRole(useApp((s) => s.role), "admin", "owner", "analyst");
+  const canReg = hasRole(useApp((s) => s.role), "admin", "owner", ...(API_ON ? [] : ["analyst"]));
   DATA.ai.forEach(aiInit);
   const live = DATA.ai.filter((a) => a.status !== "Archived");
   const euHigh = live.filter((a) => a.euClass === "High-risk" || a.euClass === "Prohibited").length;
   const unconf = live.filter((a) => a.euState && a.euState.state !== "Confirmed").length;
   const iso = fwReadiness("iso42001");
-  const dismiss = (id: string) => attempt(L, async () => {
+  const dismiss = (id: string) => API_ON ? askReason(L, { title: "Dismiss discovered AI", label: "Why it does not need registering", confirm: "Dismiss", run: async (reason) => { await svc.dismissShadow(id, reason); return "Removed from the discovered list"; } }) : attempt(L, async () => {
     const ok = await svc.dismissShadow(id); if (!ok) return;
     wsLog("ai.shadow.dismissed", id, "AI governance"); adminLog("ai.shadow.dismissed", id, { categories: ["AI governance"] });
     L.toast("Removed from the discovered list"); bumpData();
@@ -68,7 +71,8 @@ function AiList() {
           <div className="card" style={{ boxShadow: "none", background: "var(--info-bg)", borderColor: "transparent" }}>
             <div className="c-body" style={{ padding: "10px 14px", fontSize: 12.5, color: "var(--info-ink)", lineHeight: 1.5 }}>Classifications and assessments are draft content and need review by qualified compliance and legal staff before reliance. EU AI Act classifications must be confirmed by an admin or owner other than the drafter, impact assessments approved by someone other than the submitter, and guardrail changes and archiving approved by a second person. Registering a system does not approve it. Only the AI system owner, an admin or an owner can change a system or triage its signals.</div>
           </div>
-          <ApprovalsPanel prefix="ai." title="AI governance approvals (four-eyes)" />
+          <ModuleTip mod="ai" />
+          <ApprovalsPanel prefix={["ai.guardrail", "ai.archive"]} title="AI governance approvals (four-eyes)" />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 14, alignItems: "stretch" }}>
             <div className="card"><div className="c-head"><h3>Discovery sources</h3></div><div className="c-body" style={{ padding: "12px 14px" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -79,6 +83,7 @@ function AiList() {
                   </div>
                 ))}
               </div>
+              {API_ON ? <p className="field help" style={{ margin: "10px 0 0" }}>No discovery source is connected yet: they arrive with integrations. Register the AI your company uses with Register system. The AI Assistant registers itself when AI is turned on.</p> : null}
             </div></div>
             <div className="card"><div className="c-head"><h3>Discovered AI awaiting registration</h3>{AI_SHADOW.length ? <span className="tag" style={{ marginLeft: 6 }}>{AI_SHADOW.length}</span> : null}</div>
               <div className="c-body flush" style={{ padding: 0 }}>
@@ -112,7 +117,7 @@ function AiList() {
           </div>
           <div className="card"><div className="c-head"><h3>AI inventory</h3></div><div className="c-body flush" style={{ padding: 0 }}>
             <DataTable<AiSys> id="ai-inventory" label="AI inventory" rows={DATA.ai} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.id} ${a.name} ${a.model} ${a.provider} ${a.owner} ${a.surface}`}
-              tabs={["Active", "In review", "Archived"].map((st) => ({ key: st, label: st, match: (a: AiSys) => a.status === st }))}
+              tabs={["Approved", "In review", "Archived"].map((st) => ({ key: st, label: st, match: (a: AiSys) => a.status === st }))}
               filters={[{ key: "eu", label: "EU AI Act", options: Array.from(new Set<string>(DATA.ai.map((a: AiSys) => String(a.euClass || "Not classified")))), get: (a: AiSys) => a.euClass || "Not classified" }, { key: "guard", label: "Guardrail", options: Array.from(new Set<string>(DATA.ai.map((a: AiSys) => String(a.guardrail || "Controlled")))), get: (a: AiSys) => a.guardrail || "Controlled" }]}
               onOpen={(a) => open(a.id)} exportName="ai-inventory" />
           </div></div>

@@ -11,6 +11,9 @@ import * as svc from "@/features/ai/services/ai";
 import { WhyNot, attempt } from "@/components/kit/sodKit";
 import { AiBiasChip, AiEuChip, AiFriaChip, AiGuardChip } from "./AiChips";
 import { openAssign, openBias, openEuClassify, openFria, openGuard, openOversight } from "./AiModals";
+import { API_ON } from "@/lib/rbac";
+import { DATA } from "@/lib/data";
+import { askReason } from "@/components/kit/ReasonDialog";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const AI_TABS: [string, string][] = [["over", "Overview"], ["eu", "EU AI Act"], ["fria", "Impact"], ["bias", "Bias"], ["signals", "Signals"]];
@@ -30,6 +33,12 @@ export function AiDetail({ id }: { id: string }) {
   const manage = aiCanManage(a); const decider = aiCanDecide();
   /** Run a service call; a refusal shows the source toast, an exception a generic one. */
   const act = (p: () => Promise<svc.Res<any>>, ok: (r: any) => void) => attempt(L, async () => { const r = await p(); if (!r.ok) { L.toast(r.msg); return; } ok(r); });
+  /** Production: a step that needs a reason (or a choice) asks for it first; the server checks it again. */
+  const withReason = (title: string, label: string, confirm: string, run: (reason: string) => Promise<svc.Res<any>>, done: string) =>
+    askReason(L, { title, label, confirm, run: async (reason) => { const r = await run(reason); if (!r.ok) throw new Error((r as { msg: string }).msg); return done; } });
+  const attach = () => (API_ON
+    ? askReason(L, { title: `Attach evidence to ${a.name}`, label: "", confirm: "Attach", select: DATA.evidence.map((e: any) => ({ id: e.id, name: `${e.id} ${e.name}` })), selectLabel: "Evidence record", intro: DATA.evidence.length ? "Link the evidence record that documents this system (for example its impact assessment or technical documentation)." : "There is no evidence record yet. Add one in Evidence first.", run: async (_t, pick) => { const r = await svc.attachEvidence(id, pick); if (!r.ok) throw new Error((r as { msg: string }).msg); return "Evidence attached to " + a.name; } })
+    : act(() => svc.attachEvidence(id), (r) => { aiLog("ai.evidence.attached", a.name); L.toast("Evidence attached to " + r.name); bumpData(); }));
 
   const tabs = (
     <div className="tabs" role="tablist" style={{ marginBottom: 14 }}>
@@ -66,9 +75,9 @@ export function AiDetail({ id }: { id: string }) {
             <div className="btngrp">
               <button className="btn btn-secondary sm" onClick={() => go(`/ws/ai/${encodeURIComponent(id)}/edit`)}><Icon name="edit" />Edit</button>
               <button className="btn btn-secondary sm" onClick={() => openAssign(L, id)}><Icon name="user" />Assign owner</button>
-              <button className="btn btn-secondary sm" onClick={() => act(() => svc.attachEvidence(id), (r) => { aiLog("ai.evidence.attached", a.name); L.toast("Evidence attached to " + r.name); bumpData(); })}><Icon name="evidence" />Attach evidence</button>
-              <button className="btn btn-secondary sm" disabled={a.status === "In review" && !!reviewWhy} aria-describedby={a.status === "In review" && reviewWhy ? "ai-rw" : undefined} onClick={() => act(() => svc.toggleReview(id), (r) => { aiLog(r.completed ? "ai.review.completed" : "ai.review.started", a.name); L.toast((r.completed ? "Review completed for " : "Review started for ") + r.name); bumpData(); })}><Icon name="play" />{a.status === "In review" ? "Complete review" : "Start review"}</button>
-              <button className="btn btn-danger sm" disabled={pendingOf(a.archivePending)} onClick={() => act(() => svc.archiveSystem(id), (r) => { aiLog("ai.archive.requested", a.name); L.closeLayer(); bumpData(); L.toast("Archive of " + r.name + " requested; a second approver must confirm"); })}><Icon name="archive" />{pendingOf(a.archivePending) ? "Archive awaiting approval" : "Request archive"}</button>
+              <button className="btn btn-secondary sm" onClick={attach}><Icon name="evidence" />{a.evidence ? "Change evidence" : "Attach evidence"}</button>
+              <button className="btn btn-secondary sm" disabled={a.status === "In review" && !!reviewWhy} aria-describedby={a.status === "In review" && reviewWhy ? "ai-rw" : undefined} onClick={() => (API_ON && a.status !== "In review") ? withReason(`Start a new review of ${a.name}`, "Why it needs a new review", "Start review", (reason) => svc.toggleReview(id, reason), "Review started for " + a.name) : act(() => svc.toggleReview(id), (r) => { aiLog(r.completed ? "ai.review.completed" : "ai.review.started", a.name); L.toast((r.completed ? "Review completed for " : "Review started for ") + r.name); bumpData(); })}><Icon name="play" />{a.status === "In review" ? "Complete review" : "Start review"}</button>
+              <button className="btn btn-danger sm" disabled={pendingOf(a.archivePending) || a.status === "Archived"} onClick={() => act(() => svc.archiveSystem(id), (r) => { aiLog("ai.archive.requested", a.name); L.closeLayer(); bumpData(); L.toast("Archive of " + r.name + " requested; a second approver must confirm"); })}><Icon name="archive" />{pendingOf(a.archivePending) ? "Archive awaiting approval" : "Request archive"}</button>
             </div>
             {a.status === "In review" ? <WhyNot id="ai-rw" text={reviewWhy} /> : null}
           </>
@@ -86,6 +95,7 @@ export function AiDetail({ id }: { id: string }) {
           <AiEuChip c={a.euClass} /> {st.state === "Confirmed" ? <Chip cls="ok" icon="check">Confirmed</Chip> : st.state === "Draft" ? <Chip cls="warn" icon="clock">Draft — needs confirming</Chip> : <Chip cls="neutral">Not classified</Chip>}
         </div>
         <p style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.55 }}>{a.euRationale || aiEuRationale(a.euClass)}</p>
+        {a.euDraftClass ? <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "6px 0" }}><span style={{ fontSize: 12.5, color: "var(--muted)" }}>Proposed by the draft:</span><AiEuChip c={a.euDraftClass} /><span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{a.euDraftRationale}</span></div> : null}
         <dl className="meta-grid lstart" style={{ marginTop: 8 }}>
           <dt>Basis</dt><dd>Art. 5 (prohibited), Art. 6 with Annexes I &amp; III (high-risk), Art. 50 (transparency)</dd>
           <dt>Drafted by</dt><dd>{st.draftBy || a.owner}</dd>
@@ -98,7 +108,7 @@ export function AiDetail({ id }: { id: string }) {
           <>
             <div className="btngrp" style={{ marginTop: 14 }}>
               <button className="btn btn-primary sm" onClick={() => openEuClassify(L, id)}><Icon name="shieldcheck" />{st.state === "Not classified" ? "Classify under EU AI Act" : "Re-run classification"}</button>
-              {st.state === "Draft" ? <button className="btn btn-secondary sm" disabled={!canConfirm} onClick={() => act(() => svc.confirmEu(id), () => { aiLog("ai.euact.confirmed", a.name); bumpData(); L.toast("Classification confirmed"); })}><Icon name="check" />Confirm classification</button> : null}
+              {st.state === "Draft" ? <button className="btn btn-secondary sm" disabled={!canConfirm} onClick={() => act(() => svc.confirmEu(id), (r) => { aiLog("ai.euact.confirmed", a.name); bumpData(); L.toast("Classification confirmed" + (r.note ? ". " + r.note : "")); })}><Icon name="check" />Confirm classification</button> : null}
             </div>
             {st.state === "Draft" && !canConfirm ? <WhyNot text={confirmWhy} /> : null}
           </>
@@ -116,7 +126,8 @@ export function AiDetail({ id }: { id: string }) {
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}><AiFriaChip f={f} /> {revChip}</div>
         <dl className="meta-grid lstart"><dt>Completed</dt><dd>{f.date ? f.date : "—"}</dd><dt>Submitted by</dt><dd>{f.submittedBy ? f.submittedBy : "—"}</dd><dt>Approved by</dt><dd>{f.approvedBy ? f.approvedBy : <span style={{ color: "var(--muted)" }}>—</span>}</dd></dl>
         {f.summary ? <p style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 8, lineHeight: 1.55 }}>{f.summary}</p> : null}
-        <div className="card" style={{ boxShadow: "none", background: "var(--surface-2)", marginTop: 10 }}><div className="c-body" style={{ padding: "10px 12px", fontSize: 12, color: "var(--muted)" }}>Approval updates evidence <strong>D-07 (AI system impact assessment)</strong> and counts toward ISO/IEC 42001 clause 6.1.4. The approver must be an admin or owner other than the submitter, the author and the system owner. An approved assessment is never edited in place: changes start a new version.</div></div>
+        {f.returnReason && rev === "Changes requested" ? <div className="card" style={card("var(--bad-bg)", { marginTop: 8 })}><div className="c-body" style={{ padding: "10px 12px", fontSize: 12.5, color: "var(--bad-ink)" }}>Returned: {f.returnReason}</div></div> : null}
+        <div className="card" style={{ boxShadow: "none", background: "var(--surface-2)", marginTop: 10 }}><div className="c-body" style={{ padding: "10px 12px", fontSize: 12, color: "var(--muted)" }}>{API_ON ? <>Version {f.version || 1}. Attach the signed assessment as evidence on the Overview tab. </> : <>Approval updates evidence <strong>D-07 (AI system impact assessment)</strong> and counts toward ISO/IEC 42001 clause 6.1.4. </>}The approver must be an admin or owner other than the submitter, the author and the system owner. An approved assessment is never edited in place: changes start a new version.</div></div>
         {rev === "Submitted" ? <div className="card" style={card("var(--warn-bg)", { marginTop: 8 })}><div className="c-body" style={{ padding: "10px 12px", fontSize: 12.5, color: "var(--warn-ink)" }}>Submitted by {f.submittedBy || "—"}, awaiting a second approver.</div></div> : null}
         {manage ? (
           <>
@@ -125,8 +136,8 @@ export function AiDetail({ id }: { id: string }) {
               {(rev === "Draft" || rev === "Changes requested") ? <button className="btn btn-primary sm" onClick={() => act(() => svc.submitFria(id), () => { aiLog("ai.impact_assessment.submitted", a.name); bumpData(); L.toast("Impact assessment submitted for approval"); })}><Icon name="check" />Submit for approval</button> : null}
               {rev === "Submitted" ? (
                 <>
-                  <button className="btn btn-primary sm" disabled={!canApprove} onClick={() => act(() => svc.approveFria(id), () => { aiLog("ai.impact_assessment.approved", a.name); bumpData(); L.toast("Impact assessment approved; evidence D-07 updated"); })}><Icon name="check" />Approve</button>
-                  <button className="btn btn-secondary sm" disabled={!canApprove} onClick={() => act(() => svc.returnFria(id), () => { aiLog("ai.impact_assessment.returned", a.name); bumpData(); L.toast("Returned with changes"); })}>Return with changes</button>
+                  <button className="btn btn-primary sm" disabled={!canApprove} onClick={() => act(() => svc.approveFria(id), () => { aiLog("ai.impact_assessment.approved", a.name); bumpData(); L.toast(API_ON ? "Impact assessment approved" : "Impact assessment approved; evidence D-07 updated"); })}><Icon name="check" />Approve</button>
+                  <button className="btn btn-secondary sm" disabled={!canApprove} onClick={() => API_ON ? withReason("Return with changes", "What needs to change", "Return", (reason) => svc.returnFria(id, reason), "Returned with changes") : act(() => svc.returnFria(id), () => { aiLog("ai.impact_assessment.returned", a.name); bumpData(); L.toast("Returned with changes"); })}>Return with changes</button>
                 </>
               ) : null}
             </div>
@@ -149,19 +160,19 @@ export function AiDetail({ id }: { id: string }) {
       </>
     );
   } else if (!a.signals.length) {
-    body = <><div className="sectitle">Signals</div><p style={{ fontSize: 13, color: "var(--muted)" }}>No open signals for this system. Signals arrive from DLP, vendor monitoring and the device monitor.</p></>;
+    body = <><div className="sectitle">Signals</div><p style={{ fontSize: 13, color: "var(--muted)" }}>No open signals for this system. {API_ON ? "Signals arrive from the AI Assistant's PII blocker; other sources arrive with integrations." : "Signals arrive from DLP, vendor monitoring and the device monitor."}</p></>;
   } else {
     body = (
       <>
         <div className="sectitle">Signals</div>
-        <p className="field help" style={{ margin: "0 0 10px" }}>From DLP, vendor monitoring and the device monitor. The system owner or an admin triages each one.</p>
+        <p className="field help" style={{ margin: "0 0 10px" }}>{API_ON ? "From the AI Assistant's PII blocker. A risk or issue raised here goes to the system's owner." : "From DLP, vendor monitoring and the device monitor."} The system owner or an admin triages each one.</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {a.signals.map((s: any, si: number) => {
             const done = s.status && s.status !== "Open"; const sevc = s.sev === "Review" ? "warn" : s.sev === "Alert" ? "bad" : "info";
             return (
-              <div key={si} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "11px 13px" }}>
+              <div key={s.id ?? si} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "11px 13px" }}>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 5 }}>
-                  <Chip cls={sevc}>{s.sev}</Chip><span style={{ fontSize: 11.5, color: "var(--muted)" }}>{s.at} · {s.source}</span>
+                  <Chip cls={sevc}>{s.sev}</Chip><span style={{ fontSize: 11.5, color: "var(--muted)" }}>{s.at} · {s.source}{s.count > 1 ? ` · ${s.count} times` : ""}</span>
                   {done ? <Chip cls={s.status === "Dismissed" ? "neutral" : "ok"} icon={s.status === "Dismissed" ? "x" : "check"}>{s.status}</Chip> : null}
                 </div>
                 <div style={{ fontSize: 13, color: "var(--ink)" }}>{s.text}</div>
@@ -170,9 +181,9 @@ export function AiDetail({ id }: { id: string }) {
                   <div className="btngrp" style={{ marginTop: 9 }}>
                     <button className="btn btn-secondary sm" onClick={() => act(() => svc.signalRaiseRisk(id, si), (r) => { aiLog("ai.signal.risk_raised", a.name); bumpData(); L.toast("Risk " + r.ref + " raised from signal (draft)"); })}><Icon name="risk" />Raise risk</button>
                     <button className="btn btn-secondary sm" onClick={() => act(() => svc.signalRaiseIssue(id, si), (r) => { aiLog("ai.signal.issue_raised", a.name); bumpData(); L.toast("Issue " + r.ref + " raised from signal"); })}><Icon name="flag" />Raise issue</button>
-                    <button className="btn btn-ghost sm" onClick={() => act(() => svc.signalDismiss(id, si), () => { aiLog("ai.signal.dismissed", a.name); bumpData(); L.toast("Signal dismissed"); })}>Dismiss</button>
+                    <button className="btn btn-ghost sm" onClick={() => API_ON ? withReason("Dismiss signal", "Why no action is needed", "Dismiss", (reason) => svc.signalDismiss(id, si, reason), "Signal dismissed") : act(() => svc.signalDismiss(id, si), () => { aiLog("ai.signal.dismissed", a.name); bumpData(); L.toast("Signal dismissed"); })}>Dismiss</button>
                   </div>
-                ) : (done && s.ref ? <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6 }}>→ {s.ref}</div> : null)}
+                ) : (done && (s.ref || s.reason) ? <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6 }}>{s.ref ? `→ ${s.ref}` : `Dismissed${s.by ? ` by ${s.by}` : ""}: ${s.reason}`}</div> : null)}
               </div>
             );
           })}

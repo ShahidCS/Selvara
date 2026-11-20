@@ -15,12 +15,14 @@ import {
   aiCanManage, aiFind, aiForbidden, aiInit, todayGB,
 } from "@/features/ai/lib/ai";
 import { riskNorm } from "@/lib/risk";
-import { apiFetch, viaApi } from "@/services/http";
+import { viaApi } from "@/services/http";
+import { wsPost } from "@/services/ws";
 import { nextId } from "@/services/audits";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type Res<T = object> = ({ ok: true } & T) | { ok: false; msg: string };
-const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
+/** Production: the company's AI register on the server (server/ws/ai.ts), which re-checks every rule and writes the audit entry. */
+const post = <T,>(path: string, body: unknown) => wsPost<T>(`/ws${path}`, body);
 const enc = encodeURIComponent;
 const fail = (msg: string): { ok: false; msg: string } => ({ ok: false, msg });
 const NOT_FOUND = fail("AI system not found");
@@ -56,7 +58,7 @@ registerApprovalHandler("ai.archive", {
 });
 const isFail = (g: any): g is { ok: false; msg: string } => g.ok === false;
 
-export interface RegisterInput { name: string; surface: string; tier: string; model: string; provider: string; purpose: string; data: string; autonomy: string; users: string; owner: string }
+export interface RegisterInput { name: string; surface: string; tier: string; model: string; provider: string; purpose: string; data: string; autonomy: string; users: string; owner: string; ownerId?: string }
 /** Prototype: aiRegisterSubmit (and aiRegister for a shadow-AI entry). Gated to admin/owner/analyst; registering never approves the system. */
 export function registerSystem(input: RegisterInput, shadowId: string | null) {
   return viaApi<Res<{ id: string; name: string }>>(() => {
@@ -76,8 +78,8 @@ export function registerSystem(input: RegisterInput, shadowId: string | null) {
   }, () => post<Res<{ id: string; name: string }>>("/ai/systems", { ...input, shadowId }));
 }
 /** Prototype: aiDismissShadow. Removes a discovered (unregistered) AI entry. */
-export function dismissShadow(id: string) {
-  return viaApi<boolean>(() => { assertRole("dismissing discovered AI", "admin", "owner", "analyst"); const ix = AI_SHADOW.findIndex((x) => x.id === id); if (ix < 0) return false; AI_SHADOW.splice(ix, 1); return true; }, () => post<boolean>(`/ai/shadow/${enc(id)}/dismiss`, {}));
+export function dismissShadow(id: string, reason = "") {
+  return viaApi<boolean>(() => { assertRole("dismissing discovered AI", "admin", "owner", "analyst"); const ix = AI_SHADOW.findIndex((x) => x.id === id); if (ix < 0) return false; AI_SHADOW.splice(ix, 1); return true; }, () => post<boolean>(`/ai/shadow/${enc(id)}/dismiss`, { reason }));
 }
 /** Prototype: aiEdit save. */
 export function editSystem(id: string, input: { name: string; purpose: string; basis: string }) {
@@ -92,25 +94,27 @@ export function setTier(id: string, tier: string) {
   return viaApi<Res<{ tier: string }>>(() => {
     const g = gate(id, "Only the AI system owner or an admin can change this"); if (isFail(g)) return g;
     void tier; throw new SodError("The risk tier is set by the EU AI Act classification, which a second person must confirm.");
-  }, () => post<Res<{ tier: string }>>(`/ai/systems/${enc(id)}/tier`, { tier }));
+  }, async () => { void tier; throw new SodError("The risk tier is set by the EU AI Act classification, which a second person must confirm."); });
 }
 /** Prototype: aiAssign save. */
-export function assignOwner(id: string, owner: string) {
+export function assignOwner(id: string, owner: string, ownerId = "") {
   return viaApi<Res>(() => {
     const g = gate(id, "Only the AI system owner or an admin can change this"); if (isFail(g)) return g;
     if (!peopleNames().includes(owner)) return fail("Choose an owner from the list");
     g.a.owner = owner; return { ok: true };
-  }, () => post<Res>(`/ai/systems/${enc(id)}/owner`, { owner }));
+  }, () => post<Res>(`/ai/systems/${enc(id)}/owner`, { owner, ownerId }));
 }
 /** Prototype: aiEvidence. The source only stamps a file name; there is no upload. */
-export function attachEvidence(id: string) {
+/** Production: links a real evidence record (group 1). */
+export function attachEvidence(id: string, evidenceId = "") {
   return viaApi<Res<{ name: string }>>(() => {
     const g = gate(id, "Only the AI system owner or an admin can change this"); if (isFail(g)) return g;
     g.a.evidence = "Impact assessment " + nowStamp().slice(0, 10) + ".pdf"; return { ok: true, name: g.a.name as string };
-  }, () => post<Res<{ name: string }>>(`/ai/systems/${enc(id)}/evidence`, {}));
+  }, () => post<Res<{ name: string }>>(`/ai/systems/${enc(id)}/evidence`, { evidenceId }));
 }
 /** Prototype: aiReview. Toggles In review <-> Approved. Completing the review is the approval: admin/owner, not whoever registered the system and not its owner. */
-export function toggleReview(id: string) {
+/** Production: starting a new review of an approved system needs a reason. */
+export function toggleReview(id: string, reason = "") {
   return viaApi<Res<{ name: string; completed: boolean }>>(() => {
     const g = gate(id, "Only the AI system owner or an admin can change this"); if (isFail(g)) return g;
     const a = g.a;
@@ -120,7 +124,7 @@ export function toggleReview(id: string) {
       a.status = "Approved"; a.lastReview = todayGB(); a.reviewedBy = getActor().name; return { ok: true, name: a.name as string, completed: true };
     }
     a.status = "In review"; return { ok: true, name: a.name as string, completed: false };
-  }, () => post<Res<{ name: string; completed: boolean }>>(`/ai/systems/${enc(id)}/review`, {}));
+  }, () => post<Res<{ name: string; completed: boolean }>>(`/ai/systems/${enc(id)}/review`, { reason }));
 }
 /** Prototype: aiArchive. Archiving is an approval: requested here, applied when a second admin/owner (not the requester, not the system owner) approves. */
 export function archiveSystem(id: string) {
@@ -176,7 +180,7 @@ export function confirmEu(id: string) {
     if (a.euDraft) { a.tier = a.euDraft.tier; a.guardrail = a.euDraft.guardrail; delete a.euDraft; }
     a.euState = { state: "Confirmed", draftBy: st.draftBy || a.owner, by: me.name + " (" + (me.base === "owner" ? "Owner" : "Admin") + ")", at: todayGB() };
     return { ok: true };
-  }, () => post<Res>(`/ai/systems/${enc(id)}/eu-classification/confirm`, {}));
+  }, () => post<Res>(`/ai/systems/${enc(id)}/eu-classification/confirm`, { cls: aiFind(id)?.euDraftClass })); // the class the confirmer saw
 }
 
 /* ---- impact assessment (FRIA / DPIA), submitter != approver ---- */
@@ -212,7 +216,7 @@ export function approveFria(id: string) {
     return { ok: true };
   }, () => post<Res>(`/ai/systems/${enc(id)}/impact-assessment/approve`, {}));
 }
-export function returnFria(id: string) {
+export function returnFria(id: string, reason = "") {
   return viaApi<Res>(() => {
     const a = aiFind(id); if (!a) return NOT_FOUND; aiInit(a);
     assertRole("reviewing an impact assessment", "admin", "owner");
@@ -220,7 +224,7 @@ export function returnFria(id: string) {
     if (f.review !== "Submitted") return fail("Nothing is awaiting review");
     assertNotSelf("a different person than the submitter or the system owner must review this", ...aiForbidden(a, f.submittedBy));
     f.review = "Changes requested"; return { ok: true };
-  }, () => post<Res>(`/ai/systems/${enc(id)}/impact-assessment/return`, {}));
+  }, () => post<Res>(`/ai/systems/${enc(id)}/impact-assessment/return`, { reason }));
 }
 
 /* ---- bias / oversight ---- */
@@ -242,6 +246,8 @@ export function saveOversight(id: string, text: string) {
 /* ---- signals ---- */
 const SIG_MSG = "Only the AI system owner or an admin can do this";
 const signalOf = (a: any, si: number) => (Number.isInteger(si) ? a.signals[si] : undefined);
+/** Production: signals are addressed by their server id. */
+const sigPath = (id: string, si: number, what: string) => `/ai/systems/${enc(id)}/signals/${enc(String(signalOf(aiFind(id) ?? { signals: [] }, si)?.id ?? si))}/${what}`;
 /** Prototype: aiSignalRisk. Pushes a draft risk (category AI) and links it from the signal. */
 export function signalRaiseRisk(id: string, si: number) {
   return viaApi<Res<{ ref: string }>>(() => {
@@ -252,7 +258,7 @@ export function signalRaiseRisk(id: string, si: number) {
     const r: any = { id: rid, title: "AI signal: " + String(s.text).slice(0, 56) + " — " + a.name, desc: s.rec || "", cat: "AI", owner: a.owner, l: 3, i: 3, cl: 3, ci: 3, rl: 2, ri: 2, treat: "Mitigate", status: "Open", review: "Draft", linked: [], identified: nowStamp().slice(0, 10), reviewed: nowStamp().slice(0, 10) };
     riskNorm(r); r.review = "Draft"; DATA.risks.push(r); // source: riskNorm when defined, then force Draft
     s.status = "Risk raised"; s.ref = rid; return { ok: true, ref: rid };
-  }, () => post<Res<{ ref: string }>>(`/ai/systems/${enc(id)}/signals/${si}/risk`, {}));
+  }, () => post<Res<{ ref: string }>>(sigPath(id, si, "risk"), {}));
 }
 /** Prototype: aiSignalIssue. */
 export function signalRaiseIssue(id: string, si: number) {
@@ -262,12 +268,12 @@ export function signalRaiseIssue(id: string, si: number) {
     const rid = nextId("R-", 60, DATA.issues);
     DATA.issues.unshift({ id: rid, title: "AI signal: " + String(s.text).slice(0, 56) + " — " + a.name, sev: s.sev === "Review" ? "Medium" : "Low", status: "Open", owner: a.owner, due: "Due 14d" });
     s.status = "Issue raised"; s.ref = rid; return { ok: true, ref: rid };
-  }, () => post<Res<{ ref: string }>>(`/ai/systems/${enc(id)}/signals/${si}/issue`, {}));
+  }, () => post<Res<{ ref: string }>>(sigPath(id, si, "issue"), {}));
 }
-export function signalDismiss(id: string, si: number) {
+export function signalDismiss(id: string, si: number, reason = "") {
   return viaApi<Res>(() => {
     const g = gate(id, SIG_MSG); if (isFail(g)) return g;
     const s = signalOf(g.a, si); if (!s) return fail("Signal not found");
     s.status = "Dismissed"; return { ok: true };
-  }, () => post<Res>(`/ai/systems/${enc(id)}/signals/${si}/dismiss`, {}));
+  }, () => post<Res>(sigPath(id, si, "dismiss"), { reason }));
 }

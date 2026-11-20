@@ -113,6 +113,17 @@ Evidence files are kept in a **private** Supabase Storage bucket that only the s
 
 Until this is done, attaching a file says "File storage is not configured yet"; everything else in Evidence works. Files are stored under the company's id (`<company>/<evidence id>/<random id>.<ext>`); deleting evidence (after the second admin's approval) deletes its files and keeps a tombstone with each file's name and SHA-256.
 
+### 4e. AI (you, per project; production programme group 6; optional)
+
+The AI Assistant and agents call Claude from the server. Without a key, every company's AI stays unavailable and the screens say so; nothing else changes.
+
+1. Create an API key in the Anthropic Console for your organisation (a workspace for Selvara is a good idea, with a spend limit).
+2. Vercel → the project → **Settings** → **Environment Variables**: name `ANTHROPIC_API_KEY`, the key as the value, **Sensitive**, for the environment of this project. Never put it in the repository or a browser variable (`NEXT_PUBLIC_...`).
+3. Optional: `SELVARA_AI_MODEL` to use another Claude model than `claude-opus-5-5`.
+4. Redeploy. AI stays off for each company until one of its admins asks to turn it on and a second admin approves (AI Assistant → Settings).
+
+Anthropic does not train models on API requests under its commercial terms. Check that your agreement with Anthropic and your own privacy notice cover sending company records to it before turning AI on for real customers.
+
 ## 5. First accounts (you, per project)
 
 Requests to join need a company admin to approve them, so create the first admin by hand (5a), then their company (5b).

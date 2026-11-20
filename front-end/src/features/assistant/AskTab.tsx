@@ -5,11 +5,17 @@ import { getMe, wsLog } from "@/lib/audit";
 import { bumpData } from "@/lib/store";
 import { clampText } from "@/lib/security";
 import * as svc from "@/features/assistant/services/assistant";
+import { API_ON } from "@/lib/rbac";
+import { AskServer } from "./AskServer";
 
 const SUGG = ["Summarise open risks", "Draft a board summary", "What is failing for SOC 2?", "Explain our MFA and access posture", "Draft a policy review update"];
 
 /** Prototype: REND.assistant "ask" view. Prompts and replies are rendered as React text only (pre-wrap), never as HTML. */
 export function AskTab({ scrollRef }: { scrollRef: React.RefObject<HTMLDivElement | null> }) {
+  return API_ON ? <AskServer scrollRef={scrollRef} /> : <AskDemo scrollRef={scrollRef} />;
+}
+/** The demonstration: canned drafts, nothing leaves the browser. */
+function AskDemo({ scrollRef }: { scrollRef: React.RefObject<HTMLDivElement | null> }) {
   const L = useLayer();
   const [text, setText] = useState("");
   const thread = svc.ASST.thread; const mtr = svc.asstMetrics();

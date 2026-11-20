@@ -54,4 +54,6 @@ export interface Store {
 }
 /** `dir` holds companies, memberships and platform staff (directory.ts); `db` is the company-scoped Postgres access (db.ts) behind it, absent in
  *  the in-memory tests. */
-export interface Deps { auth: AuthProvider; store: Store; dir: import("./directory").Directory; /** The Admin Console's data (platform.ts). */ plat: import("./platform").Platform; /** Support access to company workspaces (support.ts). */ sup: import("./support").Support; /** The workspace modules' records (ws/store.ts) and evidence files (ws/files.ts). */ ws: import("./ws/store").WsStore; files: import("./ws/files").FileStore; site: { origin: string; rpId: string }; secret: string; now: () => number; db?: import("./db").Db }
+export interface Deps { auth: AuthProvider; store: Store; dir: import("./directory").Directory; /** The Admin Console's data (platform.ts). */ plat: import("./platform").Platform; /** Support access to company workspaces (support.ts). */ sup: import("./support").Support; /** The workspace modules' records (ws/store.ts) and evidence files (ws/files.ts). */ ws: import("./ws/store").WsStore; files: import("./ws/files").FileStore; site: { origin: string; rpId: string }; secret: string; now: () => number; db?: import("./db").Db;
+  /** The AI model (server/claude.ts); absent until the owner adds the key. */ ai?: import("./claude").AiClient;
+  /** Outgoing webhook delivery (server/ws/webhooks.ts); tests use a stand-in. */ hooks?: import("./ws/webhooks").HookSender }

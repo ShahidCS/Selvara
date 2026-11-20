@@ -13,18 +13,22 @@ import { wsLog } from "@/lib/audit";
 import { AUTONOMY, CERT, DAY_MS, LADDER, REJECTED_AFTER, certDate, certState, isRung, nextRung, rungOf, trackRecord } from "@/features/assistant/lib/autonomy";
 import { TEAM_SETTINGS } from "@/services/team";
 import { clampText } from "@/lib/security";
-import { apiFetch, viaApi } from "@/services/http";
+import { viaApi } from "@/services/http";
+import { wsPost } from "@/services/ws";
+import { API_ON } from "@/lib/rbac";
+import { G6, g6Settings } from "@/lib/g6";
 
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
 export interface Agent { id: string; name: string; trigger: string; runsAs: string; autonomy: string; last: string; status: string; createdBy?: string; pendingApproval?: string; pendingAutonomy?: string;
   /** Acting agents only: when the certification to act expires (ms), who approved it, and whether it is the transition period for an agent that was acting before the ladder. */
   certifiedUntil?: number; certifiedBy?: string; transition?: boolean; pendingRecert?: string }
 export interface AgentRun { id: string; agentId?: string; when: string; agent: string; change: string; decision: string; requestedBy?: string; decidedBy?: string; decidedReason?: string }
-export interface McpGrant { server: string; tools: string; access: string; status: string; pendingApproval?: string }
+export interface McpGrant { id?: string; server: string; tools: string; access: string; status: string; pendingApproval?: string }
 export interface Msg { role: "user" | "assistant"; text: string; draft?: boolean }
 export const ASST = {
   thread: [] as Msg[],
-  agents: withTransition(clone(seed.ASST_AGENTS) as Agent[]), runs: clone(seed.ASST_RUNS) as AgentRun[], mcp: clone(seed.ASST_MCP) as McpGrant[],
+  // production: the server's agents, runs and grants (lib/g6.ts, filled by services/ws.ts); the demonstration: its seed
+  agents: API_ON ? (G6.agents as Agent[]) : withTransition(clone(seed.ASST_AGENTS) as Agent[]), runs: API_ON ? (G6.runs as AgentRun[]) : clone(seed.ASST_RUNS) as AgentRun[], mcp: API_ON ? (G6.mcp as McpGrant[]) : clone(seed.ASST_MCP) as McpGrant[],
 };
 /** Agents already acting when the ladder arrived keep acting for a transition period, then must be recertified or they drop to "Suggests only". */
 function withTransition(list: Agent[]): Agent[] {
@@ -37,7 +41,8 @@ export const AGENT_TRIGGERS = ["On schedule (weekly)", "Evidence overdue", "Cont
 export const AGENT_AUTONOMY: string[] = [...LADDER];
 export const AGENT_RUNS_AS = ["Read-only", "Service account"];
 export const ASK_MAX = 2000;
-const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
+/** Production: the Assistant on the server (server/ws/assistant.ts), which re-checks every rule and writes the audit entries. */
+const post = <T,>(path: string, body: unknown) => wsPost<T>(`/ws${path}`, body);
 const enc = encodeURIComponent;
 function uid(prefix: string, list: { id: string }[]) { let n = Date.now(); while (list.some((x) => x.id === prefix + n)) n++; return prefix + n; }
 
@@ -144,7 +149,7 @@ export function toggleAgent(id: string) {
   }, () => post<{ agent: Agent; pending: boolean } | null>(`/assistant/agents/${enc(id)}/toggle`, {}));
 }
 export function deleteAgent(id: string) {
-  return viaApi<Agent | null>(() => { gate("deleting an agent"); const a = findAgent(id); if (!a) return null; ASST.agents = ASST.agents.filter((x) => x.id !== id); return a; }, () => apiFetch<Agent | null>(`/assistant/agents/${enc(id)}`, { method: "DELETE" }));
+  return viaApi<Agent | null>(() => { gate("deleting an agent"); const a = findAgent(id); if (!a) return null; ASST.agents = ASST.agents.filter((x) => x.id !== id); return a; }, () => post<Agent | null>(`/assistant/agents/${enc(id)}/delete`, {}));
 }
 /** A new custom agent is created "Pending approval" on the lowest rung of the autonomy ladder (whatever `autonomy` asks for) and cannot run until a second admin/owner (not the creator) approves enabling it. */
 export function createAgent(input: { name: string; trigger: string; autonomy?: string; runsAs: string }) {
@@ -186,12 +191,12 @@ export function toggleMcp(i: number) {
     if (stillPending(s.pendingApproval)) throw new SodError("This grant is already awaiting approval.");
     const ap = requestApproval({ kind: "assistant.mcp.grant", title: `Grant MCP access: ${clampText(s.server, 60)} (${clampText(s.tools, 80)}; ${clampText(s.access, 60)})`, subject: s.server, payload: { server: s.server }, needs: 1, approverRoles: APPROVERS });
     s.pendingApproval = ap.id; return { grant: s, pending: true };
-  }, () => post<{ grant: McpGrant; pending: boolean } | null>(`/assistant/mcp/${i}/toggle`, {}));
+  }, () => post<{ grant: McpGrant; pending: boolean } | null>(`/assistant/mcp/${enc(ASST.mcp[i]?.id ?? String(i))}/toggle`, {}));
 }
 
 /* Autonomy ladder (features/assistant/lib/autonomy.ts; docs/security/SOD_MATRIX.md section 11). */
 /** The company's track-record setting (3, 2 or 0 = off). Anything else falls back to the default. */
-export function trackSetting(): number { const n = TEAM_SETTINGS.agentTrackRecord; return n === 0 || n === 2 || n === 3 ? n : AUTONOMY.TRACK_DEFAULT; }
+export function trackSetting(): number { const n = API_ON ? g6Settings.get().s?.trackRecord : TEAM_SETTINGS.agentTrackRecord; return n === 0 || n === 2 || n === 3 ? n : AUTONOMY.TRACK_DEFAULT; }
 /** Approvers a raise needs: two for an agent that runs as a service account, otherwise one. */
 export const raiseApprovers = (a: Agent): 1 | 2 => (a.runsAs === AUTONOMY.TWO_APPROVERS_FOR ? 2 : 1);
 function recordBlock(a: Agent): string | null {
@@ -266,7 +271,7 @@ export function rejectApplied(id: string, reason: string) {
 /* Certification of acting agents (docs/security/SOD_MATRIX.md section 11, "Certification"). */
 /** Drops every acting agent whose certification lapsed to the lowest rung (audited once each). Safe to call often; runs before every agent run. */
 export function sweepCertifications(now = Date.now()): Agent[] {
-  const out: Agent[] = [];
+  const out: Agent[] = []; if (API_ON) return out; // production: the server lowers lapsed agents (every load and before every run)
   ASST.agents.forEach((a) => {
     if (rungOf(a.autonomy) > 0 && certState(a, now) === "lapsed") {
       const from = a.autonomy; const was = a.transition ? "transition period ended without recertification" : "certification lapsed";
@@ -302,3 +307,14 @@ export function requestRecertify(id: string, reason: string) {
   }, () => post<{ agent: Agent; approvalId: string } | null>(`/assistant/agents/${enc(id)}/recertify`, { reason }));
 }
 
+
+/* ---- production only (server/ws/assistant.ts) ---- */
+export interface AskRecord { mod: string; id: string; label: string }
+export type AskResult = { blocked: true; message: string; findings: { kind: string; where: string; count: number }[] } | { blocked: false; draftId: string; text: string; records: string[]; masked: boolean; model: string };
+/** A question with the records the person chose and the earlier turns; the server checks for personal data before anything is sent. */
+export const askServer = (question: string, records: AskRecord[], history: Msg[]) =>
+  post<AskResult>("/assistant/ask", { question, records: records.map((r) => ({ mod: r.mod, id: r.id })), history: history.slice(-6).map((m) => ({ role: m.role, text: m.text })) });
+export const markReviewed = (draftId: string) => post<{ ok: true }>(`/assistant/drafts/${enc(draftId)}/reviewed`, {});
+export const setAiOn = (on: boolean) => post<{ pending?: boolean; enabled?: boolean }>("/assistant/ai", { on });
+export const setPiiMode = (mode: "block" | "mask") => post<{ pending?: boolean; mode?: string }>("/assistant/pii-mode", { mode });
+export const setTrackRecord = (n: number) => post<{ trackRecord: number }>("/assistant/track-record", { n });

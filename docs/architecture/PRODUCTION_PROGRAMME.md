@@ -55,7 +55,8 @@ The demonstration's screens are rich and already route every change through a se
 | 2 | Merged | none (uses `0008`) | ShahidCS/Selvara#75 |
 | 3 | Merged | none (uses `0008`) | ShahidCS/Selvara#76 |
 | 4 | Merged | none (uses `0008`) | ShahidCS/Selvara#77 |
-| 5 | Built, in review | `0009` | group 5 PR |
+| 5 | Merged | `0009` | ShahidCS/Selvara#78 |
+| 6 | Built, in review | none (uses `0008`) | group 6 PR |
 
 ### Group 3 decisions (Risk, Issues, My Work, Overview, Reports)
 
@@ -157,3 +158,48 @@ Where the inventory (`inventory/group5-audits-auditor-auditlog-appsec.md`, secti
   - Snapshots are shared from the minute access was granted.
   - The screens no longer claim that completing revokes the auditor's role-based reads, or that freezing locks evidence.
   - Overview rows for audits the role cannot open show a count only.
+
+### Group 6 decisions (AI governance, AI Assistant and agents, API keys and webhooks)
+
+Where the inventory (`inventory/group6-ai-assistant-api.md`, sections 4 and 7) found a gap, production does the following. The AI decision of section 1 has no demonstration behaviour to keep, so it is built new.
+
+- **AI use is a company setting.**
+  - AI is off until a company admin asks to turn it on and a second admin approves (`ai.enable`). Turning it off is immediate.
+  - The key (`ANTHROPIC_API_KEY`) is set in Vercel by the owner and read only on the server. Without it the screens say AI is not set up.
+  - When AI is turned on, the AI Assistant registers itself in the AI register. The register governs it: if it is archived, its guardrail is Blocked, or it is confirmed Prohibited, every request stops.
+- **What is sent.** Only the records the person attaches to a question, read from the server's copy, without people fields (owners, authors, approvers, leads, auditors). Agents send only their trigger's records. The person sees the list before sending, and a record they were viewing is offered when they open the Assistant from it.
+- **PII blocker.**
+  - It checks the question, the earlier turns and every record field before anything leaves: email addresses, phone numbers, payment cards (Luhn), IBANs (checksum), national identity numbers (CNIC, Emirates ID, SSN, UK NI), passport numbers, dates of birth, IP addresses, secrets and the names of the company's members and contractors.
+  - By default it blocks and explains what kind of data was found and where, for example "your question: email address". The audit entry has the kind and place, never the value. Each block also adds a signal on the Assistant's register entry.
+  - A company admin may choose "mask then send" (four-eyes, `ai.mask`): values become placeholders such as [EMAIL]. Values are masked one by one, then the final request is checked again; anything still found blocks the request whatever the setting. Going back to blocking is immediate.
+  - It finds data by pattern, so it cannot catch every way of describing a person. The screens say so.
+- **The model.** Claude through the Messages API (`claude-opus-5-5` unless `SELVARA_AI_MODEL` names another), low effort, with server-side fallback on a declined request. A plain HTTPS call is used because adding the SDK changes dependencies. API requests are not used for training under the provider's commercial terms. Questions and answers are not stored; the audit log records who asked, the records sent, the model and token counts. Limits: 30 questions an hour a person (blocked ones count), 20 agent runs an hour a company.
+- **Prompt injection.** Records are data inside a `<records>` block that a record cannot close; the instructions tell the model to ignore instructions inside records. Answers are drafts for review.
+- **Agents.** The autonomy ladder of the demonstration is kept. Agents start at "Suggests only", where someone other than the person who ran them approves each change. They are raised to "Acts (logged)" only with a track record (3, 2 or Off, set by an admin in the Assistant's Settings) and a second person's approval (two for a service account). They are recertified every 90 days and lowered at once.
+  - A run reads its trigger's records (failing controls, high open risks, evidence waiting for review or rejected, open questionnaires, or weekly figures). The model drafts a note for the records' owners, and the note is sent as an in-app notice once approved.
+  - Two governed MCP grants replace the demonstration's labels: "Selvara workspace (read)" (no run without it) and "Selvara notices" (nothing is sent without it). Each is granted with four-eyes and revoked at once.
+  - Deleting or lowering an agent withdraws its pending requests. A run's change cannot be approved after its agent was deleted or AI was turned off.
+  - Agents run on Run now. Scheduled triggers need a scheduler (a Vercel cron in `vercel.json`, which needs the owner's approval).
+- **AI governance.** Everything is in the company's own log, not the platform's.
+  - A draft EU AI Act classification is a proposal beside the class in force. Only an admin or owner other than the drafter and the system owner confirms it, and only the draft they saw.
+  - Confirming may tighten the guardrail, never loosen it. A guardrail must match the class: Prohibited needs Blocked, high-risk needs Restricted or above.
+  - Completing a review needs a confirmed class, an approved impact assessment for a high-risk system and no failing bias test. A new review of an approved system needs a reason. Archived systems are read-only.
+  - Returning an assessment needs a reason. Approving keeps the recorded status.
+  - Evidence is a link to a real evidence record. Obligations are judged from what is recorded.
+  - Signals become real risks and issues (with `risk.created` and `issue.created`, the system owner, a due date). Dismissing one needs a reason. Discovered (shadow) AI starts empty until a discovery source is connected (group 7).
+  - The analyst cannot open the module (`roles.json`), so production registration is admin and owner only.
+- **API keys.**
+  - Keys are `sel_<company code>_<key id>_<secret>`, generated on the server and stored only as an HMAC. They are shown once and expire after 30, 90 or 365 days.
+  - A key acts for the admin who created it and stops when that person is no longer an active admin.
+  - A read key is issued at once. A read/write key needs a second admin and is generated only when the requester opens it, within 60 minutes of the approval. If it is not opened in time it expires unissued (audited).
+  - Keys are accepted by the company API: `GET /api/v1/{controls,risks,issues,policies,vendors,evidence,ai-systems}` and, for read/write keys, `POST /api/v1/events`. The API is limited to 600 calls an hour per key and never uses the session cookie.
+- **Webhooks.**
+  - Signed (HMAC-SHA256 over timestamp and body) with a per-endpoint secret, stored encrypted and shown once to the requester after a second admin approves.
+  - Delivery is https on port 443 only. Every resolved address must be public, and the connection is pinned to the checked address. Redirects are never followed, the timeout is 3 seconds, and network errors and 5xx responses get one retry. Every delivery is logged and failures are audited.
+  - Events are raised from the company's audit entries after the change commits: `control.failed`, `audit.completed`, `risk.updated`, `evidence.updated`, `policy.published`, `access.revoked`, `issue.created`. A delivery carries the event, the action and the record ids, never the audit text.
+  - A paused webhook delivers nothing, tests included. Deleting a pending webhook withdraws its approval.
+- **Custom tests.** A test reads the events pushed for its target: the newest event's status gives Pass, Fail or No data. "On push" tests run as events arrive; the others when due, the next time the page is opened.
+- **Open decisions for the owner.**
+  - Owners cannot open the Assistant (`roles.json`). A service-account agent's raise or recertification needs two approvers besides the requester and creator, so a company needs at least three or four admins for it.
+  - Agent schedules need a Vercel cron (`vercel.json`).
+  - The company API returns records as the admin sees them, owner names included. Minimising them is a product choice.

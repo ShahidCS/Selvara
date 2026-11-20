@@ -7,6 +7,7 @@ import * as svc from "@/features/assistant/services/assistant";
 import { AUTONOMY, CERT, REJECTED_AFTER, RUNG_HELP, certDate, certState, nextRung, trackRecord, type Rung } from "@/features/assistant/lib/autonomy";
 import { getApproval } from "@/lib/approvals";
 import { WhyNot, attempt } from "@/components/kit/sodKit";
+import { API_ON } from "@/lib/rbac";
 
 type Agent = (typeof svc.ASST.agents)[number];
 type Run = (typeof svc.ASST.runs)[number];
@@ -17,6 +18,7 @@ export function AgentsTab({ manage }: { manage: boolean }) {
   const L = useLayer(); const fail = (m: string) => L.toast(m, false);
   const run = (id: string) => attempt(L, async () => {
     const r = await svc.runAgent(id); if (!r) return fail("Agent not found");
+    if ((r as { nothing?: boolean }).nothing) { L.toast(r.agent.name + " ran: nothing to do (see the run log)"); setModState("assistant.view", "log"); bumpData(); return; }
     wsLog("assistant.agent.run", r.agent.name, "System");
     L.toast(r.agent.name + " ran" + (r.suggest ? " — awaiting approval" : ""));
     setModState("assistant.view", "log"); bumpData();
@@ -64,7 +66,7 @@ export function AgentsTab({ manage }: { manage: boolean }) {
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <p className="field help" style={{ margin: 0 }}>Agents run on triggers with least-privilege access. Creating or resuming an agent needs approval from a different admin or owner. Every agent starts at &quot;Suggests only&quot;, where a person approves each change. It can be raised to &quot;Acts (logged)&quot; after {svc.trackSetting() ? `${svc.trackSetting()} approved suggestions and no recent rejection` : "approval (no track record is required in this workspace)"}, with approval from a different admin or owner (two for an agent that runs as a service account). Lowering is immediate, and rejecting a change an agent applied lowers it automatically. An acting agent must be recertified every {CERT.VALID_DAYS} days or it drops to &quot;Suggests only&quot; before its next run.</p>
+      <p className="field help" style={{ margin: 0 }}>Agents run on triggers with least-privilege access. Creating or resuming an agent needs approval from a different admin or owner. Every agent starts at &quot;Suggests only&quot;, where a person approves each change. It can be raised to &quot;Acts (logged)&quot; after {svc.trackSetting() ? `${svc.trackSetting()} approved suggestions and no recent rejection` : "approval (no track record is required in this workspace)"}, with approval from a different admin or owner (two for an agent that runs as a service account). Lowering is immediate, and rejecting a change an agent applied lowers it automatically. An acting agent must be recertified every {CERT.VALID_DAYS} days or it drops to &quot;Suggests only&quot; before its next run.{API_ON ? " A run reads the records its trigger names (for example failing controls), and the AI drafts a note to their owners; the note is sent once approved. Agents run when someone selects Run now: scheduled runs need the platform scheduler, which is not set up yet." : ""}</p>
       <DataTable<Agent> id="agents" label="Agents" rows={svc.ASST.agents} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.name} ${a.trigger} ${a.runsAs}`}
         tabs={["Active", "Pending approval", "Paused"].map((st) => ({ key: st, label: st, match: (a: Agent) => a.status === st }))} exportName="agents" />
     </div>
@@ -202,7 +204,7 @@ export function RunLogTab({ manage }: { manage: boolean }) {
     { key: "when", header: "When", value: (r) => r.when, render: (r) => <span style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{r.when}</span> },
     { key: "agent", header: "Agent", value: (r) => r.agent, locked: true, render: (r) => <span className="strong">{r.agent}{r.requestedBy ? <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 400 }}>run by {r.requestedBy}</div> : null}</span> },
     { key: "change", header: "Proposed change", value: (r) => r.change, render: (r) => r.change },
-    { key: "decision", header: "Decision", value: (r) => r.decision, render: (r) => (<>{r.decision === "Waiting" ? <Chip cls="warn" icon="clock">Waiting</Chip> : r.decision === "Rejected" || r.decision === REJECTED_AFTER ? <Chip cls="bad" icon="x">{r.decision}</Chip> : <Chip cls="ok" icon="check">{r.decision}</Chip>}{r.decidedBy ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>by {r.decidedBy}</div> : null}</>) },
+    { key: "decision", header: "Decision", value: (r) => r.decision, render: (r) => (<>{r.decision === "Waiting" ? <Chip cls="warn" icon="clock">Waiting</Chip> : r.decision === "Rejected" || r.decision === REJECTED_AFTER ? <Chip cls="bad" icon="x">{r.decision}</Chip> : r.decision === "Blocked" ? <Chip cls="bad" icon="alert">Blocked (personal data)</Chip> : r.decision === "No change" ? <Chip cls="neutral" icon="dot">No change</Chip> : <Chip cls="ok" icon="check">{r.decision}</Chip>}{r.decidedBy ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>by {r.decidedBy}</div> : null}</>) },
     { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (r) => {
       if (manage && r.decision === "Auto-applied") return <button className="btn btn-ghost sm" aria-label={`Reject applied change: ${r.change}`} onClick={() => flag(r)}><Icon name="x" />Reject applied change</button>;
       const why = manage && r.decision === "Waiting" ? svc.runBlockReason(r) : null;
@@ -249,8 +251,8 @@ export function McpTab({ manage }: { manage: boolean }) {
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <p className="field help" style={{ margin: 0 }}>Agents reach tools only through governed MCP servers. Each grant is least-privilege and every call is logged. Revoke access at any time; granting access needs approval from a different admin or owner.</p>
-      <DataTable<Mcp> id="mcp" label="MCP servers" rows={svc.ASST.mcp} rowKey={(s) => s.server} columns={cols} searchText={(s) => `${s.server} ${s.tools} ${s.access}`}
+      <p className="field help" style={{ margin: 0 }}>{API_ON ? "Agents reach Selvara's own data only through these governed grants: no agent runs without \"Selvara workspace (read)\", and nothing an agent proposes is sent without \"Selvara notices\". Every run is recorded in the audit log with the records it read. Revoke access at any time; granting access needs approval from a different admin or owner." : "Agents reach tools only through governed MCP servers. Each grant is least-privilege and every call is logged. Revoke access at any time; granting access needs approval from a different admin or owner."}</p>
+      <DataTable<Mcp> id="mcp" label="MCP servers" rows={svc.ASST.mcp} rowKey={(s) => s.id ?? s.server} columns={cols} searchText={(s) => `${s.server} ${s.tools} ${s.access}`}
         tabs={["Granted", "Revoked"].map((st) => ({ key: st, label: st, match: (s: Mcp) => s.status === st }))} exportName="mcp-servers" />
     </div>
   );

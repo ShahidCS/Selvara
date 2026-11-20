@@ -10,6 +10,8 @@ import { FAIL_MSG, uiMessage } from "@/lib/grcSod";
 import { AI_AUTONOMY, AI_SHADOW, AI_TIERS, aiFind, aiInit, aiLog } from "@/features/ai/lib/ai";
 import * as svc from "@/features/ai/services/ai";
 import { gridStyle } from "./AiModals";
+import { API_ON } from "@/lib/rbac";
+import { MemberSelect, myMemberId, useMembers } from "@/components/kit/MemberSelect";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const LIST = "/ws/ai";
@@ -22,16 +24,17 @@ export function AiRegisterPage({ shadowId }: { shadowId: string | null }) {
   const sh = shadowId ? AI_SHADOW.find((x: any) => x.id === shadowId) : null;
   const init = { name: sh ? String(sh.name) : "", surface: sh ? String(sh.where || "") : "", tier: "Medium", model: "", provider: "", purpose: "", data: sh ? String(sh.data || "") : "", autonomy: AI_AUTONOMY[0], users: "", owner: DATA.people[0]?.name || "" };
   const [f, setF] = useState(init); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const members = useMembers(); const [ownerId, setOwnerId] = useState("");
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((p) => ({ ...p, [k]: e.target.value }));
   const dirty = !busy && (Object.keys(init) as (keyof typeof f)[]).some((k) => f[k] !== init[k]);
   const { allowLeave } = useUnsavedGuard(dirty, L);
   const ref = useRef<HTMLInputElement>(null); useEffect(() => { ref.current?.focus(); }, []);
   const back = { href: LIST, label: "AI governance" };
-  if (!hasRole(role, "admin", "owner", "analyst")) return <Page title="Register an AI system" back={back}><Empty icon="ai" title="You cannot do this">Only an admin, owner or analyst can register AI systems.</Empty></Page>;
+  if (!hasRole(role, "admin", "owner", ...(API_ON ? [] : ["analyst"]))) return <Page title="Register an AI system" back={back}><Empty icon="ai" title="You cannot do this">Only an admin, owner or analyst can register AI systems.</Empty></Page>;
   const submit = async (e: FormEvent) => {
     e.preventDefault(); setBusy(true);
     try {
-      const r = await svc.registerSystem(f, shadowId);
+      const r = await svc.registerSystem(API_ON ? { ...f, owner: "", ownerId: ownerId || myMemberId(members) } : f, shadowId);
       if (r.ok === false) { setBusy(false); setErr((r as { msg: string }).msg); return; }
       aiLog("ai.registered", r.name); allowLeave(); L.toast(r.name + " registered; classify it next"); bumpData();
       go(`${LIST}/${encodeURIComponent(r.id)}`);
@@ -60,7 +63,8 @@ export function AiRegisterPage({ shadowId }: { shadowId: string | null }) {
           </div>
         </FormSection>
         <FormSection n={3} title="Ownership" note="Registering a system does not approve it.">
-          <div className="field"><label htmlFor="rO">Owner</label><select className="select" id="rO" value={f.owner} onChange={set("owner")}>{DATA.people.map((p) => <option key={p.id || p.name}>{p.name}</option>)}</select></div>
+          {API_ON ? <MemberSelect id="rO" value={ownerId || myMemberId(members)} onChange={setOwnerId} help="The owner may change the system; they cannot confirm its classification or approve its assessment." />
+            : <div className="field"><label htmlFor="rO">Owner</label><select className="select" id="rO" value={f.owner} onChange={set("owner")}>{DATA.people.map((p) => <option key={p.id || p.name}>{p.name}</option>)}</select></div>}
         </FormSection>
         {err ? <FormMessage id="rN-err">{err}</FormMessage> : null}
         <FormActions><button type="button" className="btn btn-secondary" onClick={() => go(LIST)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={busy}>Register</button></FormActions>

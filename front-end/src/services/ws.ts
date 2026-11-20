@@ -14,6 +14,7 @@ import { ANSWER_LIB, INCIDENT, KB_DOCS, SCHED_PACKS, STANDARD_TERMS, TRUST, TRUS
 import { API_ON, modAllowed } from "@/lib/rbac";
 import { SERVER_KINDS } from "@/lib/rulesWs";
 import { appStore, bumpData, createStore } from "@/lib/store";
+import { clearG6, G6, g6Settings } from "@/lib/g6";
 import { ApiError, apiFetch, API_BASE } from "./http";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -112,6 +113,18 @@ const LOADERS: Record<string, (b: any) => void> = {
     const v = b.verification; // the last verification (verifying recomputes the whole chain, so it runs only when asked)
     g4Meta.set({ auditlog: { firstBad: v?.firstBad ?? null, verifiedAt: v?.at ?? null, verifiedBy: v?.by, packages: b.packages ?? [] } });
   },
+  /** AI governance: the register (systems carry their derived lifecycle, obligations and pending markers) and discovered AI. */
+  ai(b) { DATA.ai = b.systems; fill(G6.shadow, b.shadow); setApprovals(["ai.guardrail", "ai.archive"], b.approvals); },
+  /** The AI Assistant: the company's AI setting, agents, their runs and MCP grants. Questions and answers are never loaded (not stored). */
+  assistant(b) {
+    g6Settings.set({ s: b.settings }); fill(G6.agents, b.agents); fill(G6.runs, b.runs); fill(G6.mcp, b.mcp);
+    setApprovals(["ai.enable", "ai.mask", "assistant.agent.enable", "assistant.agent.autonomy", "assistant.agent.recertify", "assistant.mcp.grant"], b.approvals);
+  },
+  /** API keys (prefixes only), webhooks, custom tests and the event stream. */
+  api(b) {
+    fill(G6.keys, b.keys); fill(G6.hooks, b.hooks); fill(G6.tests, b.tests); fill(G6.events, b.events); fill(G6.webhookEvents, b.webhookEvents); G6.revealMinutes = b.revealMinutes ?? 60;
+    setApprovals(["api.key", "api.webhook"], b.approvals);
+  },
   /** Posture figures of the modules the person cannot open (scores and statuses only, no titles or owners). Loaded last: it never replaces
    *  what a module the person can open has loaded. */
   overview(b) {
@@ -133,7 +146,7 @@ let loadedFor = "";
 /** Empties every server-backed collection (another company or role: nothing of the previous one may remain on screen). */
 function clearAll() {
   DATA.frameworks = []; DATA.controls = []; DATA.tests = []; DATA.evidence = []; DATA.policies = []; DATA.people = []; DATA.access = [];
-  DATA.risks = []; DATA.issues = []; DATA.reports = []; DATA.audits = []; fill(WS_AUDIT, []); DATA.vendors = []; DATA.questionnaires = []; DATA.trust = []; DATA.commitments = [];
+  DATA.risks = []; DATA.issues = []; DATA.reports = []; DATA.audits = []; fill(WS_AUDIT, []); DATA.vendors = []; DATA.questionnaires = []; DATA.trust = []; DATA.commitments = []; DATA.ai = []; clearG6();
   fill(ANSWER_LIB, []); fill(KB_DOCS, []); fill(TRUST_FAQ, []); fill(TRUST_SUBPROC, []); fill(TRUST_UPDATES, []); fill(STANDARD_TERMS, []);
   TRUST.accounts = []; TRUST.requests = []; TRUST.decisions = []; TRUST.blocked = []; TRUST.chats = []; TRUST.activity = []; TRUST.modeHist = [];
   g4Meta.set({ contacts: [], vendorQs: [], assigned: [], trustPublic: null, incidents: [], subscribers: 0, auditors: [], auditlog: { firstBad: null, verifiedAt: null, packages: [] } });
@@ -183,6 +196,7 @@ const send = async <T,>(path: string, init: RequestInit): Promise<T> => {
 };
 /** A change on the server, then a reload of the workspace data so every screen shows the result. */
 export const wsPost = <T,>(path: string, body: unknown = {}) => send<T>(path, { method: "POST", body: JSON.stringify(body) });
+export const wsDelete = <T,>(path: string) => send<T>(path, { method: "DELETE" });
 export const wsPatch = <T,>(path: string, body: unknown) => send<T>(path, { method: "PATCH", body: JSON.stringify(body) });
 /** Uploads a file's bytes (the server checks type, size and content). */
 export async function wsUpload<T>(path: string, file: File): Promise<T> {

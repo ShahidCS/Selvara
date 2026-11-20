@@ -9,6 +9,8 @@ import { bumpData } from "@/lib/store";
 import { AI_ANNEX_AREAS, AI_BIAS_STATUSES, AI_FRIA_STATUSES, AI_GUARDRAILS, AI_ROLES, AI_TIERS, aiFind, aiInit, aiLog } from "@/features/ai/lib/ai";
 import * as svc from "@/features/ai/services/ai";
 import { attempt } from "@/components/kit/sodKit";
+import { API_ON } from "@/lib/rbac";
+import { MemberSelect, useMembers } from "@/components/kit/MemberSelect";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Reopen = (() => void) | undefined;
@@ -47,8 +49,14 @@ function AssignForm({ id }: { id: string }) {
   const L = useLayer(); const act = useAct(); const a = aiFind(id);
   // source: every person whose name contains the owner's surname is `selected`; in a single select the last one wins
   const init = () => { const last = String(a?.owner || "").split(" ").pop() as string; const m = DATA.people.filter((p) => p.name.includes(last)); return (m.length ? m[m.length - 1] : DATA.people[0])?.name || ""; };
-  const [o, setO] = useState(init);
+  const [o, setO] = useState(init); const members = useMembers(); const [oid, setOid] = useState(() => members.find((m) => m.name !== a?.owner)?.id ?? "");
   if (!a) return <NotFound />;
+  if (API_ON) return (
+    <>
+      <MemberSelect id="aO" value={oid} onChange={setOid} />
+      <Foot L={L} label="Save" onSave={() => act(() => svc.assignOwner(id, "", oid), () => { L.closeLayer(); bumpData(); L.toast("Owner assigned"); })} />
+    </>
+  );
   const save = () => act(() => svc.assignOwner(id, o), () => { aiLog("ai.owner.assigned", a.name); L.closeLayer(); bumpData(); L.toast("Owner assigned"); });
   return (
     <>

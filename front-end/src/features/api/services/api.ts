@@ -11,25 +11,32 @@ import { requestApproval } from "@/lib/approvals";
 import { payloadStr, registerApprovalHandler } from "@/lib/approvalKit";
 import { assertRole, getActor, hasRole, isSamePerson, SodError } from "@/lib/sod";
 import { wsLog } from "@/lib/audit";
-import { apiFetch, viaApi } from "@/services/http";
+import { viaApi } from "@/services/http";
+import { wsDelete, wsPost } from "@/services/ws";
+import { API_ON } from "@/lib/rbac";
+import { G6 } from "@/lib/g6";
 
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
 /** status: Active | Revoked | "Pending approval" (write scope, no secret yet) | "Not approved" (rejected, withdrawn or expired). */
-export interface ApiKey { id: string; label: string; prefix: string; created: string; lastUsed: string; scope: string; status: string; approvalId?: string; requestedBy?: string }
+/** Production adds: expires, uses, revealable (the signed-in requester may open it now). */
+export interface ApiKey { id: string; label: string; prefix: string; created: string; lastUsed: string; scope: string; status: string; approvalId?: string; requestedBy?: string; expires?: string; uses?: number; revealable?: boolean }
 /** status: Active | Paused | "Pending approval" | "Not approved". */
-export interface Webhook { id: string; url: string; events: string[]; status: string; lastDelivery: string; approvalId?: string }
+export interface Webhook { id: string; url: string; events: string[]; status: string; lastDelivery: string; approvalId?: string; failures?: number; secretRevealable?: boolean }
 export interface CustomTest { id: string; name: string; target: string; schedule: string; last: string; result: string }
-export interface ApiEvent { ev: string; res: string; http: string; lat: string; when: string }
-export const WH_EVENTS: string[] = seed.WH_EVENTS;
+export interface ApiEvent { id?: string; ev: string; res: string; http: string; lat: string; when: string; dir?: "In" | "Out"; detail?: string }
+/** Production: the events the server raises (lib/g6.ts). */
+export const WH_EVENTS: string[] = API_ON ? G6.webhookEvents : seed.WH_EVENTS;
 export const KEY_SCOPES = ["Read", "Read/Write"];
 export const TEST_SCHEDULES = ["Every 2h", "Daily", "Weekly", "On push"];
 const EVENT_CAP = 200;
 /** Mutable demo collections (prototype globals API_KEYS / WEBHOOKS / CUSTOM_TESTS / API_EVENTS). */
 export const API = {
-  keys: clone(seed.API_KEYS) as ApiKey[], hooks: clone(seed.WEBHOOKS) as Webhook[],
-  tests: clone(seed.CUSTOM_TESTS) as CustomTest[], events: clone(seed.API_EVENTS) as ApiEvent[],
+  // production: the server's records (lib/g6.ts, filled by services/ws.ts); the demonstration: its seed
+  keys: API_ON ? (G6.keys as ApiKey[]) : clone(seed.API_KEYS) as ApiKey[], hooks: API_ON ? (G6.hooks as Webhook[]) : clone(seed.WEBHOOKS) as Webhook[],
+  tests: API_ON ? (G6.tests as CustomTest[]) : clone(seed.CUSTOM_TESTS) as CustomTest[], events: API_ON ? (G6.events as ApiEvent[]) : clone(seed.API_EVENTS) as ApiEvent[],
 };
-const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
+/** Production: server/ws/apikeys.ts, which re-checks every rule and writes the audit entries. */
+const post = <T,>(path: string, body: unknown) => wsPost<T>(`/ws${path}`, body);
 const enc = encodeURIComponent;
 /** Demo id in the source's style ("K"+Date.now()), bumped if it would collide. Not a security token. */
 function uid(prefix: string, list: { id: string }[]) { let n = Date.now(); while (list.some((x) => x.id === prefix + n)) n++; return prefix + n; }
@@ -64,7 +71,7 @@ registerApprovalHandler("api.webhook", {
 const logSafe = (u: string) => { try { const x = new URL(u); return x.origin + x.pathname; } catch { return "(invalid url)"; } };
 
 /** Prototype: apiDoNewKey. Read-only: issued at once (shown once). Read/Write: a pending request; the secret exists only after a second admin approves. */
-export function createKey(input: { label: string; scope: string }) {
+export function createKey(input: { label: string; scope: string; days?: number }) {
   return viaApi<{ id: string; full?: string; pending: boolean }>(() => {
     gate("creating an API key");
     const scope = KEY_SCOPES.includes(input.scope) ? input.scope : "Read";
@@ -81,11 +88,12 @@ export function createKey(input: { label: string; scope: string }) {
 }
 /** Can the signed-in person reveal this key now? (approved write key, they requested it, secret not yet shown, not expired) */
 export function keyRevealable(id: string): boolean {
+  if (API_ON) return !!API.keys.find((k) => k.id === id)?.revealable;
   const v = VAULT.get(id); return !!v && v.until > Date.now() && isSamePerson(v.by, getActor().name);
 }
 /** Shows the secret of an approved key ONCE to its requester, then forgets it. */
 export function revealKey(id: string) {
-  return viaApi<{ full: string; label: string; scope: string }>(() => {
+  return viaApi<{ full: string; label: string; scope: string; expired?: boolean; message?: string }>(() => {
     gate("revealing an API key");
     const k = API.keys.find((x) => x.id === id); const v = VAULT.get(id); if (!k || !v) throw new SodError("This key was already shown or is not available. Create a new key if it was lost.");
     if (!isSamePerson(v.by, getActor().name)) throw new SodError("Only the admin who requested this key can see it.");
@@ -93,7 +101,7 @@ export function revealKey(id: string) {
     if (v.until <= Date.now()) { k.status = "Revoked"; wsLog("api.key.expired_unrevealed", k.label, "System"); throw new SodError("The reveal window has expired and the key was revoked. Create a new key."); }
     wsLog("api.key.revealed", `${k.label} (shown once to ${v.by})`, "System");
     return { full: v.full, label: k.label, scope: k.scope };
-  }, () => post<{ full: string; label: string; scope: string }>(`/api-keys/${enc(id)}/reveal`, {}));
+  }, () => post<{ full: string; label: string; scope: string; expired?: boolean; message?: string }>(`/api-keys/${enc(id)}/reveal`, {}));
 }
 export function revokeKey(id: string) {
   return viaApi<ApiKey | null>(() => { gate("revoking an API key"); const k = API.keys.find((x) => x.id === id); if (!k) return null; k.status = "Revoked"; VAULT.delete(id); return k; }, () => post<ApiKey | null>(`/api-keys/${enc(id)}/revoke`, {}));
@@ -115,19 +123,20 @@ const approvedHook = (id: string): Webhook | null => {
   if (w.status !== "Active" && w.status !== "Paused") throw new SodError("This webhook has not been approved by a second admin.");
   return w;
 };
+/** Production returns the delivery's real result (status, time, error). */
 export function testWebhook(id: string) {
-  return viaApi<Webhook | null>(() => {
+  return viaApi<Webhook | { status: number; ms: number; error: string } | null>(() => {
     gate("testing a webhook");
     const w = approvedHook(id); if (!w) return null;
     pushEvent({ ev: w.events[0] || "test.ping", res: "webhook-test", http: "200", lat: 60 + randInt(90) + "ms", when: "just now" });
     w.lastDelivery = "200 · just now"; return w;
-  }, () => post<Webhook | null>(`/webhooks/${enc(id)}/test`, {}));
+  }, () => post<{ status: number; ms: number; error: string }>(`/webhooks/${enc(id)}/test`, {}));
 }
 export function toggleWebhook(id: string) {
   return viaApi<Webhook | null>(() => { gate("changing a webhook"); const w = approvedHook(id); if (!w) return null; w.status = w.status === "Active" ? "Paused" : "Active"; return w; }, () => post<Webhook | null>(`/webhooks/${enc(id)}/toggle`, {}));
 }
 export function deleteWebhook(id: string) {
-  return viaApi<Webhook | null>(() => { gate("deleting a webhook"); const w = API.hooks.find((x) => x.id === id); if (!w) return null; API.hooks = API.hooks.filter((x) => x.id !== id); return w; }, () => apiFetch<Webhook | null>(`/webhooks/${enc(id)}`, { method: "DELETE" }));
+  return viaApi<Webhook | null>(() => { gate("deleting a webhook"); const w = API.hooks.find((x) => x.id === id); if (!w) return null; API.hooks = API.hooks.filter((x) => x.id !== id); return w; }, () => wsDelete<Webhook | null>(`/ws/webhooks/${enc(id)}`));
 }
 export function createTest(input: { name: string; target: string; schedule: string }) {
   return viaApi<CustomTest>(() => {
@@ -141,7 +150,7 @@ export function runTest(id: string) {
   return viaApi<CustomTest | null>(() => { gate("running a custom test"); const t = API.tests.find((x) => x.id === id); if (!t) return null; t.result = randInt(100) < 75 ? "Pass" : "Fail"; t.last = "just now"; return t; }, () => post<CustomTest | null>(`/custom-tests/${enc(id)}/run`, {}));
 }
 export function deleteTest(id: string) {
-  return viaApi<CustomTest | null>(() => { gate("deleting a custom test"); const t = API.tests.find((x) => x.id === id); if (!t) return null; API.tests = API.tests.filter((x) => x.id !== id); return t; }, () => apiFetch<CustomTest | null>(`/custom-tests/${enc(id)}`, { method: "DELETE" }));
+  return viaApi<CustomTest | null>(() => { gate("deleting a custom test"); const t = API.tests.find((x) => x.id === id); if (!t) return null; API.tests = API.tests.filter((x) => x.id !== id); return t; }, () => wsDelete<CustomTest | null>(`/ws/custom-tests/${enc(id)}`));
 }
 const SAMPLE_EVENTS: [string, string][] = [["resource.pushed", "s3://logs-prod"], ["test.evaluated", "edge-01"], ["resource.pushed", "vpc/flow-logs"], ["test.evaluated", "iam/root"]];
 export function pushTestEvent() {
@@ -151,3 +160,6 @@ export function pushTestEvent() {
     pushEvent({ ev: s[0], res: s[1], http: "200", lat: 60 + randInt(90) + "ms", when: "just now" }); return s;
   }, () => post<[string, string]>("/api-events/test", {}));
 }
+/** Production: the webhook's signing secret, once, to the admin who asked for it, within the reveal window. */
+export const revealHookSecret = (id: string) => wsPost<{ secret: string; url: string }>(`/ws/webhooks/${enc(id)}/secret`, {});
+export const KEY_DAYS = [30, 90, 365];
