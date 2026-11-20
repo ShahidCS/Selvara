@@ -5,6 +5,16 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ## [Unreleased]
 
 ### Changed
+- Production programme, group 8a: the Admin Console's **Billing**, **Exchange Rates & Tax**, **MFA Resets** and **Platform Security** (sign-in blocks), and the workspace's **Billing & Invoices**, run on the server in production. Migration `0010_platform_records.sql` (schema version 10).
+  - **Ledger.** Billing accounts, invoices issued with the exchange rate and tax locked in, and payments, credits, refunds, manual payments, write-offs and voids as ledger entries with a reason and a ticket. Above USD 1,000, every write-off and every price-list change need a second elevated super admin.
+  - **Card payments (optional).** With Stripe keys set, company admins pay on Stripe's hosted page and super admins create payment links; payments are recorded only from Stripe's signed webhook. Without them, bank transfer.
+  - **Plan changes** are company requests the platform accepts from the next period or declines.
+  - **Rates** come from the European Central Bank and open.er-api.com, cross-checked; moved, disagreeing or stale rates are held for a person, and releasing or overriding needs a second super admin.
+  - **MFA resets** of company admins and owners need three identity checks, a ticket and a named second super admin, who alone decides.
+  - **Sign-in blocks** are listed for platform staff and lifted by an elevated super admin with a reason.
+  - **Protected file.** `rbac.ts` lists the five modules as server-ready (pre-approved change). Every module now runs on the server in production.
+  - **Before deploying.** Run `0010_platform_records.sql`. Optional: add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` and the webhook endpoint (`SUPABASE.md` section 4g).
+  - Draft for finance, security and compliance review.
 - Production programme, group 7: **Integrations** run on the server in production with real read-only connectors for **GitHub**, **AWS**, **Okta**, **Microsoft Entra ID** and **Google Workspace**. They use the group 1 store, so there is no new migration. The decisions are recorded in `docs/architecture/PRODUCTION_PROGRAMME.md` (group 7).
   - **Credentials.** The platform credentials are set once in Vercel (`SUPABASE.md` section 4f). Companies enter identifiers only. Selvara generates the AWS external id and the Okta key pair, and keeps the Okta private key sealed.
   - **Connecting.** A test call runs first, then a second admin approves. Disconnecting needs a reason and erases the account data.

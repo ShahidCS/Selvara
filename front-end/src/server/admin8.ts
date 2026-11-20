@@ -28,6 +28,7 @@ const err = (status: number, error: string): Res => ({ status, body: { error } }
 const s = (v: unknown, max = 300) => String(v ?? "").slice(0, max).trim();
 const TICKET = /^[A-Z]{2,6}-\d{1,6}$/; const HOUR = 3600_000; const MIN_REASON = 15;
 const ELEVATE = "Elevate to make changes.";
+const FINANCE_TITLE: Record<FinanceKind, string> = { credit: "Credit", refund: "Refund", markpaid: "Mark paid", writeoff: "Write off", void: "Void" };
 export const MFA_CHECKS = ["call-back", "sponsor", "id"]; export const MFA_REASONS = ["Lost or replaced phone", "Authenticator app removed", "Security key lost", "Locked out after device reset"];
 const pstoreOf = (d: Deps): PlatStore => (d.pstore ??= new MemoryPlatStore(d.store));
 const actorOf = (c: Ctx, r: Req): PActor => ({ id: c.p.id, name: c.p.person, ip: r.ip });
@@ -109,12 +110,13 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
   const billingData = staff(async (d, _r, c) => ok(await pstoreOf(d).tx(actorOf(c, _r), d.now(), async (t) => {
     const now = d.now(); const accounts = await t.list<Account>("billing-account"); const invoices = (await t.list<Invoice>("billing-invoice")).map((x) => x.data);
     const companies = await d.plat.companies(c.p.id); const p = pay(d);
+    const answered = new Set((await t.list("billing-plan-answer")).map((x) => x.id));
     const requests = (await t.list<{ plan: string; by?: string; at: number; status?: string; company?: string }>("billing-plan-request")).map((x) => ({ id: x.id, tenantId: x.tenantId, ...x.data }));
     return {
       accounts: accounts.map((x) => { const mine = invoices.filter((i) => i.tenantId === x.id); return { ...x.data, balance: mine.reduce((n, i) => n + outstanding(i), 0), pastDue: mine.filter((i) => shown(i, now) === "Past due").length, lastInvoice: mine.at(-1)?.id ?? null }; }),
       invoices: invoices.map((i) => invoiceView(i, now)).reverse(), entries: (await t.list<Entry>("billing-entry")).map((x) => x.data).reverse().slice(0, 300),
       companies: companies.map((x) => ({ id: x.id, ref: x.ref, name: x.name, status: x.status, hasAccount: accounts.some((a) => a.id === x.id) })),
-      prices: (await priceList(t)).data, methods: METHODS.filter((m) => m !== "Card (Stripe)" || !!p), payments: p ? { mode: p.mode } : null, planRequests: requests.filter((x) => !x.status).reverse(),
+      prices: (await priceList(t)).data, methods: METHODS.filter((m) => m !== "Card (Stripe)" || !!p), payments: p ? { mode: p.mode } : null, planRequests: requests.filter((x) => !answered.has(x.id)).reverse(),
       thresholdUsd: FINANCE_DUAL_USD_CENTS / 100,
     };
   })));
@@ -176,7 +178,7 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
       const usd = usdCents(kind === "void" ? inv.total : amount, inv.rate.perUsd);
       const dual = kind === "writeoff" || usd === null || usd > FINANCE_DUAL_USD_CENTS;
       if (dual) {
-        const title = `${kind === "markpaid" ? "Mark paid" : kind[0].toUpperCase() + kind.slice(1)} ${money(kind === "void" ? inv.total : amount, inv.currency)} on ${inv.id} (${inv.ref})${usd !== null ? `, about ${money(usd, "USD")}` : ""}`;
+        const title = `${FINANCE_TITLE[kind]} ${money(kind === "void" ? inv.total : amount, inv.currency)} on ${inv.id} (${inv.ref})${usd !== null ? `, about ${money(usd, "USD")}` : ""}`;
         return request(d, r, c, `billing.${kind}`, inv.id, title, { invoiceId: inv.id, amount, reason: m.reason, ticket: m.ticket });
       }
       let provider: string | undefined; if (kind === "refund") provider = await providerRefund(d, t, inv, amount, `${inv.id}-${t.now}`);
@@ -200,7 +202,8 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
   const planDecide = elevated(async (d, r, c) => {
     const accept = r.path[4] === "accept"; const why = s(r.body.reason); if (why.length < 10) return err(400, "Give a reason of at least 10 characters.");
     return pstoreOf(d).tx(actorOf(c, r), d.now(), async (t) => {
-      const rq = await t.get<{ plan: string; at: number; status?: string; byName?: string }>("billing-plan-request", s(r.path[3], 60)); if (!rq || rq.data.status) return err(404, "Request not found.");
+      const rq = await t.get<{ plan: string; at: number; status?: string; byName?: string }>("billing-plan-request", s(r.path[3], 60)); if (!rq) return err(404, "Request not found.");
+      if (await t.get("billing-plan-answer", rq.id)) return err(409, "This request has already been decided.");
       const acc = rq.tenantId ? await t.get<Account>("billing-account", rq.tenantId) : null; if (!acc) return err(409, "This company has no billing account yet.");
       if (accept) { if (!(await priceList(t)).data.plans[rq.data.plan]) return err(400, "That plan is no longer on the price list."); acc.data.pendingPlan = { plan: rq.data.plan, requestedBy: rq.data.byName ?? "company admin", at: rq.data.at, source: rq.id }; await t.update("billing-account", acc.id, acc.data, acc.version); }
       // the request row is the company's; the platform's answer is kept beside it

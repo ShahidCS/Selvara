@@ -9,11 +9,14 @@ import { hasRole } from "@/lib/sod";
 import * as svc from "@/services/mfa";
 import { ResetRequestForm } from "./ResetRequestForm";
 import { PendingApprovals } from "./PendingApprovals";
+import { API_ON } from "@/lib/rbac";
+import { ApiMfa } from "./ApiMfa";
 
 const cn = svc.custName;
 
 /** Prototype: REND.mfa. Four-eyes: the requester cannot approve their own request (button disabled AND refused by the service). */
-export default function MfaModule() {
+export default function MfaModule() { return API_ON ? <ApiMfa /> : <DemoMfa />; }
+function DemoMfa() {
   useData();
   const L = useLayer(); const go = useGo();
   const roleId = useApp((s) => s.role);

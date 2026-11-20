@@ -1,5 +1,7 @@
 import { Empty, Page } from "@/components/ui";
-import { modAllowed } from "@/lib/rbac";
+import { API_ON, modAllowed } from "@/lib/rbac";
+import { ServerElevationBanner, useServerElevation } from "@/components/kit/admin/ServerElevation";
+import { ApiBlocks } from "./ApiBlocks";
 import { useApp } from "@/lib/store";
 import { ElevationBanner } from "@/components/kit/admin/ElevationBanner";
 import { PlatformSecurity } from "./PlatformSecurity";
@@ -13,11 +15,13 @@ export default function PlatformSecurityModule() {
     <Page mod="security">
       <div className="scroll" style={{ flex: "1 1 auto" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
-          <ElevationBanner />
-          <BlockedAddresses />
+          {API_ON ? <ApiSection /> : <><ElevationBanner /><BlockedAddresses /></>}
           <PlatformSecurity />
         </div>
       </div>
     </Page>
   );
 }
+
+/** Production: the server's elevation state and its sign-in blocks. */
+function ApiSection() { const s = useServerElevation(); return <><ServerElevationBanner s={s} /><ApiBlocks s={s} /></>; }

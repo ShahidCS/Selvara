@@ -17,6 +17,7 @@ import { PgSupport } from "@/server/support";
 import { PgWsStore, WsConflict, WsRefused, type Actor } from "@/server/ws/store";
 import { MemoryStore } from "@/server/memory";
 import type { AuditRow } from "@/server/types";
+import { PgPlatStore } from "@/server/platstore";
 
 const URL_ = process.env.TEST_DATABASE_URL;
 const ROOT = path.resolve(__dirname, "../../..");
@@ -577,6 +578,49 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
       expect(await dir.removeMember(A, alex, temp, "Leaver", Date.now(), e("member.removed"))).toBe("ok");
       expect((await admin.query("select status, reason from public.memberships where tenant_id = $1 and user_id = $2", [A, temp])).rows[0]).toEqual({ status: "Removed", reason: "Leaver" });
       expect(await dir.membership(A, temp)).toEqual(expect.objectContaining({ status: "Removed" }));
+    });
+  });
+
+  describe("platform records: billing and rates (migration 0010, src/server/platstore.ts)", () => {
+    let ps: PgPlatStore; let ivy = ""; let pat = "";
+    beforeAll(async () => {
+      ps = new PgPlatStore(app); ivy = randomUUID(); pat = randomUUID();
+      for (const [id, email, name] of [[ivy, "ivy@platform.example.test", "Ivy Rowe"], [pat, "pat@platform.example.test", "Pat Lane"]]) {
+        await admin.query("insert into auth.users (id, email) values ($1, $2)", [id, email]);
+        await admin.query("insert into public.profiles (id, email, person, status, requested_ms) values ($1, $2, $3, 'Active', $4)", [id, email, name, now]);
+      }
+      await admin.query("insert into public.platform_staff (user_id, role, created_ms) values ($1, 'super', $3), ($2, 'support', $3)", [ivy, pat, now]);
+    });
+    const ins = (ctx: Parameters<Db["tx"]>[0], kind: string, id: string, tenant: string | null) => code(app.tx(ctx, (q) => q.query("insert into platform_records (kind, id, tenant_id, data, created_ms, updated_ms) values ($1, $2, $3, '{}', $4, $4)", [kind, id, tenant, now])));
+
+    it("only an elevated super admin (or the verified webhook, for payments) writes; a company reads only its own rows", async () => {
+      expect(await ins({ tenantId: null, userId: ivy, platform: true }, "billing-account", "x1", A)).toBe("42501"); // super, not elevated
+      expect(await ins({ tenantId: null, userId: pat, platform: true }, "billing-account", "x1", A)).toBe("42501"); // support
+      expect(await ins(ctxA(), "billing-account", "x1", A)).toBe("42501"); // a company admin, directly
+      await admin.query("insert into public.elevations (user_id, reason, ticket, started_ms, expires_ms) values ($1, 'Billing run for the month', 'FIN-1', $2, $3)", [ivy, Date.now() - 1000, Date.now() + 1800_000]);
+      await ps.tx({ id: ivy, name: "Ivy Rowe", ip: "198.51.100.7" }, Date.now(), async (t) => {
+        await t.insert("billing-account", A, A, { plan: "Starter" }); await t.insert("billing-invoice", "INV-T-1", A, { total: 100 }); await t.insert("billing-price", "current", null, { plans: {} });
+        expect(await t.next("invoice-2026", 0)).toBe(1);
+        await t.audit("invoice.issued", "INV-T-1 test", "Billing", A); // also into Company A's own log, as "Platform"
+      });
+      expect((await admin.query("select count(*)::int as n from public.audit_log where tenant_id = $1 and action = 'invoice.issued' and actor = 'Platform'", [A])).rows[0].n).toBe(1);
+      expect(await ps.company(A, alex, Date.now(), (v) => v.list("billing-invoice"))).toHaveLength(1);
+      expect(await ps.company(B, casey, Date.now(), (v) => v.list("billing-invoice"))).toEqual([]);
+      expect(await ps.company(B, casey, Date.now(), (v) => v.prices())).toEqual({ plans: {} }); // the price list is the same for everyone
+      // the webhook flag: only payments and provider events, only with the platform flag
+      expect(await ins({ tenantId: null, userId: null, platform: true, system: "billing-webhook" }, "billing-entry", "E-T-1", A)).toBe("ok");
+      expect(await ins({ tenantId: null, userId: null, platform: true, system: "billing-webhook" }, "billing-rate", "XX", null)).toBe("42501");
+      expect(await ins({ tenantId: null, userId: null, system: "billing-webhook" }, "billing-entry", "E-T-2", A)).toBe("42501");
+      // a company's own billing request: its admins only, its own company only, fixed kinds
+      expect(await code(ps.company(A, alex, Date.now(), (v) => v.request("billing-plan-request", "PR-T-1", { plan: "Enterprise" })))).toBe("ok");
+      expect(await code(ps.company(A, blair, Date.now(), (v) => v.request("billing-plan-request", "PR-T-2", { plan: "Enterprise" })))).toBe("42501"); // owner, not admin
+      expect((await admin.query("select tenant_id from public.platform_records where kind = 'billing-plan-request' and id = 'PR-T-1'")).rows[0].tenant_id).toBe(A);
+      // records keep their company and versions increase by one
+      expect(await code(ps.tx({ id: ivy, name: "Ivy Rowe", ip: "198.51.100.7" }, Date.now(), (t) => t.update("billing-invoice", "INV-T-1", { total: 1 }, 7)))).toMatch(/WsConflict|Someone changed/);
+      // the company list for MFA resets is for platform staff only
+      expect(await code(app.tx(ctxA(), (q) => q.query("select * from platform_company_admins()")))).toBe("42501");
+      expect((await app.tx({ tenantId: null, userId: pat, platform: true }, (q) => q.query("select * from platform_company_admins()"))).some((x) => x.user_id === alex)).toBe(true);
+      await admin.query("update public.elevations set ended_ms = expires_ms where ended_ms is null and user_id = $1", [ivy]);
     });
   });
 

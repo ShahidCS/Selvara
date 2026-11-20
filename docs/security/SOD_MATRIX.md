@@ -40,7 +40,7 @@ Every decision below writes an audit entry (`wsLog`, and `adminLog` for platform
 | Access | Approve access request | admin, owner | approver != requester, != beneficiary | | Admin-level or privileged systems need two approvers (admin + owner/admin2) |
 | Access | Access review decisions | reviewer (owner/admin) | reviewer != the account holder under review; completing the review requires a reviewer other than the creator for privileged accounts | | revocations create follow-up tasks |
 | People | Offboard | admin/owner request | second approver != requester for accounts with privileged access | | MFA reset for a member: requester != approver != subject; identity checks (below) |
-| MFA | Reset MFA (admin of a customer) | support or super (elevated) | super (elevated), != requester, != subject | | 3 identity checks, ticket ref, named approver, effects text, request expires in 24 h; requester may **withdraw** (not "reject") |
+| MFA | Reset MFA (admin of a customer) | support or super (elevated) | the named super (elevated), != requester, != subject; only the named approver decides | | 3 identity checks, ticket ref, named approver, effects text, request expires in 24 h; requester may **withdraw** (not "reject") |
 | MFA | Reset MFA (member of a workspace) | company admin | a different company admin or owner | requester != approver != subject | same checks; two approvers if the member holds a privileged role |
 | Team | Grant/change a role, invite with privileged role | admin | different admin (admin2) approves | no one changes their own role; last admin cannot be removed | invitation expires in 72 h |
 | Vendor | Approve vendor request / onboard | analyst/owner/admin | approver != requester | | Critical tier needs second approver; tier change and waiver need approver |
@@ -50,8 +50,12 @@ Every decision below writes an audit entry (`wsLog`, and `adminLog` for platform
 | Assistant | Run an agent action needing approval; enable a custom agent; raise an agent's autonomy (section 11) | requester | approver != requester (and != the agent's creator for enable and raise) | | |
 | API | Create key with write scope; add webhook | admin | second admin approves write scope keys | | webhook URL https-only (existing); keys shown once |
 | Integrations | Connect a read-only connector (GitHub, AWS, Okta, Entra ID, Google Workspace); disconnect; link a check to a control | admin | connect: a second admin approves after a passing test (`integration.connect`, 24 h); disconnect and linking: single admin, audited (safe direction / evidence mapping) | | read-only scopes only; companies enter identifiers, never secrets; account data erased on disconnect |
-| Billing (admin) | Credit, refund, write-off | super (elevated) | different super (super2), elevated, when amount > `SOD.FINANCE_DUAL_USD`; always for write-off | initiator != approver | reason + ticket |
-| Rates | Manual rate/tax override | super (elevated) | different super (elevated) | initiator != approver | numeric bounds as today |
+| Billing (admin) | Credit, refund, manual paid, write-off, void | super (elevated) | different super (super2), elevated, when amount > `SOD.FINANCE_DUAL_USD` (USD 1,000) or the currency has no applied rate; always for write-off | initiator != approver | reason + ticket; re-checked when applied (production: `admin8.ts`) |
+| Billing (admin) | Price-list change | super (elevated) | different super, elevated, always | initiator != approver | reason + ticket; applies to invoices issued afterwards |
+| Billing (admin) | Set up or change a billing account; issue invoices; payment link; accept or decline a company's plan change; lift a sign-in block | super (elevated) | none (single elevated super admin, audited; amounts come from the price list, rates and tax) | | reason (and ticket for accounts) |
+| Billing (company) | Ask for another plan; pay an invoice on the provider's page | company admin | the platform accepts or declines the plan change | | nothing changes until accepted; a payment counts only when the provider confirms it |
+| Rates | Manual rate/tax override; release a held rate | super (elevated) | different super (elevated) | initiator != approver | numeric bounds; the held value must be unchanged when applied |
+| Rates | Reject a held rate; refresh from the feeds | super (elevated) | none (safe direction: the rate in force stays; held values need a person) | | reason + ticket for a rejection |
 | Reports | Schedule external distribution | owner/admin | different admin | | |
 
 ## 4. Identity verification for MFA reset (admin and member)

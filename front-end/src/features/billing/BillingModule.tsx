@@ -9,9 +9,12 @@ import { BillingList } from "./BillingList";
 import { IssueInvoicesBody, PricingForm } from "./BillingModals";
 import { ElevateGateBanner, useGate } from "@/components/kit/admin/ElevateGate";
 import { PendingApprovals } from "@/components/kit/admin/PendingApprovals";
+import { API_ON } from "@/lib/rbac";
+import { ApiBilling } from "./ApiBilling";
 
 /** Prototype: REND.billing(m, param). `/admin/billing` = list + side panel; `/admin/billing/<customerId>` = full billing for one customer. */
-export default function BillingModule({ param }: { param?: string | null }) {
+export default function BillingModule({ param }: { param?: string | null }) { return API_ON ? <ApiBilling param={param} /> : <DemoBilling param={param} />; }
+function DemoBilling({ param }: { param?: string | null }) {
   useData(); const L = useLayer(); const go = useGo(); const gate = useGate();
   const allowed = svc.billingCanManage(useApp((s) => s.role));
   if (!allowed) return <Page mod="billing"><Empty icon="alert" title="Access restricted">Your role cannot manage billing.</Empty></Page>;

@@ -212,8 +212,9 @@ export class MemoryPlatform implements Platform {
     let after: () => Promise<void>;
     if (!COMPANY_KINDS.includes(a.kind)) {
       if (!extra) return { ok: false, code: 409, error: "This request cannot be applied here." };
+      const approvers = names(a, who); // before this vote is added, as the database path reads it
       a.votes.push({ by: actor.id, byName: who, at, reason }); a.status = "Approved"; a.decidedReason = reason;
-      try { await extra(null, a, names(a, who)); }
+      try { await extra(null, a, approvers); }
       catch (e) { const m = refusal(e); if (!m) throw e; a.votes.pop(); a.status = "Pending"; delete a.decidedReason; return { ok: false, code: 409, error: m }; }
       await this.store.audit(log(`approval.${a.kind}.approved`, `${a.title} (${a.id}); reason: ${reason}`));
       return { ok: true, status: "Approved" };

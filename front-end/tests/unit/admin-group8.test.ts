@@ -159,6 +159,8 @@ describe("Admin Console billing ledger and rates", () => {
     expect((await billing(t.dana.cookie)).accounts[0].plan).toBe("Starter"); // nothing changes at once
     const rq = body<{ planRequests: { id: string }[] }>(await call("GET", "admin/billing", {}, { cookie: t.dana.cookie })).planRequests[0];
     expect((await call("POST", `admin/billing/plan-requests/${rq.id}/accept`, { reason: "Contract amendment signed" }, { cookie: t.dana.cookie })).status).toBe(200);
+    expect((await call("POST", `admin/billing/plan-requests/${rq.id}/decline`, { reason: "Changed my mind on this" }, { cookie: t.dana.cookie })).status).toBe(409); // decided once
+    expect(body<{ planRequests: unknown[] }>(await call("GET", "admin/billing", {}, { cookie: t.dana.cookie })).planRequests).toEqual([]); // no longer waiting
     await call("POST", "admin/billing/issue", { upTo: new Date(clock).toISOString().slice(0, 10) }, { cookie: t.dana.cookie });
     expect((await billing(t.dana.cookie)).invoices[0].subtotal).toBe(980000); // Enterprise
   });
