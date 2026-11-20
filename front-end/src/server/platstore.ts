@@ -30,9 +30,11 @@ export interface CompanyView {
   prices<T>(): Promise<T | null>;
 }
 export interface PlatStore {
-  tx<T>(actor: PActor, now: number, work: (t: PTx) => Promise<T>): Promise<T>;
+  /** `read`: a read-only unit of work. Rows are then read without a lock: under row level security a locking read also applies the write
+   *  policy, which would hide every row from a reader who may not write (support, a super admin not elevated). */
+  tx<T>(actor: PActor, now: number, work: (t: PTx) => Promise<T>, opts?: { read?: boolean }): Promise<T>;
   /** The same operations inside a transaction already open (a platform approval's decision applies its change there). */
-  over(q: Tx | null, actor: PActor, now: number): PTx;
+  over(q: Tx | null, actor: PActor, now: number, read?: boolean): PTx;
   company<T>(tenantId: string, userId: string, now: number, work: (v: CompanyView) => Promise<T>): Promise<T>;
 }
 
@@ -43,16 +45,16 @@ const entry = (a: PActor, at: number, action: string, target: string, cat: strin
 
 export class PgPlatStore implements PlatStore {
   constructor(private db: Db) {}
-  async tx<T>(actor: PActor, now: number, work: (t: PTx) => Promise<T>): Promise<T> {
-    try { return await this.db.tx({ tenantId: null, userId: actor.id, platform: true, system: actor.system }, (q) => work(this.over(q, actor, now))); }
+  async tx<T>(actor: PActor, now: number, work: (t: PTx) => Promise<T>, opts?: { read?: boolean }): Promise<T> {
+    try { return await this.db.tx({ tenantId: null, userId: actor.id, platform: true, system: actor.system }, (q) => work(this.over(q, actor, now, !!opts?.read))); }
     catch (e) { if (e instanceof UpstreamError && (e.code === "40001" || e.code === "23505")) throw new WsConflict("Someone changed this record meanwhile. Reload and try again."); throw e; }
   }
-  over(q: Tx | null, actor: PActor, now: number): PTx {
+  over(q: Tx | null, actor: PActor, now: number, read = false): PTx {
     const db = q!;
     const row = <R,>(x: Record<string, unknown>): PRec<R> => ({ id: String(x.id), tenantId: (x.tenant_id as string | null) ?? null, data: x.data as R, version: Number(x.version) });
     return {
       now, actor,
-      async get<R>(kind: string, id: string) { check(kind); const r = await db.query("select id, tenant_id, data, version from platform_records where kind = $1 and id = $2 and deleted_ms is null for update", [kind, id]); return r[0] ? row<R>(r[0]) : null; },
+      async get<R>(kind: string, id: string) { check(kind); const r = await db.query(`select id, tenant_id, data, version from platform_records where kind = $1 and id = $2 and deleted_ms is null${read ? "" : " for update"}`, [kind, id]); return r[0] ? row<R>(r[0]) : null; },
       async list<R>(kind: string, tenantId?: string) {
         check(kind);
         const r = await db.query(`select id, tenant_id, data, version from platform_records where kind = $1 and deleted_ms is null ${tenantId ? "and tenant_id = $2" : ""} order by created_ms, id limit 20000`, tenantId ? [kind, tenantId] : [kind]);
@@ -98,7 +100,7 @@ export class MemoryPlatStore implements PlatStore {
   counters = new Map<string, number>();
   constructor(private store: Store) {}
   private key = (k: string, i: string) => `${k}\u0000${i}`;
-  async tx<T>(actor: PActor, now: number, work: (t: PTx) => Promise<T>): Promise<T> {
+  async tx<T>(actor: PActor, now: number, work: (t: PTx) => Promise<T>): Promise<T> { // reads need no special path in memory
     const snap = { rows: structuredClone([...this.rows]), counters: new Map(this.counters), log: (this.store as unknown as { auditLog: AuditRow[] }).auditLog.length };
     try { return await work(this.over(null, actor, now)); }
     catch (e) { this.rows = new Map(snap.rows); this.counters = snap.counters; (this.store as unknown as { auditLog: AuditRow[] }).auditLog.length = snap.log; throw e; }

@@ -19,11 +19,12 @@ import { toB64u } from "@/lib/webauthn";
 const ORIGIN = "https://app.example.test";
 let clock = 1_800_000_000_000; let d: Deps; let auth: MemoryAuth; let store: MemoryStore; let dir: MemoryDirectory; let plat: MemoryPlatform; let sup: MemorySupport; let ws: MemoryWsStore; let files: MemoryFileStore; let ACME = ""; let OTHER = "";
 const feeds: { re: RegExp; res: NetResponse }[] = []; const checkouts: string[] = [];
-const PAY: Payments = { mode: "test", webhookSecret: "whsec_test", checkout: async (inv, amount) => { checkouts.push(`${inv.id}:${amount}`); return { id: "cs_test_1", url: "https://checkout.stripe.example/c/cs_test_1" }; }, refund: async () => "re_test_1" };
+const expired: string[] = [];
+const PAY: Payments = { mode: "test", webhookSecret: "whsec_test", checkout: async (inv, amount) => { checkouts.push(`${inv.id}:${amount}`); return { id: `cs_test_${checkouts.length}`, url: `https://checkout.stripe.example/c/cs_test_${checkouts.length}` }; }, expire: async (id) => { expired.push(id); }, refund: async () => "re_test_1" };
 beforeEach(() => {
   clock = 1_800_000_000_000; auth = new MemoryAuth(() => clock); used.clear(); store = new MemoryStore(() => clock); dir = new MemoryDirectory(store); plat = new MemoryPlatform(store, dir); sup = new MemorySupport(store, dir, plat); ws = new MemoryWsStore(store); files = new MemoryFileStore();
   ACME = dir.addCompany("acme-eu", "Acme Test Co");
-  OTHER = dir.addCompany("other-co", "Other Test Co"); feeds.length = 0; checkouts.length = 0;
+  OTHER = dir.addCompany("other-co", "Other Test Co"); feeds.length = 0; checkouts.length = 0; expired.length = 0;
   d = { auth, store, dir, plat, sup, ws, files, site: { origin: ORIGIN, rpId: "app.example.test" }, secret: "x".repeat(40), now: () => clock, pstore: new MemoryPlatStore(store),
     net: async (url: string): Promise<NetResponse> => feeds.find((f) => f.re.test(url))?.res ?? { status: 404, headers: {}, text: "" }, payments: PAY };
 });
@@ -108,7 +109,9 @@ describe("Admin Console billing ledger and rates", () => {
     // a small credit (under USD 1,000) at once; credits are cumulative and never exceed what is due
     expect((await call("POST", `admin/billing/invoices/${inv.id}/credit`, { amount: 28000, ...M }, { cookie: t.dana.cookie })).status).toBe(200); // 28,000 PKR ≈ USD 100
     inv = (await billing(t.dana.cookie)).invoices[0]; expect(inv.outstanding).toBe(inv.total - 2_800_000);
-    expect((await call("POST", `admin/billing/invoices/${inv.id}/credit`, { amount: 99_999_999, ...M }, { cookie: t.dana.cookie })).status).toBe(400);
+    expect((await call("POST", `admin/billing/invoices/${inv.id}/credit`, { amount: 99_999_999, ...M }, { cookie: t.dana.cookie })).status).toBe(409);
+    // splitting cannot avoid the second approver: what one person applied alone on this invoice counts (USD 100 + USD 1,000 > USD 1,000)
+    expect((await call("POST", `admin/billing/invoices/${inv.id}/credit`, { amount: 280000, ...M }, { cookie: t.dana.cookie })).status).toBe(202);
     // marking the rest paid is above USD 1,000: a request the requester cannot approve
     expect((await call("POST", `admin/billing/invoices/${inv.id}/markpaid`, { reason: "short", ticket: "FIN-1" }, { cookie: t.dana.cookie })).status).toBe(400);
     expect((await call("POST", `admin/billing/invoices/${inv.id}/markpaid`, M, { cookie: t.dana.cookie })).status).toBe(202);
@@ -117,13 +120,14 @@ describe("Admin Console billing ledger and rates", () => {
     expect((await decide(t.ravi.cookie, ap.id)).status).toBe(200);
     inv = (await billing(t.dana.cookie)).invoices[0]; expect([inv.status, inv.outstanding]).toEqual(["Paid", 0]);
     expect((await billing(t.dana.cookie)).accounts[0].balance).toBe(0);
-    expect((await call("POST", `admin/billing/invoices/${inv.id}/void`, M, { cookie: t.dana.cookie })).status).toBe(400); // paid: refund instead
+    expect((await call("POST", `admin/billing/invoices/${inv.id}/void`, M, { cookie: t.dana.cookie })).status).toBe(409); // paid: refund instead
     // releasing a held rate is four-eyes; rejecting keeps the rate in force
     expect((await call("POST", "admin/rates/GB/release", M, { cookie: t.dana.cookie })).status).toBe(202);
     const rel = (await approvals(t.ravi.cookie)).find((a) => a.kind === "rates.release")!;
     expect((await decide(t.ravi.cookie, rel.id)).status).toBe(200);
     expect(body<{ rates: { code: string; status: string }[] }>(await call("GET", "admin/rates", {}, { cookie: t.sam.cookie })).rates.find((r) => r.code === "GB")!.status).toBe("Applied");
     // a tax override (0 % is allowed) needs a second super admin too
+    expect((await call("POST", "admin/rates/AE/override", { currency: "KWD", rate: 0.31, taxType: "VAT", taxRate: 0, taxEffective: "2027-01-01", ...M }, { cookie: t.dana.cookie })).status).toBe(400); // three decimals: refused
     expect((await call("POST", "admin/rates/AE/override", { currency: "AED", rate: 3.6725, taxType: "VAT", taxRate: 0, taxEffective: "2027-01-01", ...M }, { cookie: t.dana.cookie })).status).toBe(202);
   });
   it("lets a company admin pay through the provider's hosted page; only a correctly signed webhook records the payment, once", async () => {
@@ -136,7 +140,10 @@ describe("Admin Console billing ledger and rates", () => {
     expect(body<{ invoices: unknown[] }>(await call("GET", "ws/data/billingws", {}, { cookie: other.cookie })).invoices).toEqual([]); // another company sees none
     expect((await call("POST", `ws/billing/invoices/${inv.id}/pay`, {}, { cookie: other.cookie })).status).toBe(404);
     expect(body<{ url: string }>(await call("POST", `ws/billing/invoices/${inv.id}/pay`, {}, { cookie: t.jordan.cookie })).url).toMatch(/^https:\/\/checkout\.stripe\.example/);
-    const ev = (id: string, livemode = false) => JSON.stringify({ id, type: "checkout.session.completed", livemode, data: { object: { payment_status: "paid", amount_total: 49000, currency: "usd", payment_intent: "pi_test_1", metadata: { invoice: inv.id } } } });
+    // a second payment page closes the first, so the invoice is never payable twice
+    expect(body<{ url: string }>(await call("POST", `ws/billing/invoices/${inv.id}/pay`, {}, { cookie: t.jordan.cookie })).url).toContain("cs_test_2");
+    expect(expired).toEqual(["cs_test_1"]);
+    const ev = (id: string, livemode = false, o: Record<string, unknown> = {}) => JSON.stringify({ id, type: "checkout.session.completed", livemode, data: { object: { id: "cs_test_2", payment_status: "paid", amount_total: 49000, currency: "usd", payment_intent: "pi_test_1", metadata: { invoice: inv.id }, ...o } } });
     const hook = (raw: string, secret = "whsec_test", at = clock) => {
       const ts = Math.floor(at / 1000); const sig = createHmac("sha256", secret).update(`${ts}.${raw}`).digest("hex");
       return handle(d, { method: "POST", path: ["billing", "stripe", "webhook"], body: {}, raw: new TextEncoder().encode(raw), ip: "203.0.113.5", cookies: {}, headers: { "content-type": "application/json", "stripe-signature": `t=${ts},v1=${sig}` } });
@@ -150,6 +157,15 @@ describe("Admin Console billing ledger and rates", () => {
     expect(after).toMatchObject({ status: "Paid", outstanding: 0 });
     expect(log("invoice.payment.received").filter((x) => !x.tenantId).length).toBe(1); // once in the platform log (and once in the company's own)
     expect(log("invoice.payment.received").filter((x) => x.tenantId === ACME).length).toBe(1);
+    // a second payment (an old page, or after a manual mark) is recorded apart for review and never counted on the paid invoice
+    expect((await hook(ev("evt_1TestEvent0002", false, { id: "cs_test_1" }))).status).toBe(200);
+    expect(body<{ invoices: { outstanding: number; status: string }[] }>(await call("GET", "ws/data/billingws", {}, { cookie: t.jordan.cookie })).invoices[0]).toMatchObject({ status: "Paid", outstanding: 0 });
+    const entries = body<{ entries: { type: string; review?: string }[] }>(await call("GET", "admin/billing", {}, { cookie: t.dana.cookie })).entries;
+    expect(entries.filter((e) => e.type === "unmatched")).toEqual([expect.objectContaining({ review: "the invoice is paid" })]);
+    expect(log("invoice.payment.review").filter((x) => !x.tenantId).length).toBe(1);
+    // a payment in another currency is recorded for review too, not applied
+    expect((await hook(ev("evt_1TestEvent0003", false, { currency: "eur" }))).status).toBe(200);
+    expect(log("invoice.payment.review").filter((x) => !x.tenantId).length).toBe(2);
   });
   it("takes a company's plan change as a request for the next period, which the platform accepts", async () => {
     const t = await team(); rateFeeds(); await call("POST", "admin/rates/refresh", {}, { cookie: t.dana.cookie });

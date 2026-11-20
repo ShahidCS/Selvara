@@ -77,7 +77,7 @@ export async function readFeeds(net: Net = httpsNet): Promise<FeedResult> {
   return out;
 }
 /** What the hold rules say about one currency: the value to apply, or why it is held. */
-export function judge(cur: Rate, f: FeedResult, now: number): { apply: number | null; candidate?: Rate["candidate"] } {
+export function judge(cur: Rate, f: FeedResult, now: number): { apply: number | null; source?: string; candidate?: Rate["candidate"] } {
   const ecb = f.ecb?.[cur.currency] ?? null; const er = f.er?.[cur.currency] ?? null;
   const fresh = (v: number | null, at: number) => (v && now - at <= 48 * 3600_000 ? v : null);
   const a = fresh(ecb, f.ecbAt); const b = fresh(er, f.erAt);
@@ -86,7 +86,8 @@ export function judge(cur: Rate, f: FeedResult, now: number): { apply: number | 
   if (!value) return hold(ecb || er ? "The only feed with this currency is older than 48 hours." : "Neither feed has this currency.", ecb ?? er);
   if (a && b && Math.abs(a - b) / ((a + b) / 2) > 0.01) return hold(`The feeds disagree by ${((Math.abs(a - b) / ((a + b) / 2)) * 100).toFixed(2)} % (more than 1 %).`, value);
   if (cur.status !== "Reference" && cur.rate > 0 && cur.at > 0 && Math.abs(value - cur.rate) / cur.rate > 0.03) return hold(`Moved ${((Math.abs(value - cur.rate) / cur.rate) * 100).toFixed(2)} % from the applied rate (more than 3 %).`, value);
-  return { apply: Number(value.toFixed(6)) };
+  // the label says which feeds the value rests on: one fresh feed is used alone (the other failed or is older than 48 hours), and says so
+  return { apply: Number(value.toFixed(6)), source: a && b ? "ECB and open.er-api.com (agree)" : a ? "European Central Bank only (the other feed is missing or stale)" : "open.er-api.com only (the other feed is missing or stale)" };
 }
 
 /* ---------------- accounts, invoices, ledger ---------------- */
@@ -98,12 +99,16 @@ export interface Invoice {
   id: string; tenantId: string; ref: string; company: string; from: string; to: string; issuedAt: number; dueAt: number; currency: string;
   lines: { text: string; qty: number; unit: number; amount: number }[]; subtotal: number; taxType: string; taxRate: number; tax: number; total: number;
   rate: { perUsd: number; source: string; lockedAt: number }; status: "Open" | "Paid" | "Void" | "Written off";
-  paid: number; credited: number; refunded: number; writtenOff: number; providerPaid: number; checkout?: { id: string; url: string; at: number };
+  paid: number; credited: number; refunded: number; writtenOff: number; providerPaid: number; providerRefunded?: number; checkout?: { id: string; url: string; at: number };
 }
-export interface Entry { id: string; invoiceId: string; type: "payment" | "credit" | "refund" | "writeoff" | "void" | "markpaid"; amount: number; currency: string; at: number; by: string; reason: string; ticket: string; approvalId?: string; provider?: string }
+export interface Entry { id: string; invoiceId: string; /** unmatched: money the provider received that could not be applied to the invoice (wrong currency, invoice void or written off); a person reviews it */ type: "payment" | "credit" | "refund" | "writeoff" | "void" | "markpaid" | "unmatched"; review?: string; amount: number; currency: string; at: number; by: string; reason: string; ticket: string; approvalId?: string; provider?: string }
 export const outstanding = (i: Invoice) => (i.status === "Open" ? Math.max(0, i.total - i.paid - i.credited) : 0);
 export const pastDue = (i: Invoice, now: number) => i.status === "Open" && outstanding(i) > 0 && now > i.dueAt;
 export const shown = (i: Invoice, now: number) => (pastDue(i, now) ? "Past due" : i.status);
+/** Amounts are integer minor units with two decimals, as the payment provider takes them for these currencies; a currency with another
+ *  number of decimals (JPY, KWD ...) is refused rather than charged at the wrong scale. */
+const NOT_TWO = new Set(["BIF", "CLP", "DJF", "GNF", "JPY", "KMF", "KRW", "MGA", "PYG", "RWF", "UGX", "VND", "VUV", "XAF", "XOF", "XPF", "BHD", "IQD", "JOD", "KWD", "LYD", "OMR", "TND"]); // ISO 4217 zero- and three-decimal currencies
+export const twoDecimals = (cur: string) => /^[A-Z]{3}$/.test(cur) && !NOT_TWO.has(cur);
 export const money = (minor: number, cur: string) => `${(minor / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${cur}`;
 const addMonths = (iso: string, n: number) => { const d = new Date(`${iso}T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() + n); return d.toISOString().slice(0, 10); };
 const dayBefore = (iso: string) => new Date(Date.parse(`${iso}T00:00:00Z`) - DAY).toISOString().slice(0, 10);
@@ -143,10 +148,10 @@ export function financeBlock(kind: FinanceKind, inv: Invoice, amount: number): s
   if (kind === "markpaid" || kind === "writeoff") return inv.status !== "Open" || outstanding(inv) <= 0 ? "Nothing is due on this invoice." : amount !== outstanding(inv) ? "This action covers the full amount still due." : null;
   return null;
 }
-export async function applyFinance(t: PTx, rec: PRec<Invoice>, kind: FinanceKind, amount: number, meta: { by: string; reason: string; ticket: string; approvalId?: string; provider?: string }) {
+export async function applyFinance(t: PTx, rec: PRec<Invoice>, kind: FinanceKind, amount: number, meta: { by: string; reason: string; ticket: string; approvalId?: string; provider?: string }, providerRefunded = 0) {
   const inv = rec.data; const bad = financeBlock(kind, inv, amount); if (bad) throw new WsRefused(bad, 409);
   if (kind === "credit") inv.credited += amount;
-  if (kind === "refund") inv.refunded += amount;
+  if (kind === "refund") { inv.refunded += amount; inv.providerRefunded = (inv.providerRefunded ?? 0) + providerRefunded; }
   if (kind === "markpaid") { inv.paid += amount; }
   if (kind === "writeoff") { inv.writtenOff += outstanding(inv); inv.status = "Written off"; }
   if (kind === "void") inv.status = "Void";
@@ -159,7 +164,7 @@ export async function applyFinance(t: PTx, rec: PRec<Invoice>, kind: FinanceKind
 }
 
 /* ---------------- payment provider (Stripe) ---------------- */
-export interface Payments { mode: "test" | "live"; checkout(inv: Invoice, amount: number, site: string, idempotency: string): Promise<{ id: string; url: string }>; refund(paymentIntent: string, amount: number, idempotency: string): Promise<string>; webhookSecret: string }
+export interface Payments { mode: "test" | "live"; checkout(inv: Invoice, amount: number, site: string, idempotency: string): Promise<{ id: string; url: string }>; /** Closes an earlier payment page so one invoice is never payable twice. */ expire(sessionId: string): Promise<void>; refund(paymentIntent: string, amount: number, idempotency: string): Promise<string>; webhookSecret: string }
 export function stripeFromEnv(e: Record<string, string | undefined>, net: Net = httpsNet): Payments | undefined {
   const key = e.STRIPE_SECRET_KEY; const whsec = e.STRIPE_WEBHOOK_SECRET; if (!key || !whsec || !/^(sk|rk)_(test|live)_/.test(key)) return undefined;
   const call = async (path: string, form: Record<string, string>, idem: string) => {
@@ -177,6 +182,7 @@ export function stripeFromEnv(e: Record<string, string | undefined>, net: Net = 
       }, idem);
       return { id: String(j.id), url: String(j.url) };
     },
+    async expire(id) { if (/^cs_[A-Za-z0-9_]{6,200}$/.test(id)) await call(`checkout/sessions/${id}/expire`, {}, `expire-${id}`).catch(() => undefined); }, // already paid or expired: nothing to close
     async refund(pi, amount, idem) { const j = await call("refunds", { payment_intent: pi, amount: String(amount) }, idem); return String(j.id); },
   };
 }

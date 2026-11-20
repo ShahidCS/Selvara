@@ -607,6 +607,10 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
       expect(await ps.company(A, alex, Date.now(), (v) => v.list("billing-invoice"))).toHaveLength(1);
       expect(await ps.company(B, casey, Date.now(), (v) => v.list("billing-invoice"))).toEqual([]);
       expect(await ps.company(B, casey, Date.now(), (v) => v.prices())).toEqual({ plans: {} }); // the price list is the same for everyone
+      // platform staff who may not write (support) read the real records: a read-only unit of work reads without a row lock, which under
+      // row level security would also apply the write policy and hide them
+      expect((await ps.tx({ id: pat, name: "Pat Lane", ip: "198.51.100.8" }, Date.now(), (t) => t.get("billing-price", "current"), { read: true }))?.data).toEqual({ plans: {} });
+      expect(await ps.tx({ id: pat, name: "Pat Lane", ip: "198.51.100.8" }, Date.now(), (t) => t.get("billing-price", "current"))).toBeNull(); // a locking read: hidden
       // the webhook flag: only payments and provider events, only with the platform flag
       expect(await ins({ tenantId: null, userId: null, platform: true, system: "billing-webhook" }, "billing-entry", "E-T-1", A)).toBe("ok");
       expect(await ins({ tenantId: null, userId: null, platform: true, system: "billing-webhook" }, "billing-rate", "XX", null)).toBe("42501");

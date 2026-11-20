@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useState } from "react";
 import { Chip, DataTable, Empty, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn, type DTRowAction } from "@/components/ui";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { ReasonTicket, reasonTicketOk } from "@/components/kit/admin/ReasonTicket";
-import { ELEVATE_TEXT, ServerElevationBanner, useServerElevation, type ElevationState } from "@/components/kit/admin/ServerElevation";
+import { ELEVATE_TEXT, ServerElevationBanner, useServerElevation } from "@/components/kit/admin/ServerElevation";
 import { apiMessage, RequestsTable, utcMin } from "@/components/kit/serverRequests";
 import { useLayer } from "@/hooks/useLayer";
 import { ModuleTip } from "@/components/kit/ModuleTip";
@@ -21,6 +21,7 @@ import * as api from "./services/api";
    provider confirms them. Nothing here computes an amount: the server does. */
 const VIEWS: [string, string][] = [["accounts", "Accounts"], ["invoices", "Invoices"], ["ledger", "Ledger"], ["plans", "Plan requests"], ["prices", "Price list"], ["requests", "Requests"]];
 const KIND_LABEL: Record<api.FinanceKind, string> = { credit: "Credit", refund: "Refund", markpaid: "Mark paid", writeoff: "Write off", void: "Void" };
+const ENTRY_LABEL: Record<string, string> = { payment: "Payment", markpaid: "Marked paid", credit: "Credit", refund: "Refund", writeoff: "Write-off", void: "Void", unmatched: "Received, not applied" };
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function ApiBilling({ param }: { param?: string | null }) {
@@ -66,16 +67,15 @@ export function ApiBilling({ param }: { param?: string | null }) {
             : view === "plans" ? <PlanRequests b={b} lock={lock} />
             : view === "prices" ? <Prices b={b} lock={lock} />
             : view === "requests" ? <BillingRequests />
-            : <Accounts b={b} s={s} />}
+            : <Accounts b={b} lock={lock} />}
         </div>
       </div>
     </Page>
   );
 }
 
-function Accounts({ b, s }: { b: api.Billing; s: ElevationState }) {
+function Accounts({ b, lock }: { b: api.Billing; lock?: string }) {
   const go = useGo(); const L = useLayer();
-  const lock = s.locked ? ELEVATE_TEXT : undefined;
   const cols: DTColumn<api.Account>[] = [
     { key: "company", header: "Company", value: (a) => a.company, locked: true, render: (a) => <><span className="strong">{a.company}</span><div style={{ fontSize: 12, color: "var(--muted)" }}>{a.ref}</div></> },
     { key: "plan", header: "Plan", value: (a) => a.plan, render: (a) => <>{a.plan}{a.pendingPlan ? <div style={{ fontSize: 12, color: "var(--muted)" }}>{`${a.pendingPlan.plan} from the next period`}</div> : null}</> },
@@ -159,14 +159,15 @@ function Ledger({ b, rows }: { b: api.Billing; rows: api.Entry[] }) {
     { key: "at", header: "When", value: (e) => e.at, render: (e) => <span className="num">{utcMin(e.at)}</span> },
     { key: "inv", header: "Invoice", value: (e) => e.invoiceId, locked: true, render: (e) => <span className="strong num">{e.invoiceId}</span> },
     { key: "company", header: "Company", value: (e) => inv.get(e.invoiceId)?.company ?? "", render: (e) => inv.get(e.invoiceId)?.company ?? "" },
-    { key: "type", header: "Entry", value: (e) => e.type, render: (e) => <Chip cls={e.type === "payment" || e.type === "markpaid" ? "ok" : e.type === "writeoff" || e.type === "void" ? "bad" : "info"} icon={e.type === "payment" || e.type === "markpaid" ? "check" : "dot"}>{({ payment: "Payment", markpaid: "Marked paid", credit: "Credit", refund: "Refund", writeoff: "Write-off", void: "Void" } as Record<string, string>)[e.type] ?? e.type}</Chip> },
+    { key: "type", header: "Entry", value: (e) => e.type, render: (e) => <>{e.type === "unmatched" ? <Chip cls="warn" icon="alert">Received, not applied</Chip> : <Chip cls={e.type === "payment" || e.type === "markpaid" ? "ok" : e.type === "writeoff" || e.type === "void" ? "bad" : "info"} icon={e.type === "payment" || e.type === "markpaid" ? "check" : "dot"}>{ENTRY_LABEL[e.type] ?? e.type}</Chip>}{e.review ? <div style={{ fontSize: 12, color: "var(--warn-ink)", marginTop: 4 }}>{`Needs review: ${e.review}`}</div> : null}</> },
     { key: "amount", header: "Amount", align: "end", value: (e) => e.amount, render: (e) => <span className="num">{minorMoney(e.amount, e.currency)}</span> },
     { key: "by", header: "By", value: (e) => e.by, render: (e) => <span style={{ fontSize: 12.5 }}>{e.by}</span> },
     { key: "reason", header: "Reason", value: (e) => e.reason, defaultHidden: true, render: (e) => <span style={{ fontSize: 12.5 }}>{e.reason}{e.ticket ? ` (${e.ticket})` : ""}</span> },
   ];
   if (!rows.length) return <Empty icon="log" title="No ledger entries yet">Payments, credits, refunds, write-offs and voids are recorded here, each with who, why and the ticket.</Empty>;
   return <DataTable<api.Entry> id="billing-ledger-api" label="Ledger" rows={rows} rowKey={(e) => e.id} columns={cols} searchText={(e) => `${e.invoiceId} ${e.by} ${e.reason} ${e.ticket}`}
-    filters={[{ key: "type", label: "Entry", options: ["payment", "markpaid", "credit", "refund", "writeoff", "void"], labels: { payment: "Payment", markpaid: "Marked paid", credit: "Credit", refund: "Refund", writeoff: "Write-off", void: "Void" }, get: (e) => e.type }]} exportName="billing-ledger" />;
+    tabs={[{ key: "review", label: "Needs review", match: (e: api.Entry) => !!e.review }]}
+    filters={[{ key: "type", label: "Entry", options: Object.keys(ENTRY_LABEL), labels: ENTRY_LABEL, get: (e) => e.type }]} exportName="billing-ledger" />;
 }
 
 function PlanRequests({ b, lock }: { b: api.Billing; lock?: string }) {
@@ -326,7 +327,9 @@ function FinanceForm({ b, inv, kind, close }: { b: api.Billing; inv: api.Invoice
   const full = kind === "markpaid" || kind === "writeoff"; const max = kind === "refund" ? inv.paid - inv.refunded : inv.outstanding;
   const [amount, setAmount] = useState(full ? String(inv.outstanding / 100) : ""); const [reason, setReason] = useState(""); const [ticket, setTicket] = useState("");
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
-  const usd = (Number(kind === "void" ? inv.total / 100 : amount) || 0) / (inv.rate.perUsd || 1);
+  // as the server counts it: what one person already applied alone on this invoice adds to the threshold
+  const alone = b.entries.filter((e) => e.invoiceId === inv.id && !e.approvalId && e.by !== "Payment provider" && ["credit", "refund", "markpaid", "void"].includes(e.type)).reduce((n, e) => n + e.amount, 0) / 100;
+  const usd = ((Number(kind === "void" ? inv.total / 100 : amount) || 0) + alone) / (inv.rate.perUsd || 1);
   const second = kind === "writeoff" || usd > b.thresholdUsd;
   const go = async () => {
     if (busy) return; if (!reasonTicketOk(reason, ticket)) { setErr("Give a reason of at least 15 characters and a ticket such as FIN-1234."); return; }
@@ -344,7 +347,7 @@ function FinanceForm({ b, inv, kind, close }: { b: api.Billing; inv: api.Invoice
           <input className="input num" id="fin-amt" data-focus type="number" min={0.01} step="0.01" inputMode="decimal" readOnly={full} value={amount} onChange={(e) => { setAmount(e.target.value); setErr(""); }} style={{ width: 180 }} /></div>}
       {kind === "refund" && inv.providerPaid ? <p className="field help">Card payments are refunded through the payment provider; the rest is a ledger entry you pay back by bank transfer.</p> : null}
       <ReasonTicket p="fin" reason={reason} setReason={(x) => { setReason(x); setErr(""); }} ticket={ticket} setTicket={(x) => { setTicket(x); setErr(""); }} />
-      <p className="field help" style={{ display: "flex", gap: 6, alignItems: "center" }}><Icon name={second ? "clock" : "check"} />{second ? `A second platform super admin approves this (${kind === "writeoff" ? "every write-off" : `above USD ${b.thresholdUsd.toLocaleString("en-US")}`}).` : `You can apply this yourself (USD ${b.thresholdUsd.toLocaleString("en-US")} or less).`}</p>
+      <p className="field help" style={{ display: "flex", gap: 6, alignItems: "center" }}><Icon name={second ? "clock" : "check"} />{second ? `A second platform super admin approves this (${kind === "writeoff" ? "every write-off" : `above USD ${b.thresholdUsd.toLocaleString("en-US")}${alone ? ", counting what was already applied alone on this invoice" : ""}`}). The server makes the final check.` : `You can apply this yourself (USD ${b.thresholdUsd.toLocaleString("en-US")} or less).`}</p>
       <p className="field help" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" disabled={busy} onClick={go}>{second ? "Send for approval" : KIND_LABEL[kind]}</button></LayerFoot>
     </>

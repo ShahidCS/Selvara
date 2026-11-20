@@ -9,7 +9,7 @@ export const isPending = (x: unknown): x is Pending => !!x && typeof x === "obje
 
 export interface Account { tenantId: string; ref: string; company: string; plan: string; cycle: string; currency: string; country: string; contact: { name: string; email: string }; address: string; method: string; status: "Active" | "Trial"; trialEnds?: string; nextPeriod: string; pendingPlan?: { plan: string; requestedBy: string }; balance: number; pastDue: number; lastInvoice: string | null }
 export interface Invoice extends InvoiceLike { tenantId: string; ref: string; company: string; rate: { perUsd: number; source: string }; checkout?: { url: string; at: number }; providerPaid: number; writtenOff: number }
-export interface Entry { id: string; invoiceId: string; type: string; amount: number; currency: string; at: number; by: string; reason: string; ticket: string; approvalId?: string; provider?: string }
+export interface Entry { id: string; invoiceId: string; type: string; review?: string; amount: number; currency: string; at: number; by: string; reason: string; ticket: string; approvalId?: string; provider?: string }
 export interface PlanRequest { id: string; tenantId: string; plan: string; at: number; byName?: string; company?: string }
 export interface Billing {
   accounts: Account[]; invoices: Invoice[]; entries: Entry[]; companies: { id: string; ref: string; name: string; status: string; hasAccount: boolean }[];

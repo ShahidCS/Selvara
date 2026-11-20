@@ -7,7 +7,9 @@
    - The card shown is the provider's, never typed here; there is no "update payment method" form in production. */
 import { outstanding, priceList, REFERENCE_PRICES, shown, stripeFromEnv, type Account, type Entry, type Invoice, type PriceList } from "../billing";
 import { MemoryPlatStore, type PlatStore } from "../platstore";
+import { randomBytes } from "node:crypto";
 import type { Deps } from "../types";
+import { expireEarlier } from "../admin8";
 import { invalid, missing, ok, refuse, str, txt, wsRoute, type WsHelpers } from "./common";
 
 const pstoreOf = (d: Deps): PlatStore => (d.pstore ??= new MemoryPlatStore(d.store));
@@ -25,7 +27,7 @@ export function billingWsRoutes(h: WsHelpers) {
       return {
         account: acc ? { plan: acc.plan, cycle: acc.cycle, currency: acc.currency, status: acc.status, trialEnds: acc.trialEnds ?? null, nextPeriod: acc.nextPeriod, contact: acc.contact, method: acc.method, pendingPlan: acc.pendingPlan?.plan ?? null } : null,
         invoices: invoices.map((i) => ({ id: i.id, from: i.from, to: i.to, issued: new Date(i.issuedAt).toISOString().slice(0, 10), due: new Date(i.dueAt).toISOString().slice(0, 10), currency: i.currency, lines: i.lines, subtotal: i.subtotal, taxType: i.taxType, taxRate: i.taxRate, tax: i.tax, total: i.total, paid: i.paid, credited: i.credited, refunded: i.refunded, outstanding: outstanding(i), status: shown(i, now) })).reverse(),
-        payments: (await v.list<Entry>("billing-entry")).map((x) => x.data).filter((e) => e.type === "payment" || e.type === "refund" || e.type === "credit").map((e) => ({ id: e.id, invoiceId: e.invoiceId, type: e.type, amount: e.amount, currency: e.currency, at: new Date(e.at).toISOString().slice(0, 10) })).reverse(),
+        payments: (await v.list<Entry>("billing-entry")).map((x) => x.data).filter((e) => ["payment", "markpaid", "refund", "credit"].includes(e.type)).map((e) => ({ id: e.id, invoiceId: e.invoiceId, type: e.type, amount: e.amount, currency: e.currency, at: new Date(e.at).toISOString().slice(0, 10) })).reverse(),
         requests: (await v.list<{ plan: string; at: number; byName?: string }>("billing-plan-request")).map((x) => ({ id: x.id, plan: x.data.plan, at: new Date(x.data.at).toISOString().slice(0, 10), by: x.data.byName ?? "", answer: answers.get(x.id) ?? null })).reverse(),
         plans: Object.entries(prices.plans).map(([name, p]) => ({ name, monthlyUsd: p.monthly, seats: p.seats })), canPay: !!pay(d),
       };
@@ -53,8 +55,10 @@ export function billingWsRoutes(h: WsHelpers) {
     const inv = await pstoreOf(d).company(c.actor.tenantId, c.actor.id, d.now(), async (v) => (await v.list<Invoice>("billing-invoice")).find((x) => x.id === str(r.path[3], 40))?.data ?? null);
     if (!inv) return missing("Invoice");
     const due = outstanding(inv!); if (!due) invalid("Nothing is due on this invoice.");
+    const earlier = await pstoreOf(d).company(c.actor.tenantId, c.actor.id, d.now(), async (v) => (await v.list<{ invoiceId: string; session: string }>("billing-checkout")).map((x) => x.data));
+    await expireEarlier(p!, inv!, earlier);
     const ses = await p!.checkout(inv!, due, d.site.origin, `checkout-${inv!.id}-${due}-${Math.floor(d.now() / 3600_000)}`);
-    await pstoreOf(d).company(c.actor.tenantId, c.actor.id, d.now(), (v) => v.request("billing-checkout", `CO-${inv!.id}-${d.now().toString(36)}`, { invoiceId: inv!.id, session: ses.id, at: d.now(), byName: c.actor.name }));
+    await pstoreOf(d).company(c.actor.tenantId, c.actor.id, d.now(), (v) => v.request("billing-checkout", `CO-${inv!.id}-${d.now().toString(36)}-${randomBytes(3).toString("hex")}`, { invoiceId: inv!.id, session: ses.id, at: d.now(), byName: c.actor.name }));
     await d.ws.tx(c.actor, d.now(), (t) => t.audit("invoice.payment_started", `${inv!.id}: payment page opened by ${c.actor.name} (${p!.mode})`, "System"));
     return ok({ url: ses.url });
   });

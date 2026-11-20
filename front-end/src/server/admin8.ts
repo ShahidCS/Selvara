@@ -11,7 +11,7 @@
    - Sign-in blocks are listed for staff and lifted by an elevated super admin with a reason.
    Everything is written to the platform's log; billing changes to a company also to the company's own log. */
 import { reasonBlock } from "@/lib/rules";
-import { applyFinance, appliedRate, stripeSignatureOk, DAY, FINANCE_DUAL_USD_CENTS, financeBlock, issueFor, METHODS, money, outstanding, priceList, ratesOf, readFeeds, judge, REFERENCE_RATES, shown, stripeFromEnv, usdCents, CYCLES,
+import { applyFinance, appliedRate, twoDecimals, type Payments, stripeSignatureOk, DAY, FINANCE_DUAL_USD_CENTS, financeBlock, issueFor, METHODS, money, outstanding, priceList, ratesOf, readFeeds, judge, REFERENCE_RATES, shown, stripeFromEnv, usdCents, CYCLES,
   type Account, type Entry, type FinanceKind, type Invoice, type PriceList, type Rate } from "./billing";
 import type { Ctx, Req, Res } from "./core";
 import type { ApprovalRow } from "./directory";
@@ -46,9 +46,10 @@ export async function applyGroup8(d: Deps, q: Tx | null, a: ApprovalRow, approve
     await within(d, q, decider, async (t) => {
       const rec = await t.get<Invoice>("billing-invoice", String(p.invoiceId)); if (!rec) throw new WsRefused("The invoice no longer exists.", 409);
       const kind = a.kind.slice(8) as FinanceKind; const amount = kind === "void" ? 0 : Number(p.amount);
-      let provider: string | undefined;
-      if (kind === "refund") provider = await providerRefund(d, t, rec.data, amount, a.id);
-      await applyFinance(t, rec, kind, amount, { by, reason: String(p.reason), ticket: String(p.ticket), approvalId: a.id, provider });
+      // the state is checked again before anything leaves Selvara; a card refund goes to the provider last, with a key stable across retries
+      const bad = financeBlock(kind, rec.data, amount); if (bad) throw new WsRefused(bad, 409);
+      const provider = kind === "refund" ? await providerRefund(d, t, rec.data, amount, `refund-${a.id}`) : undefined;
+      await applyFinance(t, rec, kind, amount, { by, reason: String(p.reason), ticket: String(p.ticket), approvalId: a.id, provider: provider?.id }, provider?.amount);
     });
   } else if (a.kind === "billing.pricing") {
     await within(d, q, decider, async (t) => {
@@ -74,20 +75,27 @@ export async function applyGroup8(d: Deps, q: Tx | null, a: ApprovalRow, approve
     });
   } else if (a.kind === "mfa-reset-admin") {
     const uid = String(p.userId);
+    // still an active admin or owner of that company when it is applied (a person who left or changed role is not reset this way)
+    if (!(await d.plat.companyAdmins(decider.id!)).some((x) => x.userId === uid && x.tenantId === String(p.tenantId))) throw new WsRefused(`${p.person} is no longer an admin or owner of ${p.company}. Reject this request.`, 409);
+    // the record first (it fails before anything changes), then the effects, each safe to repeat if the decision is retried:
     // the person's authenticators go (Supabase), then their recovery codes and every session, in every company
+    await within(d, q, decider, (t) => t.audit("mfa.reset.approved", `${p.person} (${p.company}); ticket ${p.ticket}; identity checks: call-back, sponsor, ID; ${by}; effects: authenticators and recovery codes removed, sessions ended, person told`, "Authentication", String(p.tenantId)));
     await d.auth.resetMfa(uid); await d.store.replaceRecovery(uid, []);
     for (const ss of await d.store.sessionsOf(uid)) if (!ss.revokedAt) await d.store.updateSession(ss.idHash, { revokedAt: d.now(), revokedWhy: "MFA reset by the platform" });
     await d.store.insertNotice({ id: `n${d.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, userId: uid, at: d.now(), text: "Selvara's support team reset your multi-factor authentication. Sign in again and enrol a new authenticator. If you did not ask for this, contact your company admin at once." });
-    await within(d, q, decider, (t) => t.audit("mfa.reset.approved", `${p.person} (${p.company}); ticket ${p.ticket}; identity checks: call-back, sponsor, ID; ${by}; effects: authenticators and recovery codes removed, sessions ended, person told`, "Authentication", String(p.tenantId)));
   } else throw new WsRefused("This request cannot be applied here.", 409);
 }
-/** A refund of a payment that came through the provider goes back through it (idempotent by the request id). */
-async function providerRefund(d: Deps, t: PTx, inv: Invoice, amount: number, idem: string): Promise<string | undefined> {
-  const pay = d.payments === undefined ? stripeFromEnv(process.env, d.net) : d.payments; if (!inv.providerPaid) return undefined;
+/** A refund of what was paid through the provider goes back through it, up to what the provider received and has not refunded yet. Called
+ *  only after the ledger rules passed, as the last step before the entry is written; the idempotency key is stable across retries, so a
+ *  retried request never refunds twice. */
+async function providerRefund(d: Deps, t: PTx, inv: Invoice, amount: number, idem: string): Promise<{ id: string; amount: number } | undefined> {
+  const left = inv.providerPaid - (inv.providerRefunded ?? 0); if (left <= 0) return undefined;
+  const pay = d.payments === undefined ? stripeFromEnv(process.env, d.net) : d.payments;
   if (!pay) throw new WsRefused("This invoice was paid through the payment provider, which is not configured any more. Refund it there.", 409);
   const pi = (await t.list<Entry>("billing-entry", inv.tenantId)).map((x) => x.data).find((x) => x.invoiceId === inv.id && x.type === "payment" && x.provider?.startsWith("stripe:"))?.provider?.slice(7);
   if (!pi) return undefined;
-  return `stripe:${await pay.refund(pi, Math.min(amount, inv.providerPaid), `refund-${idem}`)}`;
+  const take = Math.min(amount, left);
+  return { id: `stripe:${await pay.refund(pi, take, idem)}`, amount: take };
 }
 
 export function admin8Routes(h: Admin8Helpers): Record<string, H> {
@@ -119,7 +127,7 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
       prices: (await priceList(t)).data, methods: METHODS.filter((m) => m !== "Card (Stripe)" || !!p), payments: p ? { mode: p.mode } : null, planRequests: requests.filter((x) => !answered.has(x.id)).reverse(),
       thresholdUsd: FINANCE_DUAL_USD_CENTS / 100,
     };
-  })));
+  }, { read: true })));
   /** Sets up (or changes) a company's billing account: plan, cycle, currency, country (tax), contact, address, method. Changes apply from the next invoice. */
   const accountSave = elevated(async (d, r, c) => {
     const m = meta(r); if (m.bad) return err(400, m.bad);
@@ -132,6 +140,7 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
       if (!CYCLES[cycle]) return err(400, "Choose Monthly, Quarterly or Annual.");
       if (!(await ratesOf(t)).all.some((x) => x.code === country)) return err(400, "Choose a country from the rates and tax list.");
       if (!(await ratesOf(t)).all.some((x) => x.currency === currency)) return err(400, "Choose a currency from the rates list.");
+      if (!twoDecimals(currency)) return err(400, "Billing supports currencies with two decimals only.");
       if (!METHODS.includes(method) || (method === "Card (Stripe)" && !pay(d))) return err(400, "Choose a billing method that is configured.");
       if (!contact.name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) return err(400, "Enter the billing contact's name and email.");
       const rec = await t.get<Account>("billing-account", tenantId); const today = new Date(t.now).toISOString().slice(0, 10);
@@ -174,15 +183,17 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
     return pstoreOf(d).tx(actorOf(c, r), d.now(), async (t) => {
       const rec = await t.get<Invoice>("billing-invoice", s(r.path[3], 40)); if (!rec) return err(404, "Invoice not found.");
       const inv = rec.data; const amount = kind === "markpaid" || kind === "writeoff" ? outstanding(inv) : kind === "void" ? 0 : minor(r.body.amount);
-      const bad = financeBlock(kind, inv, amount); if (bad) return err(400, bad);
-      const usd = usdCents(kind === "void" ? inv.total : amount, inv.rate.perUsd);
-      const dual = kind === "writeoff" || usd === null || usd > FINANCE_DUAL_USD_CENTS;
+      const bad = financeBlock(kind, inv, amount); if (bad) return err(409, bad);
+      // the threshold counts what one person already applied alone on this invoice, so an amount cannot be split to avoid a second approver
+      const alone = (await t.list<Entry>("billing-entry", inv.tenantId)).map((x) => x.data).filter((e) => e.invoiceId === inv.id && !e.approvalId && e.by !== "Payment provider" && ["credit", "refund", "markpaid", "void"].includes(e.type)).reduce((n, e) => n + e.amount, 0);
+      const usd = usdCents((kind === "void" ? inv.total : amount) + alone, inv.rate.perUsd);
+      const dual = kind === "writeoff" || usd === null || usd > FINANCE_DUAL_USD_CENTS || (inv.currency !== "USD" && !(await appliedRate(t, inv.currency)));
       if (dual) {
         const title = `${FINANCE_TITLE[kind]} ${money(kind === "void" ? inv.total : amount, inv.currency)} on ${inv.id} (${inv.ref})${usd !== null ? `, about ${money(usd, "USD")}` : ""}`;
         return request(d, r, c, `billing.${kind}`, inv.id, title, { invoiceId: inv.id, amount, reason: m.reason, ticket: m.ticket });
       }
-      let provider: string | undefined; if (kind === "refund") provider = await providerRefund(d, t, inv, amount, `${inv.id}-${t.now}`);
-      const out = await applyFinance(t, rec, kind, amount, { by: `${c.p.person} (single elevated super admin, below USD ${FINANCE_DUAL_USD_CENTS / 100})`, reason: m.reason, ticket: m.ticket, provider });
+      const provider = kind === "refund" ? await providerRefund(d, t, inv, amount, `refund-${inv.id}-${inv.refunded}-${amount}`) : undefined;
+      const out = await applyFinance(t, rec, kind, amount, { by: `${c.p.person} (single elevated super admin, below USD ${FINANCE_DUAL_USD_CENTS / 100})`, reason: m.reason, ticket: m.ticket, provider: provider?.id }, provider?.amount);
       return ok(invoiceView(out, t.now));
     });
   });
@@ -192,6 +203,7 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
     return pstoreOf(d).tx(actorOf(c, r), d.now(), async (t) => {
       const rec = await t.get<Invoice>("billing-invoice", s(r.path[3], 40)); if (!rec) return err(404, "Invoice not found.");
       const due = outstanding(rec.data); if (!due) return err(400, "Nothing is due on this invoice.");
+      await expireEarlier(p, rec.data, (await t.list<{ invoiceId: string; session: string }>("billing-checkout", rec.data.tenantId)).map((x) => x.data));
       const ses = await p.checkout(rec.data, due, d.site.origin, `checkout-${rec.id}-${due}-${Math.floor(t.now / HOUR)}`);
       rec.data.checkout = { id: ses.id, url: ses.url, at: t.now }; await t.update("billing-invoice", rec.id, rec.data, rec.version);
       await t.audit("invoice.payment_link.created", `${rec.id} ${rec.data.ref}: ${money(due, rec.data.currency)} (${p.mode})`, "Billing", rec.data.tenantId);
@@ -217,7 +229,7 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
   const ratesData = staff(async (d, r, c) => ok(await pstoreOf(d).tx(actorOf(c, r), d.now(), async (t) => {
     const { all } = await ratesOf(t); const last = (await t.get<{ at: number; by: string; errors: string[] }>("billing-rate-refresh", "last"))?.data ?? null;
     return { rates: all, lastRefresh: last, rules: { moveMax: 3, disagreeMax: 1, staleHours: 48 } };
-  })));
+  }, { read: true })));
   const refresh = elevated(async (d, r, c) => {
     const feeds = await readFeeds(d.net); // outside any transaction
     if (!feeds.ecb && !feeds.er) return err(502, feeds.errors.join(" "));
@@ -225,7 +237,7 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
       const { all } = await ratesOf(t); let applied = 0; let held = 0;
       for (const cur of all.filter((x) => x.currency !== "USD")) {
         const rec = await t.get<Rate>("billing-rate", cur.code); const v = judge(cur, feeds, t.now); const next: Rate = { ...cur };
-        if (v.apply) { if (cur.status === "Applied" && cur.rate > 0 && cur.at > 0) next.previous = { rate: cur.rate, until: t.now }; Object.assign(next, { rate: v.apply, status: "Applied", source: feeds.ecb?.[cur.currency] && feeds.er?.[cur.currency] ? "ECB and open.er-api.com (agree)" : "One feed", at: t.now }); delete next.candidate; applied++; }
+        if (v.apply) { if (cur.status === "Applied" && cur.rate > 0 && cur.at > 0) next.previous = { rate: cur.rate, until: t.now }; Object.assign(next, { rate: v.apply, status: "Applied", source: v.source ?? "Feeds", at: t.now }); delete next.candidate; applied++; }
         else { next.status = "Held"; next.candidate = v.candidate; held++; }
         if (rec) await t.update("billing-rate", rec.id, next, rec.version); else await t.insert("billing-rate", cur.code, null, next);
       }
@@ -254,6 +266,7 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
         if (cur.status === "Held") return err(400, "Resolve the held rate first.");
         const currency = s(r.body.currency, 3).toUpperCase(); const rate = Number(r.body.rate); const taxRate = Number(r.body.taxRate); const taxType = s(r.body.taxType, 20); const taxEffective = s(r.body.taxEffective, 10);
         if (!/^[A-Z]{3}$/.test(currency)) return err(400, "Enter a 3-letter currency code, for example USD.");
+        if (!twoDecimals(currency)) return err(400, "Billing supports currencies with two decimals only.");
         if (!(rate > 0 && rate <= 10_000_000)) return err(400, "Enter a rate per 1 USD above 0.");
         if (!(taxRate >= 0 && taxRate <= 100)) return err(400, "Enter a tax rate from 0 to 100.");
         if (!["VAT", "GST", "GST/HST", "Sales tax", "WHT", "None"].includes(taxType)) return err(400, "Choose a tax type from the list.");
@@ -317,7 +330,7 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
     await d.store.audit(h.entry(d, r, c.p, c.a, "auth.ip.unblocked", `${ip}: level ${was} lifted; reason: ${why}`));
     return ok({ ip });
   });
-  void reasonBlock; void appliedRate; void ({} as Entry);
+  void reasonBlock; void ({} as Entry);
 
   return {
     "GET admin/billing": billingData, "POST admin/billing/accounts": accountSave, "POST admin/billing/pricing": pricing, "POST admin/billing/issue": issue,
@@ -326,6 +339,12 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
     "GET admin/mfa": mfaData, "POST admin/mfa/requests": mfaRequest, "POST admin/mfa/requests/:id/withdraw": mfaWithdraw,
     "GET admin/security/blocks": blocks, "POST admin/security/blocks/:ip/lift": lift,
   };
+}
+
+/** Closes the earlier payment pages of an invoice (the admin's link and the company's own), so a new one never makes it payable twice. */
+export async function expireEarlier(p: Payments, inv: Invoice, checkouts: { invoiceId: string; session: string }[]) {
+  const ids = new Set([inv.checkout?.id, ...checkouts.filter((x) => x.invoiceId === inv.id).map((x) => x.session)].filter((x): x is string => !!x));
+  for (const id of [...ids].slice(-20)) await p.expire(id);
 }
 
 /** The payment provider's webhook (Stripe): authenticated by its signature over the raw body, never by a cookie. Each event once. */
@@ -344,13 +363,16 @@ export async function stripeWebhook(d: Deps, r: Req): Promise<Res> {
       const invId = String((o.metadata as Record<string, string> | undefined)?.invoice ?? o.client_reference_id ?? "");
       const rec = await t.get<Invoice>("billing-invoice", invId); if (!rec) return ok({ received: true, ignored: "unknown invoice" });
       const inv = rec.data; const amount = Number(o.amount_total); const cur = String(o.currency ?? "").toUpperCase();
-      if (cur !== inv.currency || !(amount > 0)) { await t.audit("invoice.payment.mismatch", `${inv.id}: ${amount} ${cur} does not match the invoice (${inv.currency})`, "Billing"); return ok({ received: true, ignored: "mismatch" }); }
-      const take = Math.min(amount, inv.status === "Open" ? outstanding(inv) : 0);
-      inv.paid += amount; inv.providerPaid += amount; if (inv.status === "Open" && outstanding(inv) === 0) inv.status = "Paid";
+      if (!(amount > 0) || !Number.isSafeInteger(amount)) return ok({ received: true, ignored: "no amount" });
+      // money received is always recorded; what does not fit the invoice is kept apart for a person to review (and refund in the provider)
+      const session = String(o.id ?? ""); const known = session && (inv.checkout?.id === session || (await t.list<{ invoiceId: string; session: string }>("billing-checkout", inv.tenantId)).some((x) => x.data.invoiceId === inv.id && x.data.session === session));
+      const due = outstanding(inv);
+      const review = cur !== inv.currency ? `paid in ${cur || "an unknown currency"}, the invoice is in ${inv.currency}` : inv.status !== "Open" ? `the invoice is ${inv.status.toLowerCase()}` : !known ? "the payment page is not one Selvara created for this invoice" : amount > due ? `${money(amount - due, inv.currency)} more than was due` : "";
+      const apply = cur === inv.currency && inv.status === "Open";
       const id = `E-${await t.next("billing-entry", 0)}`;
-      await t.insert("billing-entry", id, inv.tenantId, { id, invoiceId: inv.id, type: "payment", amount, currency: inv.currency, at: t.now, by: "Payment provider", reason: `Card payment through the payment provider (${p.mode})`, ticket: "", provider: `stripe:${String(o.payment_intent ?? "")}` } satisfies Entry);
-      await t.update("billing-invoice", rec.id, inv, rec.version);
-      await t.audit("invoice.payment.received", `${inv.id} ${inv.ref}: ${money(amount, inv.currency)} through the payment provider${amount > take ? ` (${money(amount - take, inv.currency)} more than was due)` : ""}`, "Billing", inv.tenantId);
+      await t.insert("billing-entry", id, inv.tenantId, { id, invoiceId: inv.id, type: apply ? "payment" : "unmatched", amount, currency: apply ? inv.currency : cur, at: t.now, by: "Payment provider", reason: `Card payment through the payment provider (${p.mode})`, ticket: "", provider: `stripe:${String(o.payment_intent ?? "")}`, review: review || undefined } satisfies Entry);
+      if (apply) { inv.paid += amount; inv.providerPaid += amount; if (outstanding(inv) === 0) inv.status = "Paid"; await t.update("billing-invoice", rec.id, inv, rec.version); }
+      await t.audit(review ? "invoice.payment.review" : "invoice.payment.received", `${inv.id} ${inv.ref}: ${money(amount, apply ? inv.currency : cur)} through the payment provider${review ? `; needs review: ${review}` : ""}`, "Billing", inv.tenantId);
     }
     return ok({ received: true });
   }));
