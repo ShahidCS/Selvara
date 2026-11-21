@@ -3,7 +3,7 @@ import { Chip, DonutChart, Empty, Icon, KpiStrip, KpiTile, Page, ReqStatusPill, 
 import { ANNEXA, DATA, FRAMEWORK_REQS, annexCovered, controlsForFw } from "@/lib/data";
 import { useModState, setModState } from "@/lib/store";
 import {
-  REQ_PAGE, REQ_ST, fwBand, fwCanAdmin, fwEdits, fwGroupMap, fwGroupStat, fwReqControls, fwScore, fwSnoozed, reqStatus,
+  REQ_PAGE, REQ_ST, fwCanAdmin, fwEdits, fwGroupMap, fwGroupStat, fwReqControls, fwScore, fwSnoozed, reqStatus,
 } from "@/lib/frameworks";
 import { csvCell, downloadText } from "@/lib/format";
 import { uiMessage } from "@/lib/grcSod";
@@ -11,8 +11,10 @@ import * as fw from "./services/frameworks";
 import { useLayer } from "@/hooks/useLayer";
 import { useGo } from "@/lib/route";
 import { useOpenControl } from "@/features/controls";
-import { FwSegsBar } from "./FwSegsBar";
+import { readinessTone } from "./FwSegsBar";
 
+/** The "Next audit" figure is a date when the framework's milestone text has one; the full text goes in the caption. */
+const auditDate = (s?: string) => (s ? (/\b\d{1,2} [A-Z][a-z]{2} \d{4}\b/.exec(s)?.[0] ?? /\b(19|20)\d{2}\b/.exec(s)?.[0] ?? null) : null);
 const REQ_TONE: Record<string, Segment["tone"]> = { Met: "ok", "Partially met": "warn", "Not met": "bad", "Not assessed": "muted", "Not applicable": "ink" };
 
 /** A framework as a page (`/ws/frameworks/:id`): readiness, requirement mix, groups and requirements with mapping and applicability edits. */
@@ -38,7 +40,7 @@ export function FwDetail({ fwId }: { fwId: string }) {
       return [f.name, r[0], r[1], (r[2] ? r[2] + " " : "") + (gm[r[2]] || ""), st, fwReqControls(f.id, r[0]).map((c) => c.id + " (" + c.status + ")").join("; "), na ? na.reason : ""];
     });
     const csv = [head].concat(body).map((r) => r.map(csvCell).join(",")).join("\r\n");
-    if (!downloadText("gap-assessment-" + f.id + ".csv", csv, "text/csv;charset=utf-8")) { L.toast("Download not available in this view"); return; }
+    if (!downloadText("gap-assessment-" + f.id + ".csv", csv, "text/csv;charset=utf-8")) { L.toast("Download not available in this view", false); return; }
     void fw.logGapExport(f.name, body.length).catch((e) => L.toast(uiMessage(e), false));
     L.toast("Gap assessment exported (" + body.length + " row" + (body.length !== 1 ? "s" : "") + ")");
   };
@@ -55,16 +57,12 @@ export function FwDetail({ fwId }: { fwId: string }) {
         <KpiTile label="Readiness" value={p + "%"} caption={sc ? `${sc.impl} of ${sc.total} applicable requirements met` : undefined} />
         <KpiTile label="Mapped controls" value={ctrls.length} caption={`${passing} passing, ${needs} need evidence`} />
         <KpiTile label="Open gaps" value={sc ? sc.cnt["Not met"] + sc.cnt["Not assessed"] : f.gaps} delta={(sc ? sc.cnt["Not met"] + sc.cnt["Not assessed"] : f.gaps) ? { tone: "watch", text: "To close" } : { tone: "good", text: "None" }} caption={sc ? `${sc.cnt["Not met"]} not met, ${sc.cnt["Not assessed"]} not assessed` : "Requirements to close"} />
-        <KpiTile label="Next audit" value={f.audit || "None"} />
+        <KpiTile label="Next audit" value={auditDate(f.audit) ?? "Not set"} caption={f.audit || "No audit milestone recorded"} />
       </KpiStrip>
       {sc ? (
-        <section className="card"><div className="c-body" style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(200px,260px)", gap: 24, alignItems: "center" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div className="eyebrow">Requirement status</div>
-            <div style={{ display: "flex" }}><FwSegsBar fwId={f.id} h={12} /></div>
-            <p className="field help" style={{ margin: 0 }}>Each segment is a share of the framework&apos;s requirements, scored from the status of their mapped controls.</p>
-          </div>
+        <section className="card"><div className="c-head"><h3>Requirement status</h3></div><div className="c-body" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 24, alignItems: "center" }}>
           <DonutChart title="Requirements by status" segments={REQ_ST.map((k) => ({ label: k, value: sc.cnt[k], tone: REQ_TONE[k] }))} center={p + "%"} centerSub="ready" />
+          <p className="field help" style={{ margin: 0 }}>Each requirement is scored from the status of its mapped controls. Readiness counts met requirements out of those that apply, so &ldquo;Not applicable&rdquo; is left out of the percentage.</p>
         </div></section>
       ) : null}
 
@@ -80,7 +78,7 @@ export function FwDetail({ fwId }: { fwId: string }) {
                 return (
                   <button key={g[0] + g[1]} type="button" className={`fwgrp ${on ? "on" : ""}`} aria-pressed={on} onClick={() => { setGrp(g[0]); setLimit(REQ_PAGE); }}>
                     <span className="gl"><span>{g[0] ? g[0] + " " : ""}{g[1]}</span><span className="gr">{st.tot ? st.met + "/" + st.tot : "n/a"}</span></span>
-                    <span className="gbar"><span style={{ width: `${q}%`, background: st.tot ? fwBand(q) : "var(--line-2)" }} /></span>
+                    <span className="gbar"><span style={{ width: `${q}%`, background: st.tot ? readinessTone(q) : "var(--line-2)" }} /></span>
                   </button>
                 );
               })}

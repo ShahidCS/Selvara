@@ -23,7 +23,7 @@ export function AgentFormPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const n = clampText(name, 80);
-    if (!n) { setErr("Agent name is required."); return; }
+    if (!n) { setErr("Agent name is required."); ref.current?.focus(); return; }
     setBusy(true);
     try {
       await svc.createAgent({ name: n, trigger: trig, runsAs: runs });

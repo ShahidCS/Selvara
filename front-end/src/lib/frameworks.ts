@@ -75,7 +75,7 @@ export function fwScore(fwId: string) {
 export function fwReadiness(fwId: string): number {
   const sc = fwScore(fwId); return sc ? sc.pct : (DATA.frameworks.find((x) => x.id === fwId) || ({} as { pct?: number })).pct || 0;
 }
-export const fwBand = (p: number) => (p >= 80 ? "var(--ok-ink)" : p >= 65 ? "var(--warn-ink)" : p >= 50 ? "#D2690A" : "var(--bad-ink)");
+export const fwBand = (p: number) => (p >= 80 ? "var(--ok-ink)" : p >= 65 ? "var(--warn-ink)" : p >= 50 ? "var(--high-ink)" : "var(--bad-ink)");
 export function fwGroupMap(fwId: string): Record<string, string> {
   const m: Record<string, string> = {}; (FRAMEWORK_REQS[fwId] || { g: [] }).g.forEach((g) => (m[g[0]] = g[1])); return m;
 }

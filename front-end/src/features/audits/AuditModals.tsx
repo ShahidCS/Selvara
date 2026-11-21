@@ -28,7 +28,7 @@ export function AddPbcForm({ L, id, onAdded }: { L: LayerApi; id: string; onAdde
   });
   return (
     <>
-      <div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div className="field"><label htmlFor="pbc-item">Request <Req /></label><input className="input" id="pbc-item" data-focus placeholder="e.g. Access review export" maxLength={300} value={item} onChange={(e) => setItem(e.target.value)} aria-invalid={err} aria-describedby={err ? "pbc-err" : undefined} /></div>
         {API_ON ? <MemberSelect id="pbc-owner" value={ownerId || myMemberId(members)} onChange={setOwnerId} help="The owner is told and provides it." />
           : <div className="field"><label htmlFor="pbc-owner">Owner</label><input className="input" id="pbc-owner" placeholder="e.g. O. Hart" maxLength={80} value={owner} onChange={(e) => setOwner(e.target.value)} /></div>}
@@ -71,7 +71,7 @@ function TextForm({ L, label, confirm, help, min, sevs, recLabel, run }: {
   });
   return (
     <>
-      <div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {help ? <p style={{ margin: "0 0 8px" }}>{help}</p> : null}
         <div className="field"><label htmlFor="at-text">{label} <Req /></label><textarea className="input" id="at-text" data-focus rows={3} maxLength={500} style={{ resize: "vertical" }} value={text} onChange={(e) => setText(e.target.value)} aria-invalid={!!err} /></div>
         {sevs ? <div className="field"><label htmlFor="at-sev">Severity</label><select className="select" id="at-sev" value={sev} onChange={(e) => setSev(e.target.value)}>{sevs.map((x) => <option key={x}>{x}</option>)}</select></div> : null}

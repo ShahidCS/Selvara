@@ -8,6 +8,10 @@ import * as fw from "./services/frameworks";
 import { useLayer } from "@/hooks/useLayer";
 
 interface Add { tpl: string | null; short: string; fname: string; kind: string; region: string; version: string; text: string; err: string }
+const Req = () => <span style={{ color: "var(--bad-ink)" }} aria-hidden="true">*</span>;
+/** Which field a save error belongs to, so the message sits under that field. */
+const errField = (m: string) => (/short name|already in the library/i.test(m) ? "short" : /requirement/i.test(m) ? "text" : "form");
+const errStyle = { color: "var(--bad-ink)", fontSize: 13, fontWeight: 600, margin: "6px 0 0" } as const;
 const EMPTY: Add = { tpl: null, short: "", fname: "", kind: "Framework", region: "Global", version: "", text: "", err: "" };
 
 /** "Add a regulation, standard or guideline": templates + keyword mapping preview (prototype: renderFwAdd / fwAddPick / fwAddSave). */
@@ -28,15 +32,17 @@ export function FwAdd({ onAdded }: { onAdded: (id: string) => void }) {
     if (!fwCanAdmin()) return;
     fw.addFramework({ template: A.tpl, short: A.short || "", name: A.fname || "", kind: A.kind, region: A.region, version: A.version, lines })
       .then((id) => { L.toast("“" + (A.short || "").trim().slice(0, 40) + "” added to the library"); setA(EMPTY); onAdded(id); })
-      .catch((e) => set({ err: uiMessage(e) }));
+      .catch((e) => { const m = uiMessage(e); set({ err: m }); const fld = errField(m); if (fld !== "form") document.getElementById(fld === "short" ? "fa-short" : "fa-text")?.focus(); });
   };
+  const ef = A.err ? errField(A.err) : null;
+  const inv = (k: string) => ({ "aria-invalid": ef === k, "aria-describedby": ef === k ? "fa-err" : undefined });
+  const errLine = (k: string) => (ef === k ? <p id="fa-err" role="alert" style={errStyle}>{A.err}</p> : null);
 
 
   return (
     <section className="card"><div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div>
-        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Add a regulation, standard or guideline</h2>
-        <p className="sub" style={{ margin: "4px 0 0" }}>Start from a template or paste requirements, one per line. Each line is matched to an existing control domain by keyword; unmatched lines are listed as gaps. Draft mapping for compliance review.</p>
+        <p className="sub" style={{ margin: 0 }}>Start from a template or paste requirements, one per line. Each line is matched to an existing control domain by keyword; unmatched lines are listed as gaps. Draft mapping for compliance review.</p>
       </div>
       <div className="fwtpls">
         {FW_TPL.map((t) => {
@@ -49,13 +55,13 @@ export function FwAdd({ onAdded }: { onAdded: (id: string) => void }) {
         })}
       </div>
       <div className="grid-add">
-        <label className="field" style={{ margin: 0 }}><span className="flab">Short name</span><input className="input" value={A.short} onChange={(e) => set({ short: e.target.value })} /></label>
+        <div className="field" style={{ margin: 0 }}><label htmlFor="fa-short">Short name <Req /></label><input className="input" id="fa-short" required value={A.short} onChange={(e) => set({ short: e.target.value })} {...inv("short")} />{errLine("short")}</div>
         <label className="field" style={{ margin: 0 }}><span className="flab">Full name</span><input className="input" value={A.fname} onChange={(e) => set({ fname: e.target.value })} /></label>
         <label className="field" style={{ margin: 0 }}><span className="flab">Version</span><input className="input" value={A.version} onChange={(e) => set({ version: e.target.value })} placeholder="2024" /></label>
         <label className="field" style={{ margin: 0 }}><span className="flab">Kind</span><select className="select" value={A.kind} onChange={(e) => set({ kind: e.target.value })}>{["Standard", "Framework", "Regulation"].map((k) => <option key={k}>{k}</option>)}</select></label>
         <label className="field" style={{ margin: 0 }}><span className="flab">Region</span><input className="input" value={A.region} onChange={(e) => set({ region: e.target.value })} placeholder="Global" /></label>
       </div>
-      <label className="field" style={{ margin: 0 }}><span className="flab">Requirements, one per line</span><textarea className="input" rows={6} style={{ resize: "vertical" }} value={A.text} onChange={(e) => set({ text: e.target.value })} /></label>
+      <div className="field" style={{ margin: 0 }}><label htmlFor="fa-text">Requirements, one per line <Req /></label><textarea className="input" id="fa-text" required rows={6} style={{ resize: "vertical" }} value={A.text} onChange={(e) => set({ text: e.target.value })} {...inv("text")} />{errLine("text")}</div>
       {rows.length ? (
         <>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: 4 }}>
@@ -64,15 +70,15 @@ export function FwAdd({ onAdded }: { onAdded: (id: string) => void }) {
           </div>
           <div className="scroll" style={{ maxHeight: 220, border: "1px solid var(--line)", borderRadius: 8, marginTop: 8 }}>
             <Table cols={[{ t: "Requirement" }, { t: "Mapped control domain" }]}>
-              {rows.map((r, i) => <tr key={i}><td>{r.text}</td><td><Chip cls={r.ok ? "info" : "bad"}>{r.dom}</Chip></td></tr>)}
+              {rows.map((r, i) => <tr key={i}><td>{r.text}</td><td><Chip cls={r.ok ? "neutral" : "bad"} icon={r.ok ? "check" : "x"}>{r.dom}</Chip></td></tr>)}
             </Table>
           </div>
-          {A.err ? <div role="alert" style={{ color: "var(--bad-ink)", fontSize: 13, fontWeight: 600, marginTop: 8 }}>{A.err}</div> : null}
-          {admin
-            ? <button className="btn btn-primary" style={{ alignSelf: "flex-start", marginTop: 10 }} onClick={save}><Icon name="plus" />Add to library</button>
-            : <p className="field help" style={{ marginTop: 8 }}>You can preview a mapping. Only a company admin can add it to the library.</p>}
         </>
       ) : null}
+      {ef === "form" ? <p id="fa-err" role="alert" style={errStyle}>{A.err}</p> : null}
+      {admin
+        ? <button className="btn btn-primary" style={{ alignSelf: "flex-start", marginTop: 4 }} onClick={save}><Icon name="plus" />Add to library</button>
+        : <p className="field help" style={{ marginTop: 8 }}>You can preview a mapping. Only a company admin can add it to the library.</p>}
     </div></section>
   );
 }

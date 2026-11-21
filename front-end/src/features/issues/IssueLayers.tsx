@@ -1,5 +1,6 @@
 /* The short dialogs of an issue (add task, link, delete, closure notes). The record itself is a page (IssueDetail) and create and edit are form pages (IssueFormPage). */
 import { useState } from "react";
+import { Icon } from "@/components/ui";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
@@ -14,7 +15,8 @@ export const attempt = async (L: LayerApi, fn: () => Promise<void> | void) => { 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
 export const errStyle = (on: boolean) => ({ color: "var(--bad-ink)", display: on ? "block" : "none" });
-export const DueText = ({ due }: { due: string }) => (/Overdue/.test(due) ? <span style={{ color: "var(--bad-ink)", fontWeight: 500 }}>{due}</span> : <>{due}</>);
+/** Overdue is never red text alone: it carries the alert icon too. */
+export const DueText = ({ due }: { due: string }) => (/Overdue/.test(due) ? <span style={{ color: "var(--bad-ink)", fontWeight: 500, whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="alert" style={{ width: 14, height: 14 }} />{due}</span> : <>{due}</>);
 
 /* ---------------- add task ---------------- */
 function AddTaskForm({ L, id }: { L: LayerApi; id: string }) {

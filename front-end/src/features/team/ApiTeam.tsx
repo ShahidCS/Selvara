@@ -29,7 +29,7 @@ export function ApiTeam() {
   return (
     <Page mod="team" sub={company ? `People and sign-in settings of ${company.name}` : undefined}>
       <div className="card" style={{ flex: "1 1 auto" }}>
-        <div className="c-head"><div className="seg" role="tablist">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
+        <div className="c-head" style={{ padding: "0 8px" }}><div className="tabs" role="tablist" aria-label="Team and settings">{VIEWS.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className={`c-body ${view === "members" ? "flush" : ""} scroll`} style={view === "members" ? { padding: 0 } : undefined}>
           {view === "members" ? <Members /> : view === "invitations" ? <Invitations /> : view === "requests" ? <RequestsTable id="team-requests-api" load={svc.listApprovals} decide={svc.decideRequest} note="Granting or inviting an admin or owner needs a second admin. Nobody approves their own request or a request about themselves. A request expires after 72 hours." /> : view === "signin" ? <SignIn /> : <ApiSupportAccess />}
         </div>

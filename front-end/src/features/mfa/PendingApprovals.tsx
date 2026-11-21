@@ -50,7 +50,7 @@ export function PendingApprovals({ kinds, title = "Pending approval", subjectLab
   };
   if (!pending.length && !recent.length) return null;
   return (
-    <div className="card" style={pending.length ? { borderColor: "var(--warn-ink)" } : undefined}>
+    <div className="card" style={pending.length ? { borderLeft: "3px solid var(--warn-ink)" } : undefined}>
       <div className="c-head"><h3>{title}</h3><div className="r"><span className={`chip ${pending.length ? "warn" : "neutral"}`}><Icon name="alert" />{pending.length} awaiting approval</span></div></div>
       <div className="c-body flush" style={{ padding: 0 }}>
         <Table cols={[{ t: "Request" }, { t: subjectLabel }, { t: "Details" }, { t: "Requested by" }, { t: "Approvals" }, { t: "Status" }, { t: "" }]}>
@@ -60,7 +60,7 @@ export function PendingApprovals({ kinds, title = "Pending approval", subjectLab
             const named = a.payload.approver ? String(a.payload.approver) : "";
             return (
               <tr key={a.id}>
-                <td className="strong num">{a.id}</td><td>{a.subject || "—"}</td>
+                <td className="strong num" style={{ whiteSpace: "nowrap" }}>{a.id}</td><td>{a.subject || "—"}</td>
                 <td style={{ fontSize: 12 }}>{handlerFor(a.kind)?.describe(a) || a.title}</td>
                 <td style={{ fontSize: 12 }}>{a.requestedBy}<div style={{ fontSize: 11, color: "var(--muted)" }}>{new Date(a.createdAt).toISOString().slice(0, 16).replace("T", " ")} UTC</div></td>
                 <td style={{ fontSize: 12 }}>{a.approvals.length}/{a.needs}{named ? <div style={{ fontSize: 11, color: "var(--muted)" }}>Named: {named}</div> : null}</td>

@@ -91,7 +91,7 @@ Table state (tab, filters, sort, page, columns, selection) is kept per table id 
 
 **Wave A conventions.** A register is a `DataTable` with `searchText`, status `tabs` where the module has a lifecycle, and `filters` for the fields people narrow by; the row opens the record (`onOpen`). Action buttons that already exist (Approve, Deny, Reset MFA) stay inside the row as a column with `hideHeader`, keep their segregation-of-duties reasons, and never open the row. A filter on a field with several values per row uses `test` (frameworks a control maps to) and `labels` for display text. A card that toggles a filter is a `KpiCard` with `pressed`. Tables that are not registers (the cross-framework matrix, the vendor request queue, the standard terms list, review checklists) keep the plain `Table`.
 
-**Layout rule found in wave A.** Cards in a page column shrink when the page is full, which squashed a table card to its header. A card that must keep its height sets `flex: 0 0 auto`; only the main register card keeps `flex: 1 1 auto`.
+**Layout rule found in wave A.** Cards in a page column shrink when the page is full, which squashed a table card to its header. The rule is now enforced in `portal.css`: every direct child of `.page` and of a `.scroll` column keeps its height (`flex-shrink: 0`) and `.page` scrolls (`overflow-y: auto`) when its content is taller than the window. Regions built to fill the rest of the page still shrink and scroll inside: a `.scroll` region, `.rec-scroll`, `.empty`, and `.panels` or `.split` grids (with a 320px floor). The main register card keeps `flex: 1 1 auto` inline; nothing else needs `flex: 0 0 auto` any more.
 
 ## Record and form pages (wave B)
 
@@ -194,4 +194,29 @@ Tokens and templates only. The Admin Console and the vendor portal take the same
 - **Delegation (step 2)**: My workspace has a "Delegate your approvals" card for admins and owners (delegate, 1 to 14 days, reason; end at any time; what has been delegated to you). It changes who counts as the named approver for policies and member MFA resets, within the rules in `docs/security/SOD_MATRIX.md` section 9. To make another named-approver check delegation-aware, replace the "is the signed-in person this name" test with `actsAs(name, approval?)` from `@/lib/delegation`, record `onBehalfOf(...)` in the audit entry, and add a test.
 - **Notification matrix (step 3)**: the bell has a Settings view with one group per kind of notice and a switch each for the bell and the email digest (`Switch` inside a `fieldset`). Approvals waiting for you are locked on in the bell. Rules and the draft status: `docs/security/SOD_MATRIX.md` section 10.
 - **Autonomy ladder (step 4)**: the Assistant agents table shows each agent's rung with Raise autonomy (a dialog with the track record, the blocking reason when there is one, and a reason field) or Lower to suggests only (immediate). The create form shows the starting rung read-only. The Run log offers Reject applied change on changes an acting agent applied. Team & Settings has an "AI agent track record" segmented control (3, 2, Off). Acting agents show their certification (a warning chip with an icon for "Recertify by" and "Recertification due", muted text for "Certified until") and a Recertify action that opens an attestation dialog. Rules and the draft status: `docs/security/SOD_MATRIX.md` section 11.
+
+## Kit additions from the design review (November 2026)
+
+Tokens (`portal.css`, both themes unless noted):
+
+| Token | Use |
+|---|---|
+| `--bg-inverse`, `--bg-inverse-2`, `--text-inverse`, `--text-inverse-muted`, `--border-inverse` | Inverse surfaces (bulk bar, chart tooltip, toast, vendor portal security panel). The dark theme now flips them to a light surface, so they no longer vanish into the dark canvas. |
+| `--ring-inverse`, `--ok-ink-inverse`, `--bad-ink-inverse` | Focus ring, success tick and error icon on an inverse surface. |
+| `--high-ink` | The High risk band in charts (between warning and danger), so a chart can match the heat map. Chart `Tone` has `high`. |
+| `--brand-mark` | The second square of the Selvara mark (`BrandMark`). Platform identity, not a status colour; a tenant preset does not change it. |
+
+Native controls take `color-scheme` from the theme and `accent-color: var(--accent)`.
+
+Components and props:
+
+- **Toast:** `toast(msg, tone?, opts)` with `tone` `"ok"` (default, success tick), `"bad"` (alert icon, a hidden "Error:", stays 6 seconds) or `"info"` (no icon). `true` and `false` still work. The tone is never guessed from the text: pass `false` on every failure.
+- **KPI strip:** columns follow the tile count (one row when the tiles fit, then balanced rows, by the strip's own width), so no row ends with an orphan tile. `DeltaPill` and `KpiTile.delta` take an optional `icon`; by default a trend arrow appears only for a signed change ("+3 pts", "-2"), otherwise the tone's state icon (good is a check). A fact that is not a change (a date, a count) goes in `caption`, not in a pill. `KpiCard` shows the filter icon when it toggles a filter (`pressed`) and an alert or clock icon before a bad or watch sub-text.
+- **Stepper:** `futureLabel` (default "Projected"; a wizard passes "Next"); pass `current={steps.length}` when everything is done. On a narrow container it becomes a vertical list.
+- **DataTable:** `DTColumn.nowrap` keeps IDs and short statuses on one line (set it on every ID column); `rowLabel` names rows in "Select …" and "Actions for …" when the key is not human (a user id); "Clear filters" appears only for a search or filter chip; the pager hides when there are no rows; the count says "1 row".
+- **Popovers:** focus moves to the first item and back to the trigger; arrow keys, Home and End move between items; Tab closes; a popover near the bottom of the window opens upwards.
+- **Page:** `status` renders a status chip beside the title (record pages). `Ring` takes a `label` (for example "74/100"). `FormMessage` errors carry an alert icon.
+- **Icons:** `dot` is a solid circle, `alert` the circled exclamation, `excl` the bare mark for a dot that is already a circle, `blank` an empty slot for an unchecked menu option, plus `copy`, `print` and `unlock`.
+- **Tables:** the right-edge scroll shadow on `.tbl-wrap` and `.tabs` shows only while there is more to scroll. `.tbl td.num` cells never wrap.
+- **Shell:** the route guard says "Your role does not open <module>." before it moves a person to their start page; the mobile drawer traps focus and has a close button; the vendor portal security panel is folded into "How this portal protects you".
 

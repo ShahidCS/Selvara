@@ -39,7 +39,7 @@ export function ApiBillingWs() {
   };
   const download = (i: Inv) => { if (!downloadText(`${safeFileName(i.id, "invoice")}.txt`, invoiceText(i, company))) L.toast("Download not available in this view", false); };
   const cols: DTColumn<Inv>[] = [
-    { key: "id", header: "Invoice", value: (i) => i.id, locked: true, render: (i) => <span className="strong num">{i.id}</span> },
+    { key: "id", header: "Invoice", nowrap: true, value: (i) => i.id, locked: true, render: (i) => <span className="strong num">{i.id}</span> },
     { key: "issued", header: "Issued", value: (i) => i.issued, render: (i) => <span className="num">{i.issued}</span> },
     { key: "period", header: "Period", value: (i) => i.from, render: (i) => <span className="num" style={{ color: "var(--muted)" }}>{i.from} to {i.to}</span> },
     { key: "due", header: "Due", value: (i) => i.due, render: (i) => <span className="num">{i.due}</span> },
@@ -117,7 +117,7 @@ function PlanForm({ d, close }: { d: Data; close: () => void }) {
       <fieldset style={{ border: 0, padding: 0, margin: 0 }}><legend className="sectitle" style={{ marginTop: 0 }}>Plans</legend>
         {d.plans.map((p) => (
           <label key={p.name} className="listrow" style={{ display: "flex", gap: 10, alignItems: "center", cursor: "pointer", marginBottom: 6 }}>
-            <input type="radio" name="plan" checked={plan === p.name} onChange={() => { setPlan(p.name); setErr(""); }} />
+            <input type="radio" name="plan" checked={plan === p.name} onChange={() => { setPlan(p.name); setErr(""); }} style={{ accentColor: "var(--accent)" }} />
             <span style={{ flex: 1 }}><span className="strong">{p.name}</span>{p.name === cur ? " (current)" : ""}<div style={{ fontSize: 12, color: "var(--muted)" }}>Up to {p.seats} seats</div></span>
             <span className="num">{minorMoney(p.monthlyUsd, "USD")} a month</span>
           </label>

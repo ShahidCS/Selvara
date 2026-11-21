@@ -7,6 +7,7 @@ import * as svc from "@/features/assistant/services/assistant";
 import { AUTONOMY, CERT, REJECTED_AFTER, RUNG_HELP, certDate, certState, nextRung, trackRecord, type Rung } from "@/features/assistant/lib/autonomy";
 import { getApproval } from "@/lib/approvals";
 import { WhyNot, attempt } from "@/components/kit/sodKit";
+import { askReason } from "@/components/kit/ReasonDialog";
 import { API_ON } from "@/lib/rbac";
 
 type Agent = (typeof svc.ASST.agents)[number];
@@ -32,7 +33,9 @@ export function AgentsTab({ manage }: { manage: boolean }) {
   const raise = (a: Agent) => L.openModal(`Raise autonomy: ${a.name}`, () => <RaiseForm id={a.id} />);
   const recert = (a: Agent) => L.openModal(`Recertify: ${a.name}`, () => <RecertForm id={a.id} />);
   useEffect(() => { if (svc.sweepCertifications().length) bumpData(); }, []);
-  const del = (id: string) => attempt(L, async () => { const a = await svc.deleteAgent(id); if (!a) return fail("Agent not found"); wsLog("assistant.agent.deleted", a.name, "System"); L.toast("Agent deleted"); bumpData(); });
+  const del = (a0: Agent) => askReason(L, { title: `Delete ${a0.name}?`, label: "", danger: true, confirm: "Delete agent",
+    intro: "The agent stops running. This cannot be undone.",
+    run: async () => { const a = await svc.deleteAgent(a0.id); if (!a) throw new Error("Agent not found"); wsLog("assistant.agent.deleted", a.name, "System"); return "Agent deleted"; } });
   const cols: DTColumn<Agent>[] = [
     { key: "name", header: "Agent", value: (a) => a.name, locked: true, render: (a) => <span className="strong">{a.name}</span> },
     { key: "trigger", header: "Trigger", value: (a) => a.trigger, render: (a) => a.trigger },
@@ -40,17 +43,22 @@ export function AgentsTab({ manage }: { manage: boolean }) {
     { key: "autonomy", header: "Autonomy", value: (a) => a.autonomy, render: (a) => {
       const pending = !!a.pendingAutonomy && getApproval(a.pendingAutonomy)?.status === "Pending";
       const up = nextRung(a.autonomy);
+      const n = svc.trackSetting(); const t = up && n && !pending ? trackRecord(a, svc.ASST.runs, n) : null;
       return (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-          {a.autonomy === "Suggests only" ? <Chip cls="neutral" icon="dot">{a.autonomy}</Chip> : <Chip cls="info" icon="check">{a.autonomy}</Chip>}
-          {pending ? <Chip cls="warn" icon="clock">Raise requested</Chip> : null}
-          <CertChip a={a} />
-          {manage && !pending && a.status !== "Pending approval" ? (up
-            ? <button className="btn btn-ghost sm" aria-label={`Raise autonomy: ${a.name}`} onClick={() => raise(a)}>Raise autonomy</button>
-            : <>
-              {a.pendingRecert && getApproval(a.pendingRecert)?.status === "Pending" ? null : <button className="btn btn-ghost sm" aria-label={`Recertify: ${a.name}`} onClick={() => recert(a)}>Recertify</button>}
-              <button className="btn btn-ghost sm" aria-label={`Lower to suggests only: ${a.name}`} onClick={() => lower(a)}>Lower to suggests only</button>
-            </>) : null}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+            {a.autonomy === "Suggests only" ? <Chip cls="neutral" icon="dot">{a.autonomy}</Chip> : <Chip cls="info" icon="check">{a.autonomy}</Chip>}
+            {pending ? <Chip cls="warn" icon="clock">Raise requested</Chip> : null}
+            <CertChip a={a} />
+          </div>
+          {t ? <span style={{ fontSize: 11.5, color: "var(--muted)" }}>{t.approved} of {n} approved suggestions</span> : null}
+          {manage && !pending && a.status !== "Pending approval" ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 2 }}>{up
+              ? <button className="btn btn-ghost sm" aria-label={`Raise autonomy: ${a.name}`} onClick={() => raise(a)}>Raise</button>
+              : <>
+                {a.pendingRecert && getApproval(a.pendingRecert)?.status === "Pending" ? null : <button className="btn btn-ghost sm" aria-label={`Recertify: ${a.name}`} onClick={() => recert(a)}>Recertify</button>}
+                <button className="btn btn-ghost sm" aria-label={`Lower to suggests only: ${a.name}`} title="Lower to suggests only" onClick={() => lower(a)}>Lower</button>
+              </>}</div>) : null}
         </div>
       );
     } },
@@ -59,14 +67,18 @@ export function AgentsTab({ manage }: { manage: boolean }) {
     { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (a) => (manage ? (
       <div className="btngrp" style={{ justifyContent: "flex-end", flexWrap: "nowrap", whiteSpace: "nowrap" }}>
         <button className="btn btn-ghost sm" disabled={a.status !== "Active"} title={a.status === "Active" ? "Run now" : "Only an active agent can run"} aria-label={`Run ${a.name} now`} onClick={() => run(a.id)}><Icon name="play" /></button>
-        <button className="btn btn-ghost sm" disabled={a.status === "Pending approval"} onClick={() => toggle(a.id)}>{a.status === "Active" ? "Pause" : a.status === "Pending approval" ? "Awaiting approval" : "Request enable"}</button>
-        <button className="btn btn-ghost sm" title="Delete agent" aria-label={`Delete agent ${a.name}`} onClick={() => del(a.id)}><Icon name="x" /></button>
+        <button className="btn btn-ghost sm" disabled={a.status === "Pending approval"} title={a.status === "Pending approval" ? "Waiting for a different admin or owner to approve" : undefined} onClick={() => toggle(a.id)}>{a.status === "Active" ? "Pause" : a.status === "Pending approval" ? "Awaiting approval" : "Request enable"}</button>
+        <button className="btn btn-ghost sm" title="Delete agent" aria-label={`Delete agent ${a.name}`} onClick={() => del(a)}><Icon name="trash" /></button>
       </div>
     ) : <span style={{ color: "var(--faint)", fontSize: 12 }}>View only</span>) },
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <p className="field help" style={{ margin: 0 }}>Agents run on triggers with least-privilege access. Creating or resuming an agent needs approval from a different admin or owner. Every agent starts at &quot;Suggests only&quot;, where a person approves each change. It can be raised to &quot;Acts (logged)&quot; after {svc.trackSetting() ? `${svc.trackSetting()} approved suggestions and no recent rejection` : "approval (no track record is required in this workspace)"}, with approval from a different admin or owner (two for an agent that runs as a service account). Lowering is immediate, and rejecting a change an agent applied lowers it automatically. An acting agent must be recertified every {CERT.VALID_DAYS} days or it drops to &quot;Suggests only&quot; before its next run.{API_ON ? " A run reads the records its trigger names (for example failing controls), and the AI drafts a note to their owners; the note is sent once approved. Agents run when someone selects Run now: scheduled runs need the platform scheduler, which is not set up yet." : ""}</p>
+      <div className="field help" style={{ margin: 0 }}>Enabling or raising an agent needs a different admin or owner.
+      <details style={{ marginTop: 4 }}>
+        <summary style={{ cursor: "pointer", width: "fit-content" }}>How autonomy works</summary>
+        <p style={{ margin: "6px 0 0" }}>Agents run on triggers with least-privilege access. Creating or resuming an agent needs approval from a different admin or owner. Every agent starts at &quot;Suggests only&quot;, where a person approves each change. It can be raised to &quot;Acts (logged)&quot; after {svc.trackSetting() ? `${svc.trackSetting()} approved suggestions and no recent rejection` : "approval (no track record is required in this workspace)"}, with approval from a different admin or owner (two for an agent that runs as a service account). Lowering is immediate, and rejecting a change an agent applied lowers it automatically. An acting agent must be recertified every {CERT.VALID_DAYS} days or it drops to &quot;Suggests only&quot; before its next run.{API_ON ? " A run reads the records its trigger names (for example failing controls), and the AI drafts a note to their owners; the note is sent once approved. Agents run when someone selects Run now: scheduled runs need the platform scheduler, which is not set up yet." : ""}</p>
+      </details></div>
       <DataTable<Agent> id="agents" label="Agents" rows={svc.ASST.agents} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.name} ${a.trigger} ${a.runsAs}`}
         tabs={["Active", "Pending approval", "Paused"].map((st) => ({ key: st, label: st, match: (a: Agent) => a.status === st }))} exportName="agents" />
     </div>
@@ -97,7 +109,7 @@ function RecertForm({ id }: { id: string }) {
   return (
     <>
       <div>
-        <dl className="meta-grid">
+        <dl className="meta-grid lstart">
           <dt>Acts as</dt><dd>{a.autonomy}, runs as {a.runsAs}</dd>
           <dt>Certified</dt><dd>{st === "transition" ? `Never: acting before the ladder, transition ends ${certDate(a.certifiedUntil as number)}` : a.certifiedUntil ? `Until ${certDate(a.certifiedUntil)}${a.certifiedBy ? `, by ${a.certifiedBy}` : ""}` : "No"}</dd>
           <dt>Renewal</dt><dd>{CERT.VALID_DAYS} days from approval</dd>
@@ -128,7 +140,7 @@ function RaiseForm({ id }: { id: string }) {
   return (
     <>
       <div>
-        <dl className="meta-grid">
+        <dl className="meta-grid lstart">
           <dt>Now</dt><dd>{a.autonomy}: {RUNG_HELP[a.autonomy as Rung] ?? ""}</dd>
           <dt>Raise to</dt><dd>{to ? `${to}: ${RUNG_HELP[to]}` : "Already at the highest level"}</dd>
           {n ? <><dt>Approved suggestions</dt><dd>{t.approved} of {n} needed</dd>
@@ -159,7 +171,7 @@ function RejectAppliedForm({ id }: { id: string }) {
   return (
     <>
       <div>
-        <dl className="meta-grid"><dt>Agent</dt><dd>{r.agent}</dd><dt>Applied change</dt><dd>{r.change}</dd></dl>
+        <dl className="meta-grid lstart"><dt>Agent</dt><dd>{r.agent}</dd><dt>Applied change</dt><dd>{r.change}</dd></dl>
         <div className="field" style={{ marginTop: 10 }}><label htmlFor="rj-reason">Reason <span style={{ color: "var(--bad-ink)" }}>*</span></label><textarea className="input" id="rj-reason" data-focus rows={3} maxLength={300} style={{ resize: "vertical" }} value={reason} onChange={(e) => { setReason(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "rj-err" : undefined} /></div>
         <p className="field help" id="rj-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
         <p className="field help">The agent moves back to &quot;Suggests only&quot; at once and the rejection counts against its record. Reverse the change itself where it was made. Recorded in the audit log with your name.</p>
@@ -184,7 +196,7 @@ function DecideRunForm({ id, decision }: { id: string; decision: "Approved & app
     <>
       <div>
         <p style={{ margin: "0 0 8px", fontSize: 13 }}>{approving ? "Approve and apply" : "Reject"} this proposed change?</p>
-        <dl className="meta-grid"><dt>Agent</dt><dd>{r.agent}</dd><dt>Proposed change</dt><dd>{r.change}</dd><dt>Triggered by</dt><dd>{r.requestedBy || "Agent trigger"}</dd></dl>
+        <dl className="meta-grid lstart"><dt>Agent</dt><dd>{r.agent}</dd><dt>Proposed change</dt><dd>{r.change}</dd><dt>Triggered by</dt><dd>{r.requestedBy || "Agent trigger"}</dd></dl>
         <div className="field" style={{ marginTop: 10 }}><label htmlFor="rd-reason">Reason <span style={{ color: "var(--bad-ink)" }}>*</span></label><textarea className="input" id="rd-reason" data-focus rows={3} maxLength={300} style={{ resize: "vertical" }} value={reason} onChange={(e) => { setReason(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "rd-err" : undefined} /></div>
         <p className="field help" id="rd-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
         <p className="field help">Recorded in the audit log with your name. Decisions cannot be undone.</p>
@@ -251,7 +263,11 @@ export function McpTab({ manage }: { manage: boolean }) {
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <p className="field help" style={{ margin: 0 }}>{API_ON ? "Agents reach Selvara's own data only through these governed grants: no agent runs without \"Selvara workspace (read)\", and nothing an agent proposes is sent without \"Selvara notices\". Every run is recorded in the audit log with the records it read. Revoke access at any time; granting access needs approval from a different admin or owner." : "Agents reach tools only through governed MCP servers. Each grant is least-privilege and every call is logged. Revoke access at any time; granting access needs approval from a different admin or owner."}</p>
+      <div className="field help" style={{ margin: 0 }}>Granting access needs a different admin or owner; revoking is immediate.
+      <details style={{ marginTop: 4 }}>
+        <summary style={{ cursor: "pointer", width: "fit-content" }}>How access works</summary>
+        <p style={{ margin: "6px 0 0" }}>{API_ON ? "Agents reach Selvara's own data only through these governed grants: no agent runs without \"Selvara workspace (read)\", and nothing an agent proposes is sent without \"Selvara notices\". Every run is recorded in the audit log with the records it read. Revoke access at any time; granting access needs approval from a different admin or owner." : "Agents reach tools only through governed MCP servers. Each grant is least-privilege and every call is logged. Revoke access at any time; granting access needs approval from a different admin or owner."}</p>
+      </details></div>
       <DataTable<Mcp> id="mcp" label="MCP servers" rows={svc.ASST.mcp} rowKey={(s) => s.id ?? s.server} columns={cols} searchText={(s) => `${s.server} ${s.tools} ${s.access}`}
         tabs={["Granted", "Revoked"].map((st) => ({ key: st, label: st, match: (s: Mcp) => s.status === st }))} exportName="mcp-servers" />
     </div>

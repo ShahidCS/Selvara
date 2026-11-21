@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { EmailField, ErrP, PwField, emailValid } from "./AuthFields";
-import { LENGTH_COPY } from "@/lib/credentials";
+import { LENGTH_COPY, checkPassword } from "@/lib/credentials";
+import { nameBlock } from "@/lib/rules";
+import { BrandMark } from "@/components/ui";
 import { landingPath, ROLES } from "@/lib/rbac";
 import { ChallengeRequired, DEMO_DOMAIN, DEMO_ENABLED, DEMO_RESET_NOTE, RESET_SENT, restoreSession, type SignInStep } from "@/lib/session";
 import { loadPersisted, useApp } from "@/lib/store";
@@ -40,8 +42,8 @@ export function LoginPage() {
   return (
     <main id="content" style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: "24px 16px" }}>
       <div style={{ width: "100%", maxWidth: 420 }}>
-        <div className="card"><div className="c-body" style={{ padding: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 18 }}><span className="avatar" style={{ background: "var(--accent)", color: "var(--text-inverse)" }} aria-hidden="true">S</span><span style={{ fontWeight: 600, fontSize: 16 }}>Selvara</span></div>
+        <div className="card auth-card"><div className="c-body" style={{ padding: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 18 }}><BrandMark size={28} className="" /><span style={{ fontWeight: 600, fontSize: 16 }}>Selvara</span></div>
           {mode === "signin" ? <SignInForm onJoin={() => setMode("join")} onForgot={() => setMode("forgot")} onHold={setHold} />
             : mode === "join" ? <JoinForm invite={invite} onBack={() => { setInvite(""); setMode("signin"); }} />
             : mode === "forgot" ? <ForgotForm onBack={() => setMode("signin")} onOpen={(t) => { setToken(t); setMode("reset"); }} />
@@ -99,7 +101,7 @@ function SignInForm({ onJoin, onForgot, onHold }: { onJoin: () => void; onForgot
         <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }} disabled={busy}>Sign in</button>
       </form>
       <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}><button type="button" className="linkbtn" onClick={onForgot}>Forgot password?</button></div>
-      <p style={{ textAlign: "center", marginTop: 10, fontSize: 13 }}>New to your company&apos;s workspace? <button type="button" className="linkbtn" onClick={onJoin}>Request to join</button></p>
+      <p style={{ textAlign: "center", marginTop: 10, fontSize: 13 }}>New to your company&apos;s workspace? <button type="button" className="linkbtn inline" onClick={onJoin}>Request to join</button></p>
     </>
   );
 }
@@ -284,11 +286,18 @@ function ResetForm({ token, onBack }: { token: string; onBack: () => void }) {
 function JoinForm({ onBack, invite = "" }: { onBack: () => void; invite?: string }) {
   const [name, setName] = useState(""); const [em, setEm] = useState(""); const [pw, setPw] = useState(""); const [company, setCompany] = useState("");
   const [err, setErr] = useState(""); const [forced, setForced] = useState(false); const [busy, setBusy] = useState(false); const [sent, setSent] = useState(false);
-  const nameRef = useRef<HTMLInputElement>(null); const emRef = useRef<HTMLInputElement>(null); const doneRef = useRef<HTMLHeadingElement>(null);
+  const [nameErr, setNameErr] = useState(""); const [pwErr, setPwErr] = useState("");
+  const nameRef = useRef<HTMLInputElement>(null); const emRef = useRef<HTMLInputElement>(null); const pwRef = useRef<HTMLInputElement>(null); const doneRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => { (sent ? doneRef.current : nameRef.current)?.focus(); }, [sent]);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault(); if (busy) return;
+    // check each field where it is, in order, and put focus on the first one to fix (the service checks the same rules again)
+    const nb = nameBlock(name); setNameErr(nb ?? "");
+    if (nb) { nameRef.current?.focus(); return; }
     if (!emailValid(em)) { setForced(true); emRef.current?.focus(); return; }
+    // an invitation may use an existing account's current password, which the service checks itself; a new password is checked here first
+    const pc = invite ? null : checkPassword(pw, { email: em, name }); const pe = !pc || pc.ok ? "" : pc.errors[0] ?? "Choose a stronger password."; setPwErr(pe);
+    if (pe) { pwRef.current?.focus(); return; }
     setBusy(true); setErr("");
     try { await auth.requestToJoin({ name, email: em, password: pw, ...(DEMO_ENABLED ? {} : invite ? { invite } : { company }) }); setPw(""); setSent(true); } catch (x) { setErr(msg(x, "Could not send the request.")); }
     setBusy(false);
@@ -312,19 +321,22 @@ function JoinForm({ onBack, invite = "" }: { onBack: () => void; invite?: string
       <h1 className="auth-h" style={{ fontSize: 20 }}>{invite ? "Accept your invitation" : "Request to join"}</h1>
       <p className="sub" style={{ margin: "0 0 16px" }}>{invite ? "Use the email address the invitation was sent to. If you already have a Selvara account, enter its current password." : "A company admin approves every new account. You join as an Employee."}</p>
       <form onSubmit={submit} noValidate>
-        <div className="field"><label htmlFor="jn-name">Full name</label><input ref={nameRef} className="input" id="jn-name" autoComplete="name" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} /></div>
+        <div className="field"><label htmlFor="jn-name">Full name</label><input ref={nameRef} className="input" id="jn-name" autoComplete="name" maxLength={80} value={name} onChange={(e) => { setName(e.target.value); setNameErr(""); }}
+          aria-invalid={nameErr ? true : undefined} aria-describedby={nameErr ? "jn-name-err" : undefined} />
+          <ErrP id="jn-name-err" msg={nameErr} mt={2} /></div>
         <EmailField ref={emRef} id="jn-email" label="Work email" value={em} onChange={setEm} forced={forced} onTouch={() => setForced(false)} />
         {!DEMO_ENABLED && !invite && (
           <div className="field"><label htmlFor="jn-co">Company code</label>
             <input className="input" id="jn-co" autoComplete="off" autoCapitalize="none" spellCheck={false} maxLength={40} aria-describedby="jn-co-help" value={company} onChange={(e) => setCompany(e.target.value)} />
             <p className="field help" id="jn-co-help" style={{ margin: "4px 0 0" }}>Your company admin can tell you your company code.</p></div>
         )}
-        <PwField id="jn-pw" label="Password" ac="new-password" value={pw} onChange={setPw} invalid={!!err} describedBy={err ? "jn-err jn-help" : "jn-help"} />
-        <p className="field help" id="jn-help" style={{ marginTop: -4 }}>Use {LENGTH_COPY}. Common and breached passwords are refused.</p>
+        <PwField ref={pwRef} id="jn-pw" label="Password" ac="new-password" value={pw} onChange={(v) => { setPw(v); setPwErr(""); }} invalid={!!pwErr} describedBy={pwErr ? "jn-pw-err jn-help" : err ? "jn-err jn-help" : "jn-help"} />
+        <ErrP id="jn-pw-err" msg={pwErr} mt={2} />
+        <p className="field help" id="jn-help" style={{ marginTop: 4 }}>Use {LENGTH_COPY}. Common and breached passwords are refused.</p>
         <ErrP id="jn-err" msg={err} />
         <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }} disabled={busy}>{invite ? "Join" : "Send request"}</button>
       </form>
-      <p style={{ textAlign: "center", marginTop: 14, fontSize: 13 }}>Already have an account? <button type="button" className="linkbtn" onClick={onBack}>Sign in</button></p>
+      <p style={{ textAlign: "center", marginTop: 14, fontSize: 13 }}>Already have an account? <button type="button" className="linkbtn inline" onClick={onBack}>Sign in</button></p>
     </>
   );
 }

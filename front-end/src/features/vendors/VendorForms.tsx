@@ -7,7 +7,7 @@ import { bumpData, useApp, useData } from "@/lib/store";
 import { useGo } from "@/lib/route";
 import { FAIL_MSG, uiMessage } from "@/lib/grcSod";
 import { DATA } from "@/lib/data";
-import { REASSESS_OUTCOMES, TIER_CADENCE, TIER_WINDOW, VENDOR_TIERS, vFind, vendorCanManage } from "@/features/vendors/lib/vendors";
+import { REASSESS_OUTCOMES, TIER_CADENCE, TIER_WINDOW, VENDOR_TIERS, vFind, vInitAll, vendorCanManage } from "@/features/vendors/lib/vendors";
 import * as svc from "@/features/vendors/services/vendors";
 import { Req } from "./VendorModals";
 
@@ -68,14 +68,14 @@ export function VendorFormPage() {
 export function ReassessFormPage({ id }: { id: string }) {
   useData(); const role = useApp((s) => s.role);
   const L = useLayer(); const go = useGo();
-  const v = vFind(id);
+  vInitAll(); const v = vFind(id);
   const score0 = String(v?.score ?? ""); const by0 = getMe().name;
   const [score, setScore] = useState(score0); const [out, setOut] = useState(REASSESS_OUTCOMES[0]); const [by, setBy] = useState(by0);
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   const dirty = !busy && (score !== score0 || out !== REASSESS_OUTCOMES[0] || by !== by0);
   const { allowLeave } = useUnsavedGuard(dirty, L);
   const ref = useRef<HTMLInputElement>(null); useEffect(() => { ref.current?.focus(); }, []);
-  const rec = `${LIST}/${encodeURIComponent(id)}`; const back = { href: rec, label: "Vendor" };
+  const rec = `${LIST}/${encodeURIComponent(id)}`; const back = { href: rec, label: v?.name ? String(v.name) : "Vendor" };
   const submit = useSubmit({ run: () => svc.reassess(id, { score, outcome: out, by }), allowLeave, setErr, setBusy,
     done: (r) => { wsLog("vendor.reassessed", r.name + ", score " + r.score + ", " + r.outcome, "Vendor"); L.toast(r.name + " reassessed"); bumpData(); go(rec); } });
   if (!v) return <Missing />;
@@ -101,13 +101,19 @@ export function ReassessFormPage({ id }: { id: string }) {
 export function WaiverFormPage({ id }: { id: string }) {
   useData(); const role = useApp((s) => s.role);
   const L = useLayer(); const go = useGo();
-  const v = vFind(id);
+  vInitAll(); const v = vFind(id);
   const [type, setType] = useState(""); const [reason, setReason] = useState(""); const [exp, setExp] = useState("");
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   const dirty = !busy && (type !== "" || reason !== "" || exp !== "");
   const { allowLeave } = useUnsavedGuard(dirty, L);
   const ref = useRef<HTMLInputElement>(null); useEffect(() => { ref.current?.focus(); }, []);
-  const rec = `${LIST}/${encodeURIComponent(id)}`; const back = { href: rec, label: "Vendor" };
+  const rec = `${LIST}/${encodeURIComponent(id)}`; const back = { href: rec, label: v?.name ? String(v.name) : "Vendor" };
+  /** Which field a refusal is about, so the message sits under it and the field is marked invalid. */
+  const errField = !err ? "" : /^Type is required/.test(err) ? "type" : /reason/i.test(err) ? "reason" : /expir/i.test(err) ? "exp" : "";
+  const errText = errField === "type" ? "Name the certificate or attestation being waived." : err;
+  const errMsg = (f: string) => errField === f ? <FormMessage id="vw-err">{errText}</FormMessage> : null;
+  const inv = (f: string) => ({ "aria-invalid": errField === f, "aria-describedby": errField === f ? "vw-err" : undefined });
+  useEffect(() => { if (errField) document.getElementById("vw-" + errField)?.focus(); }, [errField, err]);
   const submit = useSubmit({ run: () => svc.requestWaiver(id, { type, reason, expires: exp }), allowLeave, setErr, setBusy,
     done: (r) => { wsLog("vendor.waiver.requested", r.type + " for " + r.name, "Vendor"); L.toast("Waiver requested; a different admin or owner must approve it"); bumpData(); go(rec); } });
   if (!v) return <Missing />;
@@ -117,13 +123,13 @@ export function WaiverFormPage({ id }: { id: string }) {
       <div className="scroll rec-scroll"><form className="rec-form" onSubmit={submit} noValidate>
         <FormMessage kind="note">A waiver is an exception. It needs a reason, an expiry within 12 months and approval by someone other than you.</FormMessage>
         <FormSection n={1} title="What is waived">
-          <div className="field"><label htmlFor="vw-type">Certificate or attestation waived <Req /></label><input ref={ref} className="input" id="vw-type" maxLength={120} placeholder="e.g. SOC 2 Type II" value={type} onChange={(e) => { setType(e.target.value); setErr(""); }} /></div>
+          <div className="field"><label htmlFor="vw-type">Certificate or attestation waived <Req /></label><input ref={ref} className="input" id="vw-type" maxLength={120} placeholder="e.g. SOC 2 Type II" value={type} onChange={(e) => { setType(e.target.value); setErr(""); }} {...inv("type")} />{errMsg("type")}</div>
         </FormSection>
         <FormSection n={2} title="Reason and expiry">
-          <div className="field"><label htmlFor="vw-reason">Reason <Req /></label><textarea className="input" id="vw-reason" rows={4} maxLength={300} style={{ resize: "vertical" }} value={reason} onChange={(e) => { setReason(e.target.value); setErr(""); }} /></div>
-          <div className="field"><label htmlFor="vw-exp">Waiver expires <Req /></label><input className="input" id="vw-exp" type="date" value={exp} onChange={(e) => { setExp(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "vw-err" : undefined} /></div>
+          <div className="field"><label htmlFor="vw-reason">Reason <Req /></label><textarea className="input" id="vw-reason" rows={4} maxLength={300} style={{ resize: "vertical" }} value={reason} onChange={(e) => { setReason(e.target.value); setErr(""); }} {...inv("reason")} />{errMsg("reason")}</div>
+          <div className="field"><label htmlFor="vw-exp">Waiver expires <Req /></label><input className="input" id="vw-exp" type="date" value={exp} onChange={(e) => { setExp(e.target.value); setErr(""); }} {...inv("exp")} />{errMsg("exp")}</div>
         </FormSection>
-        {err ? <FormMessage id="vw-err">{err}</FormMessage> : null}
+        {err && !errField ? <FormMessage id="vw-err">{err}</FormMessage> : null}
         <FormActions><button type="button" className="btn btn-secondary" onClick={() => go(rec)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={busy}>Request waiver</button></FormActions>
       </form></div>
     </Page>

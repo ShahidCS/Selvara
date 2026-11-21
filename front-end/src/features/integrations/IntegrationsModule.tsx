@@ -24,16 +24,16 @@ function IntegrationsList() {
   const cats = Array.from(new Set(INTEGRATIONS.map((x) => x.cat))).sort();
   const cols: DTColumn<Integration>[] = [
     { key: "order", header: "#", value: (r) => r.order, render: (r) => <span className="num" style={{ color: "var(--muted)" }}>{r.order}</span> },
-    { key: "name", header: "Integration", value: (r) => r.name, locked: true, render: (r) => <span className="strong">{r.name}</span> },
+    { key: "name", header: "Integration", value: (r) => r.name, locked: true, render: (r) => <span className="strong" style={{ whiteSpace: "nowrap" }}>{r.name}</span> },
     { key: "cat", header: "Category", value: (r) => r.cat, render: (r) => r.cat },
-    { key: "scope", header: "Scope", value: (r) => r.scope, render: (r) => <span style={{ color: "var(--ink-2)", fontSize: 12.5 }}>{r.scope}</span> },
+    { key: "scope", header: "Scope", value: (r) => r.scope, render: (r) => <span title={r.scope} style={{ color: "var(--ink-2)", fontSize: 12.5, display: "block", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.scope}</span> },
     { key: "last", header: "Last sync", value: (r) => r.lastSync, render: (r) => <span style={{ color: "var(--muted)" }}>{r.lastSync}</span> },
-    { key: "records", header: "Records", value: (r) => r.records, render: (r) => <span className="num" style={{ color: "var(--muted)" }}>{r.records}</span> },
-    { key: "status", header: "Status", value: (r) => r.status, render: (r) => (r.status === "Connected" ? <HealthChip h={r.health} /> : <Chip cls="neutral" icon="dot">Not connected</Chip>) },
+    { key: "records", header: "Records", defaultHidden: true, value: (r) => r.records, render: (r) => <span className="num" style={{ color: "var(--muted)" }}>{r.records}</span> },
+    { key: "status", header: "Status", value: (r) => r.status, render: (r) => (r.status === "Connected" ? <HealthChip h={r.health} /> : <Chip cls="neutral" icon="x">Not connected</Chip>) },
     { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (r) => (manage ? (r.status === "Connected" ? (
       <div className="btngrp" style={{ justifyContent: "flex-end", flexWrap: "nowrap", whiteSpace: "nowrap" }}>
         <button className="btn btn-ghost sm" aria-label={`Sync ${r.name}`} onClick={() => act.sync(r.name)}><Icon name="refresh" />Sync</button>
-        <button className="btn btn-ghost sm" aria-label={`Disconnect ${r.name}`} onClick={() => act.toggle(r.name)}><Icon name="x" />Disconnect</button>
+        <button className="btn btn-ghost sm" aria-label={`Disconnect ${r.name}`} title="Disconnect" onClick={() => act.disconnect(r.name)}><Icon name="x" /></button>
       </div>
     ) : <button className="btn btn-ghost sm" aria-label={`Connect read-only: ${r.name}`} onClick={() => act.toggle(r.name)}><Icon name="plus" />Connect read-only</button>) : <Icon name="chevron" />) },
   ];
@@ -41,9 +41,9 @@ function IntegrationsList() {
     <Page mod="integrations" acts={manage ? <button className="btn btn-secondary" onClick={act.syncAll}><Icon name="refresh" />Sync all</button> : undefined}>
       <KpiStrip label="Integration summary">
         <KpiTile label="Connected" value={conn.length + " / " + INTEGRATIONS.length} caption="Connectors" />
-        <KpiTile label="Sync health" value={deg ? deg + " degraded" : "All healthy"} delta={deg ? { tone: "bad", text: "Needs attention" } : { tone: "good", text: "Healthy" }} caption="Connected connectors" />
+        <KpiTile label="Sync health" value={deg ? deg : "Healthy"} delta={deg ? { tone: "bad", text: "Degraded" } : undefined} caption={deg ? "Connectors need attention" : "Connected connectors"} />
         <KpiTile label="Last sync" value={conn.length ? "4m ago" : "None"} caption="Identity source" />
-        <KpiTile label="Access" value="Read-only" delta={{ tone: "good", text: "Least privilege" }} caption="Scoped per connector" />
+        <KpiTile label="Access" value={"Read\u2011only"} caption="Least privilege, scoped per connector" />
       </KpiStrip>
       <div className="card" style={{ background: "var(--surface-2)", borderColor: "transparent", flex: "0 0 auto" }}>
         <div className="c-body" style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.5 }}>

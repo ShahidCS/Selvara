@@ -39,9 +39,18 @@ function ApiTabs() {
     wsLog("webhook.tested", logSafeUrl((w as svc.Webhook).url), "System"); L.toast("Test event sent · 200 OK");
   });
   const hookToggle = (id: string) => attempt(L, async () => { const w = await svc.toggleWebhook(id); if (!w) return fail("Webhook not found"); wsLog("webhook." + (w.status === "Active" ? "resumed" : "paused"), logSafeUrl(w.url), "System"); });
-  const hookDelete = (id: string) => API_ON ? askReason(L, { title: "Delete webhook?", label: "", intro: "Nothing more is delivered to this endpoint. A pending approval is withdrawn.", confirm: "Delete webhook", danger: true, run: async () => { await svc.deleteWebhook(id); return "Webhook deleted"; } }) : attempt(L, async () => { const w = await svc.deleteWebhook(id); if (!w) return fail("Webhook not found"); wsLog("webhook.deleted", logSafeUrl(w.url), "System"); L.toast("Webhook deleted"); });
+  // Both modes confirm first; demo mode writes the same audit entry as before, after the confirmation.
+  const hookDelete = (id: string) => askReason(L, { title: "Delete webhook?", label: "", intro: "Nothing more is delivered to this endpoint. A pending approval is withdrawn.", confirm: "Delete webhook", danger: true, run: async () => {
+    const w = await svc.deleteWebhook(id);
+    if (!API_ON) { if (!w) throw new Error("Webhook not found"); wsLog("webhook.deleted", logSafeUrl(w.url), "System"); }
+    return "Webhook deleted";
+  } });
   const testRun = (id: string) => attempt(L, async () => { const x = await svc.runTest(id); if (!x) return fail("Test not found"); wsLog("customtest.run", x.name + ": " + x.result, "Control"); L.toast(x.name + " → " + x.result); });
-  const testDelete = (id: string) => API_ON ? askReason(L, { title: "Delete custom test?", label: "", confirm: "Delete test", danger: true, run: async () => { await svc.deleteTest(id); return "Custom test deleted"; } }) : attempt(L, async () => { const x = await svc.deleteTest(id); if (!x) return fail("Test not found"); wsLog("customtest.deleted", x.name, "Control"); L.toast("Custom test deleted"); });
+  const testDelete = (id: string) => askReason(L, { title: "Delete custom test?", label: "", intro: "The test stops running on its schedule.", confirm: "Delete test", danger: true, run: async () => {
+    const x = await svc.deleteTest(id);
+    if (!API_ON) { if (!x) throw new Error("Test not found"); wsLog("customtest.deleted", x.name, "Control"); }
+    return "Custom test deleted";
+  } });
   const push = () => attempt(L, async () => { const s = await svc.pushTestEvent(); wsLog("api.event.pushed", s[0] + " " + s[1], "System"); L.toast("Event pushed · 200 OK"); });
 
   const keyCols: DTColumn<Key>[] = [
@@ -62,15 +71,15 @@ function ApiTabs() {
   const hookCols: DTColumn<Hook>[] = [
     { key: "url", header: "Endpoint", value: (w) => w.url, locked: true, render: (w) => <span className="num">{w.url}</span> },
     { key: "events", header: "Events", value: (w) => w.events.join(" "), render: (w) => <>{w.events.map((e) => <span key={e} className="tag num" style={{ margin: "1px 2px 1px 0" }}>{e}</span>)}</> },
-    { key: "sig", header: "Signature", value: () => "HMAC-SHA256", render: () => <span className="num">HMAC-SHA256</span> },
+    { key: "sig", header: "Signature", defaultHidden: true, value: () => "HMAC-SHA256", render: () => <span className="num" style={{ whiteSpace: "nowrap" }}>HMAC-SHA256</span> },
     { key: "last", header: "Last delivery", value: (w) => w.lastDelivery || "", render: (w) => <span style={{ color: "var(--muted)" }}>{w.lastDelivery || "—"}{w.failures ? <div style={{ color: "var(--bad-ink)", fontSize: 11.5 }}>{w.failures} failed in a row</div> : null}</span> },
     { key: "status", header: "Status", value: (w) => w.status, render: (w) => (w.status === "Active" ? <Chip cls="ok" icon="check">Active</Chip> : w.status === "Pending approval" ? <Chip cls="warn" icon="clock">Pending approval</Chip> : w.status === "Not approved" ? <Chip cls="neutral" icon="x">Not approved</Chip> : <Chip cls="neutral" icon="dot">Paused</Chip>) },
     { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (w) => (manage ? (
-      <div className="btngrp" style={{ justifyContent: "flex-end" }}>
+      <div className="btngrp" style={{ justifyContent: "flex-end", flexWrap: "nowrap", whiteSpace: "nowrap" }}>
         {w.secretRevealable ? <button className="btn btn-primary sm" aria-label={`Show signing secret of ${w.url} once`} onClick={() => L.openModal("Webhook signing secret", (close) => <RevealSecretModal id={w.id} close={close} />)}><Icon name="access" />Show secret once</button> : null}
         <button className="btn btn-ghost sm" disabled={API_ON ? w.status !== "Active" : w.status !== "Active" && w.status !== "Paused"} title={w.status === "Active" || w.status === "Paused" ? undefined : "Needs approval from a second admin"} aria-label={`Send test event to ${w.url}`} onClick={() => hookTest(w.id)}><Icon name="refresh" />Test</button>
-        <button className="btn btn-ghost sm" disabled={w.status !== "Active" && w.status !== "Paused"} title={w.status === "Active" || w.status === "Paused" ? undefined : "Needs approval from a second admin"} onClick={() => hookToggle(w.id)}>{w.status === "Active" ? "Pause" : "Resume"}</button>
-        <button className="btn btn-ghost sm" aria-label={`Delete webhook ${w.url}`} onClick={() => hookDelete(w.id)}><Icon name="x" /></button>
+        <button className="btn btn-ghost sm" disabled={w.status !== "Active" && w.status !== "Paused"} title={w.status === "Active" || w.status === "Paused" ? undefined : "Needs approval from a second admin"} onClick={() => hookToggle(w.id)}><Icon name={w.status === "Active" ? "clock" : "play"} />{w.status === "Active" ? "Pause" : "Resume"}</button>
+        <button className="btn btn-ghost sm" aria-label={`Delete webhook ${w.url}`} title="Delete webhook" onClick={() => hookDelete(w.id)}><Icon name="trash" /></button>
       </div>
     ) : null) },
   ];
@@ -81,9 +90,9 @@ function ApiTabs() {
     { key: "last", header: "Last run", value: (x) => x.last, render: (x) => <span style={{ color: "var(--muted)" }}>{x.last}</span> },
     { key: "result", header: "Result", value: (x) => x.result, render: (x) => <StatusChip s={x.result} /> },
     { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (x) => (manage ? (
-      <div className="btngrp" style={{ justifyContent: "flex-end" }}>
+      <div className="btngrp" style={{ justifyContent: "flex-end", flexWrap: "nowrap", whiteSpace: "nowrap" }}>
         <button className="btn btn-ghost sm" aria-label={`Run ${x.name} now`} onClick={() => testRun(x.id)}><Icon name="refresh" />Run now</button>
-        <button className="btn btn-ghost sm" aria-label={`Delete ${x.name}`} onClick={() => testDelete(x.id)}><Icon name="x" /></button>
+        <button className="btn btn-ghost sm" aria-label={`Delete ${x.name}`} title="Delete test" onClick={() => testDelete(x.id)}><Icon name="trash" /></button>
       </div>
     ) : null) },
   ];
@@ -112,8 +121,8 @@ function ApiTabs() {
           </div>
         </div>
         <div className="c-body flush scroll" style={{ padding: 0 }} id="apiBody">
-          <div style={{ padding: "12px 12px 0" }}><ModuleTip mod="api" /></div>
-          {tab === "Keys" || tab === "Hooks" ? <div style={{ padding: "12px 12px 0" }}><ApprovalsPanel prefix="api." title="API approvals (second admin)" /></div> : null}
+          <div className="empty:hidden" style={{ padding: "12px 12px 0" }}><ModuleTip mod="api" /></div>
+          {tab === "Keys" || tab === "Hooks" ? <div className="empty:hidden" style={{ padding: "12px 12px 0" }}><ApprovalsPanel prefix="api." title="API approvals (second admin)" /></div> : null}
           {tab === "Keys" ? (
             <DataTable<Key> id="api-keys" label="API keys" rows={svc.API.keys} rowKey={(k) => k.id} columns={keyCols} searchText={(k) => `${k.label} ${k.prefix} ${k.scope}`}
               tabs={["Active", "Pending approval", ...(API_ON ? ["Approved, not yet issued", "Expired"] : []), "Not approved", "Revoked"].map((st) => ({ key: st, label: st, match: (k: Key) => k.status === st }))} exportName="api-keys" />

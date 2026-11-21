@@ -16,8 +16,8 @@ export function ElevateGateBanner() {
   return (
     <div className="banner info" role="status" style={{ flex: "0 0 auto", marginBottom: 12, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
       <Icon name="shieldcheck" />
-      <span style={{ flex: "1 1 260px" }}><b>Read-only.</b> {el.canElevate ? "Changes need an active elevated session (reason and ticket recorded)." : "Your role cannot make changes here; only elevated platform super admins can."}</span>
-      <Link href="/admin/elevation" className="btn btn-secondary sm" onClick={(e) => { e.preventDefault(); go("/admin/elevation"); }}>{ELEVATE_TEXT}</Link>
+      <span style={{ flex: "1 1 260px" }}><b>Read-only.</b> {el.canElevate ? "Changes need an active elevated session (reason and ticket recorded)." : "Your role cannot make changes here. Ask a platform super admin."}</span>
+      {el.canElevate ? <Link href="/admin/elevation" className="btn btn-secondary sm" onClick={(e) => { e.preventDefault(); go("/admin/elevation"); }}>{ELEVATE_TEXT}</Link> : null}
     </div>
   );
 }

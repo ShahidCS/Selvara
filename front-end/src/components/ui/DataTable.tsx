@@ -21,6 +21,8 @@ export interface DTColumn<T> {
   defaultHidden?: boolean;
   /** Locked columns cannot be hidden from the Columns menu. */
   locked?: boolean;
+  /** Keep the cell on one line (IDs such as R-014, short statuses): it never breaks as "R-" / "014" on a narrow screen. */
+  nowrap?: boolean;
 }
 export interface DTTab<T> { key: string; label: string; match: (row: T) => boolean }
 export interface DTFilter<T> {
@@ -52,6 +54,8 @@ export interface DataTableProps<T> {
   /** Adds "Export selected" (CSV of the visible columns that have a `value`). */
   exportName?: string;
   emptyText?: string;
+  /** Human name of a row for the "Select …" and "Actions for …" labels (a person's name rather than a user id). Defaults to `rowKey`. */
+  rowLabel?: (row: T) => string;
 }
 
 const initial = (sizes: number[], cols: DTColumn<unknown>[]): TableState => ({
@@ -68,7 +72,7 @@ function ColumnsMenu<T>({ id, cols, sizes, close }: { id: string; cols: DTColumn
         return (
           <button key={c.key} role="menuitemcheckbox" aria-checked={on} disabled={c.locked}
             onClick={() => setSt({ ...st, hidden: on ? [...st.hidden, c.key] : st.hidden.filter((k) => k !== c.key) })}>
-            <Icon name={on ? "check" : "dot"} />{c.header || "Actions"}
+            <Icon name={on ? "check" : "blank"} />{c.header || "Actions"}
           </button>
         );
       })}
@@ -95,8 +99,10 @@ export function DataTable<T>(p: DataTableProps<T>) {
   const selected = st.selected.filter((id) => live.has(id));
   const sel = selectionState(pageIds, selected);
   const selectable = !!(p.bulk?.length || p.exportName);
-  const filtered = (!!tab && st.tab !== ALL) || !!(st.q || "").trim() || Object.values(st.filters).some((v) => v && v !== ALL);
-  const reset = () => patch({ tab: ALL, q: "", filters: {}, page: 1 });
+  // "Clear filters" is offered only for a search or a filter chip; a status tab is not a filter to clear (it has its own All tab)
+  const filtered = !!(st.q || "").trim() || Object.values(st.filters).some((v) => v && v !== ALL);
+  const nameOf = p.rowLabel || p.rowKey;
+  const reset = () => patch({ q: "", filters: {}, page: 1 });
 
   const headCb = useRef<HTMLInputElement>(null);
   useEffect(() => { if (headCb.current) headCb.current.indeterminate = sel === "some"; }, [sel]);
@@ -105,7 +111,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
     <>
       {[ALL, ...f.options].map((o) => {
         const on = (st.filters[f.key] || ALL) === o;
-        return <button key={o} role="option" aria-selected={on} onClick={() => { patch({ filters: { ...st.filters, [f.key]: o }, page: 1 }); close(); }}><Icon name={on ? "check" : "dot"} />{f.labels?.[o] ?? o}</button>;
+        return <button key={o} role="option" aria-selected={on} onClick={() => { patch({ filters: { ...st.filters, [f.key]: o }, page: 1 }); close(); }}><Icon name={on ? "check" : "blank"} />{f.labels?.[o] ?? o}</button>;
       })}
     </>
   ), { role: "listbox", label: f.label, align: "start" });
@@ -114,7 +120,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
     const acts = p.rowActions?.(r) || [];
     L.popover(ev, (close) => (
       <>{acts.map((a) => <button key={a.label} role="menuitem" disabled={!!a.whyNot} title={a.whyNot || undefined} onClick={() => { close(); a.run(r); }}>{a.label}</button>)}</>
-    ), { label: `Actions for ${p.rowKey(r)}` });
+    ), { label: `Actions for ${nameOf(r)}` });
   };
 
   const exportSelected = () => {
@@ -162,8 +168,8 @@ export function DataTable<T>(p: DataTableProps<T>) {
         })}
         {filtered ? <button className="btn btn-ghost sm" onClick={reset}>Clear filters</button> : null}
         <span className="dt-spacer" />
-        <span className="dt-sum" role="status" aria-live="polite">{rows.length === p.rows.length ? `${rows.length} rows` : `${rows.length} of ${p.rows.length} rows`}{st.sort ? `, sorted by ${p.columns.find((c) => c.key === st.sort!.key)?.header}` : ""}</span>
-        <button className="icon-btn" aria-label="Columns" aria-haspopup="menu" onClick={(e) => L.popover(e, (close) => <ColumnsMenu id={p.id} cols={p.columns} sizes={sizes} close={close} />, { label: "Columns" })}><Icon name="rows" /></button>
+        <span className="dt-end"><span className="dt-sum" role="status" aria-live="polite">{rows.length === p.rows.length ? `${rows.length} row${rows.length === 1 ? "" : "s"}` : `${rows.length} of ${p.rows.length} row${p.rows.length === 1 ? "" : "s"}`}{st.sort ? `, sorted by ${p.columns.find((c) => c.key === st.sort!.key)?.header}` : ""}</span>
+        <button className="icon-btn" aria-label="Columns" aria-haspopup="menu" onClick={(e) => L.popover(e, (close) => <ColumnsMenu id={p.id} cols={p.columns} sizes={sizes} close={close} />, { label: "Columns" })}><Icon name="rows" /></button></span>
       </div>
 
       <div className="tbl-wrap">
@@ -176,7 +182,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
               {cols.map((c) => {
                 const s = st.sort && st.sort.key === c.key ? st.sort.dir : null;
                 return (
-                  <th key={c.key} scope="col" className={`${c.align === "end" ? "r " : ""}${c.value || c.sortBy ? "sortable" : ""}`} aria-sort={c.value || c.sortBy ? (s === "asc" ? "ascending" : s === "desc" ? "descending" : "none") : undefined}>
+                  <th key={c.key} scope="col" className={`${c.align === "end" ? "r " : ""}${c.nowrap ? "nw " : ""}${c.value || c.sortBy ? "sortable" : ""}`} aria-sort={c.value || c.sortBy ? (s === "asc" ? "ascending" : s === "desc" ? "descending" : "none") : undefined}>
                     {c.value || c.sortBy ? (
                       <button className="th-sort" onClick={() => patch({ sort: nextSort(st.sort, c.key), page: 1 })}>
                         {c.header}<Icon name="chevd" className={`th-car${s ? " on" : ""}${s === "asc" ? " up" : ""}`} />
@@ -190,15 +196,15 @@ export function DataTable<T>(p: DataTableProps<T>) {
           </thead>
           <tbody>
             {pageRows.length === 0 ? (
-              <tr><td colSpan={span} className="dt-empty">{p.emptyText || "Nothing matches these filters."}{filtered ? <> <button className="btn btn-ghost sm" onClick={reset}>Clear filters</button></> : null}</td></tr>
+              <tr><td colSpan={span} className="dt-empty">{p.emptyText || "Nothing matches these filters."}</td></tr>
             ) : pageRows.map((r) => {
               const id = p.rowKey(r); const on = selected.includes(id);
               return (
                 <tr key={id} className={`${p.onOpen ? "clickable" : ""}${on ? " sel" : ""}`}
                   tabIndex={p.onOpen ? 0 : undefined} onClick={(e) => onRowClick(e, r)} onKeyDown={(e) => onRowKey(e, r)}>
-                  {selectable ? <td className="dt-cb"><input type="checkbox" aria-label={`Select ${id}`} checked={on} onChange={() => patch({ selected: toggleOne(id, selected) })} /></td> : null}
-                  {cols.map((c) => <td key={c.key} className={c.align === "end" ? "r" : undefined}>{c.render(r)}</td>)}
-                  {p.rowActions ? <td className="r dt-act"><button className="icon-btn" aria-label={`Actions for ${id}`} aria-haspopup="menu" onClick={(e) => rowMenu(e, r)}><Icon name="more" /></button></td> : null}
+                  {selectable ? <td className="dt-cb"><input type="checkbox" aria-label={`Select ${nameOf(r)}`} checked={on} onChange={() => patch({ selected: toggleOne(id, selected) })} /></td> : null}
+                  {cols.map((c) => <td key={c.key} className={[c.align === "end" ? "r" : "", c.nowrap ? "nw" : ""].filter(Boolean).join(" ") || undefined}>{c.render(r)}</td>)}
+                  {p.rowActions ? <td className="r dt-act"><button className="icon-btn" aria-label={`Actions for ${nameOf(r)}`} aria-haspopup="menu" onClick={(e) => rowMenu(e, r)}><Icon name="more" /></button></td> : null}
                 </tr>
               );
             })}
@@ -206,7 +212,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
         </table>
       </div>
 
-      <div className="dt-foot">
+      {info.total ? <div className="dt-foot">
         <span className="dt-sum">{info.total ? `Showing ${info.from} to ${info.to} of ${info.total}` : "No rows"}</span>
         <nav className="pg" aria-label="Pagination">
           <button className="pg-b" aria-label="Previous page" disabled={info.page <= 1} onClick={() => patch({ page: info.page - 1 })}><Icon name="chevl" /></button>
@@ -218,7 +224,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
         <label className="dt-rows">Rows
           <select className="select" value={st.size} onChange={(e) => patch({ size: Number(e.target.value), page: 1 })}>{sizes.map((n) => <option key={n} value={n}>{n}</option>)}</select>
         </label>
-      </div>
+      </div> : null}
 
       {selectable && selected.length ? (
         <div className="dt-bulk" role="toolbar" aria-label={`Actions for ${selected.length} selected`}>

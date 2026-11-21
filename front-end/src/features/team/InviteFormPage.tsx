@@ -11,20 +11,22 @@ import * as svc from "@/services/team";
 
 const SRC_EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/; // prototype regex, kept; isEmail adds length caps
 const back = { href: "/ws/team", label: "Team & Settings" };
+/** Least-privileged role first, so a privileged invitation is a deliberate choice. */
+const DEFAULT_ROLE = svc.USER_ROLES.includes("Employee") ? "Employee" : svc.USER_ROLES[svc.USER_ROLES.length - 1];
 
 /** `/ws/team/invite`: invite a member. A privileged role needs a second admin before the invitation is sent. */
 export function InviteFormPage() {
   const role0 = useApp((s) => s.role);
   const L = useLayer(); const go = useGo();
-  const [email, setEmail] = useState(""); const [role, setRole] = useState(svc.USER_ROLES[0]); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
-  const dirty = !busy && (email !== "" || role !== svc.USER_ROLES[0]);
+  const [email, setEmail] = useState(""); const [role, setRole] = useState(DEFAULT_ROLE); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const dirty = !busy && (email !== "" || role !== DEFAULT_ROLE);
   const { allowLeave } = useUnsavedGuard(dirty, L);
   const ref = useRef<HTMLInputElement>(null); useEffect(() => { ref.current?.focus(); }, []);
   if (!svc.teamCanManage(role0)) return <Page title="Invite member" back={back}><Empty icon="team" title="You cannot do this">Only an admin or owner can invite members.</Empty></Page>;
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const em = email.trim();
-    if (!SRC_EMAIL.test(em) || !isEmail(em)) { setErr("Enter a valid email address."); return; }
+    if (!SRC_EMAIL.test(em) || !isEmail(em)) { setErr("Enter a valid email address."); ref.current?.focus(); return; }
     setBusy(true);
     try {
       const r = await svc.inviteMember({ email: em, role });

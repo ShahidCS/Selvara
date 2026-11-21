@@ -1,3 +1,4 @@
+import { Icon } from "./Icon";
 import type { ReactNode } from "react";
 
 /** One numbered section of a form page (blueprint form template): a number badge, a title, an optional note, then the fields. */
@@ -21,5 +22,7 @@ export function FormActions({ children }: { children: ReactNode }) {
 
 /** Inline message under a form. `error` is announced (role alert); a note is a quiet role note. */
 export function FormMessage({ id, kind = "error", children }: { id?: string; kind?: "error" | "note"; children: ReactNode }) {
-  return <p id={id} className="field help" role={kind === "error" ? "alert" : "note"} style={kind === "error" ? { color: "var(--bad-ink)" } : undefined}>{children}</p>;
+  if (kind !== "error") return <p id={id} className="field help" role="note">{children}</p>;
+  // an error carries an icon as well as its colour (status is never colour alone)
+  return <p id={id} className="field help" role="alert" style={{ color: "var(--bad-ink)", display: "flex", gap: 6, alignItems: "flex-start" }}><Icon name="alert" style={{ width: 15, height: 15, flex: "0 0 auto", marginTop: 2 }} /><span>{children}</span></p>;
 }

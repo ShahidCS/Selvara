@@ -21,12 +21,13 @@
   --c-success-50:#eaf7ef; --c-success-500:#18a058; --c-success-700:#0e7a42;
   --c-warning-50:#fff6e5; --c-warning-500:#f5a524; --c-warning-700:#a86200; --c-warning-800:#8a5000;
   --c-danger-50:#ffefef; --c-danger-500:#f0484a; --c-danger-700:#c22427;
+  --brand-mark:#e8653f; /* the Selvara mark's second square (platform identity, not a status colour; a tenant preset does not change it) */
   --c-ink:#111113; --c-neutral-50:#f1f1ef; --c-neutral-500:#909097; --c-neutral-700:#55565c; --c-white:#fff; --c-black:#000;
 
   /* blueprint semantic names */
   --bg-canvas:#f1f1ef; --bg-surface:#fff; --bg-subtle:#f6f6f4; --bg-muted:#ebebe8; --bg-inverse:#111113; --bg-inverse-2:#1e1e22;
   --text-primary:#111113; --text-secondary:#55565c; --text-tertiary:#909097; /* tertiary is decorative only (3.17:1 on white) */
-  --text-inverse:#fff; --text-inverse-muted:#a1a1a8;
+  --text-inverse:#fff; --text-inverse-muted:#a1a1a8; --ring-inverse:#8aa4ff; --ok-ink-inverse:#4ccf88; --bad-ink-inverse:#ff8587;
   --border-default:#e9e9e6; --border-strong:#d6d6d2; --border-inverse:#2c2c31;
 
   /* legacy names (aliases) */
@@ -36,7 +37,7 @@
   --accent:var(--c-brand-500); --accent-strong:var(--c-brand-600); --accent-weak:var(--c-brand-50); --accent-ink:var(--c-brand-600); --authlink:#2e5cff;
   --btn-primary:var(--c-brand-500); --btn-primary-hover:var(--c-brand-600); --btn-primary-active:var(--c-brand-700);
   --ok-ink:var(--c-success-700); --ok-bg:var(--c-success-50); --warn-ink:var(--c-warning-800); --warn-bg:var(--c-warning-50);
-  --bad-ink:var(--c-danger-700); --bad-bg:var(--c-danger-50); --info-ink:var(--c-brand-600); --info-bg:var(--c-brand-50);
+  --bad-ink:var(--c-danger-700); --bad-bg:var(--c-danger-50); --high-ink:#a34708; /* the High risk band (between warning and danger), charts only */ --info-ink:var(--c-brand-600); --info-bg:var(--c-brand-50);
   --ring:#2e5cff;
 
   /* elevation: sections are flat, only floating things get a shadow */
@@ -72,6 +73,8 @@
   --ring:#8aa4ff; --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 4px 12px -2px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.35); --shadow-lg:0 2px 6px rgba(0,0,0,.6),0 12px 32px rgba(0,0,0,.45);
   --shadow-card:0 4px 12px -2px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.35); --shadow-floating:0 2px 6px rgba(0,0,0,.6);
   --text-tertiary:#76767d; --border-strong:#3a3a40;
+  /* inverse surfaces (bulk bar, chart tooltip, vendor portal security panel) flip to light, or they vanish into the dark canvas */
+  --bg-inverse:#f6f6f4; --bg-inverse-2:#e3e3df; --text-inverse:#111113; --text-inverse-muted:#55565c; --border-inverse:#d6d6d2; --ring-inverse:#2e5cff; --high-ink:#f0894b; --ok-ink-inverse:#0e7a42; --bad-ink-inverse:#c22427;
 }
 @media (prefers-color-scheme: dark){
   :root[data-theme="auto"]{
@@ -84,9 +87,15 @@
     --ring:#8aa4ff; --shadow-sm:0 1px 2px rgba(0,0,0,.4); --shadow:0 4px 12px -2px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.35); --shadow-lg:0 2px 6px rgba(0,0,0,.6),0 12px 32px rgba(0,0,0,.45);
     --shadow-card:0 4px 12px -2px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.35); --shadow-floating:0 2px 6px rgba(0,0,0,.6);
     --text-tertiary:#76767d; --border-strong:#3a3a40;
+  /* inverse surfaces (bulk bar, chart tooltip, vendor portal security panel) flip to light, or they vanish into the dark canvas */
+  --bg-inverse:#f6f6f4; --bg-inverse-2:#e3e3df; --text-inverse:#111113; --text-inverse-muted:#55565c; --border-inverse:#d6d6d2; --ring-inverse:#2e5cff; --high-ink:#f0894b; --ok-ink-inverse:#0e7a42; --bad-ink-inverse:#c22427;
   }
 }
 /* ============================ BASE ============================ */
+/* native controls (checkboxes, radios, date pickers, scrollbars) follow the theme and take the brand colour */
+:root{color-scheme:light;accent-color:var(--accent)}
+:root[data-theme="dark"]{color-scheme:dark}
+@media (prefers-color-scheme: dark){:root[data-theme="auto"]{color-scheme:dark}}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;font-family:var(--font);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45;
@@ -155,10 +164,10 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 #app.collapsed .grp.closed .grp-items{display:block}
 #app.collapsed .nav-parent>.nav-item{padding-right:9px}
 #app.collapsed .nav-item.active::before{left:-8px}
-/* collapsed rail: count badge shrinks to a dot */
-#app.collapsed .nav-item .cnt{position:absolute;top:5px;right:9px;min-width:0;width:7px;height:7px;padding:0;border-radius:999px;background:var(--accent);
-  font-size:0;color:transparent;border:1.5px solid var(--surface);margin:0}
-#app.collapsed .nav-parent>.nav-item .cnt{right:9px}
+/* collapsed rail: the count stays a number in a small pill (a bare dot was colour only); the tooltip says it too */
+#app.collapsed .nav-item .cnt{position:absolute;top:1px;right:3px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--accent);
+  font-size:10px;color:var(--text-inverse);border:1.5px solid var(--surface);margin:0;box-sizing:content-box}
+#app.collapsed .nav-parent>.nav-item .cnt{right:3px}
 .sb-foot{flex:0 0 auto;border-top:1px solid var(--line);padding:10px}
 .sb-user{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;cursor:pointer;padding:6px;border-radius:var(--radius-field)}
 .sb-user:hover{background:var(--surface-2)}
@@ -218,6 +227,10 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 .crumbs .sep{color:var(--line-2)}
 .crumbs .cur{color:var(--ink);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .crumbs a{color:var(--muted)} .crumbs a:hover{color:var(--ink)}
+/* the page name must survive a narrow bar: links give way first (ellipsis), the current crumb keeps at least a few characters */
+.crumbs a,.crumbs .sep{flex:0 0 auto} .crumbs a{flex-shrink:2;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crumbs .cur{flex:0 1 auto;min-width:6ch}
+@media (max-width:720px){.crumbs{flex:1 1 auto}.crumbs>a:first-child,.crumbs>a:first-child+.sep{display:none}}
 .top-search{flex:0 0 auto;margin-left:auto;display:flex;align-items:center;gap:0;height:36px;width:36px;padding:0;justify-content:center;overflow:hidden;
   background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-control);color:var(--muted);cursor:text;font-size:13px;
   transition:width .3s cubic-bezier(.22,1,.36,1),gap .2s ease,padding .3s cubic-bezier(.22,1,.36,1),border-color .15s,background .15s}
@@ -255,7 +268,9 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 .btn-ghost:hover{background:var(--surface-2);color:var(--ink)}
 .btn-danger{background:var(--surface);color:var(--bad-ink);border-color:var(--line-2)}
 .btn-danger:hover{background:var(--bad-bg);border-color:var(--bad-ink)}
-.btn[disabled]{opacity:.5;cursor:not-allowed;pointer-events:none}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+/* no pointer-events:none: a disabled button still shows its title (why it is blocked) on hover; it ignores clicks by itself */
+.btn[disabled]:hover{filter:none}
 .btn .spin{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:999px;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .btngrp{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -265,26 +280,34 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 .seg button{border:0;background:none;cursor:pointer;color:var(--muted);font-size:13px;font-weight:500;letter-spacing:-.005em;padding:5px 11px;border-radius:var(--radius-chip);display:inline-flex;align-items:center;gap:7px;line-height:1;min-height:28px}
 .seg button:hover{color:var(--ink)}
 .seg button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm)}
-:root[data-theme="dark"] .seg button[aria-selected="true"],:root[data-theme="auto"] .seg button[aria-selected="true"]{background:var(--surface-3)}
+:root[data-theme="dark"] .seg button[aria-selected="true"]{background:var(--surface-3);box-shadow:inset 0 0 0 1px var(--line-2)}
 .seg svg{width:15px;height:15px}
 
 /* underline tabs */
 .tabs{display:inline-flex;gap:3px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-control);padding:3px;overflow-x:auto;scrollbar-width:none;flex:0 0 auto;max-width:100%}
+/* a tab strip that is cut off shows a soft edge on the right (only while there is more to scroll; same local/scroll pattern as .tbl-wrap) */
+.tabs{background:linear-gradient(to left,var(--surface-2) 16px,rgba(0,0,0,0)) right center/40px 100% no-repeat local,radial-gradient(farthest-side at 100% 50%,rgba(0,0,0,.18),rgba(0,0,0,0)) right center/12px 100% no-repeat scroll,var(--surface-2)}
 .tabs::-webkit-scrollbar{display:none}
 .card>.c-head>.tabs{margin:7px 0}
 .tab{border:0;background:none;cursor:pointer;color:var(--muted);font-size:13px;font-weight:500;letter-spacing:-.005em;padding:5px 11px;border-radius:var(--radius-chip);white-space:nowrap;line-height:1;min-height:28px;display:inline-flex;align-items:center;gap:7px}
 .tab:hover{color:var(--ink)}
 .tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm)}
-:root[data-theme="dark"] .tab[aria-selected="true"],:root[data-theme="auto"] .tab[aria-selected="true"]{background:var(--surface-3)}
+:root[data-theme="dark"] .tab[aria-selected="true"]{background:var(--surface-3);box-shadow:inset 0 0 0 1px var(--line-2)}
 .tab svg{width:15px;height:15px}
 
 /* inputs */
 .input,.select{height:36px;padding:0 11px;border:1px solid var(--line-2);border-radius:var(--radius-field);background:var(--surface);color:var(--ink);font-size:14px;font-family:inherit;width:100%}
 .input:hover,.select:hover{border-color:var(--muted)}
 .input:focus,.select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-weak)}
+/* a field the form marked invalid: red edge (the error text beside it carries the words, so not colour alone) */
+.input[aria-invalid="true"],.select[aria-invalid="true"],textarea[aria-invalid="true"]{border-color:var(--bad-ink)}
+.input[aria-invalid="true"]:focus,.select[aria-invalid="true"]:focus,textarea[aria-invalid="true"]:focus{box-shadow:0 0 0 3px var(--bad-bg)}
 .input::placeholder{color:var(--faint)}
 .input[readonly]{background:var(--surface-2);color:var(--muted);cursor:default}
 .linkbtn{font:inherit;background:none;border:0;padding:0;cursor:pointer;color:var(--accent-ink)}
+/* a link inside running text needs a cue besides colour (WCAG 1.4.1) */
+.linkbtn.inline{text-decoration:underline;text-underline-offset:3px}
+.auth-card form>.field+.field,.auth-card form>.field+.in-wrap{margin-top:12px}
 .pw-wrap{position:relative}
 .pw-toggle{position:absolute;inset-inline-end:6px;top:50%;transform:translateY(-50%);width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:0;background:none;color:var(--muted);cursor:pointer;border-radius:6px}
 .pw-toggle:hover{color:var(--ink);background:var(--surface-2)}
@@ -310,16 +333,16 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 @keyframes authpop{0%{opacity:0;transform:scale(.3)}100%{opacity:1;transform:scale(1)}}
 .auth-h{font-size:16.5px;font-weight:600;letter-spacing:-.005em;margin:0 0 4px}
 .auth-method.sel{border-color:var(--ink);background:var(--surface-2);color:var(--ink)}
-#authBody .btn-primary{background:var(--ink);color:var(--surface);border-color:transparent;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
-#authBody .btn-primary:hover{background:var(--ink);opacity:.9}
-#authBody .btn-primary:active{opacity:.82}
+/* the /auth previews use the same tokens as the real sign-in page (brand primary, accent links); only the field spacing is set here */
 #authBody form>.field{margin-bottom:14px}
-#authBody .linkbtn{color:var(--authlink);font-weight:600}
 textarea.input{height:auto;padding:9px 11px;resize:vertical;min-height:72px}
 .field{display:flex;flex-direction:column;gap:5px}
 .field label{font-size:12.5px;font-weight:500;color:var(--ink-2)}
-.field .help{font-size:12.5px;color:var(--muted);line-height:1.5;max-width:72ch}
+.field .help,.field.help{font-size:12.5px;color:var(--muted);line-height:1.5;max-width:72ch}
+/* `field help` on one element is a help paragraph, not a form field: plain text flow, so inline bold and links stay inline */
+.field.help{display:block}
 .field.err .input,.field.err .select{border-color:var(--bad-ink)}
+.field.err .help{color:var(--bad-ink)} /* a field's own error text reads as an error (the words carry it; the colour supports it) */
 .field .errmsg{font-size:12px;color:var(--bad-ink);display:flex;gap:5px;align-items:center}
 
 /* chips */
@@ -330,13 +353,16 @@ textarea.input{height:auto;padding:9px 11px;resize:vertical;min-height:72px}
 .xscroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:5px}
 .tbl-wrap{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:var(--line) transparent;max-width:100%;
   background:
-    linear-gradient(to left,var(--surface),rgba(0,0,0,0)) right center/26px 100% no-repeat,
+    linear-gradient(to left,var(--surface) 16px,rgba(0,0,0,0)) right center/40px 100% no-repeat,
     radial-gradient(farthest-side at 100% 50%,rgba(0,0,0,.20),rgba(0,0,0,0)) right center/14px 100% no-repeat;
   background-attachment:local,scroll}
 .tbl-wrap::-webkit-scrollbar{height:8px}
 .tbl-wrap::-webkit-scrollbar-thumb{background:var(--line);border-radius:5px}
 .tbl-wrap::-webkit-scrollbar-track{background:transparent}
 .tbl-wrap>.tbl{min-width:var(--tmw,0)}
+/* the right-edge shadow above appears only while there is more table to the right: the "local" cover rides with the content and fully hides the
+   14px shadow once the end is reached, or when the table fits */
+.tbl td.num,.tbl td>.strong.num{white-space:nowrap} /* IDs and figures (R-014, EV-204, 12,400) stay on one line in every register */
 .chip svg{width:12px;height:12px}
 .chip.ok{background:var(--ok-bg);color:var(--ok-ink)} .chip.warn{background:var(--warn-bg);color:var(--warn-ink)}
 .chip.bad{background:var(--bad-bg);color:var(--bad-ink)} .chip.info{background:var(--info-bg);color:var(--info-ink)}
@@ -348,12 +374,19 @@ textarea.input{height:auto;padding:9px 11px;resize:vertical;min-height:72px}
 .dot{width:8px;height:8px;border-radius:999px;flex:0 0 auto}
 
 /* ============================ CONTENT LAYOUT ============================ */
-.page{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding:16px 20px 18px;gap:14px}
+.page{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding:16px 20px 18px;gap:14px;overflow-y:auto}
+/* Layout rule (wave A), applied at the root: a block in a page column, or in a scrolling column, keeps its height. A card used to shrink when the
+   page was full (cards are min-height:0), which squashed it to its header and left nothing to scroll. Now the column scrolls instead. Regions built
+   to fill the rest of the page keep shrinking and scroll inside: a `.scroll` region, a `.panels` or `.split` grid (with a floor so they stay usable),
+   `.rec-scroll`, `.empty`, and any block that sets flex itself (the main register card's flex:1 1 auto). Later rules override this one. */
+.page>*,.scroll>*{flex-shrink:0}
+.page>.scroll{flex-shrink:1}
+.page>.panels,.page>.split,.scroll>.panels,.scroll>.split{min-height:320px}
 .page-head{flex:0 0 auto;display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
 .page-head .pt{min-width:0}
 .page-head h1{font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:1.2}
 .page-head .sub{color:var(--muted);font-size:13px;margin-top:3px;max-width:76ch}
-.page-head .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.page-head .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .panels{flex:1 1 auto;min-height:0;display:grid;gap:14px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
 .card>.c-head{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
@@ -492,11 +525,11 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .cmd.on .cbox{transform:none}
 .cmd input{width:100%;height:50px;border:0;border-bottom:1px solid var(--line);background:none;color:var(--ink);font-size:15px;padding:0 16px;outline:none}
 .cmd .res{max-height:52vh;overflow:auto;padding:6px}
-.cmd .ritem{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:8px;cursor:pointer;color:var(--ink-2);font-size:13.5px}
-.cmd .ritem .ic{color:var(--muted);width:17px;height:17px}
-.cmd .ritem .meta{margin-left:auto;font-size:11.5px;color:var(--faint)}
-.cmd .ritem.cur,.cmd .ritem:hover{background:var(--accent-weak);color:var(--accent-ink)}
-.cmd .ritem.cur .ic{color:var(--accent-ink)}
+.cmd .ritem,.ritem{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:8px;cursor:pointer;color:var(--ink-2);font-size:13.5px}
+.cmd .ritem .ic,.ritem .ic{color:var(--muted);width:17px;height:17px}
+.cmd .ritem .meta,.ritem .meta{margin-left:auto;font-size:11.5px;color:var(--faint)}
+.cmd .ritem.cur,.cmd .ritem:hover,.ritem.cur,.ritem:hover{background:var(--accent-weak);color:var(--accent-ink)}
+.cmd .ritem.cur .ic,.ritem.cur .ic{color:var(--accent-ink)}
 
 /* menus / popovers */
 .pop{position:absolute;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-panel);box-shadow:var(--shadow-lg);padding:6px;z-index:85;min-width:200px}
@@ -519,6 +552,7 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .sectitle{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:4px 0 8px}
 .hr{height:1px;background:var(--line);margin:14px 0}
 .tag{appearance:none;-webkit-appearance:none;font-size:11px;color:var(--muted);background:transparent;border:1px solid var(--line-2);border-radius:5px;padding:1px 6px;font-weight:500;white-space:nowrap;line-height:1.5}
+.tag svg{width:12px;height:12px;vertical-align:-2px;margin-inline-end:4px}
 /* interactive risk-id chips (only button.tag): give them a readable fill + brand hover, and stop native button chrome leaking through */
 button.tag{color:var(--ink-2);background:var(--surface-2);cursor:pointer;transition:background .15s var(--ease),color .15s var(--ease),border-color .15s var(--ease)}
 button.tag:hover{background:var(--accent-weak);color:var(--accent-ink);border-color:var(--accent-weak)}
@@ -579,8 +613,10 @@ button.tag:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
 #scrim-sb{position:fixed;inset:0;background:rgba(10,14,18,.44);opacity:0;pointer-events:none;transition:opacity .2s;z-index:75}
 @media (max-width:760px){
   #app{grid-template-columns:1fr!important;grid-template-areas:"top" "main"}
-  aside#sidebar{position:fixed;left:0;top:0;height:100dvh;width:var(--sb-w);z-index:88;transform:translateX(-100%);transition:transform .24s ease}
-  #app.mobonly-open aside#sidebar{transform:none}
+  /* closed: off screen and hidden (after the slide), so its links leave the tab order; open: a close button in the header */
+  aside#sidebar{position:fixed;left:0;top:0;height:100dvh;width:var(--sb-w);max-width:calc(100vw - 48px);z-index:88;transform:translateX(-100%);visibility:hidden;transition:transform .24s ease,visibility 0s linear .24s}
+  #app.mobonly-open aside#sidebar{transform:none;visibility:visible;transition:transform .24s ease}
+  aside#sidebar .sb-close{display:inline-flex;margin-inline-start:auto}
   #app.mobonly-open #scrim-sb{opacity:1;pointer-events:auto}
   .hamburger{display:inline-flex!important}
   .collapse-btn{display:none}
@@ -601,6 +637,7 @@ button.tag:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
   .kpis{grid-template-columns:1fr!important}
 }
 .hamburger{display:none}
+.sb-close{display:none}
 
 /* tenant brand (phase 6): a workspace picks one of these presets. Each overrides the six --c-brand-* variables and, for the dark theme (which sets its own accent), the accent set.
    Every pair is contrast-checked in tests/unit/brand.test.ts (text 4.5:1). Not free-form: a tenant cannot choose a colour that fails. The attribute selector (no :root) lets a swatch preview a preset. */
@@ -627,8 +664,9 @@ button.tag:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
   @page{margin:14mm}
   #sidebar,#topbar,.page-head .acts,.icon-btn,.btn,.no-print,.dt-bulk,.dt-bar,.dt-foot,.toast,.chart-tip,.back-link,[role="dialog"]{display:none!important}
   #app{display:block;height:auto;width:auto} main#content{overflow:visible;height:auto}
-  .scroll,.rec-scroll,.tbl-wrap{overflow:visible!important;max-height:none!important;height:auto!important}
-  .card,.kpi,.kpi-tile,figure.chart{break-inside:avoid;box-shadow:none;border:1px solid var(--line)}
+  .page,.scroll,.rec-scroll,.tbl-wrap{overflow:visible!important;max-height:none!important;height:auto!important}
+  .card,.kpi,figure.chart{break-inside:avoid;box-shadow:none;border:1px solid var(--line)}
+  .kpi-tile{break-inside:avoid}
   .tbl thead{display:table-header-group} .tbl tr{break-inside:avoid}
   .tbl thead th{position:static}
   body{background:var(--surface);color:var(--ink)}
@@ -708,7 +746,8 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 /* ============================ SHARED KIT (phase 3) ============================ */
 .chip.lime{background:var(--c-lime-400);color:var(--c-ink)}
 .seg button[aria-checked="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm)}
-:root[data-theme="dark"] .seg button[aria-checked="true"],:root[data-theme="auto"] .seg button[aria-checked="true"]{background:var(--surface-3)}
+:root[data-theme="dark"] .seg button[aria-checked="true"]{background:var(--surface-3);box-shadow:inset 0 0 0 1px var(--line-2)}
+@media (prefers-color-scheme: dark){:root[data-theme="auto"] .seg button[aria-selected="true"],:root[data-theme="auto"] .tab[aria-selected="true"],:root[data-theme="auto"] .seg button[aria-checked="true"]{background:var(--surface-3);box-shadow:inset 0 0 0 1px var(--line-2)}}
 /* data table */
 .dt{position:relative;display:flex;flex-direction:column;min-width:0}
 .dt-tabs{padding:12px 14px 0}
@@ -716,13 +755,17 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .dt-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px}
 .dt-bar .fchip b{font-weight:600;color:var(--ink)}
 .dt-spacer{flex:1 1 auto}
+/* the row count and the Columns button stay together, on the same row, when the bar wraps on a phone */
+.dt-end{display:inline-flex;align-items:center;gap:8px;margin-inline-start:auto;white-space:nowrap}
+.tbl th.nw,.tbl td.nw{white-space:nowrap}
+.dt-tabs .tabs{max-width:100%;overflow-x:auto}
 .dt-sum{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .th-sort{display:inline-flex;align-items:center;gap:4px;border:0;background:none;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:start}
 .th-sort:hover{color:var(--ink)}
 .th-car{width:12px;height:12px;opacity:.35;transition:transform var(--dur) var(--ease)}
 .th-car.on{opacity:1;color:var(--accent-ink)} .th-car.up{transform:rotate(180deg)}
 .tbl th.dt-cb,.tbl td.dt-cb{width:40px;padding-inline-end:0}
-.dt-cb input{width:16px;height:16px;accent-color:var(--c-brand-500);cursor:pointer}
+.dt-cb input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
 .tbl .dt-act{width:52px;padding-inline-start:0}
 .tbl tbody tr.sel td{background:var(--accent-weak)}
 .tbl tbody tr:focus-visible{outline-offset:-2px}
@@ -741,11 +784,21 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .dt-bulk-n{font-size:12.5px;font-weight:600;margin-inline-end:8px;font-variant-numeric:tabular-nums}
 .dt-bulk-b{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:0;border-radius:var(--radius-full);background:transparent;color:inherit;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer}
 .dt-bulk-b:hover:not(:disabled){background:var(--bg-inverse-2)} .dt-bulk-b:disabled{opacity:.5;cursor:default} .dt-bulk-b svg{width:14px;height:14px}
-.dt-bulk-b:focus-visible{outline-color:#8aa4ff}
+.dt-bulk-b:focus-visible{outline-color:var(--ring-inverse)}
 /* KPI */
-.kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));border-block:1px solid var(--line)}
-.kpi-tile{padding:var(--tile-y,16px) 20px;border-inline-start:1px solid var(--line);display:flex;flex-direction:column;gap:6px;min-width:0}
-.kpi-tile:first-child{border-inline-start:0;padding-inline-start:4px}
+/* KPI strip: columns follow the tile count (KpiStrip sets --n and data-n), so a row never ends in one orphan tile. Hairlines sit in the middle of the
+   column gap and the row gap; the strip clips the ones that fall outside it, so the first tile of every row has no leading line and every row starts
+   at the same inset, whatever the column count. Breakpoints are on the strip's own width (container queries), not the viewport. */
+.kpi-wrap{container-type:inline-size;min-width:0}
+.kpi-strip{--cols:var(--n,4);--kgap:40px;display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));column-gap:var(--kgap);row-gap:1px;padding-inline:4px;border-block:1px solid var(--line);overflow:hidden}
+.kpi-strip[data-n="7"],.kpi-strip[data-n="8"]{--cols:4}
+.kpi-tile{position:relative;padding-block:var(--tile-y,16px);display:flex;flex-direction:column;gap:6px;min-width:0}
+.kpi-tile::before{content:"";position:absolute;inset-block:0;inset-inline-start:calc(var(--kgap) / -2);width:1px;background:var(--line)}
+.kpi-tile::after{content:"";position:absolute;top:-1px;inset-inline:calc(var(--kgap) / -2);height:1px;background:var(--line)}
+@container (max-width:899px){.kpi-strip[data-n="5"],.kpi-strip[data-n="6"]{--cols:3}}
+@container (max-width:699px){.kpi-strip[data-n="4"],.kpi-strip[data-n="7"],.kpi-strip[data-n="8"]{--cols:2}}
+@container (max-width:559px){.kpi-strip:not([data-n="1"]){--cols:2}.kpi-strip{--kgap:28px}.kpi-strip .kpi-v{font-size:30px;line-height:34px}}
+@container (max-width:359px){.kpi-strip{--cols:1}}
 .kpi-fig{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .kpi-v{font-family:var(--font-display);font-size:36px;line-height:40px;font-weight:300;letter-spacing:-1.4px;color:var(--ink)}
 .kpi-cap{font-size:12px;color:var(--muted)}
@@ -776,6 +829,17 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .step.now .step-dot{border-color:var(--accent);background:var(--accent)}
 .step.late .step-dot{background:var(--bad-ink);border-color:var(--bad-ink);color:var(--surface);box-shadow:var(--glow-danger)}
 .step-l{font-size:13px;font-weight:500;color:var(--ink)} .step-n{font-size:12px;color:var(--muted)}
+/* Stepper on a narrow container (a phone, a side column): labels never overlap. Each stage needs about 104px across; below that the stepper
+   becomes a vertical list with the connector on the left (Stepper sets data-n to the number of stages). Long words wrap instead of overflowing. */
+.stepper-wrap{container-type:inline-size;min-width:0}
+.step{padding-inline-end:8px}.step-l,.step-n{overflow-wrap:anywhere}
+@container (max-width:207px){.stepper[data-n="2"]{flex-direction:column}.stepper[data-n="2"] .step{flex:none;padding:0 0 14px 26px}.stepper[data-n="2"] .step:last-child{padding-bottom:0}.stepper[data-n="2"] .step::before,.stepper[data-n="2"] .step:first-child::before,.stepper[data-n="2"] .step:last-child::before{top:18px;bottom:-1px;inset-inline:7px auto;width:2px;height:auto}.stepper[data-n="2"] .step.next::before{border-top:0;border-inline-start:2px dashed var(--line-2);width:0}.stepper[data-n="2"] .step.late::before{width:3px;inset-inline-start:6.5px}.stepper[data-n="2"] .step:last-child::before{display:none}}
+@container (max-width:311px){.stepper[data-n="3"]{flex-direction:column}.stepper[data-n="3"] .step{flex:none;padding:0 0 14px 26px}.stepper[data-n="3"] .step:last-child{padding-bottom:0}.stepper[data-n="3"] .step::before,.stepper[data-n="3"] .step:first-child::before,.stepper[data-n="3"] .step:last-child::before{top:18px;bottom:-1px;inset-inline:7px auto;width:2px;height:auto}.stepper[data-n="3"] .step.next::before{border-top:0;border-inline-start:2px dashed var(--line-2);width:0}.stepper[data-n="3"] .step.late::before{width:3px;inset-inline-start:6.5px}.stepper[data-n="3"] .step:last-child::before{display:none}}
+@container (max-width:415px){.stepper[data-n="4"]{flex-direction:column}.stepper[data-n="4"] .step{flex:none;padding:0 0 14px 26px}.stepper[data-n="4"] .step:last-child{padding-bottom:0}.stepper[data-n="4"] .step::before,.stepper[data-n="4"] .step:first-child::before,.stepper[data-n="4"] .step:last-child::before{top:18px;bottom:-1px;inset-inline:7px auto;width:2px;height:auto}.stepper[data-n="4"] .step.next::before{border-top:0;border-inline-start:2px dashed var(--line-2);width:0}.stepper[data-n="4"] .step.late::before{width:3px;inset-inline-start:6.5px}.stepper[data-n="4"] .step:last-child::before{display:none}}
+@container (max-width:519px){.stepper[data-n="5"]{flex-direction:column}.stepper[data-n="5"] .step{flex:none;padding:0 0 14px 26px}.stepper[data-n="5"] .step:last-child{padding-bottom:0}.stepper[data-n="5"] .step::before,.stepper[data-n="5"] .step:first-child::before,.stepper[data-n="5"] .step:last-child::before{top:18px;bottom:-1px;inset-inline:7px auto;width:2px;height:auto}.stepper[data-n="5"] .step.next::before{border-top:0;border-inline-start:2px dashed var(--line-2);width:0}.stepper[data-n="5"] .step.late::before{width:3px;inset-inline-start:6.5px}.stepper[data-n="5"] .step:last-child::before{display:none}}
+@container (max-width:623px){.stepper[data-n="6"]{flex-direction:column}.stepper[data-n="6"] .step{flex:none;padding:0 0 14px 26px}.stepper[data-n="6"] .step:last-child{padding-bottom:0}.stepper[data-n="6"] .step::before,.stepper[data-n="6"] .step:first-child::before,.stepper[data-n="6"] .step:last-child::before{top:18px;bottom:-1px;inset-inline:7px auto;width:2px;height:auto}.stepper[data-n="6"] .step.next::before{border-top:0;border-inline-start:2px dashed var(--line-2);width:0}.stepper[data-n="6"] .step.late::before{width:3px;inset-inline-start:6.5px}.stepper[data-n="6"] .step:last-child::before{display:none}}
+@container (max-width:727px){.stepper[data-n="7"]{flex-direction:column}.stepper[data-n="7"] .step{flex:none;padding:0 0 14px 26px}.stepper[data-n="7"] .step:last-child{padding-bottom:0}.stepper[data-n="7"] .step::before,.stepper[data-n="7"] .step:first-child::before,.stepper[data-n="7"] .step:last-child::before{top:18px;bottom:-1px;inset-inline:7px auto;width:2px;height:auto}.stepper[data-n="7"] .step.next::before{border-top:0;border-inline-start:2px dashed var(--line-2);width:0}.stepper[data-n="7"] .step.late::before{width:3px;inset-inline-start:6.5px}.stepper[data-n="7"] .step:last-child::before{display:none}}
+@container (max-width:831px){.stepper[data-n="8"]{flex-direction:column}.stepper[data-n="8"] .step{flex:none;padding:0 0 14px 26px}.stepper[data-n="8"] .step:last-child{padding-bottom:0}.stepper[data-n="8"] .step::before,.stepper[data-n="8"] .step:first-child::before,.stepper[data-n="8"] .step:last-child::before{top:18px;bottom:-1px;inset-inline:7px auto;width:2px;height:auto}.stepper[data-n="8"] .step.next::before{border-top:0;border-inline-start:2px dashed var(--line-2);width:0}.stepper[data-n="8"] .step.late::before{width:3px;inset-inline-start:6.5px}.stepper[data-n="8"] .step:last-child::before{display:none}}
 .timeline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .tl-item{display:grid;grid-template-columns:14px 1fr auto;gap:12px;padding:0 0 18px;position:relative}
 .tl-item:not(:last-child)::before{content:"";position:absolute;top:14px;bottom:0;inset-inline-start:6px;width:1px;background:var(--line)}
@@ -840,6 +904,13 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .form-actions{display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;padding:12px 0;background:var(--bg)}
 .form-section-body{display:flex;flex-direction:column;gap:14px}
 .form-section-body .field,.form-section-body .help{margin:0}
-.nt-pref{border:1px solid var(--line);border-radius:var(--radius-card);padding:6px 14px 4px;margin:0 0 10px;min-inline-size:0}
-.nt-pref legend{font-weight:600;padding:0 6px;display:flex;flex-direction:column}
+.nt-pref{border:1px solid var(--line);border-radius:var(--radius-card);padding:12px 14px 4px;margin:0 0 10px;min-inline-size:0}
+/* the title and hint sit inside the box, above the switches (a legend on the border let the hint run over the top hairline) */
+.nt-pref legend{float:left;width:100%;font-weight:600;padding:0;margin:0 0 4px;display:flex;flex-direction:column;gap:2px}
+.nt-pref legend+*{clear:both}
+@media (max-width:480px){.drawer{width:100vw;border-left:0}.nt-go-t{display:none}}
 .nt-pref .sw-row{padding:6px 0}
+/* vendor portal: the folded "How this portal protects you" panel on the inverse surface */
+.vp-sec summary{list-style:none} .vp-sec summary::-webkit-details-marker{display:none}
+.vp-sec summary:focus-visible{outline-color:var(--ring-inverse)}
+.vp-sec .vp-sec-chev{margin-inline-start:auto;transition:transform var(--dur) var(--ease)} .vp-sec[open] .vp-sec-chev{transform:rotate(180deg)}

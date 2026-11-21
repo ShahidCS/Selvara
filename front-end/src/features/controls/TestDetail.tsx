@@ -17,7 +17,7 @@ import { testChip } from "./controlDialogs";
 export function TestDetail({ id }: { id: string }) {
   useData(); useApp((s) => s.role);
   const L = useLayer(); const go = useGo();
-  const back = { href: "/ws/controls", label: "Controls" };
+  const back = { href: "/ws/controls", label: "Tests" };
   const t = DATA.tests.find((x) => x.id === id);
   if (!t) return <Page title="Test not found" back={back}><Empty icon="controls" title="No such test">There is no test with the ID &ldquo;{id}&rdquo;. It may have been deactivated, or the link may be wrong.</Empty></Page>;
   const runWhy = svc.whyCannotRunTests(), manageWhy = svc.whyCannotManage();
@@ -27,7 +27,6 @@ export function TestDetail({ id }: { id: string }) {
 
   return (
     <Page title={t.name} sub={`${t.id}, ${t.source}`} back={back} acts={<>
-      {testChip(t.result)}
       {API_ON ? <button className="btn btn-primary" {...dis(runWhy)} onClick={() => L.openModal(`Record a result, ${t.id}`, (close) => <ResultForm id={t.id} close={close} />)}><Icon name="check" />Record result</button> : null}
       <button className="btn btn-secondary" {...dis(runWhy)} onClick={run}><Icon name="refresh" />Run now</button>
       <button className="btn btn-ghost" {...dis(manageWhy)} onClick={off}><Icon name="x" />Deactivate</button>
@@ -46,7 +45,7 @@ export function TestDetail({ id }: { id: string }) {
           </div>
           <aside className="rec-side">
             <div className="card"><div className="c-head"><h3>Details</h3></div><div className="c-body">
-              <dl className="meta-grid"><dt>Cadence</dt><dd>{t.cadence}</dd><dt>Last run</dt><dd>{t.last}</dd><dt>Source</dt><dd>{t.source}</dd></dl>
+              <dl className="meta-grid"><dt>Latest result</dt><dd>{testChip(t.result)}</dd><dt>Cadence</dt><dd>{t.cadence}</dd><dt>Last run</dt><dd>{t.last}</dd><dt>Source</dt><dd>{t.source}</dd></dl>
             </div></div>
             <div className="card"><div className="c-head"><h3>Controls this test supports</h3></div><div className="c-body">
               <div className="btngrp">{t.controls.map((c: string) => <button key={c} className="fchip" onClick={() => go(`/ws/controls/${encodeURIComponent(c)}`)}><Icon name="controls" />{c}</button>)}</div>

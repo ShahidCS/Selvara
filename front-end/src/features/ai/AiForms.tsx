@@ -35,7 +35,7 @@ export function AiRegisterPage({ shadowId }: { shadowId: string | null }) {
     e.preventDefault(); setBusy(true);
     try {
       const r = await svc.registerSystem(API_ON ? { ...f, owner: "", ownerId: ownerId || myMemberId(members) } : f, shadowId);
-      if (r.ok === false) { setBusy(false); setErr((r as { msg: string }).msg); return; }
+      if (r.ok === false) { setBusy(false); setErr((r as { msg: string }).msg); ref.current?.focus(); return; }
       aiLog("ai.registered", r.name); allowLeave(); L.toast(r.name + " registered; classify it next"); bumpData();
       go(`${LIST}/${encodeURIComponent(r.id)}`);
     } catch (x) { setBusy(false); setErr(""); L.toast(uiMessage(x) || FAIL_MSG, false); }
@@ -44,7 +44,7 @@ export function AiRegisterPage({ shadowId }: { shadowId: string | null }) {
     <Page title="Register an AI system" sub="For AI the discovery sources did not capture, or to bring a discovered system into governance." back={back}>
       <div className="scroll rec-scroll"><form className="rec-form" onSubmit={submit} noValidate>
         <FormSection n={1} title="System" note="What it is and where it runs.">
-          <div className="field"><label htmlFor="rN">Name <Req /></label><input ref={ref} className="input" id="rN" maxLength={120} placeholder="e.g. Fraud detection model" value={f.name} onChange={set("name")} aria-invalid={!!err} aria-describedby={err ? "rN-err" : undefined} /></div>
+          <div className="field"><label htmlFor="rN">Name <Req /></label><input ref={ref} className="input" id="rN" maxLength={120} placeholder="e.g. Fraud detection model" value={f.name} onChange={set("name")} aria-invalid={!!err} aria-describedby={err ? "rN-err" : undefined} />{err ? <FormMessage id="rN-err">{err}</FormMessage> : null}</div>
           <div style={gridStyle(12)}>
             <div className="field"><label htmlFor="rSurf">Surface</label><input className="input" id="rSurf" maxLength={120} placeholder="Where it runs" value={f.surface} onChange={set("surface")} /></div>
             <div className="field"><label htmlFor="rT">Risk tier (interim)</label><select className="select" id="rT" value={f.tier} onChange={set("tier")}>{AI_TIERS.map((t) => <option key={t}>{t}</option>)}</select></div>
@@ -66,7 +66,6 @@ export function AiRegisterPage({ shadowId }: { shadowId: string | null }) {
           {API_ON ? <MemberSelect id="rO" value={ownerId || myMemberId(members)} onChange={setOwnerId} help="The owner may change the system; they cannot confirm its classification or approve its assessment." />
             : <div className="field"><label htmlFor="rO">Owner</label><select className="select" id="rO" value={f.owner} onChange={set("owner")}>{DATA.people.map((p) => <option key={p.id || p.name}>{p.name}</option>)}</select></div>}
         </FormSection>
-        {err ? <FormMessage id="rN-err">{err}</FormMessage> : null}
         <FormActions><button type="button" className="btn btn-secondary" onClick={() => go(LIST)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={busy}>Register</button></FormActions>
       </form></div>
     </Page>

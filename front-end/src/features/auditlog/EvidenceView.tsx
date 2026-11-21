@@ -7,7 +7,7 @@ import { useData } from "@/lib/store";
 export function EvidenceView({ onGenerate, can }: { onGenerate: () => void; can: boolean }) {
   useData(); const ex = wsExports();
   return (
-    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div className="card" style={{ boxShadow: "none" }}><div className="c-body">
         <div className="sectitle" style={{ marginTop: 0 }}>Evidence export package</div>
         <p className="field help" style={{ margin: "0 0 10px", maxWidth: "72ch" }}>{API_ON ? "Generate a package of your company's audit log (newest 5,000 entries) with a SHA-256 manifest and the server's chain verification, for your auditors. Each package is recorded below and in the log. At most 10 exports an hour." : "Generate a sealed package of the workspace audit log and RoPA register with a hash manifest for auditors. Append-only; each package is recorded below. Demo digest (FNV-1a), not SHA-256 or a signature: a real package must be signed server-side."}</p>

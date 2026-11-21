@@ -6,7 +6,7 @@ import { sodMessage } from "@/lib/elevation";
 import { useGate } from "@/components/kit/admin/ElevateGate";
 import { REGION_TREE } from "@/lib/platform";
 import { isEmail } from "@/lib/security";
-import { getModState, setModState } from "@/lib/store";
+import { setModState } from "@/lib/store";
 import * as svc from "@/services/customers";
 
 const custName = (cid: string) => svc.findCustomer(cid)?.name || cid;
@@ -16,11 +16,12 @@ export function UserForm({ cid, uid, close }: { cid: string; uid?: string; close
   const L = useLayer(); const gate = useGate(); const u = uid ? svc.findUser(uid) : undefined; const countries = Object.keys(REGION_TREE);
   const [name, setName] = useState(u ? u.name : ""); const [email, setEmail] = useState(u ? u.email : "");
   const [role, setRole] = useState(u ? u.role : svc.USER_ROLES[0]); const [country, setCountry] = useState(u ? u.country : countries[0]);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr] = useState<{ f: "name" | "email"; m: string } | null>(null);
+  const fail = (f: "name" | "email", m: string) => { setErr({ f, m }); document.getElementById("uf-" + f)?.focus(); };
   const save = async () => {
     const n = name.trim(), e = email.trim();
-    if (!n) { setErr("Full name is required."); return; }
-    if (!isEmail(e)) { setErr("Enter a valid email address."); return; }
+    if (!n) { fail("name", "Enter the user's full name."); return; }
+    if (!isEmail(e)) { fail("email", "Enter a valid email address, for example name@company.example."); return; }
     try {
       if (uid) { await svc.saveUser(cid, uid, { name: n, email: e, role, country }); close(); L.toast("Changes saved"); }
       else { const r = await svc.createUser(cid, { name: n, email: e, role, country }); close(); L.toast("Invite sent to " + r.email); }
@@ -28,13 +29,15 @@ export function UserForm({ cid, uid, close }: { cid: string; uid?: string; close
   };
   return (
     <>
-      <div className="field"><label htmlFor="uf-name">Full name <span style={{ color: "var(--bad-ink)" }}>*</span></label><input className="input" id="uf-name" data-focus placeholder="e.g. Dana Fischer" maxLength={100} aria-required="true" value={name} onChange={(x) => setName(x.target.value)} /></div>
-      <div className="field"><label htmlFor="uf-email">Email <span style={{ color: "var(--bad-ink)" }}>*</span></label><input className="input" id="uf-email" type="email" placeholder="name@company.example" maxLength={254} autoComplete="off" aria-required="true" value={email} onChange={(x) => setEmail(x.target.value)} /></div>
+      <p className="field help" style={{ margin: "0 0 10px" }}>Fields marked <span aria-hidden="true">*</span> are required.</p>
+      <div className={"field" + (err?.f === "name" ? " err" : "")}><label htmlFor="uf-name">Full name <span aria-hidden="true" style={{ color: "var(--bad-ink)" }}>*</span></label><input className="input" id="uf-name" data-focus placeholder="e.g. Dana Fischer" maxLength={100} required aria-required="true" aria-invalid={err?.f === "name"} aria-describedby={err?.f === "name" ? "uf-err" : undefined} value={name} onChange={(x) => { setName(x.target.value); setErr(null); }} />
+        {err?.f === "name" ? <span className="help" id="uf-err" role="alert" style={{ color: "var(--bad-ink)" }}>{err.m}</span> : null}</div>
+      <div className={"field" + (err?.f === "email" ? " err" : "")}><label htmlFor="uf-email">Email <span aria-hidden="true" style={{ color: "var(--bad-ink)" }}>*</span></label><input className="input" id="uf-email" type="email" placeholder="name@company.example" maxLength={254} autoComplete="off" required aria-required="true" aria-invalid={err?.f === "email"} aria-describedby={err?.f === "email" ? "uf-err" : undefined} value={email} onChange={(x) => { setEmail(x.target.value); setErr(null); }} />
+        {err?.f === "email" ? <span className="help" id="uf-err" role="alert" style={{ color: "var(--bad-ink)" }}>{err.m}</span> : null}</div>
       <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div className="field"><label htmlFor="uf-role">Role</label><select className="select" id="uf-role" value={role} onChange={(x) => setRole(x.target.value)}>{svc.USER_ROLES.map((r) => <option key={r}>{r}</option>)}</select></div>
         <div className="field"><label htmlFor="uf-country">Country</label><select className="select" id="uf-country" value={country} onChange={(x) => setCountry(x.target.value)}>{countries.map((c) => <option key={c}>{c}</option>)}</select></div>
       </div>
-      {err ? <p className="field help" id="uf-err" role="alert" style={{ color: "var(--bad-ink)" }}>{err}</p> : null}
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={save} disabled={gate.locked} title={gate.title}>{uid ? "Save changes" : "Add user"}</button></LayerFoot>
     </>
   );
@@ -68,7 +71,6 @@ function RemoveBody({ cid, uid, close }: { cid: string; uid: string; close: () =
   const go = async () => {
     try {
       await svc.removeUser(cid, uid);
-      const sel = getModState<Record<string, boolean>>("customers.usel", {}); if (sel[uid]) { const n = { ...sel }; delete n[uid]; setModState("customers.usel", n); }
       close(); L.toast("User removed");
     } catch (x) { L.toast(sodMessage(x, "Could not remove the user"), false); }
   };

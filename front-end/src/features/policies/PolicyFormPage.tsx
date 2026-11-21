@@ -8,7 +8,7 @@ import { clampText } from "@/lib/security";
 import { FAIL_MSG, uiMessage } from "@/lib/grcSod";
 import { hasRole } from "@/lib/sod";
 import * as svc from "@/features/policies/services/policies";
-import { Req } from "./PolicyLayers";
+import { FieldErr, Req } from "./PolicyLayers";
 
 /** Create (`/ws/policies/new`) and edit (`/ws/policies/:id/edit`) as a page. Same fields, validation and service calls as the dialog it replaces;
  *  leaving with typed work asks first. The service still decides who may create or edit; this page only explains. */
@@ -19,7 +19,7 @@ export function PolicyFormPage({ id }: { id?: string }) {
   const w = p ? svc.workVersion(p) || svc.liveVersion(p) : undefined;
   const fresh = !!p && !svc.workVersion(p);
   const [name, setName] = useState(w ? w.name : ""); const [body, setBody] = useState(w ? w.body : ""); const [cycle, setCycle] = useState<number>(w ? w.cycle : 12);
-  const [note, setNote] = useState(""); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState(""); const [err, setErr] = useState(""); const [errAt, setErrAt] = useState<"name" | "note">("name"); const [busy, setBusy] = useState(false);
   const dirty = !busy && (name !== (w ? w.name : "") || body !== (w ? w.body : "") || cycle !== (w ? w.cycle : 12) || note !== "");
   const { allowLeave } = useUnsavedGuard(dirty, L);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -34,8 +34,8 @@ export function PolicyFormPage({ id }: { id?: string }) {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const n = clampText(name, 160);
-    if (!n) { setErr("Policy name is required."); return; }
-    if (fresh && clampText(note, 300).length < 10) { setErr("Give the reason for this change (at least 10 characters)."); return; }
+    if (!n) { setErr("Policy name is required."); setErrAt("name"); nameRef.current?.focus(); return; }
+    if (fresh && clampText(note, 300).length < 10) { setErr("Give the reason for this change (at least 10 characters)."); setErrAt("note"); document.getElementById("pl-note")?.focus(); return; }
     setBusy(true);
     try {
       if (id && p) {
@@ -54,17 +54,18 @@ export function PolicyFormPage({ id }: { id?: string }) {
         <form className="rec-form" onSubmit={submit} noValidate>
           {fresh ? <FormMessage kind="note">This policy is published and immutable. Saving creates a new draft version; the published version stays visible in the history until the new one is approved and published.</FormMessage> : null}
           <FormSection n={1} title="Policy" note="What the policy is called and what it says.">
-            <div className="field"><label htmlFor="pl-name">Policy name <Req /></label><input ref={nameRef} className="input" id="pl-name" maxLength={160} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Remote Working Policy" aria-invalid={!!err} aria-describedby={err ? "pl-err" : undefined} /></div>
+            <div className="field"><label htmlFor="pl-name">Policy name <Req /></label><input ref={nameRef} className="input" id="pl-name" maxLength={160} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Remote Working Policy" aria-invalid={!!err && errAt === "name"} aria-describedby={err && errAt === "name" ? "pl-err" : undefined} />
+              {errAt === "name" ? <FieldErr id="pl-err" t={err} /> : null}</div>
             <div className="field"><label htmlFor="pl-body">Policy text</label><textarea className="input" id="pl-body" rows={10} maxLength={8000} style={{ resize: "vertical" }} value={body} onChange={(e) => setBody(e.target.value)} /></div>
           </FormSection>
           <FormSection n={2} title="Review" note="How often it is reviewed, and why it changes.">
             <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div className="field"><label htmlFor="pl-cycle">Review cycle</label><select className="select" id="pl-cycle" value={cycle} onChange={(e) => setCycle(Number(e.target.value))}>{svc.REVIEW_CYCLES.map((m) => <option key={m} value={m}>{m} months</option>)}</select></div>
-              <div className="field"><label htmlFor="pl-note">Why this change{fresh ? <> <Req /></> : null}</label><input className="input" id="pl-note" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Recorded in the change log" /></div>
+              <div className="field"><label htmlFor="pl-note">Why this change{fresh ? <> <Req /></> : null}</label><input className="input" id="pl-note" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Recorded in the change log" aria-invalid={!!err && errAt === "note"} aria-describedby={err && errAt === "note" ? "pl-err" : undefined} />
+                {errAt === "note" ? <FieldErr id="pl-err" t={err} /> : null}</div>
             </div>
             <p className="field help">{id ? "You are the only person who can edit this policy." : "You will be recorded as the creator and the only person who can edit it (an admin can reassign ownership)."}</p>
           </FormSection>
-          {err ? <FormMessage id="pl-err">{err}</FormMessage> : null}
           <FormActions>
             <button type="button" className="btn btn-secondary" onClick={() => go(back.href)}>Cancel</button>
             <button type="submit" className="btn btn-primary" disabled={busy}>{id ? (fresh ? "Create draft version" : "Save changes") : "Create policy"}</button>

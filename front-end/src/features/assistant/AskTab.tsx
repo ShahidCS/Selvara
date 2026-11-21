@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { AIPanel, Icon } from "@/components/ui";
+import { AIPanel, Chip, Icon } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { getMe, wsLog } from "@/lib/audit";
-import { bumpData } from "@/lib/store";
+import { bumpData, useModState } from "@/lib/store";
 import { clampText } from "@/lib/security";
 import * as svc from "@/features/assistant/services/assistant";
 import { API_ON } from "@/lib/rbac";
@@ -32,20 +32,26 @@ function AskDemo({ scrollRef }: { scrollRef: React.RefObject<HTMLDivElement | nu
   };
   const copy = async (i: number) => {
     const t = svc.ASST.thread[i]?.text || "";
-    try { await navigator.clipboard.writeText(t); L.toast("Draft copied"); } catch { L.toast("Copy not available in this view"); }
+    try { await navigator.clipboard.writeText(t); L.toast("Draft copied"); } catch { L.toast("Copy not available in this view", false); }
   };
-  const reviewed = () => { wsLog("assistant.draft.reviewed", "draft reviewed by " + getMe().name, "System"); L.toast("Marked as reviewed"); };
-  const clear = () => { svc.clearThread(); bumpData(); };
+  // Which answers in this thread were marked reviewed, and by whom (kept while the app is open; cleared with the thread).
+  const [rev, setRev] = useModState<Record<number, string>>("assistant.reviewed", {});
+  const reviewed = (i: number) => {
+    if (rev[i]) return;
+    const me = getMe().name;
+    wsLog("assistant.draft.reviewed", "draft reviewed by " + me, "System"); setRev((p) => ({ ...p, [i]: me })); L.toast("Marked as reviewed");
+  };
+  const clear = () => { svc.clearThread(); setRev({}); bumpData(); };
   return (
     <div style={{ maxWidth: 880, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 }}>
       {thread.length ? thread.map((mm, i) => mm.role === "user" ? (
-        <div key={i} style={{ alignSelf: "flex-end", maxWidth: "85%", background: "var(--accent)", color: "#fff", padding: "9px 13px", borderRadius: "13px 13px 3px 13px", fontSize: 13.5, lineHeight: 1.5, overflowWrap: "anywhere" }}>{mm.text}</div>
+        <div key={i} style={{ alignSelf: "flex-end", maxWidth: "85%", background: "var(--accent-weak)", color: "var(--ink)", padding: "9px 13px", borderRadius: "13px 13px 3px 13px", fontSize: 13.5, lineHeight: 1.5, overflowWrap: "anywhere" }}>{mm.text}</div>
       ) : (
         <div key={i} style={{ alignSelf: "flex-start", maxWidth: "94%" }}>
           <AIPanel source="Assistant" meta="Draft, review required" label="Assistant answer"
             footer={<>
-              <button className="btn btn-ghost sm" onClick={() => copy(i)}><Icon name="download" />Copy</button>
-              <button className="btn btn-ghost sm" onClick={reviewed}><Icon name="check" />Mark reviewed</button>
+              <button className="btn btn-ghost sm" onClick={() => copy(i)}><Icon name="copy" />Copy</button>
+              {rev[i] ? <Chip cls="ok" icon="check">Reviewed by {rev[i]}</Chip> : <button className="btn btn-ghost sm" onClick={() => reviewed(i)}><Icon name="check" />Mark reviewed</button>}
             </>}>
             <div style={{ fontSize: 13.5, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{mm.text}</div>
           </AIPanel>

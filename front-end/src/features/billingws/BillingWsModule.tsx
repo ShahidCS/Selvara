@@ -36,13 +36,14 @@ function BillingOverview() {
   const manage = billingCanManage(useApp((s) => s.role));
   const s = SUBSCRIPTION; const spct = Math.round(s.seatsUsed / s.seatLimit * 100);
   const openPlan = () => go("/ws/billingws/plan");
+  const unpaid = s.invoices.filter((iv) => iv.status !== "Paid").length;
   const download = (id: string) => {
     const iv = findInvoice(id); if (!iv) return;
-    if (!downloadText(safeFileName(iv.id, "invoice") + ".txt", invoiceText(iv, money))) { L.toast("Download not available in this view"); return; }
+    if (!downloadText(safeFileName(iv.id, "invoice") + ".txt", invoiceText(iv, money))) { L.toast("Download not available in this view", false); return; }
     wsLog("invoice.downloaded", iv.id, "System"); L.toast("Downloading " + iv.id);
   };
   const invCols: DTColumn<Invoice>[] = [
-    { key: "id", header: "Invoice", value: (iv) => iv.id, locked: true, render: (iv) => <span className="strong num">{iv.id}</span> },
+    { key: "id", header: "Invoice", nowrap: true, value: (iv) => iv.id, locked: true, render: (iv) => <span className="strong num">{iv.id}</span> },
     { key: "date", header: "Date", value: (iv) => iv.date, sortBy: (iv) => Date.parse(iv.date) || 0, render: (iv) => iv.date },
     { key: "period", header: "Period", value: (iv) => iv.period, render: (iv) => <span style={{ color: "var(--muted)" }}>{iv.period}</span> },
     { key: "amount", header: "Amount", value: (iv) => iv.amount, align: "end", render: (iv) => <span className="num">{money(iv.amount)}</span> },
@@ -57,7 +58,7 @@ function BillingOverview() {
             <KpiTile label="Plan" value={s.plan} caption={s.cycle + " billing"} />
             <KpiTile label="Seats" value={s.seatsUsed + " / " + s.seatLimit} delta={spct >= 90 ? { tone: "bad", text: "Near the limit" } : { tone: "flat", text: spct + "% used" }} caption="Workspace members" />
             <KpiTile label="Next bill" value={s.nextInvoice.replace(/^\d+\s/, "")} caption={money(s.amount) + " due"} />
-            <KpiTile label="Invoices" value={s.invoices.length} caption="All paid" />
+            <KpiTile label="Invoices" value={s.invoices.length} caption={unpaid ? `${unpaid} not paid` : "All paid"} />
           </KpiStrip>
           <div className="panels" style={{ gridTemplateColumns: "1.4fr 1fr", gridAutoRows: "min-content", alignItems: "stretch" }}>
             <div className="card"><div className="c-head"><h3>Usage this period</h3></div><div className="c-body">
@@ -79,7 +80,6 @@ function BillingOverview() {
             </div></div>
             <div className="card"><div className="c-head"><h3>Subscription</h3></div><div className="c-body">
               <dl className="meta-grid"><dt>Plan</dt><dd className="strong">{s.plan}</dd><dt>Billing cycle</dt><dd>{s.cycle}</dd><dt>Renews</dt><dd>{s.nextInvoice}</dd></dl>
-              {manage ? <button className="btn btn-secondary sm" style={{ marginTop: 10 }} onClick={openPlan}><Icon name="ext" />Compare &amp; change plan</button> : null}
               <div className="hr" /><div className="sectitle">Payment method</div>
               <dl className="meta-grid"><dt>Card</dt><dd>{s.payment.brand} ···· {s.payment.last4}</dd><dt>Expires</dt><dd>{s.payment.exp}</dd><dt>Billed to</dt><dd>{s.payment.name}</dd></dl>
               {manage ? <button className="btn btn-secondary sm" style={{ marginTop: 10 }} onClick={() => go("/ws/billingws/payment")}><Icon name="edit" />Update payment method</button> : null}

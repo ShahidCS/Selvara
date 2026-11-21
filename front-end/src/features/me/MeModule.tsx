@@ -29,12 +29,20 @@ function MeBody({ role }: { role: string }) {
   const open = tasks.filter((t) => !t.isDone).length;
   const toAck = toAcknowledge(me.name);
   const first = me.name.split(" ")[0];
+  // the shell renders only on the client (after hydration), so the local hour is safe to read here
+  const h = new Date().getHours();
+  const greet = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  // the member banner explains what a member cannot do; a role that manages the team (company admin) does not need it
+  const member = !modAllowed(role, "ws", "team");
   return (
-    <Page title={`Good morning, ${first}`} sub={`You have ${open} open tasks · ${toAck} policies to acknowledge`}>
+    <Page title={`${greet}, ${first}`} sub={`You have ${plural(open, "open task", "open tasks")} · ${plural(toAck, "policy", "policies")} to acknowledge`}>
       <ModuleTip mod="me" />
-      <div className="banner info">
-        <strong>Member access.</strong> You can read published policies{API_ON ? "" : ", add remarks on policies you are invited to,"} and acknowledge policies. Only a policy&apos;s creator can edit it; settings and team management are for company admins.
-      </div>
+      {member ? (
+        <div className="banner info">
+          <strong>Member access.</strong> You can read published policies{API_ON ? "" : ", add remarks on policies you are invited to,"} and acknowledge policies. Only a policy&apos;s creator can edit it; settings and team management are for company admins.
+        </div>
+      ) : null}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 14, alignItems: "stretch" }}>
         <MyTasks role={role} />
         {API_ON ? null : <MyRemarks role={role} />}

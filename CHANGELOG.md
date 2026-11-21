@@ -4,6 +4,9 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Fixed
+- UI design review of every module and public page (`docs/architecture/UI_REVIEW.md`, 262 findings: 251 fixed, 4 partly, 7 open with reasons). Shared fixes: pages scroll instead of squeezing cards, help text and invalid-field styles, explicit toast tones, KPI strip layout and icons, dark-mode selected tabs, checkboxes and inverse surfaces, keyboard focus in popovers and the mobile drawer, mobile layouts, confirmation before destructive actions, and lavender kept for AI content.
+
 ### Documentation
 - `docs/guides/SUPABASE.md`: step-by-step setup of the `evidence` storage bucket (section 4d), which holds every uploaded file (evidence, Trust Center, knowledge base, vendor portal), with checks and fixes; the schema check now expects version `10`; section 4c and the go-live table no longer say that modules are missing from the server.
 

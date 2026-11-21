@@ -84,26 +84,30 @@ function ControlsList() {
     <>
       <button className="btn btn-secondary" onClick={() => go("/ws/frameworks")}><Icon name="frameworks" />Frameworks</button>
       <button className="btn btn-secondary" onClick={soa}><Icon name="download" />Export SoA</button>
-      {API_ON ? <button className="btn btn-secondary" disabled={!!manageWhy} title={manageWhy || undefined} onClick={() => L.openModal("Adopt controls from the library", (close) => <AdoptForm close={close} />)}><Icon name="controls" />Adopt from library</button> : null}
-      <button className="btn btn-primary" disabled={!!manageWhy} title={manageWhy || undefined} onClick={() => go("/ws/controls/new")}><Icon name="plus" />Add custom control</button>
+      {API_ON && !manageWhy ? <button className="btn btn-secondary" onClick={() => L.openModal("Adopt controls from the library", (close) => <AdoptForm close={close} />)}><Icon name="controls" />Adopt from library</button> : null}
+      {!manageWhy ? <button className="btn btn-primary" onClick={() => go("/ws/controls/new")}><Icon name="plus" />Add custom control</button> : null}
     </>
   ) : view === "tests" ? (
     <>
       <button className="btn btn-secondary" disabled={!!runWhy} title={runWhy || undefined} onClick={syncAll}><Icon name="refresh" />Sync all</button>
-      <button className="btn btn-primary" disabled={!!manageWhy} title={manageWhy || undefined} onClick={() => go("/ws/controls/test/new")}><Icon name="plus" />Build custom test</button>
+      {!manageWhy ? <button className="btn btn-primary" onClick={() => go("/ws/controls/test/new")}><Icon name="plus" />Build custom test</button> : null}
     </>
   ) : (
     <button className="btn btn-secondary" onClick={matrixExport}><Icon name="download" />Export matrix (CSV)</button>
   );
 
   const cols: DTColumn<Control>[] = [
-    { key: "id", header: "Control", value: (c) => c.id, locked: true, render: (c) => <span className="strong num">{c.id}</span> },
+    { key: "id", header: "Control", nowrap: true, value: (c) => c.id, locked: true, render: (c) => <span className="strong num">{c.id}</span> },
     { key: "title", header: "Title", value: (c) => c.title, render: (c) => c.title },
     { key: "domain", header: "Domain", value: (c) => c.domain, render: (c) => c.domain },
     { key: "map", header: "Mapped to", value: (c) => Object.keys(c.map || {}).map((k) => FW_SHORT[k] || k).join(" "), render: (c) => <div style={{ maxWidth: 220 }}><FwChips c={c} /></div> },
     { key: "owner", header: "Owner", value: (c) => c.owner, render: (c) => c.owner },
     { key: "status", header: "Status", value: (c) => c.status, render: (c) => <StatusChip s={c.status} /> },
   ];
+  /* Roles that cannot create see why, in text, instead of a faded create button whose reason is only a hover title. */
+  const manageNote = manageWhy && view !== "matrix" ? <p className="field help" role="note" style={{ margin: 0 }}>{manageWhy}</p> : null;
+  const testLabel = (r: string) => (r === "Pass" ? "Pass" : r === "Fail" ? "Fail" : "Needs evidence");
+  const testTabs = ["Pass", "Needs evidence", "Fail"].filter((x) => DATA.tests.some((t: Test) => testLabel(t.result) === x));
   const testCols: DTColumn<Test>[] = [
     { key: "name", header: "Test", value: (t) => t.name, locked: true, render: (t) => <><div className="strong">{t.name}</div><div style={{ fontSize: 11.5, color: "var(--muted)" }}>{t.id}</div></> },
     { key: "source", header: "Source", value: (t) => t.source, render: (t) => t.source },
@@ -116,11 +120,13 @@ function ControlsList() {
   if (view === "tests") {
     return (
       <Page mod="controls" acts={acts}>
+        {manageNote}
         <div className="card" style={{ flex: "1 1 auto" }}>
-          <div className="c-head">{seg}<div className="r"><span className="tag" id="testCount">{DATA.tests.length} tests</span></div></div>
+          <div className="c-head">{seg}</div>
           <div className="c-body flush scroll" style={{ padding: 0 }} id="testsBody">
             <DataTable<Test> id="tests" label="Tests" rows={DATA.tests} rowKey={(t) => t.id} columns={testCols} searchText={(t) => `${t.id} ${t.name} ${t.source} ${t.controls.join(" ")}`}
-              filters={[{ key: "source", label: "Source", options: Array.from(new Set<string>(DATA.tests.map((t: Test) => String(t.source)))), get: (t: Test) => t.source }, { key: "result", label: "Result", options: Array.from(new Set<string>(DATA.tests.map((t: Test) => String(t.result)))), get: (t: Test) => t.result }]}
+              tabs={testTabs.map((x) => ({ key: x, label: x, match: (t: Test) => testLabel(t.result) === x }))}
+              filters={[{ key: "source", label: "Source", options: Array.from(new Set<string>(DATA.tests.map((t: Test) => String(t.source)))), get: (t: Test) => t.source }]}
               onOpen={(t) => go(`/ws/controls/test/${encodeURIComponent(t.id)}`)} exportName="tests" />
           </div>
         </div>
@@ -160,10 +166,10 @@ function ControlsList() {
   return (
     <Page mod="controls" acts={acts}>
       <ModuleTip mod="controls" force={API_ON && !DATA.controls.length} />
+      {manageNote}
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head" style={{ flexWrap: "wrap", gap: 10 }}>
           {seg}
-          <div className="r"><span className="tag" id="ctrlCount">{`${DATA.controls.length} control${DATA.controls.length !== 1 ? "s" : ""}`}</span></div>
         </div>
         <div className="c-body flush scroll" id="ctrlBody" style={{ padding: 0 }}>
           <DataTable<Control> id="controls" label="Controls" rows={DATA.controls} rowKey={(c) => c.id} columns={cols} searchText={(c) => `${c.id} ${c.title} ${c.owner} ${c.domain}`}

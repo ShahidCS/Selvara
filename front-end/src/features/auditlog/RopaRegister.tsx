@@ -4,7 +4,7 @@ import { ropaFor } from "@/lib/ropa";
 /** Prototype: ropaRegisterHTML (workspace) / alogRopa (admin). `intro` differs slightly between the two. All values render as React text. */
 export function RopaRegister({ entries, intro }: { entries: { action?: string; categories?: string[]; cat?: string }[]; intro: string }) {
   return (
-    <div style={{ padding: 16 }}>
+    <div>
       <div style={{ marginBottom: 14 }}><p className="field help" style={{ margin: 0, maxWidth: "none", textWrap: "balance" }}>{intro}</p></div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(460px,100%),1fr))", gap: 12, alignItems: "stretch" }}>
         {ROPA.map((p) => {

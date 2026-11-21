@@ -31,7 +31,7 @@ export const PRIV_RULES = ["Hardware security key required for super admins", "J
 
 function Rules({ title, rules, children }: { title: string; rules: string[]; children?: React.ReactNode }) {
   return (
-    <div className="card"><div className="c-head"><h3>{title}</h3></div>
+    <div className="card" style={{ breakInside: "avoid", marginBottom: 16 }}><div className="c-head"><h3>{title}</h3></div>
       <div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
           {rules.map((r) => <li key={r} style={{ display: "flex", gap: 10, fontSize: 13 }}><span aria-hidden="true" style={{ color: "var(--ok-ink)", flex: "none" }}><Icon name="check" /></span><span>{r}</span></li>)}
@@ -46,7 +46,7 @@ export function PlatformSecurity() {
   const go = useGo(); const role = useApp((s) => s.role);
   const spec = modAllowed(role, "ws", "appsec");
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))", gap: 16, alignItems: "start" }}>
+    <div style={{ columns: "340px", columnGap: 16 }}>
       <Rules title="Password baseline (all tenants)" rules={PWD_RULES}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, marginTop: 6 }}>
           <button className="btn btn-ghost" onClick={() => go("/auth")}>Try the live password check</button>

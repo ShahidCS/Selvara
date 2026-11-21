@@ -12,8 +12,8 @@ import { attempt } from "@/components/kit/sodKit";
 
 
 /* ---- schedule a report (source reportSchedule / reportDoSchedule) ---- */
-export function ScheduleForm({ L }: { L: LayerApi }) {
-  const [name, setName] = useState(DATA.reports[0]?.name ?? "");
+export function ScheduleForm({ L, initial }: { L: LayerApi; /** Preselects this stored report. */ initial?: string }) {
+  const [name, setName] = useState(initial && DATA.reports.some((r) => r.name === initial) ? initial : DATA.reports[0]?.name ?? "");
   const [freq, setFreq] = useState("Monthly");
   const [day, setDay] = useState(""); const [custom, setCustom] = useState(""); const [recip, setRecip] = useState(""); const [reason, setReason] = useState("");
   const ext = svc.externalRecipients(recip);
@@ -34,9 +34,11 @@ export function ScheduleForm({ L }: { L: LayerApi }) {
         <div className="field"><label htmlFor="rs-name">Report pack</label><select className="select" id="rs-name" value={name} onChange={(e) => setName(e.target.value)}>{DATA.reports.map((r) => <option key={r.name}>{r.name}</option>)}</select></div>
         <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div className="field"><label htmlFor="rs-freq">Frequency</label><select className="select" id="rs-freq" value={freq} onChange={(e) => setFreq(e.target.value)}>{REPORT_FREQ.map((f) => <option key={f}>{f}</option>)}</select></div>
-          <div className="field" id="rs-day-wrap" style={{ display: freq === "On demand" ? "none" : "block" }}><label htmlFor="rs-day">Send on</label><input className="input" id="rs-day" maxLength={120} placeholder="e.g. 1st of month, Monday 09:00" value={day} onChange={(e) => setDay(e.target.value)} /></div>
+          {/* one field for when it is sent: "Send on" for a fixed frequency, "Custom schedule" for Custom, none for On demand */}
+          {freq === "Custom" ? <div className="field" id="rs-custom-wrap"><label htmlFor="rs-custom">Custom schedule</label><input className="input" id="rs-custom" maxLength={120} placeholder="e.g. Every 6 weeks" value={custom} onChange={(e) => setCustom(e.target.value)} /></div>
+            : freq === "On demand" ? null
+            : <div className="field" id="rs-day-wrap"><label htmlFor="rs-day">Send on</label><input className="input" id="rs-day" maxLength={120} placeholder="e.g. 1st of month, Monday 09:00" value={day} onChange={(e) => setDay(e.target.value)} /></div>}
         </div>
-        <div className="field" id="rs-custom-wrap" style={{ display: freq === "Custom" ? "block" : "none" }}><label htmlFor="rs-custom">Custom schedule</label><input className="input" id="rs-custom" maxLength={120} placeholder="e.g. Every 6 weeks, or a cron expression" value={custom} onChange={(e) => setCustom(e.target.value)} /></div>
         <div className="field"><label htmlFor="rs-recip">Recipients</label><input className="input" id="rs-recip" maxLength={300} placeholder="e.g. Board, Risk Committee, auditor@firm.example" value={recip} onChange={(e) => setRecip(e.target.value)} /></div>
         <p className="field help">Packs are generated as draft and require review before distribution.</p>
         {ext.length ? <p className="field help" role="status">{API_ON ? `Recipients outside your company (${ext.join(", ")}, unless on your company's email domain) need a different admin's approval before the schedule starts.` : `External recipient${ext.length > 1 ? "s" : ""} (${ext.join(", ")}): this schedule starts only after a different admin approves it.`}</p> : null}
@@ -44,6 +46,17 @@ export function ScheduleForm({ L }: { L: LayerApi }) {
         {API_ON ? <p className="field help">Email delivery starts once your administrator sets up email; until then generate packs here and share them yourself.</p> : null}
       </div>
       <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><button className="btn btn-primary" onClick={submit}>Save schedule</button></LayerFoot>
+    </>
+  );
+}
+
+/* ---- confirm before removing an internal schedule (removal cannot be undone from here) ---- */
+export function ConfirmRemoveSchedule({ L, i, run }: { L: LayerApi; i: number; run: () => void }) {
+  const r = SCHED_PACKS[i];
+  return (
+    <>
+      <div><p style={{ margin: 0 }}>Remove the {r?.freq.toLowerCase()} schedule for <strong>{r?.name}</strong>{r?.recip && r.recip !== "—" ? <> sent to {r.recip}</> : null}? It will no longer be generated or sent. You can schedule it again later.</p></div>
+      <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><button className="btn btn-danger" data-focus onClick={() => { L.closeLayer(); run(); }}>Remove schedule</button></LayerFoot>
     </>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Chip, Icon, StatusChip } from "@/components/ui";
+import { Chip, Icon, StatusChip, Switch } from "@/components/ui";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { useLayer } from "@/hooks/useLayer";
 import { ELEV_REASON_MIN, sodMessage } from "@/lib/elevation";
@@ -9,16 +9,20 @@ import { PLANS } from "@/services/billing";
 import * as svc from "@/services/customers";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-function Meter({ label, used, limit }: { label: string; used: number; limit: number }) {
-  const pct = limit ? Math.min(100, Math.round(used / limit * 100)) : 0; const over = !!limit && used > limit;
-  const col = over ? "var(--bad-ink)" : pct >= 85 ? "var(--warn-ink)" : "var(--accent)";
+/** Usage against a plan limit. Near and over the limit are said in words with an icon, never by the bar colour alone. */
+export function Meter({ label, used, limit }: { label: string; used: number; limit: number }) {
+  const pct = limit ? Math.min(100, Math.round(used / limit * 100)) : 0; const over = !!limit && used > limit; const near = !over && pct >= 85;
+  const col = over ? "var(--bad-ink)" : near ? "var(--warn-ink)" : "var(--accent)";
   return (
     <div style={{ marginBottom: 11 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 12.5, marginBottom: 4 }}>
         <span style={{ color: "var(--ink-2)" }}>{label}</span>
-        <span className="num" style={{ color: over ? "var(--bad-ink)" : "var(--ink-2)" }}>{num(used)} / {num(limit)}{over ? " · over plan" : ""}</span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          {over ? <Chip cls="bad" icon="alert">Over plan</Chip> : near ? <Chip cls="warn" icon="clock">Near limit</Chip> : null}
+          <span className="num" style={{ color: "var(--ink-2)" }}>{num(used)} / {num(limit)}</span>
+        </span>
       </div>
-      <div className="bar-track" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><span className="bar-fill" style={{ width: `${Math.max(3, pct)}%`, background: col }} /></div>
+      <div className="bar-track" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-valuetext={`${num(used)} of ${num(limit)}${over ? ", over plan" : near ? ", near limit" : ""}`}><span className="bar-fill" style={{ width: `${Math.max(3, pct)}%`, background: col }} /></div>
     </div>
   );
 }
@@ -27,6 +31,9 @@ function Meter({ label, used, limit }: { label: string; used: number; limit: num
 export function ChangePlanForm({ id, close }: { id: string; close: () => void }) {
   const L = useLayer(); const gate = useGate(); const c = svc.custInit(svc.findCustomer(id)); const [pick, setPick] = useState<string>(c.plan); const [reason, setReason] = useState("");
   const used = Number(c.usage?.seatsUsed) || 0; const tooSmall = PLANS[pick].seats < used;
+  // The same conditions that disable "Apply plan", said in words under the form (a disabled button cannot show its tooltip to keyboard or touch users).
+  const why = gate.locked ? "Elevate to make changes: plan changes need an active elevated session." : tooSmall ? "" : pick === c.plan ? "Choose a different plan to apply." : reason.trim().length < ELEV_REASON_MIN ? `Enter a reason of at least ${ELEV_REASON_MIN} characters.` : "";
+  const blocked = tooSmall || !!why;
   const apply = async () => {
     try {
       const r = await svc.changePlan(id, pick, reason);
@@ -49,7 +56,8 @@ export function ChangePlanForm({ id, close }: { id: string; close: () => void })
       <p className="field help" style={{ marginTop: 10 }}>Changing the plan updates seat and usage limits and the default module set. Add-ons already enabled are kept. A plan with fewer seats than are in use ({used}) is blocked.</p>
       {tooSmall ? <p className="field help" role="alert" style={{ color: "var(--bad-ink)" }}>{pick} includes {PLANS[pick].seats} seats but {used} are in use. Remove users before downgrading.</p> : null}
       <div className="field"><label htmlFor="planReason">Reason (at least {ELEV_REASON_MIN} characters, recorded in the audit log)</label><textarea className="input" id="planReason" maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} /></div>
-      <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={apply} disabled={gate.locked || tooSmall || pick === c.plan || reason.trim().length < ELEV_REASON_MIN} title={gate.title || (tooSmall ? "Downgrade below seats in use is blocked" : undefined)}>Apply plan</button></LayerFoot>
+      {why ? <p className="field help" id="planWhy" style={{ margin: "8px 0 0" }}>{why}</p> : null}
+      <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={apply} disabled={blocked} aria-describedby={why ? "planWhy" : undefined} title={gate.title || (tooSmall ? "Downgrade below seats in use is blocked" : undefined)}>Apply plan</button></LayerFoot>
     </>
   );
 }
@@ -76,15 +84,15 @@ export function PlanTab({ c }: { c: any }) {
         <Meter label="Storage (GB)" used={c.usage.storageGB} limit={c.limits.storageGB} />
       </div>
       <div><div className="sectitle" style={{ marginTop: 0 }}>Module entitlements</div>
-        <p className="field help" style={{ margin: "0 0 8px" }}>Toggle which modules this customer can access. Modules in {c.plan} are on by default; others are chargeable add-ons.</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {svc.PLAN_MODULES.map((mod) => {
+        <p className="field help" style={{ margin: "0 0 8px" }}>Choose which modules this customer can use. Modules in {c.plan} are on by default; others are chargeable add-ons.</p>
+        {gate.locked ? <p className="field help" style={{ margin: "0 0 8px" }}>Elevate to make changes: switches are locked until you have an active elevated session.</p> : null}
+        <div role="group" aria-label="Module entitlements" style={{ display: "flex", flexDirection: "column" }}>
+          {svc.PLAN_MODULES.map((mod, i) => {
             const on = c.modules.includes(mod); const inPlan = p.modules.includes(mod);
             return (
-              <label key={mod} className="listrow" style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 11px", border: "1px solid var(--line)", borderRadius: 9, cursor: "pointer" }}>
-                <input type="checkbox" checked={on} disabled={gate.locked} title={gate.title} onChange={() => toggle(mod)} /><span style={{ flex: 1, fontSize: 13 }}>{mod}</span>
-                {inPlan ? <Chip cls="neutral">In plan</Chip> : on ? <Chip cls="info">Add-on</Chip> : <span style={{ fontSize: 11.5, color: "var(--faint)" }}>Available</span>}
-              </label>
+              <div key={mod} style={{ borderBottom: "1px solid var(--line)" }}>
+                <Switch id={`ent-${i}`} label={mod} checked={on} disabled={gate.locked} onChange={() => toggle(mod)} hint={inPlan ? `In ${c.plan} plan` : on ? "Add-on, chargeable" : "Available as a chargeable add-on"} />
+              </div>
             );
           })}
         </div>

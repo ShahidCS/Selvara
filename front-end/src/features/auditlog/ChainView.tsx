@@ -3,17 +3,20 @@ import { WS_AUDIT, wsLastHash } from "@/lib/audit";
 import { API_ON } from "@/lib/rbac";
 import { DEMO_HASH_NOTE, linkOk } from "@/features/auditlog/services/auditlog";
 
+/** Hashes in the links table: 8 characters (the full value is in the cell's title). */
+const short = (h: string) => (h && h.length > 8 ? h.slice(0, 8) + "…" : h);
+
 /** Prototype: wsChainView. The algorithm row says FNV-1a (the source said "SHA-256 (demo)", which was inaccurate; see checklist). */
 export function ChainView({ ok, onVerify, can }: { ok: boolean; onVerify: () => void; can: boolean }) {
   const genesis = WS_AUDIT.length ? (API_ON ? WS_AUDIT[0].prev.slice(0, 16) + "…" : WS_AUDIT[0].prev) : "—";
   return (
-    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
-      <div className="card" style={{ boxShadow: "none", background: ok ? "var(--accent-weak)" : "var(--warn-bg)", borderColor: "transparent" }}>
-        <div className="c-body" style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <Icon name={ok ? "check" : "alert"} />
-          <div style={{ flex: "1 1 auto" }}>
-            <div style={{ fontWeight: 600, fontSize: 15 }} role="status">{ok ? "Chain intact" : "Chain broken — tampering detected"}</div>
-            <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{WS_AUDIT.length} entries sealed. Anchored head: <span className="num">{wsLastHash()}</span></div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div className="card" style={{ boxShadow: "none", background: ok ? "var(--ok-bg)" : "var(--bad-bg)", borderColor: "transparent" }}>
+        <div className="c-body" style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
+          <Icon name={ok ? "check" : "alert"} style={{ color: ok ? "var(--ok-ink)" : "var(--bad-ink)" }} />
+          <div style={{ flex: "1 1 240px", minWidth: 0 }}>
+            <div style={{ fontWeight: 600, fontSize: 15, color: ok ? "var(--ok-ink)" : "var(--bad-ink)" }} role="status">{ok ? "Chain intact" : "Chain broken — tampering detected"}</div>
+            <div style={{ fontSize: 12.5, color: "var(--ink-2)", overflowWrap: "anywhere" }}>{WS_AUDIT.length} entries sealed. Anchored head: <span className="num">{wsLastHash()}</span></div>
           </div>
           <button className="btn btn-primary sm" disabled={!can} onClick={onVerify}><Icon name="check" />Verify chain</button>
         </div>
@@ -33,13 +36,14 @@ export function ChainView({ ok, onVerify, can }: { ok: boolean; onVerify: () => 
       </div>
       <div className="card"><div className="c-head"><h3>Chain links</h3><span className="tag" style={{ marginLeft: "auto" }}>{WS_AUDIT.length} entries</span></div>
         <div className="c-body flush scroll" style={{ padding: 0 }}>
-          <Table cols={[{ t: "#" }, { t: "Time" }, { t: "Actor" }, { t: "Action" }, { t: "Target" }, { t: "Prev hash" }, { t: "Entry hash" }, { t: "Link" }]} minw={1060}>
+          <Table cols={[{ t: "#" }, { t: "Link" }, { t: "Time" }, { t: "Actor" }, { t: "Action" }, { t: "Target" }, { t: "Prev hash" }, { t: "Entry hash" }]} minw={820}>
             {WS_AUDIT.map((l, i) => ({ l, i })).reverse().map(({ l, i }) => (
               <tr key={l.seq}>
-                <td className="num" style={{ color: "var(--muted)" }}>{l.seq}</td><td className="num" style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{l.at}</td>
-                <td className="strong">{l.actor}</td><td className="num">{l.action}</td><td>{l.target}</td>
-                <td className="num" style={{ color: "var(--muted)", fontSize: 11 }}>{API_ON ? l.prev.slice(0, 12) + "…" : l.prev}</td><td className="num" style={{ fontSize: 11 }}>{API_ON ? l.hash.slice(0, 12) + "…" : l.hash}</td>
+                <td className="num" style={{ color: "var(--muted)" }}>{l.seq}</td>
                 <td>{linkOk(l, i) ? <Chip cls="ok" icon="check">Sealed</Chip> : <Chip cls="bad" icon="x">Broken</Chip>}</td>
+                <td className="num" style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{l.at}</td>
+                <td className="strong" style={{ whiteSpace: "nowrap" }}>{l.actor}</td><td className="num">{l.action}</td><td>{l.target}</td>
+                <td className="num" title={l.prev} style={{ color: "var(--muted)", fontSize: 11 }}>{short(l.prev)}</td><td className="num" title={l.hash} style={{ fontSize: 11 }}>{short(l.hash)}</td>
               </tr>
             ))}
           </Table>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { useLayer } from "@/hooks/useLayer";
 import { SOD } from "@/lib/sod";
-import { sodMessage } from "@/lib/elevation";
+import { ELEV_REASON_MIN, sodMessage } from "@/lib/elevation";
 import { money } from "@/lib/format";
 import { ReasonTicket, reasonTicketOk } from "@/components/kit/admin/ReasonTicket";
 import { useGate } from "@/components/kit/admin/ElevateGate";
@@ -57,7 +57,7 @@ export function IssueInvoicesBody({ close }: { close: () => void }) {
   };
   return (
     <>
-      <p style={{ margin: "0 0 10px" }}>Generate this period&apos;s invoices for {due.length} active customer(s). Amounts use each customer&apos;s plan, currency and the applied tax rate.</p>
+      <p style={{ margin: "0 0 10px" }}>Generate this period&apos;s invoices for {due.length} {due.length === 1 ? "customer" : "customers"} due an invoice. Amounts use each customer&apos;s plan, currency and the applied tax rate.</p>
       <div className="tbl-wrap"><table className="tbl"><thead><tr><th scope="col">Customer</th><th scope="col">Plan</th><th scope="col">Currency</th></tr></thead>
         <tbody>{due.slice(0, 8).map((c) => <tr key={c.id}><td className="strong">{c.name}</td><td>{c.plan}</td><td>{c.currency}</td></tr>)}</tbody></table></div>
       <p className="field help" style={{ marginTop: 8 }}>Synthetic demo run. No real invoices are sent.</p>
@@ -80,6 +80,8 @@ export function FinanceForm({ cid, invId, kind: k0, close }: { cid: string; invI
   const second = svc.needsSecondApprover(kind, usd);
   const kinds = svc.FINANCE_KINDS.filter((x) => (iv.status === "Past due" ? x !== "refund" : iv.status === "Paid" ? x === "credit" || x === "refund" : x === "credit") || x === k0);
   const pick = (x: svc.FinanceKind) => { setKind(x); setAmt(x === "markpaid" || x === "writeoff" ? String(total) : ""); };
+  // The reason the submit button is disabled, in words (a disabled button's tooltip is not reachable by keyboard or touch).
+  const why = gate.locked ? "Elevate to make changes: this needs an active elevated session." : !(amount > 0) ? "Enter an amount greater than 0." : !reasonTicketOk(reason, ticket) ? `Enter a reason of at least ${ELEV_REASON_MIN} characters and a ticket reference such as FIN-1234.` : "";
   const go = async () => {
     try { const r = await svc.financeRequest({ kind, cid, invId, amount, reason, ticket }); close(); L.toast(r.message); }
     catch (e) { L.toast(sodMessage(e, "Could not complete the request"), false); }
@@ -88,10 +90,14 @@ export function FinanceForm({ cid, invId, kind: k0, close }: { cid: string; invI
     <>
       <p style={{ margin: "0 0 10px" }}>{iv.id}, {c.name}. Invoice total {money(total, cur)}, status {iv.status}.</p>
       <div className="field"><label htmlFor="fKind">Action</label><select className="select" id="fKind" value={kind} onChange={(e) => pick(e.target.value as svc.FinanceKind)}>{kinds.map((x) => <option key={x} value={x}>{svc.FINANCE_LABEL[x]}</option>)}</select></div>
-      <div className="field" style={{ marginTop: 12 }}><label htmlFor="fAmt">Amount ({cur})</label><input className="input" id="fAmt" type="number" min={0} step="0.01" inputMode="decimal" readOnly={full} value={amt} onChange={(e) => setAmt(e.target.value)} /></div>
+      <div className="field" style={{ marginTop: 12 }}><label htmlFor="fAmt">Amount ({cur})</label>{full
+        ? <input className="input num" id="fAmt" type="text" readOnly aria-describedby="fAmtH" value={money(total, cur)} />
+        : <input className="input" id="fAmt" type="number" min={0} step="0.01" inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} />}
+        {full ? <span className="help" id="fAmtH">The full invoice total. It cannot be changed for this action.</span> : null}</div>
       <p className="field help" role="status">{second ? (kind === "writeoff" ? "Write-offs always need a second elevated super admin to approve." : usd === null ? "No applied exchange rate for " + cur + ": a second elevated super admin must approve." : `About ${money(usd, "USD")}, above USD ${SOD.FINANCE_DUAL_USD}: a second elevated super admin must approve.`) : `Within USD ${SOD.FINANCE_DUAL_USD}: completed now by you and audited with the ticket.`}</p>
       <ReasonTicket p="f" reason={reason} setReason={setReason} ticket={ticket} setTicket={setTicket} />
-      <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={go} disabled={gate.locked || !reasonTicketOk(reason, ticket) || !(amount > 0)} title={gate.title}>{second ? "Send for approval" : "Apply"}</button></LayerFoot>
+      {why ? <p className="field help" id="fWhy" style={{ margin: "10px 0 0" }}>{why}</p> : null}
+      <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={go} disabled={!!why} aria-describedby={why ? "fWhy" : undefined} title={gate.title}>{second ? "Send for approval" : "Apply"}</button></LayerFoot>
     </>
   );
 }

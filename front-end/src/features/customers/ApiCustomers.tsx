@@ -61,7 +61,7 @@ function Companies({ s }: { s: ElevationState }) {
     <>
       <CreateForm locked={s.locked} />
       {err ? <p role="alert" style={{ color: "var(--bad-ink)" }}>{err}</p> : null}
-      {rows ? <DataTable<svc.PlatformCompany> id="platform-companies-api" label="Companies" rows={rows} rowKey={(c) => c.id} columns={cols} searchText={(c) => `${c.name} ${c.ref} ${c.status}`}
+      {rows ? <DataTable<svc.PlatformCompany> id="platform-companies-api" label="Companies" rows={rows} rowKey={(c) => c.id} rowLabel={(c) => c.name} columns={cols} searchText={(c) => `${c.name} ${c.ref} ${c.status}`}
         filters={[{ key: "status", label: "Status", options: ["Active", "Suspended", "Closed"], get: (c) => c.status }]} exportName="companies" />
         : err ? null : <p style={{ color: "var(--muted)" }}>Loading companies…</p>}
     </>

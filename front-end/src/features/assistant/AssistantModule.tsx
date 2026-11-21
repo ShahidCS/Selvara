@@ -29,9 +29,9 @@ function AssistantViews() {
   return (
     <Page mod="assistant" acts={acts}>
       <div className="card" style={{ flex: "1 1 auto" }}>
-        <div className="c-head">
-          <div className="seg" role="tablist">
-            {nav.items.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}
+        <div className="c-head" style={{ padding: "0 8px" }}>
+          <div className="tabs" role="tablist" aria-label="Assistant views">
+            {nav.items.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}
           </div>
         </div>
         <div className="c-body scroll" id="asstBody" ref={bodyRef}>

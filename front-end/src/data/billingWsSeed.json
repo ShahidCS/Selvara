@@ -3,8 +3,8 @@
   "plan": "Enterprise",
   "cycle": "Annual",
   "seatsUsed": 24,
-  "seatLimit": 30,
-  "amount": 48000,
+  "seatLimit": 100,
+  "amount": 117600,
   "nextInvoice": "01 Jan 2027",
   "payment": {
    "brand": "Visa",
@@ -16,7 +16,7 @@
    {
     "k": "Seats",
     "used": 24,
-    "limit": 30,
+    "limit": 100,
     "unit": ""
    },
    {

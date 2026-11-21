@@ -27,7 +27,7 @@ const bandTint = (col: string, p: number) => `color-mix(in srgb, ${col} ${p}%, v
 const bandText = (col: string) => `color-mix(in srgb, ${col} 50%, var(--ink))`;
 function ScoreChip({ score }: { score: number }) {
   const b = rband(score);
-  return <span className="chip" style={{ background: bandTint(b.col, 15), color: bandText(b.col), border: `1px solid ${bandTint(b.col, 30)}`, fontVariantNumeric: "tabular-nums" }}>{score}</span>;
+  return <span className="chip" style={{ background: bandTint(b.col, 15), color: bandText(b.col), border: `1px solid ${bandTint(b.col, 30)}`, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{score} {b.name}</span>;
 }
 
 function Stepper({ step }: { step: number }) {
@@ -109,12 +109,12 @@ export function ImportWizard({ L, onDone }: { L: LayerApi; onDone?: () => void }
   };
   const run = async () => {
     if (!parsed || busy.current) return;
-    if (!riskCanEdit()) { L.toast("You do not have permission to import risks"); return; }
+    if (!riskCanEdit()) { L.toast("You do not have permission to import risks", false); return; }
     busy.current = true;
     try {
       const { nNew, nUpd, staged, approvalId } = await commitRiskImport(parsed, fileName);
       L.closeLayer();
-      if (staged) L.toast("Import " + approvalId + " is waiting for approval by a second admin. No risk has been changed yet.");
+      if (staged) L.toast("Import " + approvalId + " is waiting for approval by a second admin. No risk has been changed yet.", "info");
       else L.toast("Imported " + nNew + " new" + (nUpd ? " and updated " + nUpd : "") + " risk" + (nNew + nUpd !== 1 ? "s" : ""));
       bumpData(); onDone?.();
     } catch (e) { busy.current = false; L.toast(e instanceof SodError ? e.message : "Import failed. Nothing was changed.", false); }

@@ -2,6 +2,8 @@ import icons from "@/data/icons.json";
 
 /** coolicons (MIT, Kryston Schwarze). Node format: [paintType, pathData]; 0=stroke, 1=stroke@.4, 2=fill, 3=fill@.2, 4=fill@.4 */
 type Node = [number, string];
+/* Kit glyphs worth knowing: `dot` is a solid circle (neutral status), `alert` the circled exclamation, `excl` the bare mark (inside a dot that is
+   already a circle), `blank` an empty slot (an unchecked menu option), plus `copy`, `print` and `unlock`. */
 const IP = icons as unknown as Record<string, Node[]>;
 export const iconNames = Object.keys(IP);
 

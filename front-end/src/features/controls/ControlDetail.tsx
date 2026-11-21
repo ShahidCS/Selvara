@@ -33,7 +33,7 @@ export function ControlDetail({ id }: { id: string }) {
 
   return (
     <Page title={c.title} sub={`${c.id}, ${c.domain}, owner ${c.owner}`} back={back} acts={<>
-      <StatusChip s={c.status} />{c.custom ? <span className="tag">Custom</span> : null}
+      {c.custom ? <span className="tag">Custom</span> : null}
       <button className="btn btn-secondary" {...dis(ticketWhy)} onClick={() => ctrlJira(L, id)}><Icon name="ext" />Create Tasklane ticket</button>
       <button className="btn btn-secondary" onClick={() => ctrlWorkpaper(L, id)}><Icon name="download" />Export workpaper</button>
       {API_ON ? <button className="btn btn-secondary" {...dis(mapWhy)} onClick={() => L.openModal(`Change owner, ${c.id}`, (close) => <OwnerForm id={c.id} current={c.ownerId} close={close} />)}><Icon name="user" />Change owner</button> : null}

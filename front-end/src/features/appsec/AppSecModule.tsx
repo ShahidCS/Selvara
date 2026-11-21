@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Empty, Page } from "@/components/ui";
+import { Empty, Icon, Page } from "@/components/ui";
 import { modAllowed } from "@/lib/rbac";
 import { useApp } from "@/lib/store";
 import spec from "@/features/appsec/data/appsecSpec.json";
@@ -39,22 +39,22 @@ export default function AppSecModule() {
     <Page mod="appsec">
       <div className="scroll" style={{ overflow: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
         <p className="sub" style={{ margin: 0 }}>{spec.intro}</p>
-        <div className="banner info" style={{ display: "block" }}>Specification text only. It describes what the server must enforce; nothing on this page changes behaviour or records evidence. Draft content that needs review by qualified security staff.</div>
-        <nav aria-label="Sections" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <div className="banner" role="note" style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--surface-2)", color: "var(--muted)" }}><Icon name="edit" aria-hidden="true" style={{ flex: "0 0 auto", width: 16, height: 16, marginTop: 1 }} /><span>Specification text only. It describes what the server must enforce; nothing on this page changes behaviour or records evidence. Draft content that needs review by qualified security staff.</span></div>
+        <nav aria-label="Sections" style={{ flex: "0 0 auto", display: "flex", flexWrap: "wrap", gap: 8 }}>
           {SECTIONS.map(([id, label]) => <button key={id} type="button" className="btn btn-secondary sm" onClick={() => jump(id)}>{label}</button>)}
         </nav>
 
-        <section className="card" id="appsec-core" tabIndex={-1} aria-labelledby="appsec-core-h"><div className="c-body" tabIndex={0}>
+        <section className="card" style={{ flex: "0 0 auto" }} id="appsec-core" tabIndex={-1} aria-labelledby="appsec-core-h"><div className="c-body" tabIndex={0}>
           <h2 id="appsec-core-h" style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>{spec.coreRule.heading}</h2>
           <p style={{ margin: "6px 0 0", color: "var(--ink-2)" }}>{spec.coreRule.body}</p>
         </div></section>
 
-        <section className="card" id="appsec-responses" tabIndex={-1} aria-labelledby="appsec-responses-h"><div className="c-body">
+        <section className="card" style={{ flex: "0 0 auto" }} id="appsec-responses" tabIndex={-1} aria-labelledby="appsec-responses-h"><div className="c-body">
           <div id="appsec-responses-h">{secHead("responses", "What a response may contain")}</div>
           <ResponseCompare bad={spec.badResponse} good={spec.goodResponse} neverSend={spec.neverSend} />
         </div></section>
 
-        <section id="appsec-controls" tabIndex={-1} aria-labelledby="appsec-controls-h" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <section id="appsec-controls" tabIndex={-1} aria-labelledby="appsec-controls-h" style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", gap: 10 }}>
           <div id="appsec-controls-h">{secHead("controls", "Control groups")}</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
             <label className="field" style={{ flex: "1 1 260px", margin: 0 }}><span className="flab">Search controls</span>
@@ -67,17 +67,17 @@ export default function AppSecModule() {
             list.map(({ g, n }) => <ControlGroup key={g.id} g={g} n={n} open={!!open[g.id] || !!ql} onToggle={() => setOpen({ ...open, [g.id]: !open[g.id] })} />)}
         </section>
 
-        <section className="card" id="appsec-limits" tabIndex={-1} aria-labelledby="appsec-limits-h"><div className="c-body" tabIndex={0}>
+        <section className="card" style={{ flex: "0 0 auto" }} id="appsec-limits" tabIndex={-1} aria-labelledby="appsec-limits-h"><div className="c-body" tabIndex={0}>
           <div id="appsec-limits-h">{secHead("limits", "Rate limits and lockout (starting values)", spec.rateLimitsIntro)}</div>
           <RateLimitTable rows={spec.rateLimits} />
         </div></section>
 
-        <section className="card" id="appsec-matrix" tabIndex={-1} aria-labelledby="appsec-matrix-h"><div className="c-body" tabIndex={0}>
+        <section className="card" style={{ flex: "0 0 auto" }} id="appsec-matrix" tabIndex={-1} aria-labelledby="appsec-matrix-h"><div className="c-body" tabIndex={0}>
           <div id="appsec-matrix-h">{secHead("matrix", "Server-side permission matrix", spec.matrixIntro)}</div>
           <PermissionMatrix roles={spec.matrixRoles} rows={spec.matrix} />
         </div></section>
 
-        <section className="card" id="appsec-gate" tabIndex={-1} aria-labelledby="appsec-gate-h"><div className="c-body">
+        <section className="card" style={{ flex: "0 0 auto" }} id="appsec-gate" tabIndex={-1} aria-labelledby="appsec-gate-h"><div className="c-body">
           <div id="appsec-gate-h">{secHead("gate", "Release gate: evidence required before go-live")}</div>
           <ReleaseGate items={spec.releaseGate} />
         </div></section>

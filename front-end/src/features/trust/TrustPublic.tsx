@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Chip, Icon, Page, StatusChip, Table } from "@/components/ui";
+import { AIPanel, Chip, FormMessage, Icon, Page, StatusChip, Table } from "@/components/ui";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
 import { getMe, wsLog } from "@/lib/audit";
@@ -19,7 +19,7 @@ const LIVE_CTRLS: [string, string][] = [["Access control", "Pass"], ["Encryption
 /** Public Trust Center page (source trustPublicView, lines 3411-3426). Visitors/vendors always land here; internal roles can preview it. */
 export default function TrustPublic({ L, manage, back }: { L: LayerApi; manage: boolean; back: () => void }) {
   useData();
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(""); const [qErr, setQErr] = useState("");
   const [shown, setShown] = useState<{ ans: boolean; reply: string } | null>(null);
   const pub = useSyncExternalStore(g4Meta.subscribe, () => g4Meta.get().trustPublic, () => g4Meta.get().trustPublic);
   /* production: the company's own name, control status and access from the server; the demonstration's fixed texts otherwise */
@@ -31,7 +31,7 @@ export default function TrustPublic({ L, manage, back }: { L: LayerApi; manage: 
 
   const ask = async () => {
     const text = clampText(q, 1000);
-    if (!text) { L.toast("Enter a question first"); return; }
+    if (!text) { setQErr("Enter a question first."); document.getElementById("tq")?.focus(); return; }
     // source: ME.email was never set on the personas, so the domain is "anonymous"
     const em = (getMe() as { email?: string }).email;
     const dom = (em && em.split("@")[1]) || "anonymous";
@@ -44,11 +44,9 @@ export default function TrustPublic({ L, manage, back }: { L: LayerApi; manage: 
   };
 
   return (
-    <Page mod="trust" acts={manage ? <button className="btn btn-secondary" onClick={back}><Icon name="back" />Back to admin</button> : undefined}>
+    <Page mod="trust" title={`${company} Trust Center`} sub="Security, privacy and compliance, in one place" acts={manage ? <button className="btn btn-secondary" onClick={back}><Icon name="back" />Back to admin</button> : undefined}>
       <div className="scroll" style={{ overflow: "auto" }}><div style={{ maxWidth: 860, margin: "0 auto" }}>
-        <div className="card" style={{ background: "var(--accent-weak)", borderColor: "transparent", marginBottom: 14 }}><div className="c-body" style={{ padding: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span className="avatar" style={{ background: "var(--accent)", color: "var(--surface)" }}>{company.charAt(0)}</span><div><div style={{ fontSize: 18, fontWeight: 700 }}>{company} Trust Center</div><div style={{ fontSize: 12.5, color: "var(--muted)" }}>Security, privacy and compliance, in one place</div></div></div>
-        </div></div>
+        {manage ? <p className="field help" style={{ margin: "0 0 14px" }}>Preview: this is the page your customers see.</p> : null}
         <div className="split" style={{ gridTemplateColumns: "1fr 1fr", marginBottom: 14 }}>
           <div className="card"><div className="c-head"><h3>Your access</h3></div><div className="c-body">
             <p className="field help" style={{ margin: "0 0 10px" }}>{!API_ON ? "You are viewing the public page. Accept the NDA to request private documents such as the SOC 2 report."
@@ -75,7 +73,7 @@ export default function TrustPublic({ L, manage, back }: { L: LayerApi; manage: 
                 <td className="r">{t.access === "Public"
                   ? <button className="btn btn-ghost sm" onClick={() => view(i)}><Icon name="ext" />View</button>
                   : API_ON && acct?.access.includes(t.name) ? <button className="btn btn-ghost sm" onClick={() => view(i)}><Icon name="ext" />Open</button>
-                  : <button className="btn btn-ghost sm" onClick={() => L.openModal("Request access, " + t.name, <RequestAccessForm i={i} L={L} />)}><Icon name="ext" />Request</button>}</td>
+                  : <button className="btn btn-ghost sm" onClick={() => L.openModal("Request access, " + t.name, <RequestAccessForm i={i} L={L} />)}><Icon name="access" />Request</button>}</td>
               </tr>
             ))}
           </Table>
@@ -97,16 +95,20 @@ export default function TrustPublic({ L, manage, back }: { L: LayerApi; manage: 
         </div></div>
         <div className="card"><div className="c-head"><h3>Ask a question</h3></div><div className="c-body">
           {TRUST.chatbot ? <p className="field help" style={{ margin: "0 0 8px" }}>Answered instantly from our published FAQ and verified answer library. Anything it can’t answer is sent to the security team.</p> : null}
-          <div className="field"><label htmlFor="tq">Your question</label><textarea className="input" id="tq" rows={2} maxLength={1000} style={{ resize: "vertical" }} placeholder="Ask about our security posture…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+          <div className="field"><label htmlFor="tq">Your question</label><textarea className="input" id="tq" rows={2} maxLength={1000} style={{ resize: "vertical" }} placeholder="Ask about our security posture…" value={q} onChange={(e) => { setQ(e.target.value); setQErr(""); }} aria-invalid={!!qErr} aria-describedby={qErr ? "tq-err" : undefined} />{qErr ? <FormMessage id="tq-err">{qErr}</FormMessage> : null}</div>
           <button className="btn btn-primary sm" onClick={ask}><Icon name="assistant" />{TRUST.chatbot ? "Ask the assistant" : "Ask"}</button>
           <div id="tq-ans" style={{ marginTop: 12 }} aria-live="polite">
-            {shown ? (
+            {shown ? (shown.ans ? (
+              <AIPanel source="Trust Center assistant" meta="From published material" label="Assistant answer">
+                <p style={{ margin: "6px 0 0", fontSize: 13.5 }}>{shown.reply}</p>
+                <p style={{ margin: "6px 0 0", fontSize: 11.5, color: "var(--muted)" }}>For anything binding, request documents under NDA.</p>
+              </AIPanel>
+            ) : (
               <div className="card" style={{ boxShadow: "none", background: "var(--surface-2)" }}><div className="c-body" style={{ padding: "12px 14px" }}>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>{shown.ans ? "Assistant answer" : "Forwarded to the security team"}</div>
-                <div style={{ fontSize: 13.5 }}><Icon name="assistant" /> {shown.reply}</div>
-                {shown.ans ? <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6 }}>Answered from published material. For anything binding, request documents under NDA.</div> : null}
+                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>Forwarded to the security team</div>
+                <div style={{ fontSize: 13.5 }}>{shown.reply}</div>
               </div></div>
-            ) : null}
+            )) : null}
           </div>
         </div></div>
       </div></div>

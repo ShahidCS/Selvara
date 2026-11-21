@@ -7,12 +7,12 @@ export interface Group { id: string; title: string; threat: string; controls: st
 export function ControlGroup({ g, n, open, onToggle }: { g: Group; n: number; open: boolean; onToggle: () => void }) {
   const bid = useId();
   return (
-    <section className="card" id={`appsec-${g.id}`} aria-labelledby={`${bid}-h`}>
+    <section className="card" style={{ flex: "0 0 auto" }} id={`appsec-${g.id}`} aria-labelledby={`${bid}-h`}>
       <h3 id={`${bid}-h`} style={{ margin: 0 }}>
         <button type="button" aria-expanded={open} aria-controls={bid} onClick={onToggle}
           style={{ all: "unset", boxSizing: "border-box", width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", cursor: "pointer", font: "inherit", fontWeight: 600, color: "var(--ink)" }}>
           <span className="tag" aria-hidden="true">{n}</span>
-          <span style={{ flex: 1 }}>{n}. {g.title}</span>
+          <span style={{ flex: 1 }}><span className="vh">{n}. </span>{g.title}</span>
           <span aria-hidden="true" style={{ display: "inline-flex", transform: open ? "rotate(90deg)" : "none" }}><Icon name="chevron" /></span>
         </button>
       </h3>

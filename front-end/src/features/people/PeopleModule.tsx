@@ -1,13 +1,13 @@
 import { API_ON } from "@/lib/rbac";
 import { ModuleTip } from "@/components/kit/ModuleTip";
-import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn } from "@/components/ui";
+import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData, useModState } from "@/lib/store";
 import { canManagePeople } from "@/services/people";
 import { GrantsTable } from "@/features/access";
 import { useGo, useRoute } from "@/lib/route";
 import { ContractorFormPage } from "./ContractorFormPage";
-import { PersonDetail } from "./PersonDetail";
+import { DeviceChip, PersonDetail } from "./PersonDetail";
 import { useResetMfa } from "./actions";
 import { PendingApprovals } from "@/features/mfa";
 import { KINDS } from "@/services/people";
@@ -35,10 +35,10 @@ function PeopleList() {
     { key: "name", header: "Name", value: (p) => p.name, locked: true, render: (p) => <span className="strong">{p.name}</span> },
     { key: "role", header: "Role", value: (p) => p.role, render: (p) => p.role },
     { key: "dept", header: "Department", value: (p) => p.dept, render: (p) => p.dept },
-    { key: "device", header: "Device", value: (p) => p.device, render: (p) => p.device === "Not connected" ? <span style={{ color: "var(--muted)", fontSize: 12 }}>Not connected</span> : <><StatusChip s={p.device === "Compliant" ? "OK" : p.device === "At risk" ? "Needs evidence" : "Open"} /> <span style={{ color: "var(--muted)", fontSize: 12 }}>{p.device}</span></> },
+    { key: "device", header: "Device", value: (p) => p.device, render: (p) => p.device === "Not connected" ? <span style={{ color: "var(--muted)", fontSize: 12 }}>Not connected</span> : <DeviceChip d={p.device} /> },
     { key: "mfa", header: "MFA", value: (p) => (p.mfa ? "Enrolled" : "Not enrolled"), render: (p) => (p.mfa ? <Chip cls="ok" icon="check">Enrolled</Chip> : <Chip cls="neutral" icon="dot">Not enrolled</Chip>) },
     { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (p) => (canAct ? (
-      <button className="btn btn-ghost sm" disabled={!p.mfa || !!sodReason("self-service MFA reset is not allowed, ask another admin", p.name)} title={sodReason("self-service MFA reset is not allowed, ask another admin", p.name) || undefined} aria-label={`Reset MFA for ${p.name}`} onClick={() => resetMfa(p.id)}><Icon name="refresh" />Reset MFA</button>
+      <button className="btn btn-ghost sm" disabled={!p.mfa || !!sodReason("self-service MFA reset is not allowed, ask another admin", p.name)} title={sodReason("self-service MFA reset is not allowed, ask another admin", p.name) || (p.mfa ? undefined : "Not enrolled in MFA, so there is nothing to reset.")} aria-label={`Reset MFA for ${p.name}`} onClick={() => resetMfa(p.id)}><Icon name="refresh" />Reset MFA</button>
     ) : null) },
   ];
   const noDevices = DATA.people.every((p) => p.device === "Not connected"); // production before a device integration: nothing to score
@@ -54,7 +54,7 @@ function PeopleList() {
       </KpiStrip>
       <PendingApprovals kinds={KINDS} title="Pending approvals (MFA reset, offboarding)" subjectLabel="Person" />
       <div className="card" style={{ flex: "1 1 auto" }}>
-        <div className="c-head" style={{ padding: "0 8px", gap: 8 }}>
+        <div className="c-head" style={{ padding: "0 8px", gap: 8, flexWrap: "wrap" }}>
           <div className="tabs" role="tablist">
             <button className="tab" role="tab" aria-selected={view === "People"} onClick={() => setV("People")}>People &amp; devices</button>
             <button className="tab" role="tab" aria-selected={view === "Access"} onClick={() => setV("Access")}>Access grants</button>

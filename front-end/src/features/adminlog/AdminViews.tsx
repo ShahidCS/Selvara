@@ -6,12 +6,12 @@ import { DEMO_HASH_NOTE, exportsRegister, linkOk } from "@/features/adminlog/ser
 export function AdminChainView({ ok, onVerify, can }: { ok: boolean; onVerify: () => void; can: boolean }) {
   return (
     <div style={{ padding: 16, maxWidth: 900 }}>
-      <div className="card" style={{ boxShadow: "none", background: ok ? "var(--accent-weak)" : "var(--warn-bg)", borderColor: "transparent", marginBottom: 14 }}>
-        <div className="c-body" style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <Icon name={ok ? "check" : "alert"} />
-          <div style={{ flex: "1 1 auto" }}>
-            <div style={{ fontWeight: 600, fontSize: 15 }} role="status">{ok ? "Chain intact" : "Chain broken — tampering detected"}</div>
-            <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{ADMIN_AUDIT.length} entries sealed. Anchored head: <span className="num">{lastHash()}</span></div>
+      <div className="card" style={{ boxShadow: "none", background: ok ? "var(--ok-bg)" : "var(--bad-bg)", borderColor: "transparent", marginBottom: 14 }}>
+        <div className="c-body" style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <Icon name={ok ? "check" : "alert"} style={{ color: ok ? "var(--ok-ink)" : "var(--bad-ink)", flex: "none" }} />
+          <div style={{ flex: "1 1 240px", minWidth: 0 }}>
+            <div style={{ fontWeight: 600, fontSize: 15, color: ok ? "var(--ok-ink)" : "var(--bad-ink)" }} role="status">{ok ? "Chain intact" : "Chain broken — tampering detected"}</div>
+            <div style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{ADMIN_AUDIT.length} entries sealed. Anchored head: <span className="num">{lastHash()}</span></div>
           </div>
           <button className="btn btn-primary sm" disabled={!can} onClick={onVerify}><Icon name="check" />Verify chain</button>
         </div>

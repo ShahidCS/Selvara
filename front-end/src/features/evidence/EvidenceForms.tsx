@@ -35,6 +35,16 @@ export function DeleteEvidence({ id, close }: { id: string; close: () => void })
   );
 }
 
+/** Confirms removing one attachment, naming the file: removal is recorded in the evidence history and cannot be undone here. */
+export function ConfirmRemoveFile({ file, evidence, close, run }: { file: string; evidence: string; close: () => void; run: () => void }) {
+  return (
+    <>
+      <div><p style={{ margin: 0 }}>Remove <strong>{file}</strong> from {evidence}? The removal is recorded in the audit log. To restore the file you would need to attach it again.</p></div>
+      <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-danger" data-focus onClick={() => { close(); run(); }}>Remove file</button></LayerFoot>
+    </>
+  );
+}
+
 /** Reviewer decision on a pending deletion (approve = second admin) or on collected evidence (accept / reject). */
 export function ReasonModal({ title, label, min, confirm, danger, close, run }: { title?: string; label: string; min: number; confirm: string; danger?: boolean; close: () => void; run: (reason: string) => Promise<string> }) {
   const L = useLayer();

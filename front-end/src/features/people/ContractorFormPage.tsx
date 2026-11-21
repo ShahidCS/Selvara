@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Empty, FormActions, FormMessage, FormSection, Page } from "@/components/ui";
+import { Empty, FormActions, FormSection, Icon, Page } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
 import { wsLog } from "@/lib/audit";
@@ -22,7 +22,7 @@ export function ContractorFormPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const n = clampText(name, 100);
-    if (!n) { setErr("Name is required."); return; }
+    if (!n) { setErr("Name is required."); ref.current?.focus(); return; }
     setBusy(true);
     try {
       const r = await svc.addContractor({ name: n, role: clampText(job, 100), dept: clampText(dept, 100) });
@@ -34,13 +34,13 @@ export function ContractorFormPage() {
     <Page title="Add contractor" sub="They start with an unmanaged device and no MFA; set both up from their page." back={back}>
       <div className="scroll rec-scroll"><form className="rec-form" onSubmit={submit} noValidate>
         <FormSection n={1} title="Contractor" note="Who they are and where they work.">
-          <div className="field"><label htmlFor="pc-name">Full name <span style={{ color: "var(--bad-ink)" }}>*</span></label><input ref={ref} className="input" id="pc-name" maxLength={100} placeholder="e.g. Jordan Reyes" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={!!err} aria-describedby={err ? "pc-err" : undefined} /></div>
+          <div className="field"><label htmlFor="pc-name">Full name <span style={{ color: "var(--bad-ink)" }}>*</span></label><input ref={ref} className="input" id="pc-name" maxLength={100} placeholder="e.g. Jordan Reyes" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={!!err} aria-describedby={err ? "pc-err" : undefined} />
+            {err ? <p className="errmsg" id="pc-err" role="alert" style={{ margin: "4px 0 0" }}><Icon name="alert" /><span>{err}</span></p> : null}</div>
           <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div className="field"><label htmlFor="pc-role">Role</label><input className="input" id="pc-role" maxLength={100} placeholder="e.g. Security consultant" value={job} onChange={(e) => setJob(e.target.value)} /></div>
             <div className="field"><label htmlFor="pc-dept">Department</label><input className="input" id="pc-dept" maxLength={100} value={dept} onChange={(e) => setDept(e.target.value)} /></div>
           </div>
         </FormSection>
-        {err ? <FormMessage id="pc-err">{err}</FormMessage> : null}
         <FormActions><button type="button" className="btn btn-secondary" onClick={() => go("/ws/people")}>Cancel</button><button type="submit" className="btn btn-primary" disabled={busy}>Add contractor</button></FormActions>
       </form></div>
     </Page>

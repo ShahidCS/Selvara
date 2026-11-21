@@ -2,7 +2,7 @@
  * Authority actions (submit / approve / accept) are gated by riskCanEdit / riskCanApprove exactly as in the source; the services re-check
  * the role, but the real API must enforce it and must also enforce segregation of duties (see docs/guides/checklist/risk.md). */
 import { useState } from "react";
-import { Chip, Icon, StatusChip } from "@/components/ui";
+import { Chip, Icon, StatusChip, Stepper } from "@/components/ui";
 import { useLayer } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
@@ -18,7 +18,7 @@ import { useOpenControl } from "@/features/controls";
 import { attemptR } from "./util";
 import * as svc from "@/features/risk/services/risks";
 import { riskOpenActions } from "@/lib/risk";
-import { BandPill } from "./RiskBits";
+import { BandPill, Req } from "./RiskBits";
 import { AddActionForm, CancelActionForm } from "./RiskForms";
 import { K_SEL } from "./nav";
 
@@ -61,8 +61,8 @@ function AcceptForm({ id, needAuth, scRes, block, onDone }: { id: string; needAu
           <label className="field" style={{ flex: "1 1 160px", margin: 0 }}><span className="flab">Accepting authority</span><select className="select" id="rk-acc-auth" disabled={off} value={by} onChange={(e) => setBy(e.target.value)}>{AUTHS.map((a) => <option key={a}>{a}</option>)}</select></label>
         </div>
       )}
-      <label className="field" style={{ flex: "1 1 140px", margin: 0, maxWidth: 220 }}><span className="flab">Valid until (max 12 months)</span><input className="input" type="date" id="rk-acc-until" disabled={off} value={until} onChange={(e) => setUntil(e.target.value)} /></label>
-      <label className="field" style={{ margin: 0 }}><span className="flab">{board ? "Reason (at least 20 characters)" : "Rationale (required)"}</span><textarea className="input" id="rk-acc-why" rows={2} maxLength={1000} disabled={off} style={{ resize: "vertical" }} value={why} onChange={(e) => setWhy(e.target.value)} /></label>
+      <label className="field" style={{ flex: "0 0 auto", margin: 0, maxWidth: 220 }}><span className="flab">Valid until (max 12 months)</span><input className="input" type="date" id="rk-acc-until" disabled={off} value={until} onChange={(e) => setUntil(e.target.value)} /></label>
+      <label className="field" style={{ margin: 0 }}><span className="flab">{board ? <>Reason (at least 20 characters) <Req /></> : <>Rationale <Req /></>}</span><textarea className="input" id="rk-acc-why" rows={2} maxLength={1000} disabled={off} style={{ resize: "vertical" }} value={why} onChange={(e) => setWhy(e.target.value)} /></label>
       <label className="field" style={{ margin: 0 }}><span className="flab">Compensating controls</span><input className="input" id="rk-acc-comp" maxLength={500} disabled={off} value={comp} onChange={(e) => setComp(e.target.value)} /></label>
       <div id="rk-acc-err" role="alert" style={{ ...errStyle, display: err ? "block" : "none" }}>{err}</div>
       {block ? <div style={{ fontSize: 12, color: "var(--muted)" }}>{block}</div> : null}
@@ -231,13 +231,7 @@ export default function RiskDetail({ id }: { id: string }) {
           <button className="btn btn-ghost sm" onClick={closePanel}><Icon name="x" />Close</button>
         </div>
       </div>
-      <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", gap: 6 }} aria-label="Approval progress">
-        {flow.map((s, i) => (
-          <li key={s} aria-current={i === curStep ? "step" : undefined} style={{ flex: 1, textAlign: "center", padding: "7px 4px", borderRadius: 8, fontSize: 12, fontWeight: 600, ...(i <= curStep ? { background: "var(--accent-weak)", color: "var(--accent-ink)" } : { background: "var(--surface-2)", color: "var(--muted)" }) }}>
-            {i <= curStep ? <Icon name="check" /> : null} {s}
-          </li>
-        ))}
-      </ol>
+      <Stepper label="Approval progress" steps={flow.map((s) => ({ key: s, label: s }))} current={Math.max(0, curStep)} />
       {r.desc ? <p style={{ margin: 0, fontSize: 13, color: "var(--ink-2)" }}>{r.desc}</p> : null}
       {failing.length ? <div role="alert" style={{ background: "var(--bad-bg)", color: "var(--bad-ink)", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 600 }}>{failing.length} mapped control{failing.length > 1 ? "s are" : " is"} not passing ({failing.map((x: any) => x.cid).join(", ")}); current exposure relies on {failing.length > 1 ? "them" : "it"}.</div> : null}
       {checks.length ? <div style={{ background: "var(--warn-bg)", color: "var(--warn-ink)", borderRadius: 10, padding: "10px 14px", fontSize: 13 }}><strong>Data quality:</strong> {checks.join("; ")}.</div> : null}

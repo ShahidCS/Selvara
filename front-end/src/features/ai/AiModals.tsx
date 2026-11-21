@@ -23,7 +23,7 @@ const NotFound = () => <p className="field help">AI system not found.</p>;
 /** Wraps a service call: failures show the source toast, exceptions a generic one (ASVS 7.4.1). */
 function useAct() {
   const L = useLayer();
-  return (p: () => Promise<svc.Res<any>>, ok: (r: any) => void) => attempt(L, async () => { const r = await p(); if (!r.ok) { L.toast(r.msg); return; } ok(r); });
+  return (p: () => Promise<svc.Res<any>>, ok: (r: any) => void) => attempt(L, async () => { const r = await p(); if (!r.ok) { L.toast(r.msg, false); return; } ok(r); });
 }
 
 /* ---------- classify (tier). Defined in the source but no control calls it ---------- */
@@ -102,14 +102,16 @@ function EuForm({ id, reopen }: { id: string; reopen: Reopen }) {
   return (
     <>
       <div>
-        <p className="field help" style={{ margin: "0 0 12px" }}>Answer for this system. The result is a draft legal determination for a second person to confirm.</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <p className="field help" style={{ margin: 0 }}>Answer for this system. The result is a draft legal determination for a second person to confirm.</p>
         <div className="field"><label htmlFor="eqP">1. Does it use a prohibited practice? {hint("(Art. 5 — social scoring, manipulation, untargeted scraping, real-time remote biometric ID in public)")}</label><select className="select" id="eqP" value={P} onChange={(e) => setP(e.target.value)}><option value="no">No</option><option value="yes">Yes</option></select></div>
         <div className="field"><label htmlFor="eqH">2. Is it used in a high-risk area? {hint("(Annex III)")}</label><select className="select" id="eqH" value={H} onChange={(e) => setH(e.target.value)}><option value="no">No</option><option value="yes">Yes</option></select></div>
-        <div className="grid2" style={gridStyle(10)}>
+        {H === "yes" ? <div className="grid2" style={gridStyle(10)}>
           <div className="field"><label htmlFor="eqArea">Annex III area</label><select className="select" id="eqArea" value={area} onChange={(e) => setArea(e.target.value)}>{AI_ANNEX_AREAS.map((x) => <option key={x}>{x}</option>)}</select></div>
           <div className="field"><label htmlFor="eqRole">Our role</label><select className="select" id="eqRole" value={role} onChange={(e) => setRole(e.target.value)}>{AI_ROLES.map((x) => <option key={x}>{x}</option>)}</select></div>
-        </div>
+        </div> : null}
         <div className="field"><label htmlFor="eqT">3. Does it interact with people or generate content? {hint("(Art. 50 transparency)")}</label><select className="select" id="eqT" value={T} onChange={(e) => setT(e.target.value)}><option value="yes">Yes</option><option value="no">No</option></select></div>
+        </div>
       </div>
       <Foot L={L} label="Save draft classification" onSave={save} />
     </>
