@@ -28,7 +28,7 @@ export const EmailField = forwardRef<HTMLInputElement, { id: string; label: stri
         <div className="in-wrap">
           <input ref={ref} className={`input${st === "ok" ? " ok" : st === "bad" ? " bad" : ""}`} id={id} type="email" autoComplete="username" spellCheck={false} maxLength={254} placeholder="name@company.example" style={{ paddingRight: 38 }}
             value={value} onChange={(e) => { onTouch(); onChange(e.target.value); }} aria-invalid={st === "bad" ? true : undefined} aria-describedby={st === "bad" ? `${id}-err` : undefined} />
-          <span className={`in-valid${st === "none" ? "" : " " + st}`} aria-hidden="true">{st === "ok" ? <Icon name="check" /> : st === "bad" ? <Icon name="x" /> : null}</span>
+          <span className={`in-valid${st === "none" ? "" : " " + st}`} aria-hidden="true">{st === "ok" ? <Icon name="check" /> : st === "bad" ? <Icon name="alert" /> : null}</span>
         </div>
         <p className="field help in-err" id={`${id}-err`} role="alert" style={{ color: "var(--bad-ink)", display: st === "bad" ? "block" : "none", marginTop: 6 }}>{st === "bad" ? emailMessage(value) : ""}</p>
       </div>

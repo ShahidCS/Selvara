@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import Head from "next/head";
+import Link from "next/link";
 import { Chip, Icon, StatusChip } from "@/components/ui";
 import { ApiError, apiFetch, API_MODE } from "@/services/http";
 
@@ -31,7 +33,7 @@ export default function PublicTrustPage({ code }: { code: string }) {
   const say = (text: string, ok = true) => setNote({ text, ok });
   const act = async (fn: () => Promise<unknown>, done: string) => { try { await fn(); say(done); await reload(); } catch (e) { say(msg(e), false); } };
   const open = async (d: Doc) => { try { const r = await apiFetch<{ url: string }>(`${base}/documents/${encodeURIComponent(d.id)}/link`); window.open(r.url, "_blank", "noopener"); } catch (e) { say(msg(e), false); } };
-  if (API_MODE !== "http") return <Shell title="Trust Center"><Card title="Public Trust Center">This page is part of the production build. In this demonstration, preview the public page from Trust Center in the workspace.</Card></Shell>;
+  if (API_MODE !== "http") return <Shell title="Trust Center"><Card title="Public Trust Center"><p style={{ margin: 0 }}>This page is part of the production build. In this demonstration, preview the public page from Trust Center in the workspace.</p><p style={{ margin: 0, display: "flex", gap: 8, flexWrap: "wrap" }}><Link className="btn btn-primary sm" href="/ws/trust">Open Trust Center in the workspace</Link><Link className="btn btn-secondary sm" href="/login">Sign in</Link></p></Card></Shell>;
   if (state === "loading") return <Shell title="Trust Center"><p style={{ color: "var(--muted)" }}>Loading…</p></Shell>;
   if (state === "missing" || !v) return <Shell title="Trust Center"><Card title="This Trust Center is not public">Check the address, or ask your contact at the company for their Trust Center link.</Card></Shell>;
   const pending = (name: string) => v.visitor?.requests.find((r) => r.resource === name && r.status === "Pending");
@@ -78,6 +80,7 @@ export default function PublicTrustPage({ code }: { code: string }) {
 function Shell({ title, right, children }: { title: string; right?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div style={{ minHeight: "100%", background: "var(--bg)", color: "var(--ink)" }}>
+      <Head><title>{title}</title></Head>
       <header style={{ background: "var(--surface)", borderBottom: "1px solid var(--line)", padding: "14px 24px", display: "flex", gap: 12, justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}><div aria-hidden="true" style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent)", color: "var(--text-inverse)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="shieldcheck" /></div><h1 style={{ fontSize: 18, margin: 0 }}>{title}</h1></div>
         {right}

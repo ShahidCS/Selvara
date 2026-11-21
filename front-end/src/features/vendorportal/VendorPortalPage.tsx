@@ -11,7 +11,7 @@ import MfaStep from "./MfaStep";
 import Questionnaire from "./Questionnaire";
 import Clarification from "./Clarification";
 import { DeadState, DoneState } from "./EndStates";
-import { Toast } from "./parts";
+import { SecurityPanel, Toast, type VpToast, type VpTone } from "./parts";
 import ApiVendorPortal from "./ApiVendorPortal";
 
 type Step = "verify" | "otp" | "mfa" | "portal" | "clarify" | "done" | "dead";
@@ -19,16 +19,19 @@ const AUTHED: Step[] = ["portal", "clarify", "done"];
 const DEMO = API_MODE !== "http";
 const STAGES = [{ key: "verify", label: "Confirm email" }, { key: "otp", label: "Enter code" }, { key: "mfa", label: "Second factor" }, { key: "portal", label: "Questionnaire" }, { key: "done", label: "Submitted" }];
 /** Where each step sits in the five stages (a clarification round counts as the questionnaire; an expired link shows none). */
-const STAGE_AT: Partial<Record<Step, number>> = { verify: 0, otp: 1, mfa: 2, portal: 3, clarify: 3, done: 4 };
+const STAGE_AT: Partial<Record<Step, number>> = { verify: 0, otp: 1, mfa: 2, portal: 3, clarify: 3, done: STAGES.length }; // submitted: every stage reads Done
 
 /** External vendor assessment portal (board: vendor-assessment-portal). Standalone, no workspace role/RBAC, no audit-log import.
  *  Never logs, stores or echoes the email or code. All state is in memory. */
 /** Production (group 8b): the portal on the server, opened from the link in the vendor contact's email (ApiVendorPortal). */
 export default function VendorPortalPage() { return API_MODE === "http" ? <ApiVendorPortal /> : <VendorPortalDemo />; }
 function VendorPortalDemo() {
-  const [step, setStep] = useState<Step>("verify");
   const [masked, setMasked] = useState("");
-  const [toast, setToast] = useState("");
+  const [toast, setToastS] = useState<VpToast | null>(null);
+  const say = useCallback((msg: string, tone: VpTone = "info") => setToastS(msg ? { msg, tone } : null), []);
+  /** A new step starts clean: the message from the step before is dropped unless this move brings its own (A-28). */
+  const [step, setStepS] = useState<Step>("verify");
+  const setStep = useCallback((s: Step, msg?: string, tone: VpTone = "info") => { setStepS(s); setToastS(msg ? { msg, tone } : null); }, []);
   const [ref, setRef] = useState("");
   const [ver, setVer] = useState(1);
   const [base, setBase] = useState<ClarBase>({ notes: {}, files: {} });
@@ -36,7 +39,7 @@ function VendorPortalDemo() {
   const a = useAnswers();
   const authed = AUTHED.includes(step);
 
-  const signOut = useCallback((msg: string) => { setStep("verify"); setMasked(""); setToast(msg); }, []);
+  const signOut = useCallback((msg: string) => { setStep("verify", msg, "info"); setMasked(""); }, [setStep]);
 
   // 15-minute idle timeout: re-armed on activity, cleared on unmount / sign-out.
   useEffect(() => {
@@ -86,32 +89,32 @@ function VendorPortalDemo() {
     return { kind: "error", message: MSG.codeWrong };
   };
   const onEnrol = async (m: "passkey" | "totp") => {
-    try { const r = await svc.enrolSecondFactor(m); if (!r.ok) { setToast(MSG.generic); return; } } catch { setToast(MSG.generic); return; }
-    setStep("portal"); setToast("Second factor set up. You can now complete the questionnaire.");
+    try { const r = await svc.enrolSecondFactor(m); if (!r.ok) { say(MSG.generic, "bad"); return; } } catch { say(MSG.generic, "bad"); return; }
+    setStep("portal", "Second factor set up. You can now complete the questionnaire.", "ok");
   };
   const onSubmit = async () => {
     setBusy(true);
     try {
       const r = await svc.submit(draft());
-      if (!r.ok || !r.ref) setToast(MSG.generic); else { setRef(r.ref); setVer(r.ver ?? 1); setStep("done"); }
-    } catch { setToast(MSG.generic); }
+      if (!r.ok || !r.ref) say(MSG.generic, "bad"); else { setRef(r.ref); setVer(r.ver ?? 1); setStep("done"); }
+    } catch { say(MSG.generic, "bad"); }
     setBusy(false);
   };
   const simulateClarify = () => {
     const ids = QUESTIONS.filter((q) => CLARIFICATIONS[q.id]).map((q) => q.id);
     const b: ClarBase = { notes: {}, files: {} };
     ids.forEach((id) => { b.notes[id] = a.notes[id] || ""; b.files[id] = a.files[id] ? a.files[id].name : ""; });
-    setBase(b); setStep("clarify"); setToast(`${INVITE.customerName} requested clarification on ${ids.length} answers. You can change only those.`);
+    setBase(b); setStep("clarify", `${INVITE.customerName} requested clarification on ${ids.length} answers. You can change only those.`, "info");
   };
   const onSendClar = async () => {
     setBusy(true);
     try {
       const r = await svc.submitClarification({ ...draft(), ref, ver });
-      if (!r.ok) setToast(MSG.generic); else { const v = r.ver ?? ver + 1; setVer(v); setStep("done"); setToast(`Clarification sent as version ${v}.`); }
-    } catch { setToast(MSG.generic); }
+      if (!r.ok) say(MSG.generic, "bad"); else { const v = r.ver ?? ver + 1; setVer(v); setStep("done", `Clarification sent as version ${v}.`, "ok"); }
+    } catch { say(MSG.generic, "bad"); }
     setBusy(false);
   };
-  const restart = () => { svc.resetVendorDemo(); a.reset(); setStep("verify"); setMasked(""); setRef(""); setVer(1); setBase({ notes: {}, files: {} }); setToast(""); };
+  const restart = () => { svc.resetVendorDemo(); a.reset(); setStep("verify"); setMasked(""); setRef(""); setVer(1); setBase({ notes: {}, files: {} }); };
 
   return (
     <div style={{ minHeight: "100%", background: "var(--bg)", color: "var(--ink)" }}>
@@ -119,7 +122,7 @@ function VendorPortalDemo() {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div aria-hidden="true" style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent)", color: "var(--text-inverse)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="shieldcheck" /></div>
           <div>
-            <div style={{ fontWeight: 700 }}>Vendor assessment portal</div>
+            <div style={{ fontWeight: 600 }}>Vendor assessment portal</div>
             <div style={{ fontSize: 12, color: "var(--muted)" }}>Selvara · requested by {INVITE.customerName}</div>
           </div>
         </div>
@@ -133,25 +136,22 @@ function VendorPortalDemo() {
       <div style={{ padding: "28px 16px 48px", display: "flex", justifyContent: "center" }}>
         <div style={{ width: "100%", maxWidth: 1240, display: "flex", flexWrap: "wrap", gap: 20, alignItems: "flex-start" }}>
           <main style={{ flex: "999 1 640px", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
-            {step in STAGE_AT ? <Stepper label="Progress through the assessment" steps={STAGES} current={STAGE_AT[step] ?? 0} /> : null}
-            {toast ? <Toast msg={toast} onClose={() => setToast("")} /> : null}
+            {step in STAGE_AT ? <Stepper label="Progress through the assessment" steps={STAGES} current={STAGE_AT[step] ?? 0} futureLabel="Next" /> : null}
+            {toast ? <Toast msg={toast.msg} tone={toast.tone} onClose={() => setToastS(null)} /> : null}
             {step === "verify" && <VerifyEmail onVerify={onVerifyEmail} demoHint={DEMO ? invite.invitedEmail : undefined} />}
             {step === "otp" && <OtpStep masked={masked} onVerify={onVerifyCode} demoHint={DEMO} />}
             {step === "mfa" && <MfaStep onEnrol={onEnrol} />}
             {step === "dead" && <DeadState onRestart={restart} />}
-            {step === "portal" && <Questionnaire a={a} onSubmit={onSubmit} onToast={setToast} busy={busy} />}
-            {step === "clarify" && <Clarification a={a} base={base} refId={ref} ver={ver} onSend={onSendClar} onToast={setToast} busy={busy} />}
+            {step === "portal" && <Questionnaire a={a} onSubmit={onSubmit} onToast={say} busy={busy} />}
+            {step === "clarify" && <Clarification a={a} base={base} refId={ref} ver={ver} onSend={onSendClar} onToast={say} busy={busy} />}
             {step === "done" && <DoneState refId={ref} ver={ver} onSimulate={simulateClarify} onRestart={restart} />}
           </main>
           <aside aria-label="Access and security" style={{ flex: "1 1 300px", minWidth: 0, display: "flex", flexDirection: "column", gap: 14 }}>
             <div className="card" style={{ padding: "16px 18px", gap: 8 }}>
-              <div style={{ fontWeight: 700 }}>What you can see</div>
+              <div style={{ fontWeight: 600 }}>What you can see</div>
               <div style={{ fontSize: 13, color: "var(--ink-2)" }}>Only this questionnaire and the files you upload. You cannot see {INVITE.customerName}&apos;s data, other vendors or your organisation&apos;s risk rating. Once submitted, your answers can&apos;t be changed without a new request.</div>
             </div>
-            <div style={{ background: "var(--bg-inverse)", color: "var(--text-inverse)", borderRadius: "var(--radius-card)", padding: "16px 18px", display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ fontWeight: 700 }}>Portal security controls</div>
-              {CONTROLS.map((c) => <div key={c} style={{ display: "flex", gap: 8, fontSize: 13 }}><span aria-hidden="true" style={{ display: "inline-flex", marginTop: 2 }}><Icon name="check" /></span><span>{c}</span></div>)}
-            </div>
+            <SecurityPanel controls={CONTROLS} />
           </aside>
         </div>
       </div>

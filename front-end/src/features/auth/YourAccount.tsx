@@ -49,7 +49,7 @@ export function YourAccount() {
         </div>
       </section>
 
-      <section className="card" aria-labelledby="ya-sess"><div className="c-head"><h3 id="ya-sess">Active sessions</h3><div className="r"><span className="tag">{view.sessions.length}</span></div></div>
+      <section className="card" aria-labelledby="ya-sess"><div className="c-head"><h3 id="ya-sess">Active sessions</h3><div className="r"><span className="chip neutral num">{view.sessions.length}</span></div></div>
         <div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <ul style={{ listStyle: "none", margin: 0, padding: 0 }} aria-label="Active sessions">
             {view.sessions.map((x) => (

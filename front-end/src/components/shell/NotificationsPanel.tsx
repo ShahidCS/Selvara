@@ -65,7 +65,7 @@ function Matrix({ role, L }: { role: string; L: LayerApi }) {
         <fieldset key={c.id} className="nt-pref">
           <legend>{c.label}<span className="sw-hint">{c.help}</span></legend>
           {NOTIF_CHANNELS.map((ch) => (
-            <Switch key={ch.id} id={`np-${c.id}-${ch.id}`} label={ch.label} checked={isOn(role, c.id, ch.id)} disabled={isLocked(c.id, ch.id)} hint={isLocked(c.id, ch.id) ? "Always on, a pending decision is never hidden" : undefined} onChange={(v) => void flip(c.id, ch.id, v)} />
+            <Switch key={ch.id} id={`np-${c.id}-${ch.id}`} label={ch.label} checked={isOn(role, c.id, ch.id)} disabled={isLocked(c.id, ch.id)} hint={isLocked(c.id, ch.id) ? (c.id === "approvals" ? "Always on, a pending decision is never hidden" : "Always on, security alerts always reach the bell") : undefined} onChange={(v) => void flip(c.id, ch.id, v)} />
           ))}
         </fieldset>
       ))}
@@ -97,7 +97,7 @@ export function NotificationsBody({ space, go, close, L }: { space: "ws" | "admi
   if (prefs) {
     return (
       <div className="nt">
-        <div className="nt-bar"><h4 className="nt-g" style={{ margin: 0 }}>Notification settings</h4><button className="btn btn-ghost sm" onClick={() => setPrefs(false)}><Icon name="chevron" />Back to notifications</button></div>
+        <div className="nt-bar"><h4 className="nt-g" style={{ margin: 0 }}>Notification settings</h4><button className="btn btn-ghost sm" onClick={() => setPrefs(false)}><Icon name="back" />Back to notifications</button></div>
         {space === "ws" ? <Matrix role={role} L={L} /> : <p className="field help">Admin Console notices are not configurable.</p>}
       </div>
     );
@@ -131,8 +131,8 @@ export function NotificationsBody({ space, go, close, L }: { space: "ws" | "admi
                     <span className="nt-d">{n.detail}</span>
                     <span className={`chip ${TONE[n.tone]}`}><Icon name={n.tone === "info" ? "clock" : "alert"} />{TONE_LABEL[n.tone]}</span>
                   </span>
-                  {read.has(n.id) ? null : <span className="nt-dot" aria-label="Unread" />}
-                  <span className="nt-go">Review<Icon name="chevron" /></span>
+                  {read.has(n.id) ? null : <><span className="nt-dot" aria-hidden="true" /><span className="vh">Unread</span></>}
+                  <span className="nt-go"><span className="nt-go-t">Review</span><Icon name="chevron" /></span>
                 </button>
                 {n.approvalId ? <InlineDecision id={n.approvalId} title={n.title} L={L} /> : null}
               </li>

@@ -8,11 +8,11 @@ export default function MfaStep({ onEnrol }: { onEnrol: (method: "passkey" | "to
       <H1>Protect your access</H1>
       <Lead>Your answers and evidence are confidential, so a second factor is required before you can open the questionnaire. You will use it each time you return.</Lead>
       <button type="button" style={opt(true)} onClick={() => onEnrol("passkey")}>
-        <span style={{ fontWeight: 700 }}>Passkey or security key <span style={{ fontSize: 12, color: "var(--ok-ink)" }}>· recommended</span></span>
+        <span style={{ fontWeight: 600 }}>Passkey or security key <span style={{ fontSize: 12, color: "var(--ok-ink)" }}>· recommended</span></span>
         <span style={{ fontSize: 13, color: "var(--muted)" }}>Phishing-resistant; works with Face ID, Windows Hello or a FIDO2 key.</span>
       </button>
       <button type="button" style={opt(false)} onClick={() => onEnrol("totp")}>
-        <span style={{ fontWeight: 700 }}>Authenticator app</span>
+        <span style={{ fontWeight: 600 }}>Authenticator app</span>
         <span style={{ fontSize: 13, color: "var(--muted)" }}>6-digit codes from any TOTP app.</span>
       </button>
     </Section>

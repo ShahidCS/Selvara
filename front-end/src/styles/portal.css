@@ -299,6 +299,9 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 .input::placeholder{color:var(--faint)}
 .input[readonly]{background:var(--surface-2);color:var(--muted);cursor:default}
 .linkbtn{font:inherit;background:none;border:0;padding:0;cursor:pointer;color:var(--accent-ink)}
+/* a link inside running text needs a cue besides colour (WCAG 1.4.1) */
+.linkbtn.inline{text-decoration:underline;text-underline-offset:3px}
+.auth-card form>.field+.field,.auth-card form>.field+.in-wrap{margin-top:12px}
 .pw-wrap{position:relative}
 .pw-toggle{position:absolute;inset-inline-end:6px;top:50%;transform:translateY(-50%);width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:0;background:none;color:var(--muted);cursor:pointer;border-radius:6px}
 .pw-toggle:hover{color:var(--ink);background:var(--surface-2)}
@@ -324,11 +327,8 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 @keyframes authpop{0%{opacity:0;transform:scale(.3)}100%{opacity:1;transform:scale(1)}}
 .auth-h{font-size:16.5px;font-weight:600;letter-spacing:-.005em;margin:0 0 4px}
 .auth-method.sel{border-color:var(--ink);background:var(--surface-2);color:var(--ink)}
-#authBody .btn-primary{background:var(--ink);color:var(--surface);border-color:transparent;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
-#authBody .btn-primary:hover{background:var(--ink);opacity:.9}
-#authBody .btn-primary:active{opacity:.82}
+/* the /auth previews use the same tokens as the real sign-in page (brand primary, accent links); only the field spacing is set here */
 #authBody form>.field{margin-bottom:14px}
-#authBody .linkbtn{color:var(--authlink);font-weight:600}
 textarea.input{height:auto;padding:9px 11px;resize:vertical;min-height:72px}
 .field{display:flex;flex-direction:column;gap:5px}
 .field label{font-size:12.5px;font-weight:500;color:var(--ink-2)}
@@ -542,6 +542,7 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .sectitle{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:4px 0 8px}
 .hr{height:1px;background:var(--line);margin:14px 0}
 .tag{appearance:none;-webkit-appearance:none;font-size:11px;color:var(--muted);background:transparent;border:1px solid var(--line-2);border-radius:5px;padding:1px 6px;font-weight:500;white-space:nowrap;line-height:1.5}
+.tag svg{width:12px;height:12px;vertical-align:-2px;margin-inline-end:4px}
 /* interactive risk-id chips (only button.tag): give them a readable fill + brand hover, and stop native button chrome leaking through */
 button.tag{color:var(--ink-2);background:var(--surface-2);cursor:pointer;transition:background .15s var(--ease),color .15s var(--ease),border-color .15s var(--ease)}
 button.tag:hover{background:var(--accent-weak);color:var(--accent-ink);border-color:var(--accent-weak)}
@@ -744,6 +745,10 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .dt-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 14px}
 .dt-bar .fchip b{font-weight:600;color:var(--ink)}
 .dt-spacer{flex:1 1 auto}
+/* the row count and the Columns button stay together, on the same row, when the bar wraps on a phone */
+.dt-end{display:inline-flex;align-items:center;gap:8px;margin-inline-start:auto;white-space:nowrap}
+.tbl th.nw,.tbl td.nw{white-space:nowrap}
+.dt-tabs .tabs{max-width:100%;overflow-x:auto}
 .dt-sum{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .th-sort{display:inline-flex;align-items:center;gap:4px;border:0;background:none;padding:0;font:inherit;color:inherit;cursor:pointer;text-align:start}
 .th-sort:hover{color:var(--ink)}
@@ -889,6 +894,13 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .form-actions{display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;padding:12px 0;background:var(--bg)}
 .form-section-body{display:flex;flex-direction:column;gap:14px}
 .form-section-body .field,.form-section-body .help{margin:0}
-.nt-pref{border:1px solid var(--line);border-radius:var(--radius-card);padding:6px 14px 4px;margin:0 0 10px;min-inline-size:0}
-.nt-pref legend{font-weight:600;padding:0 6px;display:flex;flex-direction:column}
+.nt-pref{border:1px solid var(--line);border-radius:var(--radius-card);padding:12px 14px 4px;margin:0 0 10px;min-inline-size:0}
+/* the title and hint sit inside the box, above the switches (a legend on the border let the hint run over the top hairline) */
+.nt-pref legend{float:left;width:100%;font-weight:600;padding:0;margin:0 0 4px;display:flex;flex-direction:column;gap:2px}
+.nt-pref legend+*{clear:both}
+@media (max-width:480px){.drawer{width:100vw;border-left:0}.nt-go-t{display:none}}
 .nt-pref .sw-row{padding:6px 0}
+/* vendor portal: the folded "How this portal protects you" panel on the inverse surface */
+.vp-sec summary{list-style:none} .vp-sec summary::-webkit-details-marker{display:none}
+.vp-sec summary:focus-visible{outline-color:var(--ring-inverse)}
+.vp-sec .vp-sec-chev{margin-inline-start:auto;transition:transform var(--dur) var(--ease)} .vp-sec[open] .vp-sec-chev{transform:rotate(180deg)}

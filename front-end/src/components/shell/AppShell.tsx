@@ -89,6 +89,9 @@ function Frame({ children }: { children: ReactNode }) {
 
   if (!s.hydrated || !s.signedIn) return null;
   const known = !!TITLE[route.mod] || route.mod === "billing" || route.space === "auth";
+  // "Page not found" goes back to the role's own landing page (an Admin Console role cannot open the workspace overview)
+  const home = landingPath(s.role, route.space);
+  const homeLabel = (TITLE[home.split("/")[2] ?? ""] || ["your start page"])[0];
   const allowed = route.space === "auth" || (allowedSpaces(s.role).includes(route.space) && modAllowed(s.role, route.space, route.mod));
   return (
     <div id="app" className={`${s.collapsed ? "collapsed" : ""}${s.mobOpen ? " mobonly-open" : ""}`}>
@@ -97,12 +100,19 @@ function Frame({ children }: { children: ReactNode }) {
       <Topbar />
       <main id="content" tabIndex={-1}>
         {!known ? (
-          <div className="page"><Empty icon="alert" title="Page not found" action={<button className="btn btn-primary" onClick={() => go("/ws/overview")}>Back to Overview</button>}>That route doesn&apos;t exist or has moved.</Empty></div>
+          <div className="page"><Empty icon="alert" title="Page not found" action={<button className="btn btn-primary" onClick={() => go(home)}>Back to {homeLabel}</button>}>That route doesn&apos;t exist or has moved.</Empty></div>
         ) : s.hydrated && !allowed ? null : children}
       </main>
       <div id="scrim-sb" onClick={() => appStore.set({ mobOpen: false })} />
     </div>
   );
+}
+/** Standalone pages (sign-in, vendor portal, public Trust Center) follow the theme the person chose too, not only the device setting. */
+function StandaloneTheme() {
+  const theme = useApp((x) => x.theme);
+  useEffect(() => { if (!appStore.get().hydrated) loadPersisted(ROLES.map((r) => r.id)); }, []);
+  useEffect(() => { document.documentElement.setAttribute("data-theme", theme); }, [theme]);
+  return null;
 }
 /** Routes rendered WITHOUT the app chrome (external users have no workspace role, sidebar or role switcher). */
 const STANDALONE = ["/vendor-portal", "/login", "/trust"];
@@ -110,7 +120,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useRouter();
   if (STANDALONE.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
     // body is overflow:hidden in the portal CSS, so the standalone container scrolls itself
-    return <LayerProvider><div id="standalone" style={{ height: "100dvh", overflow: "auto", background: "var(--bg)" }}>{children}</div></LayerProvider>;
+    return <LayerProvider><StandaloneTheme /><div id="standalone" style={{ height: "100dvh", overflow: "auto", background: "var(--bg)" }}>{children}</div></LayerProvider>;
   }
   return <LayerProvider><Frame>{children}</Frame>{API_MODE === "http" ? <StepUpHost /> : null}</LayerProvider>;
 }

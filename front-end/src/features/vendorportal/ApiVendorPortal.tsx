@@ -3,7 +3,7 @@ import { Icon, Stepper } from "@/components/ui";
 import { ApiError, apiFetch, API_BASE } from "@/services/http";
 import VerifyEmail, { type StepOutcome } from "./VerifyEmail";
 import OtpStep from "./OtpStep";
-import { Toast } from "./parts";
+import { SecurityPanel, Toast, type VpToast, type VpTone } from "./parts";
 
 /* The standalone vendor assessment portal in production (programme group 8b): the vendor contact opens the link from their email, confirms
    the invited address, enters the code emailed to it, and answers in a short session of their own (server/vendorportal.ts). Everything is
@@ -16,7 +16,7 @@ interface Portal { id: string; customer: string; vendor: string; due: string; st
 type Step = "loading" | "verify" | "otp" | "portal" | "done" | "dead" | "nomail";
 const ANSWERS: [Answer, string][] = [["Y", "Yes"], ["P", "Partially"], ["N", "No"], ["NA", "Not applicable"]];
 const STAGES = [{ key: "verify", label: "Confirm email" }, { key: "otp", label: "Enter code" }, { key: "portal", label: "Questionnaire" }, { key: "done", label: "Submitted" }];
-const AT: Partial<Record<Step, number>> = { verify: 0, otp: 1, portal: 2, done: 3 };
+const AT: Partial<Record<Step, number>> = { verify: 0, otp: 1, portal: 2, done: STAGES.length }; // submitted: every stage reads Done
 const CONTROLS = [
   "A random link token, valid 30 days; a new link from your contact replaces it",
   "The email must match the invited contact; three other addresses end the link",
@@ -32,12 +32,15 @@ const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "P
 const msg = (e: unknown, f: string) => (e instanceof ApiError && e.status > 0 && e.status < 500 ? e.message : f);
 
 export default function ApiVendorPortal() {
-  const [step, setStep] = useState<Step>("loading"); const [toast, setToast] = useState("");
+  const [step, setStepS] = useState<Step>("loading"); const [toast, setToastS] = useState<VpToast | null>(null);
+  const setToast = useCallback((m: string, tone: VpTone = "info") => setToastS(m ? { msg: m, tone } : null), []);
+  /** A new step starts clean: the message from the step before is dropped unless this move brings its own (set after the move). */
+  const setStep = useCallback((s: Step) => { setStepS(s); setToastS(null); }, []);
   // the link's token, from the address fragment (read once; removed from the address bar below)
   const [token] = useState(() => (typeof window === "undefined" ? "" : /(?:^|[#&])t=([A-Za-z0-9_-]{20,100})/.exec(window.location.hash)?.[1] ?? "")); const [email, setEmail] = useState(""); const [masked, setMasked] = useState("");
   const [info, setInfo] = useState<{ customer: string; vendor: string; due: string } | null>(null);
   const [p, setP] = useState<Portal | null>(null); const [busy, setBusy] = useState(false);
-  const loadPortal = useCallback(async () => { const x = await apiFetch<Portal>("/vendor-portal/questionnaire"); setP(x); setInfo({ customer: x.customer, vendor: x.vendor, due: x.due }); setStep(x.status === "Submitted" ? "done" : "portal"); }, []);
+  const loadPortal = useCallback(async () => { const x = await apiFetch<Portal>("/vendor-portal/questionnaire"); setP(x); setInfo({ customer: x.customer, vendor: x.vendor, due: x.due }); setStep(x.status === "Submitted" ? "done" : "portal"); }, [setStep]);
   useEffect(() => {
     if (token) window.history.replaceState(null, "", window.location.pathname);
     // a session from earlier (a reload) opens the questionnaire; otherwise the link starts the sign-in
@@ -46,16 +49,16 @@ export default function ApiVendorPortal() {
       () => (token ? post<{ customer: string; vendor: string; due: string; mail: boolean }>("/vendor-portal/open", { token }) : Promise.reject(new Error("no link")))
         .then((o) => { if (on) { setInfo(o); setStep(o.mail ? "verify" : "nomail"); } }, () => { if (on) setStep("dead"); }));
     return () => { on = false; };
-  }, [token]);
+  }, [token, setStep]);
   const onEmail = async (e: string): Promise<StepOutcome> => {
     try { const r = await post<{ to: string }>("/vendor-portal/verify-email", { token, email: e }); setEmail(e.trim().toLowerCase()); setMasked(r.to); setStep("otp"); return { kind: "ok" }; }
     catch (x) { if (x instanceof ApiError && x.status === 404) { setStep("dead"); return { kind: "dead" }; } return { kind: "error", message: msg(x, "Something went wrong. Try again.") }; }
   };
   const onCode = async (c: string): Promise<StepOutcome> => {
-    try { await post("/vendor-portal/verify-code", { token, email, code: c }); await loadPortal(); setToast("Signed in. Your answers are saved as you go."); return { kind: "ok" }; }
+    try { await post("/vendor-portal/verify-code", { token, email, code: c }); await loadPortal(); setToast("Signed in. Your answers are saved as you go.", "ok"); return { kind: "ok" }; }
     catch (x) { if (x instanceof ApiError && x.status === 404) { setStep("dead"); return { kind: "dead" }; } return { kind: "error", message: msg(x, "That code did not work.") }; }
   };
-  const signOut = useCallback(async (why: string) => { try { await post("/vendor-portal/sign-out", {}); } catch { /* the session ends by itself */ } setP(null); setStep(token ? "verify" : "dead"); setToast(why); }, [token]);
+  const signOut = useCallback(async (why: string) => { try { await post("/vendor-portal/sign-out", {}); } catch { /* the session ends by itself */ } setP(null); setStep(token ? "verify" : "dead"); setToast(why, "info"); }, [token, setStep, setToast]);
   const authed = step === "portal" || step === "done";
   useEffect(() => {
     if (!authed) return;
@@ -65,8 +68,8 @@ export default function ApiVendorPortal() {
   }, [authed, signOut]);
   const submit = async () => {
     if (busy) return; setBusy(true);
-    try { const x = await post<Portal>("/vendor-portal/submit", {}); setP(x); setStep("done"); setToast(x.version > 1 ? `Clarification sent as version ${x.version}.` : "Thank you. Your answers were submitted."); }
-    catch (e) { setToast(msg(e, "Could not submit. Try again.")); }
+    try { const x = await post<Portal>("/vendor-portal/submit", {}); setP(x); setStep("done"); setToast(x.version > 1 ? `Clarification sent as version ${x.version}.` : "Thank you. Your answers were submitted.", "ok"); }
+    catch (e) { setToast(msg(e, "Could not submit. Try again."), "bad"); }
     setBusy(false);
   };
   return (
@@ -74,7 +77,7 @@ export default function ApiVendorPortal() {
       <header style={{ background: "var(--surface)", borderBottom: "1px solid var(--line)", padding: "14px 24px", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div aria-hidden="true" style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent)", color: "var(--text-inverse)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="shieldcheck" /></div>
-          <div><div style={{ fontWeight: 700 }}>Vendor assessment portal</div><div style={{ fontSize: 12, color: "var(--muted)" }}>Selvara{info ? ` · requested by ${info.customer} for ${info.vendor}` : ""}</div></div>
+          <div><div style={{ fontWeight: 600 }}>Vendor assessment portal</div><div style={{ fontSize: 12, color: "var(--muted)" }}>Selvara{info ? ` · requested by ${info.customer} for ${info.vendor}` : ""}</div></div>
         </div>
         {authed ? (
           <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 13, flexWrap: "wrap" }}>
@@ -86,8 +89,8 @@ export default function ApiVendorPortal() {
       <div style={{ padding: "28px 16px 48px", display: "flex", justifyContent: "center" }}>
         <div style={{ width: "100%", maxWidth: 1240, display: "flex", flexWrap: "wrap", gap: 20, alignItems: "flex-start" }}>
           <main style={{ flex: "999 1 640px", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
-            {step in AT ? <Stepper label="Progress through the assessment" steps={STAGES} current={AT[step] ?? 0} /> : null}
-            {toast ? <Toast msg={toast} onClose={() => setToast("")} /> : null}
+            {step in AT ? <Stepper label="Progress through the assessment" steps={STAGES} current={AT[step] ?? 0} futureLabel="Next" /> : null}
+            {toast ? <Toast msg={toast.msg} tone={toast.tone} onClose={() => setToastS(null)} /> : null}
             {step === "loading" ? <p style={{ color: "var(--muted)" }}>Opening…</p> : null}
             {step === "verify" ? <VerifyEmail onVerify={onEmail} /> : null}
             {step === "otp" ? <OtpStep masked={masked} onVerify={onCode} /> : null}
@@ -98,13 +101,10 @@ export default function ApiVendorPortal() {
           </main>
           <aside aria-label="Access and security" style={{ flex: "1 1 300px", minWidth: 0, display: "flex", flexDirection: "column", gap: 14 }}>
             <div className="card" style={{ padding: "16px 18px", gap: 8 }}>
-              <div style={{ fontWeight: 700 }}>What you can see</div>
+              <div style={{ fontWeight: 600 }}>What you can see</div>
               <div style={{ fontSize: 13, color: "var(--ink-2)" }}>Only this questionnaire and the files you add. You cannot see {info?.customer ?? "your customer"}&apos;s data, other vendors or your risk rating.</div>
             </div>
-            <div style={{ background: "var(--bg-inverse)", color: "var(--text-inverse)", borderRadius: "var(--radius-card)", padding: "16px 18px", display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ fontWeight: 700 }}>Portal security controls</div>
-              {CONTROLS.map((c) => <div key={c} style={{ display: "flex", gap: 8, fontSize: 13 }}><span aria-hidden="true" style={{ display: "inline-flex", marginTop: 2 }}><Icon name="check" /></span><span>{c}</span></div>)}
-            </div>
+            <SecurityPanel controls={CONTROLS} />
           </aside>
         </div>
       </div>
@@ -116,28 +116,28 @@ function Notice({ title, children }: { title: string; children: React.ReactNode 
   return <section className="card" style={{ padding: "20px 22px", gap: 8 }}><h2 style={{ fontSize: 18, margin: 0 }}>{title}</h2><p style={{ margin: 0, color: "var(--ink-2)", lineHeight: 1.55 }}>{children}</p></section>;
 }
 
-function Answers({ p, setP, onSubmit, busy, onToast }: { p: Portal; setP: (x: Portal) => void; onSubmit: () => void; busy: boolean; onToast: (m: string) => void }) {
+function Answers({ p, setP, onSubmit, busy, onToast }: { p: Portal; setP: (x: Portal) => void; onSubmit: () => void; busy: boolean; onToast: (m: string, tone?: VpTone) => void }) {
   const editable = p.status === "Reopened" ? p.clarify : p.questions.map((q) => q.id);
   const [items, setItems] = useState(p.items); const timer = useRef(0); const [saving, setSaving] = useState<"" | "saving" | "saved">("");
   const save = (next: Record<string, Item>) => {
     setItems(next); setSaving("saving"); window.clearTimeout(timer.current);
     timer.current = window.setTimeout(async () => {
       try { const x = await post<Portal>("/vendor-portal/draft", { items: Object.fromEntries(editable.map((id) => [id, { answer: next[id].answer, comment: next[id].comment }])) }); setP(x); setSaving("saved"); }
-      catch (e) { setSaving(""); onToast(msg(e, "Your last change was not saved. Check your connection.")); }
+      catch (e) { setSaving(""); onToast(msg(e, "Your last change was not saved. Check your connection."), "bad"); }
     }, 700);
   };
   useEffect(() => () => window.clearTimeout(timer.current), []);
   const upload = async (id: string, f: File | undefined) => {
     if (!f) return;
-    if (f.size > 4 * 1024 * 1024) { onToast(`${f.name} is larger than 4 MB.`); return; }
+    if (f.size > 4 * 1024 * 1024) { onToast(`${f.name} is larger than 4 MB.`, "bad"); return; }
     try {
       const res = await fetch(`${API_BASE}/vendor-portal/files/${encodeURIComponent(id)}?name=${encodeURIComponent(f.name)}`, { method: "POST", credentials: "same-origin", headers: { "content-type": "application/octet-stream" }, body: f });
-      const j = await res.json().catch(() => ({})); if (!res.ok) { onToast(j.error || "The file could not be added."); return; }
-      setP(j as Portal); setItems((cur) => ({ ...cur, [id]: { ...cur[id], file: (j as Portal).items[id].file } })); onToast(`${f.name} added.`);
-    } catch { onToast("The file could not be added. Check your connection."); }
+      const j = await res.json().catch(() => ({})); if (!res.ok) { onToast(j.error || "The file could not be added.", "bad"); return; }
+      setP(j as Portal); setItems((cur) => ({ ...cur, [id]: { ...cur[id], file: (j as Portal).items[id].file } })); onToast(`${f.name} added.`, "ok");
+    } catch { onToast("The file could not be added. Check your connection.", "bad"); }
   };
   const r = p.readiness; const domains = [...new Set(p.questions.map((q) => q.domain))];
-  const note = r.unanswered ? `${r.unanswered} question${r.unanswered === 1 ? "" : "s"} still need an answer.` : r.noEvidence ? `${r.noEvidence} "Yes" answer${r.noEvidence === 1 ? "" : "s"} on required items still need evidence.` : r.clar ? 'Add a new clarification for each reopened answer, and new evidence for any "Yes".' : "Ready to submit. You cannot change your answers afterwards.";
+  const note = r.unanswered ? `${r.unanswered} question${r.unanswered === 1 ? " still needs" : "s still need"} an answer.` : r.noEvidence ? (r.noEvidence === 1 ? '1 "Yes" answer on a required item still needs evidence.' : `${r.noEvidence} "Yes" answers on required items still need evidence.`) : r.clar ? 'Add a new clarification for each reopened answer, and new evidence for any "Yes".' : "Ready to submit. You cannot change your answers afterwards.";
   return (
     <>
       <section className="card" style={{ padding: "18px 20px", gap: 6 }}>

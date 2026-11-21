@@ -27,15 +27,16 @@ export function useAnswers() {
   }, []);
 
   /** DEMO STUB: the board derives prefilled answers from the file-name length, not from the file. Returns a message for the toast. */
-  const applyPrefill = useCallback((file: File): string => {
+  /** Returns the message to show and whether it worked (the page shows a refusal as an error). */
+  const applyPrefill = useCallback((file: File): { ok: boolean; msg: string } => {
     const rule: UploadRule = PREFILL_UPLOAD_RULE;
     const err = validateUpload(file, rule);
-    if (err) return err;
+    if (err) return { ok: false, msg: err };
     let n = 0;
     const a = { ...ans }; const p = { ...pre };
     QUESTIONS.forEach((q, i) => { if (a[q.id]) return; const h = (i * 7 + file.name.length) % 10; a[q.id] = h < 8 ? "Y" : "P"; p[q.id] = true; n++; });
     setAns(a); setPre(p);
-    return `${n} answers prefilled from ${displayName(file.name)}. Check each one before submitting.`;
+    return { ok: true, msg: `${n} answers prefilled from ${displayName(file.name)}. Check each one before submitting.` };
   }, [ans, pre]);
 
   const reset = useCallback(() => { timers.current.forEach((t) => window.clearTimeout(t)); timers.current = []; setAns({}); setNotes({}); setFiles({}); setPre({}); }, []);

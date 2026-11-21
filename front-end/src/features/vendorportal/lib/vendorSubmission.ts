@@ -75,18 +75,21 @@ export const newRef = () => "VQ-2026-" + String(100000 + randInt(900000));
 export type Answers = Record<string, Answer>;
 export type Files = Record<string, VendorFile>;
 
-export interface Readiness { answered: number; total: number; missingEv: number; unverified: number; ready: boolean; note: string }
+export interface Readiness { answered: number; total: number; missingEv: number; unverified: number; ready: boolean; note: string; /** The question ids behind the current blocker (unanswered, missing evidence, or prefilled and unchecked), so the page can link to them. */ blocking: string[] }
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 export function readiness(ans: Answers, files: Files, pre: Record<string, boolean>, qs: VendorQuestion[] = QUESTIONS): Readiness {
   const answered = qs.filter((q) => ans[q.id]).length;
-  const missingEv = qs.filter((q) => q.critical && ans[q.id] === "Y" && files[q.id]?.status !== "clean").length;
+  const evIds = qs.filter((q) => q.critical && ans[q.id] === "Y" && files[q.id]?.status !== "clean").map((q) => q.id);
+  const missingEv = evIds.length;
   const unverified = Object.keys(pre).length;
   const total = qs.length;
   const ready = answered === total && missingEv === 0 && unverified === 0;
   const note = ready ? "Ready to submit. Answers become read-only after submission."
-    : answered < total ? `${total - answered} questions still need an answer.`
-    : missingEv ? `${missingEv} "Yes" answers on required items still need evidence attached.`
-    : `${unverified} prefilled answers still need checking (change or re-select each one).`;
-  return { answered, total, missingEv, unverified, ready, note };
+    : answered < total ? `${plural(total - answered, "question still needs", "questions still need")} an answer.`
+    : missingEv ? `${plural(missingEv, '"Yes" answer on a required item still needs', '"Yes" answers on required items still need')} evidence attached.`
+    : `${plural(unverified, "prefilled answer still needs", "prefilled answers still need")} checking (change or re-select each one).`;
+  const blocking = ready ? [] : answered < total ? qs.filter((q) => !ans[q.id]).map((q) => q.id) : missingEv ? evIds : qs.filter((q) => pre[q.id]).map((q) => q.id);
+  return { answered, total, missingEv, unverified, ready, note, blocking };
 }
 
 export interface ClarBase { notes: Record<string, string>; files: Record<string, string> }
@@ -98,7 +101,7 @@ export function clarReadiness(ids: string[], ans: Answers, notes: Record<string,
       || (ans[id] === "Y" && !(f && f.status === "clean" && f.name !== (base.files[id] || "")));
   }).length;
   const ready = missing === 0;
-  return { missing, ready, note: ready ? `Ready to send. This creates version ${ver + 1}; version ${ver} is kept.` : `${missing} answer(s) still need a new clarification and, for "Yes", new evidence.` };
+  return { missing, ready, note: ready ? `Ready to send. This creates version ${ver + 1}; version ${ver} is kept.` : `${plural(missing, "answer still needs", "answers still need")} a new clarification and, for "Yes", new evidence.` };
 }
 
 /** Why validateUpload refused a file, in the board's wording. */

@@ -21,6 +21,8 @@ export interface DTColumn<T> {
   defaultHidden?: boolean;
   /** Locked columns cannot be hidden from the Columns menu. */
   locked?: boolean;
+  /** Keep the cell on one line (IDs such as R-014, short statuses): it never breaks as "R-" / "014" on a narrow screen. */
+  nowrap?: boolean;
 }
 export interface DTTab<T> { key: string; label: string; match: (row: T) => boolean }
 export interface DTFilter<T> {
@@ -162,8 +164,8 @@ export function DataTable<T>(p: DataTableProps<T>) {
         })}
         {filtered ? <button className="btn btn-ghost sm" onClick={reset}>Clear filters</button> : null}
         <span className="dt-spacer" />
-        <span className="dt-sum" role="status" aria-live="polite">{rows.length === p.rows.length ? `${rows.length} rows` : `${rows.length} of ${p.rows.length} rows`}{st.sort ? `, sorted by ${p.columns.find((c) => c.key === st.sort!.key)?.header}` : ""}</span>
-        <button className="icon-btn" aria-label="Columns" aria-haspopup="menu" onClick={(e) => L.popover(e, (close) => <ColumnsMenu id={p.id} cols={p.columns} sizes={sizes} close={close} />, { label: "Columns" })}><Icon name="rows" /></button>
+        <span className="dt-end"><span className="dt-sum" role="status" aria-live="polite">{rows.length === p.rows.length ? `${rows.length} rows` : `${rows.length} of ${p.rows.length} rows`}{st.sort ? `, sorted by ${p.columns.find((c) => c.key === st.sort!.key)?.header}` : ""}</span>
+        <button className="icon-btn" aria-label="Columns" aria-haspopup="menu" onClick={(e) => L.popover(e, (close) => <ColumnsMenu id={p.id} cols={p.columns} sizes={sizes} close={close} />, { label: "Columns" })}><Icon name="rows" /></button></span>
       </div>
 
       <div className="tbl-wrap">
@@ -176,7 +178,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
               {cols.map((c) => {
                 const s = st.sort && st.sort.key === c.key ? st.sort.dir : null;
                 return (
-                  <th key={c.key} scope="col" className={`${c.align === "end" ? "r " : ""}${c.value || c.sortBy ? "sortable" : ""}`} aria-sort={c.value || c.sortBy ? (s === "asc" ? "ascending" : s === "desc" ? "descending" : "none") : undefined}>
+                  <th key={c.key} scope="col" className={`${c.align === "end" ? "r " : ""}${c.nowrap ? "nw " : ""}${c.value || c.sortBy ? "sortable" : ""}`} aria-sort={c.value || c.sortBy ? (s === "asc" ? "ascending" : s === "desc" ? "descending" : "none") : undefined}>
                     {c.value || c.sortBy ? (
                       <button className="th-sort" onClick={() => patch({ sort: nextSort(st.sort, c.key), page: 1 })}>
                         {c.header}<Icon name="chevd" className={`th-car${s ? " on" : ""}${s === "asc" ? " up" : ""}`} />
@@ -197,7 +199,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
                 <tr key={id} className={`${p.onOpen ? "clickable" : ""}${on ? " sel" : ""}`}
                   tabIndex={p.onOpen ? 0 : undefined} onClick={(e) => onRowClick(e, r)} onKeyDown={(e) => onRowKey(e, r)}>
                   {selectable ? <td className="dt-cb"><input type="checkbox" aria-label={`Select ${id}`} checked={on} onChange={() => patch({ selected: toggleOne(id, selected) })} /></td> : null}
-                  {cols.map((c) => <td key={c.key} className={c.align === "end" ? "r" : undefined}>{c.render(r)}</td>)}
+                  {cols.map((c) => <td key={c.key} className={[c.align === "end" ? "r" : "", c.nowrap ? "nw" : ""].filter(Boolean).join(" ") || undefined}>{c.render(r)}</td>)}
                   {p.rowActions ? <td className="r dt-act"><button className="icon-btn" aria-label={`Actions for ${id}`} aria-haspopup="menu" onClick={(e) => rowMenu(e, r)}><Icon name="more" /></button></td> : null}
                 </tr>
               );

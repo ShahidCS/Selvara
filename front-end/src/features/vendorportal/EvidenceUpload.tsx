@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { Icon } from "@/components/ui";
 import type { VendorFile } from "@/features/vendorportal/lib/vendorSubmission";
 
 /** Evidence picker + status pill. The File is handed to the parent's validateUpload gate; its content is never read or rendered. Name shown as React text. */
@@ -12,7 +13,7 @@ export default function EvidenceUpload({ qid, file, onPick, hint }: { qid: strin
       <input ref={ref} type="file" hidden accept=".pdf,.docx,.xlsx,.png,.jpg" aria-label={`Evidence file for ${qid}`}
         onChange={(e) => { const f = e.target.files && e.target.files[0]; if (f) onPick(f); e.target.value = ""; }} />
       {hint ? <span style={{ fontSize: 12, color: "var(--muted)" }}>Suggested: {hint}</span> : null}
-      {file ? <span className={"chip " + cls} role="status" style={{ height: "auto", minHeight: 22, whiteSpace: "normal", padding: "3px 8px" }}>{text}</span> : null}
+      {file ? <span className={"chip " + cls} role="status" style={{ height: "auto", minHeight: 22, whiteSpace: "normal", padding: "3px 8px" }}><Icon name={file.status === "clean" ? "check" : file.status === "blocked" ? "x" : "clock"} />{text}</span> : null}
     </div>
   );
 }
