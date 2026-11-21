@@ -4,6 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-21
+
+The production programme is complete: every module of the demonstration runs on the server in production (groups 1 to 8). Run migrations `0008`, `0009` and `0010` before deploying (`docs/guides/SUPABASE.md`, section 2).
+
 ### Changed
 - Production programme, group 8b: **email**, the **standalone vendor portal** and the **anonymous public Trust Center**. No new migration.
   - **Email**: Resend or Postmark over HTTPS, off until `MAIL_PROVIDER`, `MAIL_API_KEY` and `MAIL_FROM` are set. Sends invitations, first-admin links, join outcomes, MFA reset notices, invoices, vendor questionnaires and Trust Center decisions and updates. A title and a link only, 10 an hour per address, masked addresses in the audit log. Without it, links are shown as before.
