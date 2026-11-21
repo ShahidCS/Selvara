@@ -2,7 +2,7 @@ import { FRAMEWORK_REQS } from "@/lib/data";
 import { REQ_ST, REQ_ST_COL, fwReadiness, fwScore } from "@/lib/frameworks";
 
 /** Readiness band colour from the design tokens only (80% and up ok, 50% and up warning, below that bad), the same in both themes.
- *  Used instead of the shared fwBand, whose 50-64% band is a hex literal that fails AA on white and has no dark-mode value. */
+ *  Three bands, unlike the shared four-band fwBand, so a list reads at a glance. */
 export const readinessTone = (p: number) => (p >= 80 ? "var(--ok-ink)" : p >= 50 ? "var(--warn-ink)" : "var(--bad-ink)");
 /** "Not applicable" is hatched so it does not read as the same grey as "Not assessed". */
 const segBg = (k: string) => (k === "Not applicable" ? "repeating-linear-gradient(135deg, var(--line-2) 0 2px, transparent 2px 5px)" : REQ_ST_COL[k]);

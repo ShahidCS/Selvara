@@ -80,8 +80,8 @@ describe("fwBand", () => {
     expect(fwBand(80)).toBe("var(--ok-ink)");
     expect(fwBand(79)).toBe("var(--warn-ink)");
     expect(fwBand(65)).toBe("var(--warn-ink)");
-    expect(fwBand(64)).toBe("#D2690A");
-    expect(fwBand(50)).toBe("#D2690A");
+    expect(fwBand(64)).toBe("var(--high-ink)");
+    expect(fwBand(50)).toBe("var(--high-ink)");
     expect(fwBand(49)).toBe("var(--bad-ink)");
   });
 });
