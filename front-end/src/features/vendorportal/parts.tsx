@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
+import { Icon } from "@/components/ui";
 
 export const card = (extra?: CSSProperties): CSSProperties => ({ padding: 24, gap: 14, ...extra });
 export function Section({ children, narrow, pad = 24, gap = 14, label }: { children: ReactNode; narrow?: number; pad?: number; gap?: number; label?: string }) {
@@ -8,10 +9,21 @@ export const H1 = ({ children }: { children: ReactNode }) => <h1 style={{ margin
 export const Lead = ({ children }: { children: ReactNode }) => <div style={{ fontSize: 14, color: "var(--ink-2)" }}>{children}</div>;
 export const Hint = ({ children }: { children: ReactNode }) => <div style={{ fontSize: 12, color: "var(--muted)" }}>{children}</div>;
 export const ErrLine = ({ msg }: { msg: string }) => (msg ? <div role="alert" style={{ fontSize: 13, fontWeight: 600, color: "var(--bad-ink)" }}>{msg}</div> : null);
-/** All vendor-supplied text goes through here as plain React text. */
-export const Toast = ({ msg, onClose }: { msg: string; onClose: () => void }) => (
-  <div role="status" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, background: "var(--ok-bg)", color: "var(--ok-ink)", border: "1px solid var(--line)", borderRadius: 8, padding: "6px 8px 6px 14px", fontSize: 13, fontWeight: 600 }}>
-    <span>{msg}</span>
-    <button type="button" className="icon-btn" aria-label="Dismiss" onClick={onClose} style={{ color: "inherit" }}>×</button>
-  </div>
-);
+/** A message above the current step. The tone is explicit (never guessed from the text): "ok" (done), "bad" (failed: announced at once) or "info".
+ *  Colour, icon and, for an error, a hidden "Error:" all say it. All vendor-supplied text goes through here as plain React text. */
+export type VpTone = "ok" | "bad" | "info";
+export interface VpToast { msg: string; tone: VpTone }
+const TONE: Record<VpTone, { bg: string; ink: string; icon: string }> = {
+  ok: { bg: "var(--ok-bg)", ink: "var(--ok-ink)", icon: "check" },
+  bad: { bg: "var(--bad-bg)", ink: "var(--bad-ink)", icon: "alert" },
+  info: { bg: "var(--surface-2)", ink: "var(--ink)", icon: "message" },
+};
+export const Toast = ({ msg, tone = "info", onClose }: { msg: string; tone?: VpTone; onClose: () => void }) => {
+  const t = TONE[tone];
+  return (
+    <div role={tone === "bad" ? "alert" : "status"} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, background: t.bg, color: t.ink, border: "1px solid var(--line)", borderRadius: 8, padding: "6px 8px 6px 14px", fontSize: 13, fontWeight: 600 }}>
+      <span style={{ display: "flex", gap: 8, alignItems: "center" }}><Icon name={t.icon} style={{ flex: "0 0 auto" }} />{tone === "bad" ? <span className="vh">Error: </span> : null}<span>{msg}</span></span>
+      <button type="button" className="icon-btn" aria-label="Dismiss message" title="Dismiss" onClick={onClose} style={{ color: "inherit" }}><Icon name="x" /></button>
+    </div>
+  );
+};
