@@ -19,7 +19,7 @@ export function ApiBlocks({ s }: { s: ElevationState }) {
   useEffect(() => { let on = true; apiFetch<{ blocks: Block[] }>("/admin/security/blocks").then((x) => { if (on) { setRows(x.blocks); setErr(""); } }, (e) => { if (on) setErr(apiMessage(e, "Could not load the blocked addresses")); }); return () => { on = false; }; }, [v]);
   const lock = s.locked ? ELEVATE_TEXT : undefined;
   return (
-    <section className="card" aria-labelledby="ipb-h">
+    <section className="card" aria-labelledby="ipb-h" data-tour="security-blocks">
       <div className="c-head"><h3 id="ipb-h">Blocked sign-in addresses</h3><div className="r"><span className="tag">{rows ? `${rows.length} blocked` : "…"}</span></div></div>
       <div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <p className="field help" style={{ margin: 0, maxWidth: "80ch" }}>{IP_POLICY.THRESHOLD} failed sign-ins from one address within {IP_POLICY.WINDOW_MS / 60_000} minutes, across any accounts, block it. Each repeat lasts longer: {LEVEL_LABEL.join(", ")}.</p>

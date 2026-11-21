@@ -20,8 +20,8 @@ export function ApiAdminLog() {
   ];
   return (
     <Page mod="adminlog" sub="Platform actions: sign-ins of platform staff, elevations, company requests and decisions.">
-      <div className="card" style={{ flex: "1 1 auto" }}>
-        <div className="c-head"><h3>Platform log</h3><div className="r">{res ? (res.verified ? <Chip cls="ok" icon="check">Chain verified</Chip> : <Chip cls="bad" icon="alert">{`Chain broken at entry ${res.firstBad}`}</Chip>) : null}</div></div>
+      <div className="card" data-tour="adminlog-table" style={{ flex: "1 1 auto" }}>
+        <div className="c-head"><h3>Platform log</h3><div className="r" data-tour={res ? "adminlog-chain" : undefined}>{res ? (res.verified ? <Chip cls="ok" icon="check">Chain verified</Chip> : <Chip cls="bad" icon="alert">{`Chain broken at entry ${res.firstBad}`}</Chip>) : null}</div></div>
         <div className="c-body flush scroll" style={{ padding: 0 }}>
           {err ? <p role="alert" style={{ padding: 12, color: "var(--bad-ink)" }}>{err}</p> : null}
           {res ? <DataTable<svc.PlatformAuditEntry> id="platform-audit-api" label="Platform audit log" rows={res.entries} rowKey={(e) => String(e.seq)} columns={cols} searchText={(e) => `${e.actor} ${e.action} ${e.target}`}

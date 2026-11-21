@@ -25,7 +25,7 @@ export function CustomerProfile({ c }: { c: any }) {
       <div role="group" aria-label="Customer summary" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, margin: "10px 0 14px" }}>{tiles.map((x) => <Kpi key={x[0]} icon={x[2]} label={x[0]} value={x[1]} tone="neutral" />)}</div>
       <div className="card" style={{ boxShadow: "none" }}>
         <div className="c-head" style={{ padding: "0 8px" }}>
-          <div className="tabs" role="tablist">{tabs.map(([k, l]) => <button key={k} className="tab" role="tab" id={`custTab-${k}`} aria-selected={t === k} aria-controls="custTabBody" onClick={() => setTab(k)}>{l}</button>)}</div>
+          <div className="tabs" role="tablist" data-tour="customers-tabs">{tabs.map(([k, l]) => <button key={k} className="tab" role="tab" id={`custTab-${k}`} aria-selected={t === k} aria-controls="custTabBody" onClick={() => setTab(k)}>{l}</button>)}</div>
         </div>
         <div className="c-body" id="custTabBody" role="tabpanel" aria-labelledby={`custTab-${t}`}>
           {t === "plan" ? <PlanTab c={c} /> : t === "users" ? <UsersTab cid={c.id} /> : t === "over" ? (

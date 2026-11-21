@@ -18,13 +18,13 @@ export function RequestElevation() {
 
   if (!el.canElevate) {
     return (
-      <div className="card"><div className="c-head"><h3>Request elevation</h3></div>
+      <div className="card" data-tour="elevation-request"><div className="c-head"><h3>Request elevation</h3></div>
         <div className="c-body"><p className="field help" role="status" style={{ margin: 0 }}>Read-only: only platform super admins can elevate. Support and all other roles stay non-privileged and cannot start an elevated session.</p></div></div>
     );
   }
   if (el.active) {
     return (
-      <div className="card"><div className="c-head"><h3>Request elevation</h3><div className="r"><span className="chip ok"><Icon name="check" />Elevated</span></div></div>
+      <div className="card" data-tour="elevation-request"><div className="c-head"><h3>Request elevation</h3><div className="r"><span className="chip ok"><Icon name="check" />Elevated</span></div></div>
         <div className="c-body"><dl className="meta-grid lstart" style={{ margin: 0 }}><dt>Ticket</dt><dd className="num">{el.ticket}</dd><dt>Reason</dt><dd>{el.reason}</dd></dl></div></div>
     );
   }
@@ -44,7 +44,7 @@ export function RequestElevation() {
   };
   const cancel = () => { if (tm.current) clearTimeout(tm.current); setStep("form"); };
   return (
-    <div className="card">
+    <div className="card" data-tour="elevation-request">
       <div className="c-head"><h3>Request elevation</h3></div>
       <div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {step === "form" ? (

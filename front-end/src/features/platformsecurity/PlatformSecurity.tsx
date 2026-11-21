@@ -46,7 +46,7 @@ export function PlatformSecurity() {
   const go = useGo(); const role = useApp((s) => s.role);
   const spec = modAllowed(role, "ws", "appsec");
   return (
-    <div style={{ columns: "340px", columnGap: 16 }}>
+    <div data-tour="security-rules" style={{ columns: "340px", columnGap: 16 }}>
       <Rules title="Password baseline (all tenants)" rules={PWD_RULES}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, marginTop: 6 }}>
           <button className="btn btn-ghost" onClick={() => go("/auth")}>Try the live password check</button>

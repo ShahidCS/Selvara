@@ -46,7 +46,7 @@ export function ApiRates() {
     { key: "why", header: "Why held", value: (r) => r.candidate?.reason ?? "", render: (r) => <span style={{ fontSize: 12.5 }}>{r.candidate?.reason ?? ""}</span> },
   ];
   return (
-    <Page mod="rates" sub="Exchange rates and tax used when invoices are issued." acts={!s.loaded || s.canElevate ? <button className="btn btn-primary" onClick={refresh} disabled={busy || !!lock} title={lock} aria-busy={busy}>{busy ? <span className="spin" /> : <Icon name="refresh" />}Refresh rates</button> : undefined}>
+    <Page mod="rates" sub="Exchange rates and tax used when invoices are issued." acts={!s.loaded || s.canElevate ? <button className="btn btn-primary" data-tour="rates-refresh" onClick={refresh} disabled={busy || !!lock} title={lock} aria-busy={busy}>{busy ? <span className="spin" /> : <Icon name="refresh" />}Refresh rates</button> : undefined}>
       <ServerElevationBanner s={s} />
       {d ? (
         <KpiStrip label="Rates summary">
@@ -56,7 +56,7 @@ export function ApiRates() {
           <KpiTile label="Last refresh" value={d.lastRefresh ? utcMin(d.lastRefresh.at).slice(11) : "Never"} caption={d.lastRefresh ? `${utcMin(d.lastRefresh.at).slice(0, 10)}, by ${d.lastRefresh.by}${d.lastRefresh.errors.length ? `; ${d.lastRefresh.errors.join(" ")}` : ""}` : "Refresh to read the feeds"} />
         </KpiStrip>
       ) : null}
-      <div className="card" style={{ flex: "1 1 auto", marginTop: 12 }}>
+      <div className="card" data-tour="rates-table" style={{ flex: "1 1 auto", marginTop: 12 }}>
         <div className="c-head"><div className="seg" role="tablist" aria-label="Rates views">{[["rates", "Rates and tax"], ["requests", "Requests"]].map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setView(x[0])}>{x[1]}</button>)}</div></div>
         <div className="c-body flush scroll" style={{ padding: view === "rates" ? 0 : undefined }}>
           {err ? <p role="alert" style={{ padding: 12, color: "var(--bad-ink)" }}>{err}</p> : !d ? <p style={{ padding: 12, color: "var(--muted)" }}>Loading…</p>

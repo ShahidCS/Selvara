@@ -28,13 +28,13 @@ function DemoMfa() {
   const history = MFA_REQUESTS.filter((r) => r.status !== svc.PENDING);
   const lock = "Elevate to make changes";
   return (
-    <Page mod="mfa" acts={<button className="btn btn-secondary" onClick={() => go("/admin/adminlog")}><Icon name="log" />Audit log</button>}>
+    <Page mod="mfa" acts={<button className="btn btn-secondary" data-tour="mfa-log" onClick={() => go("/admin/adminlog")}><Icon name="log" />Audit log</button>}>
       <div className="scroll" tabIndex={0} role="region" aria-label="Second-factor reset requests" style={{ flex: "1 1 auto" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
           {needsElev ? <ElevateGateBanner /> : null}
           {!can ? <p className="field help" role="status" style={{ margin: 0 }}>Read-only: your role cannot raise or decide MFA resets.</p> : null}
           <PendingApprovals kinds={[svc.KIND_ADMIN]} title="Pending approval" subjectLabel="Admin" />
-          <div className="card">
+          <div className="card" data-tour="mfa-admins">
             <div className="c-head"><h3>Customer admins</h3><div className="r"><span className="tag">{TENANT_ADMINS.length} admins</span></div></div>
             <div className="c-body flush" style={{ padding: 0 }}>
               <Table cols={[{ t: "Admin" }, { t: "Customer" }, { t: "Role" }, { t: "MFA" }, { t: "Last sign-in" }, { t: "" }]}>
@@ -50,7 +50,7 @@ function DemoMfa() {
               </Table>
             </div>
           </div>
-          <div className="card">
+          <div className="card" data-tour="mfa-history">
             <div className="c-head"><h3>Reset history</h3><div className="r"><span className="tag">{history.length}</span></div></div>
             <div className="c-body flush" style={{ padding: 0 }}>
               {history.length ? (

@@ -29,7 +29,7 @@ function DemoBilling({ param }: { param?: string | null }) {
       <button className="btn btn-secondary" disabled={gate.locked} title={gate.title} onClick={() => { setModState("customers.onboardPending", true); go("/admin/customers"); }}><Icon name="plus" />Onboard customer</button>
       <button className="btn btn-secondary" disabled={gate.locked} title={gate.title} onClick={() => L.openModal("Pricing & plans", (close) => <PricingForm close={close} />)}><Icon name="rates" />Pricing &amp; plans</button>
       <button className="btn btn-secondary" onClick={() => L.toast("Export billing (demo)")}><Icon name="download" />Export</button>
-      <button className="btn btn-primary" disabled={gate.locked} title={gate.title} onClick={() => L.openModal("Issue monthly invoices", (close) => <IssueInvoicesBody close={close} />)}><Icon name="billing" />Issue invoices</button>
+      <button className="btn btn-primary" data-tour="billing-issue" disabled={gate.locked} title={gate.title} onClick={() => L.openModal("Issue monthly invoices", (close) => <IssueInvoicesBody close={close} />)}><Icon name="billing" />Issue invoices</button>
     </>}>
       <ElevateGateBanner />
       {panel}

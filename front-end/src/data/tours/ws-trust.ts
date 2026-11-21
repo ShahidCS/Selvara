@@ -37,7 +37,7 @@ export const TOURS: Tours = {
       { target: '[data-tour="trust-publish"]', title: "Publish a resource", body: "Admins and owners add a new document here, then attach its file." },
       { target: '[data-tour="trust-tabs"]', title: "Requests and history", body: "Access & requests lists customers' requests and blocked domains; the person who unblocks a domain cannot approve its requests. Activity and the chatbot follow." },
       { target: '[data-tour="trust-preview"]', title: "See what customers see", body: "Preview the public page: published documents, verified answers, approved vendors that process data and control status." },
-      { target: '[data-tour="trust-pub-access"]', title: "Your access", body: "Shows what your company can open. Accept the NDA here once a request for a private document is approved, or subscribe to updates." },
+      { target: '[data-tour="trust-pub-access"]', title: "Your access", body: "Shows what your company can open. Private documents are shared only under NDA: accept it here. You can also subscribe to updates." },
       { target: '[data-tour="trust-pub-controls"]', title: "Control status", body: "The current status of the security control categories this company publishes." },
       { target: '[data-tour="trust-pub-docs"]', title: "Documents", body: "Public documents open with View. For a private document, click Request; the company approves it before you can open it." },
       { target: '[data-tour="trust-pub-ask"]', title: "Ask a question", body: "Answers come from the published FAQ and verified answers only. Anything else is sent to the security team. For anything binding, request documents under NDA." },
@@ -57,7 +57,7 @@ export const TOURS: Tours = {
       { target: '[data-tour="questionnaires-portal"]', title: "Your questionnaire", body: "A customer sent you this questionnaire to answer. The header shows who sent it and how many questions you have answered." },
       { target: '[data-tour="questionnaires-portal-list"]', title: "Pick a questionnaire", body: "You have more than one. Click a questionnaire to open it." },
       { target: "#vq-0", title: "Answer each question", body: "Type your answer under each question. Questions marked with an asterisk are required before you can submit." },
-      { target: '[data-tour="questionnaires-portal-submit"]', title: "Save or submit", body: "Save draft keeps your answers so you can come back. Submit sends them to your customer; after that the answers are locked unless the customer reopens it." },
+      { target: '[data-tour="questionnaires-portal-submit"]', title: "Save or submit", body: "Save draft keeps your answers so you can come back. Submit sends them to your customer, who can reopen it if they need more." },
     ],
   },
   commitments: {
