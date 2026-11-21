@@ -15,11 +15,13 @@ import { openShortcuts } from "./Shortcuts";
 
 /** Labels for the last breadcrumb segment of a form page (`/ws/policies/P-1/edit`, `/ws/controls/C-1/exception`, `/ws/controls/test/new`). */
 const SUB_LABEL: Record<string, string> = { edit: "Edit", exception: "Request exception", new: "New" };
+const THEME_NAME: Record<string, string> = { auto: "Auto (follows your device)", light: "Light", dark: "Dark" };
 
 export function Topbar() {
   const route = useRoute(); const go = useGo(); const L = useLayer(); const router = useRouter();
   useData(); useModVersion(); // the unread badge follows data and read state
   const theme = useApp((s) => s.theme); const density = useApp((s) => s.density); const roleId = useApp((s) => s.role);
+  const collapsed = useApp((s) => s.collapsed); const mobOpen = useApp((s) => s.mobOpen);
   const company = useApp((s) => s.company); const companies = useApp((s) => s.companies);
   const me = roleOf(roleId);
   const space = route.space === "admin" ? "admin" : "ws";
@@ -29,9 +31,10 @@ export function Topbar() {
   const homeHref = route.space === "admin" ? "/admin/customers" : "/ws/overview";
   const themeIcon = theme === "dark" ? "moon" : theme === "light" ? "sun" : "auto";
 
+  const nextTheme = theme === "auto" ? "light" : theme === "light" ? "dark" : "auto";
   const cycleTheme = () => {
-    const t = theme === "auto" ? "light" : theme === "light" ? "dark" : "auto";
-    appStore.set({ theme: t }); persist(); L.toast("Theme: " + t);
+    const t = nextTheme;
+    appStore.set({ theme: t }); persist(); L.toast("Theme: " + THEME_NAME[t]);
   };
   /** Production: another company the person belongs to. The page reloads at the new role's landing page so nothing from the previous company stays. */
   const doSwitch = async (ref: string) => {
@@ -62,7 +65,7 @@ export function Topbar() {
         <div className="div" />
         {modAllowed(roleId, "ws", "me") ? <button role="menuitem" onClick={() => { close(); go("/ws/me"); }}><Icon name="user" />My workspace</button> : null}
         <button role="menuitem" onClick={() => { close(); go("/auth"); }}><Icon name="access" />Sign-in &amp; security</button>
-        <button role="menuitemcheckbox" aria-checked={density === "compact"} onClick={() => { const d = density === "compact" ? "comfortable" : "compact"; appStore.set({ density: d }); persist(); close(); L.toast("Density: " + d); }}><Icon name={density === "compact" ? "check" : "blank"} />Compact density</button>
+        <button role="menuitemcheckbox" aria-checked={density === "compact"} onClick={() => { const d = density === "compact" ? "comfortable" : "compact"; appStore.set({ density: d }); persist(); close(); L.toast("Density: " + (d === "compact" ? "Compact" : "Comfortable")); }}><Icon name={density === "compact" ? "check" : "blank"} />Compact density</button>
         <button role="menuitem" onClick={() => { close(); openShortcuts(L); }}><Icon name="grid" />Keyboard shortcuts</button>
         <div className="div" />
         <button role="menuitem" onClick={doSignOut}><Icon name="back" />Sign out</button>
@@ -73,8 +76,8 @@ export function Topbar() {
 
   return (
     <header id="topbar">
-      <button className="icon-btn hamburger" aria-label="Open menu" onClick={() => appStore.set({ mobOpen: true })}><Icon name="menu" /></button>
-      <button className="icon-btn collapse-btn" aria-label="Collapse sidebar" onClick={() => { appStore.set((s) => ({ collapsed: !s.collapsed })); persist(); }}><Icon name="rows" /></button>
+      <button className="icon-btn hamburger" aria-label="Open menu" title="Open menu" aria-expanded={mobOpen} aria-controls="sidebar" onClick={() => appStore.set({ mobOpen: true })}><Icon name="menu" /></button>
+      <button className="icon-btn collapse-btn" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={`${collapsed ? "Expand" : "Collapse"} sidebar (⌘B)`} aria-expanded={!collapsed} aria-controls="sidebar" onClick={() => { appStore.set((s) => ({ collapsed: !s.collapsed })); persist(); }}><Icon name="rows" /></button>
       <nav className="crumbs" aria-label="Breadcrumb">
         <Link href={homeHref}>{route.space === "admin" ? "Admin Console" : "Workspace"}</Link>
         {route.mod === "billing" && route.param && CUSTOMERS[route.param] ? (
@@ -95,15 +98,15 @@ export function Topbar() {
       </nav>
       <div className="spacer" />
       <div role="search" aria-label="Site" style={{ display: "contents" }}>
-      <button className="top-search" onClick={L.openPalette} aria-label="Search (Command or Ctrl K)"><Icon name="search" /><span className="ph">Search…</span><span className="kbd">⌘K</span></button>
+      <button className="top-search" onClick={L.openPalette} aria-label="Jump to a module (Command or Ctrl K)" title="Jump to a module (⌘K)"><Icon name="search" /><span className="ph">Jump to module…</span><span className="kbd">⌘K</span></button>
       </div>
       {canAsk ? <button className="icon-btn" aria-label="Ask AI (Command or Ctrl J)" title="Ask AI (⌘J)" onClick={() => { setModState("assistant.from", window.location.pathname); go("/ws/assistant"); }}><Icon name="assistant" /></button> : null}
-      {API_ON ? null : <button className="icon-btn nbell" aria-label={unread ? `Notifications, ${unread > 9 ? "9+" : unread} unread` : "Notifications"} aria-haspopup="dialog" onClick={openNotifications}>
+      {API_ON ? null : <button className="icon-btn nbell" aria-label={unread ? `Notifications, ${unread > 9 ? "9+" : unread} unread` : "Notifications"} title="Notifications" aria-haspopup="dialog" onClick={openNotifications}>
         <Icon name="bell" />{unread ? <span className="nbadge" aria-hidden="true">{unread > 9 ? "9+" : unread}</span> : null}
       </button>}
-      <button className="icon-btn" aria-label={`Theme: ${theme}`} onClick={cycleTheme}><Icon name={themeIcon} /></button>
+      <button className="icon-btn" aria-label={`Theme: ${THEME_NAME[theme] ?? theme}. Change theme`} title={`Theme: ${THEME_NAME[theme] ?? theme} (click for ${THEME_NAME[nextTheme]})`} onClick={cycleTheme}><Icon name={themeIcon} /></button>
       <div className="top-div" aria-hidden="true" />
-      <button className="top-user" aria-haspopup="menu" onClick={roleMenu}>
+      <button className="top-user" aria-haspopup="menu" aria-expanded="false" onClick={roleMenu}>
         <span className="avatar" aria-hidden="true">{me.initials}</span>
         <span className="tu-who"><span className="vh">Account: </span><b>{me.person}</b><span>{me.name}</span></span>
         <Icon name="chevd" className="tu-chev" />

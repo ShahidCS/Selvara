@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from "react";
-import { Empty, Icon, KpiStrip, KpiTile, StatusChip, Table, activate } from "@/components/ui";
+import { Empty, Icon, KpiStrip, KpiTile, StatusChip, Table } from "@/components/ui";
 import { BalanceFigure } from "./BillingDetail";
 import { money } from "@/lib/format";
 import { custList } from "@/lib/platform";
@@ -47,7 +47,7 @@ export function BillingList() {
                 {rows.map((x) => {
                   const li = x.invoices[0];
                   return (
-                    <tr key={x.id} className="clickable" aria-pressed={sel === x.id} {...activate(() => select(x.id))}
+                    <tr key={x.id} className="clickable" role="button" tabIndex={0} aria-pressed={sel === x.id} onClick={() => select(x.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(x.id); } }}
                       style={sel === x.id ? { background: "var(--accent-weak)", boxShadow: "inset 3px 0 0 var(--accent)" } : undefined}>
                       <td className="strong">{x.name}</td><td>{x.plan}</td><td className="r num" style={{ whiteSpace: "nowrap" }}>{x.balance ? money(x.balance, x.currency) : money(0, x.currency)}</td><td style={{ whiteSpace: "nowrap" }}>{li ? li.date : "-"}</td>
                       <td style={{ whiteSpace: "nowrap" }}><StatusChip s={pill(x, "Paid")} /></td>

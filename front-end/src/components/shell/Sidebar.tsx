@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
-import { Icon } from "@/components/ui";
+import { BrandMark, Icon } from "@/components/ui";
 import { appStore, getModState, persist, setModState, useApp, useData, useModVersion } from "@/lib/store";
 import { API_ON, NAV, allowedSpaces, modAllowed, roleOf } from "@/lib/rbac";
 import { countFor } from "@/lib/counts";
@@ -72,6 +72,30 @@ export function Sidebar() {
   }, [route.mod]);
   useEffect(() => { if (navRef.current) navRef.current.scrollTop = scrollTop.current; });
   useEffect(() => { clearTimeout(timer.current); }, [s.collapsed, route.mod]); // cancel a pending flyout; a shown one is dropped by tipKey
+  // mobile drawer: focus moves into it on open (the active module, or the close button) and stays inside until it closes; then it goes back to the
+  // menu button. While closed it is visibility:hidden below the mobile breakpoint (portal.css), so its links are out of the tab order.
+  const asideRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!s.mobOpen) return;
+    const el = asideRef.current; if (!el) return;
+    const prev = document.activeElement as HTMLElement | null;
+    const id = requestAnimationFrame(() => { (el.querySelector<HTMLElement>(".nav-item.active") || el.querySelector<HTMLElement>(".sb-close"))?.focus(); });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const items = Array.from(el.querySelectorAll<HTMLElement>('button:not([disabled]):not([tabindex="-1"]),a[href]')).filter((x) => x.offsetParent !== null);
+      if (!items.length) return;
+      const first = items[0], last = items[items.length - 1], a = document.activeElement as HTMLElement | null;
+      if (!a || !el.contains(a)) { e.preventDefault(); first.focus(); }
+      else if (e.shiftKey && a === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      cancelAnimationFrame(id); document.removeEventListener("keydown", onKey);
+      const a = document.activeElement;
+      if (!a || a === document.body || el.contains(a)) (prev?.isConnected ? prev : document.querySelector<HTMLElement>(".hamburger"))?.focus();
+    };
+  }, [s.mobOpen]);
 
   const groups = (NAV[space] || []).map((g) => ({ g: g.g, items: g.items.filter((it) => modAllowed(s.role, space, it[0])) })).filter((g) => g.items.length);
   // like the prototype, a group's open state is fixed the first time it is rendered (the active group opens, others stay closed)
@@ -120,14 +144,15 @@ export function Sidebar() {
 
   return (
     <>
-      <aside id="sidebar" aria-label="Primary" onMouseOver={onOver} onMouseOut={onOut} onKeyDown={onKey}
+      <aside ref={asideRef} id="sidebar" aria-label="Primary" onMouseOver={onOver} onMouseOut={onOut} onKeyDown={onKey}
         onFocus={(e) => { const it = (e.target as HTMLElement).closest(".nav-item") as HTMLElement | null; if (it && s.collapsed) { clearTimeout(timer.current); setTip({ anchor: it, label: it.getAttribute("data-tip") || "", parent: it.getAttribute("data-parent") || undefined }); } }}
         onBlur={() => { if (s.collapsed) hide(); }}>
         <div className="sb-top">
           <div className="sb-logo">
-            <svg className="mark" viewBox="0 0 30 30" fill="none" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" stroke="var(--accent)" strokeWidth="2.4" /><rect x="14" y="14" width="13" height="13" rx="4" fill="#E8653F" /></svg>
+            <BrandMark />
             <span>Selvara</span>
           </div>
+          <button className="icon-btn sb-close" aria-label="Close menu" title="Close menu" onClick={() => appStore.set({ mobOpen: false })}><Icon name="x" /></button>
         </div>
         {spaces.length > 1 ? (
           <div className="space-switch">
@@ -158,16 +183,16 @@ export function Sidebar() {
                       const opened = s.navOpen === key; const subId = "subnav-" + key; const curTab = getModState(sn.stateKey, sn.initial);
                       return (
                         <div key={key} className={`nav-parent ${opened ? "open" : ""}`}>
-                          <button className={`nav-item ${active ? "active" : ""}`} data-tip={label} data-parent={key} aria-current={active ? "page" : undefined} aria-expanded={opened} aria-controls={subId} onClick={() => navMod(key)}>
-                            <Icon name={icon} className="ico" /><span className="lbl">{label}</span>{c ? <span className="cnt">{c}</span> : null}
+                          <button className={`nav-item ${active ? "active" : ""}`} data-tip={c ? `${label} (${c} need attention)` : label} data-parent={key} aria-current={active ? "page" : undefined} aria-expanded={opened} aria-controls={subId} onClick={() => navMod(key)}>
+                            <Icon name={icon} className="ico" /><span className="lbl">{label}</span>{c ? <span className="cnt" title={`${c} need attention`}>{c}<span className="vh"> need attention</span></span> : null}
                           </button>
                           <button className="nav-chev" tabIndex={-1} aria-hidden="true" onClick={(e) => { e.stopPropagation(); toggleParent(key); }}><Icon name="chevd" /></button>
-                          <div className={`subnav ${opened ? "open" : ""}`} id={subId} role="menu" aria-label={label}>
+                          <div className={`subnav ${opened ? "open" : ""}`} id={subId} role="group" aria-label={label}>
                             <div className="subnav-in"><div className="subnav-pad">
                               {sn.items.map(([tk, tl]) => {
                                 const sa = active && curTab === tk;
                                 return (
-                                  <button key={tk} className={`subitem ${sa ? "active" : ""}`} role="menuitem" aria-current={sa ? "true" : "false"} tabIndex={opened ? 0 : -1} onClick={() => navSub(key, tk)}>
+                                  <button key={tk} className={`subitem ${sa ? "active" : ""}`} aria-current={sa ? "true" : undefined} tabIndex={opened ? 0 : -1} onClick={() => navSub(key, tk)}>
                                     <span className="sdot" /><span className="slbl">{tl}</span>
                                   </button>
                                 );
@@ -178,8 +203,8 @@ export function Sidebar() {
                       );
                     }
                     return (
-                      <button key={key} className={`nav-item ${active ? "active" : ""}`} data-tip={label} aria-current={active ? "page" : undefined} onClick={() => go(`/${space}/${key}`)}>
-                        <Icon name={icon} className="ico" /><span className="lbl">{label}</span>{c ? <span className="cnt">{c}</span> : null}
+                      <button key={key} className={`nav-item ${active ? "active" : ""}`} data-tip={c ? `${label} (${c} need attention)` : label} aria-current={active ? "page" : undefined} onClick={() => go(`/${space}/${key}`)}>
+                        <Icon name={icon} className="ico" /><span className="lbl">{label}</span>{c ? <span className="cnt" title={`${c} need attention`}>{c}<span className="vh"> need attention</span></span> : null}
                       </button>
                     );
                   })}

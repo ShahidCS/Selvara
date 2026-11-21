@@ -6,7 +6,7 @@ const TAB: CSSProperties = { fontVariantNumeric: "tabular-nums" };
 /** Colour is never the only signal: the chip always carries the band name and the number. */
 export function ScoreChip({ score, label }: { score: number; label?: string }) {
   const b = rband(score);
-  return <span className="chip" style={{ ...tone(b), ...TAB, whiteSpace: "nowrap" }} aria-label={`${label ? label + " " : ""}${b.name} ${score}`}>{label ? label + " " : ""}{score} <span style={{ fontWeight: 500 }}>{b.name}</span></span>;
+  return <span className="chip" style={{ ...tone(b), ...TAB, whiteSpace: "nowrap" }}>{label ? label + " " : ""}{score} <span style={{ fontWeight: 500 }}>{b.name}</span></span>;
 }
 export function RatingPill({ b }: { b: RBand }) { return <span className="chip" style={tone(b)}>{b.name}</span>; }
 export function BandPill({ score, label }: { score: number; label?: string }) {

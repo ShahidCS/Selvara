@@ -21,6 +21,7 @@
   --c-success-50:#eaf7ef; --c-success-500:#18a058; --c-success-700:#0e7a42;
   --c-warning-50:#fff6e5; --c-warning-500:#f5a524; --c-warning-700:#a86200; --c-warning-800:#8a5000;
   --c-danger-50:#ffefef; --c-danger-500:#f0484a; --c-danger-700:#c22427;
+  --brand-mark:#e8653f; /* the Selvara mark's second square (platform identity, not a status colour; a tenant preset does not change it) */
   --c-ink:#111113; --c-neutral-50:#f1f1ef; --c-neutral-500:#909097; --c-neutral-700:#55565c; --c-white:#fff; --c-black:#000;
 
   /* blueprint semantic names */
@@ -159,10 +160,10 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 #app.collapsed .grp.closed .grp-items{display:block}
 #app.collapsed .nav-parent>.nav-item{padding-right:9px}
 #app.collapsed .nav-item.active::before{left:-8px}
-/* collapsed rail: count badge shrinks to a dot */
-#app.collapsed .nav-item .cnt{position:absolute;top:5px;right:9px;min-width:0;width:7px;height:7px;padding:0;border-radius:999px;background:var(--accent);
-  font-size:0;color:transparent;border:1.5px solid var(--surface);margin:0}
-#app.collapsed .nav-parent>.nav-item .cnt{right:9px}
+/* collapsed rail: the count stays a number in a small pill (a bare dot was colour only); the tooltip says it too */
+#app.collapsed .nav-item .cnt{position:absolute;top:1px;right:3px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:var(--accent);
+  font-size:10px;color:var(--text-inverse);border:1.5px solid var(--surface);margin:0;box-sizing:content-box}
+#app.collapsed .nav-parent>.nav-item .cnt{right:3px}
 .sb-foot{flex:0 0 auto;border-top:1px solid var(--line);padding:10px}
 .sb-user{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;cursor:pointer;padding:6px;border-radius:var(--radius-field)}
 .sb-user:hover{background:var(--surface-2)}
@@ -222,6 +223,10 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 .crumbs .sep{color:var(--line-2)}
 .crumbs .cur{color:var(--ink);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .crumbs a{color:var(--muted)} .crumbs a:hover{color:var(--ink)}
+/* the page name must survive a narrow bar: links give way first (ellipsis), the current crumb keeps at least a few characters */
+.crumbs a,.crumbs .sep{flex:0 0 auto} .crumbs a{flex-shrink:2;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crumbs .cur{flex:0 1 auto;min-width:6ch}
+@media (max-width:720px){.crumbs{flex:1 1 auto}.crumbs>a:first-child,.crumbs>a:first-child+.sep{display:none}}
 .top-search{flex:0 0 auto;margin-left:auto;display:flex;align-items:center;gap:0;height:36px;width:36px;padding:0;justify-content:center;overflow:hidden;
   background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-control);color:var(--muted);cursor:text;font-size:13px;
   transition:width .3s cubic-bezier(.22,1,.36,1),gap .2s ease,padding .3s cubic-bezier(.22,1,.36,1),border-color .15s,background .15s}
@@ -597,8 +602,10 @@ button.tag:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
 #scrim-sb{position:fixed;inset:0;background:rgba(10,14,18,.44);opacity:0;pointer-events:none;transition:opacity .2s;z-index:75}
 @media (max-width:760px){
   #app{grid-template-columns:1fr!important;grid-template-areas:"top" "main"}
-  aside#sidebar{position:fixed;left:0;top:0;height:100dvh;width:var(--sb-w);z-index:88;transform:translateX(-100%);transition:transform .24s ease}
-  #app.mobonly-open aside#sidebar{transform:none}
+  /* closed: off screen and hidden (after the slide), so its links leave the tab order; open: a close button in the header */
+  aside#sidebar{position:fixed;left:0;top:0;height:100dvh;width:var(--sb-w);max-width:calc(100vw - 48px);z-index:88;transform:translateX(-100%);visibility:hidden;transition:transform .24s ease,visibility 0s linear .24s}
+  #app.mobonly-open aside#sidebar{transform:none;visibility:visible;transition:transform .24s ease}
+  aside#sidebar .sb-close{display:inline-flex;margin-inline-start:auto}
   #app.mobonly-open #scrim-sb{opacity:1;pointer-events:auto}
   .hamburger{display:inline-flex!important}
   .collapse-btn{display:none}
@@ -619,6 +626,7 @@ button.tag:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
   .kpis{grid-template-columns:1fr!important}
 }
 .hamburger{display:none}
+.sb-close{display:none}
 
 /* tenant brand (phase 6): a workspace picks one of these presets. Each overrides the six --c-brand-* variables and, for the dark theme (which sets its own accent), the accent set.
    Every pair is contrast-checked in tests/unit/brand.test.ts (text 4.5:1). Not free-form: a tenant cannot choose a colour that fails. The attribute selector (no :root) lets a swatch preview a preset. */
@@ -806,6 +814,17 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .step.now .step-dot{border-color:var(--accent);background:var(--accent)}
 .step.late .step-dot{background:var(--bad-ink);border-color:var(--bad-ink);color:var(--surface);box-shadow:var(--glow-danger)}
 .step-l{font-size:13px;font-weight:500;color:var(--ink)} .step-n{font-size:12px;color:var(--muted)}
+/* Stepper on a narrow container (a phone, a side column): labels never overlap. Each stage needs about 104px across; below that the stepper
+   becomes a vertical list with the connector on the left (Stepper sets data-n to the number of stages). Long words wrap instead of overflowing. */
+.stepper-wrap{container-type:inline-size;min-width:0}
+.step{padding-inline-end:8px}.step-l,.step-n{overflow-wrap:anywhere}
+@container (max-width:207px){.stepper[data-n="2"]{flex-direction:column}.stepper[data-n="2"] .step{flex:none;padding:0 0 14px 26px}.stepper[data-n="2"] .step:last-child{padding-bottom:0}.stepper[data-n="2"] .step::before,.stepper[data-n="2"] .step:first-child::before,.stepper[data-n="2"] .step:last-child::before{top:18px;bottom:-1px;inset-inline:7px auto;width:2px;height:auto}.stepper[data-n="2"] .step.next::before{border-top:0;border-inline-start:2px dashed var(--line-2);width:0}.stepper[data-n="2"] .step.late::before{width:3px;inset-inline-start:6.5px}.stepper[data-n="2"] .step:last-child::before{display:none}}
+@container (max-width:311px){.stepper[data-n="3"]{flex-direction:column}.stepper[data-n="3"] .step{flex:none;padding:0 0 14px 26px}.stepper[data-n="3"] .step:last-child{padding-bottom:0}.stepper[data-n="3"] .step::before,.stepper[data-n="3"] .step:first-child::before,.stepper[data-n="3"] .step:last-child::before{top:18px;bottom:-1px;inset-inline:7px auto;width:2px;height:auto}.stepper[data-n="3"] .step.next::before{border-top:0;border-inline-start:2px dashed var(--line-2);width:0}.stepper[data-n="3"] .step.late::before{width:3px;inset-inline-start:6.5px}.stepper[data-n="3"] .step:last-child::before{display:none}}
+@container (max-width:415px){.stepper[data-n="4"]{flex-direction:column}.stepper[data-n="4"] .step{flex:none;padding:0 0 14px 26px}.stepper[data-n="4"] .step:last-child{padding-bottom:0}.stepper[data-n="4"] .step::before,.stepper[data-n="4"] .step:first-child::before,.stepper[data-n="4"] .step:last-child::before{top:18px;bottom:-1px;inset-inline:7px auto;width:2px;height:auto}.stepper[data-n="4"] .step.next::before{border-top:0;border-inline-start:2px dashed var(--line-2);width:0}.stepper[data-n="4"] .step.late::before{width:3px;inset-inline-start:6.5px}.stepper[data-n="4"] .step:last-child::before{display:none}}
+@container (max-width:519px){.stepper[data-n="5"]{flex-direction:column}.stepper[data-n="5"] .step{flex:none;padding:0 0 14px 26px}.stepper[data-n="5"] .step:last-child{padding-bottom:0}.stepper[data-n="5"] .step::before,.stepper[data-n="5"] .step:first-child::before,.stepper[data-n="5"] .step:last-child::before{top:18px;bottom:-1px;inset-inline:7px auto;width:2px;height:auto}.stepper[data-n="5"] .step.next::before{border-top:0;border-inline-start:2px dashed var(--line-2);width:0}.stepper[data-n="5"] .step.late::before{width:3px;inset-inline-start:6.5px}.stepper[data-n="5"] .step:last-child::before{display:none}}
+@container (max-width:623px){.stepper[data-n="6"]{flex-direction:column}.stepper[data-n="6"] .step{flex:none;padding:0 0 14px 26px}.stepper[data-n="6"] .step:last-child{padding-bottom:0}.stepper[data-n="6"] .step::before,.stepper[data-n="6"] .step:first-child::before,.stepper[data-n="6"] .step:last-child::before{top:18px;bottom:-1px;inset-inline:7px auto;width:2px;height:auto}.stepper[data-n="6"] .step.next::before{border-top:0;border-inline-start:2px dashed var(--line-2);width:0}.stepper[data-n="6"] .step.late::before{width:3px;inset-inline-start:6.5px}.stepper[data-n="6"] .step:last-child::before{display:none}}
+@container (max-width:727px){.stepper[data-n="7"]{flex-direction:column}.stepper[data-n="7"] .step{flex:none;padding:0 0 14px 26px}.stepper[data-n="7"] .step:last-child{padding-bottom:0}.stepper[data-n="7"] .step::before,.stepper[data-n="7"] .step:first-child::before,.stepper[data-n="7"] .step:last-child::before{top:18px;bottom:-1px;inset-inline:7px auto;width:2px;height:auto}.stepper[data-n="7"] .step.next::before{border-top:0;border-inline-start:2px dashed var(--line-2);width:0}.stepper[data-n="7"] .step.late::before{width:3px;inset-inline-start:6.5px}.stepper[data-n="7"] .step:last-child::before{display:none}}
+@container (max-width:831px){.stepper[data-n="8"]{flex-direction:column}.stepper[data-n="8"] .step{flex:none;padding:0 0 14px 26px}.stepper[data-n="8"] .step:last-child{padding-bottom:0}.stepper[data-n="8"] .step::before,.stepper[data-n="8"] .step:first-child::before,.stepper[data-n="8"] .step:last-child::before{top:18px;bottom:-1px;inset-inline:7px auto;width:2px;height:auto}.stepper[data-n="8"] .step.next::before{border-top:0;border-inline-start:2px dashed var(--line-2);width:0}.stepper[data-n="8"] .step.late::before{width:3px;inset-inline-start:6.5px}.stepper[data-n="8"] .step:last-child::before{display:none}}
 .timeline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .tl-item{display:grid;grid-template-columns:14px 1fr auto;gap:12px;padding:0 0 18px;position:relative}
 .tl-item:not(:last-child)::before{content:"";position:absolute;top:14px;bottom:0;inset-inline-start:6px;width:1px;background:var(--line)}

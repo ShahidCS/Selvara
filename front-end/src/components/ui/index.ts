@@ -10,3 +10,4 @@ export * from "./AIPanel";
 export * from "./Flow";
 export * from "./Charts";
 export * from "./Record";
+export * from "./BrandMark";
