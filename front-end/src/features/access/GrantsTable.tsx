@@ -1,4 +1,4 @@
-import { DataTable, Icon, StatusChip, type DTColumn } from "@/components/ui";
+import { Chip, DataTable, Icon, type DTColumn } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { API_ON } from "@/lib/rbac";
 import { useApp } from "@/lib/store";
@@ -8,13 +8,15 @@ import { DATA } from "@/lib/data";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Grant = any;
-const STATUS_CHIP = (s: string) => (s === "Active" ? "Active" : s === "Expiring" ? "Review" : "Needs evidence");
+/** One chip per grant, labelled with the grant's own status (tone and icon follow it). */
+const GRANT_TONE: Record<string, [string, string]> = { Active: ["ok", "check"], Expiring: ["warn", "clock"], "Needs review": ["warn", "alert"], Revoked: ["neutral", "x"] };
+const GrantChip = ({ s }: { s: string }) => { const [c, i] = GRANT_TONE[s] || ["bad", "alert"]; return <Chip cls={c} icon={i}>{s}</Chip>; };
 const COLS: DTColumn<Grant>[] = [
   { key: "user", header: "User", value: (a) => a.user, locked: true, render: (a) => <span className="strong">{a.user}</span> },
   { key: "system", header: "System", value: (a) => a.system, render: (a) => a.system },
   { key: "level", header: "Level", value: (a) => a.level, render: (a) => a.level },
   { key: "granted", header: "Granted", value: (a) => a.granted, sortBy: (a) => Date.parse(a.granted) || 0, render: (a) => a.granted },
-  { key: "status", header: "Status", value: (a) => a.status, render: (a) => <><StatusChip s={STATUS_CHIP(a.status)} /> <span style={{ color: "var(--muted)", fontSize: 12 }}>{a.status}</span></> },
+  { key: "status", header: "Status", value: (a) => a.status, render: (a) => <GrantChip s={a.status} /> },
 ];
 
 /** Grants register shared by Access > Account inventory and People > Access grants. */

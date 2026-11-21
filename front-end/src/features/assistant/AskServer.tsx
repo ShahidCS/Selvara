@@ -96,8 +96,8 @@ export function AskServer({ scrollRef }: { scrollRef: React.RefObject<HTMLDivEle
           <AIPanel source="Assistant" meta={`Draft, review required${m.model ? ` · ${m.model}` : ""}`} label="Assistant answer"
             footer={<>
               {m.masked ? <Chip cls="warn" icon="alert">Personal data was masked before sending</Chip> : null}
-              <button className="btn btn-ghost sm" onClick={() => copy(m.text)}><Icon name="download" />Copy</button>
-              <button className="btn btn-ghost sm" disabled={m.reviewed} onClick={() => reviewed(i)}><Icon name="check" />{m.reviewed ? "Reviewed" : "Mark reviewed"}</button>
+              <button className="btn btn-ghost sm" onClick={() => copy(m.text)}>Copy</button>
+              {m.reviewed ? <Chip cls="ok" icon="check">Reviewed</Chip> : <button className="btn btn-ghost sm" onClick={() => reviewed(i)}><Icon name="check" />Mark reviewed</button>}
             </>}>
             <div style={{ fontSize: 13.5, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{m.text}</div>
           </AIPanel>

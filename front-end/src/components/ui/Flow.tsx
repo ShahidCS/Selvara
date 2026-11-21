@@ -10,7 +10,7 @@ export function Stepper({ steps, current, overdue = false, label }: { steps: Ste
         const st = i < current ? "done" : i === current ? (overdue ? "late" : "now") : "next";
         return (
           <li key={s.key} className={`step ${st}`} aria-current={i === current ? "step" : undefined}>
-            <span className="step-dot" aria-hidden="true">{st === "done" ? <Icon name="check" /> : st === "late" ? <Icon name="alert" /> : null}</span>
+            <span className="step-dot" aria-hidden="true">{st === "done" ? <Icon name="check" /> : st === "late" ? <Icon name="excl" /> : null}</span>
             <span className="step-l">{s.label}</span>
             <span className="step-n">{st === "done" ? "Done" : st === "late" ? "Overdue" : st === "now" ? "Current" : "Projected"}{s.note ? `, ${s.note}` : ""}</span>
           </li>

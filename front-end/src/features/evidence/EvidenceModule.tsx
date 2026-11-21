@@ -1,11 +1,11 @@
 import { ModuleTip } from "@/components/kit/ModuleTip";
 import { API_ON } from "@/lib/rbac";
-import { DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn } from "@/components/ui";
+import { DataTable, Icon, KpiStrip, KpiTile, Page, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData } from "@/lib/store";
 import { useGo, useRoute } from "@/lib/route";
 import { evInit, pendingDelete, whyCannotWrite, EVIDENCE_TYPES, REVIEW_STATES } from "@/features/evidence/services/evidence";
-import { EvidenceDetail, reviewChip } from "./EvidenceDetail";
+import { EvidenceDetail, ReviewChip } from "./EvidenceDetail";
 import { EvidenceFormPage } from "./EvidenceFormPage";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -27,13 +27,13 @@ function EvidenceList() {
   const status = (e: Ev) => String(e.review?.status ?? "Pending review");
   const owners = Array.from(new Set<string>(DATA.evidence.map((e: Ev) => String(e.by)))).sort();
   const cols: DTColumn<Ev>[] = [
-    { key: "id", header: "ID", value: (e) => e.id, locked: true, render: (e) => <span className="strong num">{e.id}</span> },
+    { key: "id", header: "ID", value: (e) => e.id, locked: true, render: (e) => <span className="strong num" style={{ whiteSpace: "nowrap" }}>{e.id}</span> },
     { key: "name", header: "Evidence", value: (e) => e.name, render: (e) => e.name },
     { key: "type", header: "Type", value: (e) => e.type, render: (e) => e.type },
     { key: "ver", header: "Version", value: (e) => e.ver, render: (e) => `v${e.ver}` },
     { key: "by", header: "Collected by", value: (e) => e.by, render: (e) => e.by },
     { key: "updated", header: "Updated", value: (e) => e.updated, sortBy: (e) => Date.parse(e.updated) || 0, render: (e) => e.updated },
-    { key: "review", header: "Review", value: (e) => status(e), render: (e) => <><StatusChip s={reviewChip(status(e))} />{pendingDelete(e) ? <> <span className="tag">Deletion requested</span></> : null}</> },
+    { key: "review", header: "Review", value: (e) => status(e), render: (e) => <><ReviewChip status={status(e)} />{pendingDelete(e) ? <> <span className="tag">Deletion requested</span></> : null}</> },
   ];
   const n = (s: string) => DATA.evidence.filter((e: Ev) => status(e) === s).length;
   return (
@@ -41,7 +41,7 @@ function EvidenceList() {
       <ModuleTip mod="evidence" force={API_ON && !DATA.evidence.length} />
       <KpiStrip label="Evidence summary">
         <KpiTile label="Evidence items" value={DATA.evidence.length} caption="On record" />
-        <KpiTile label="Awaiting review" value={n("Pending review")} delta={n("Pending review") ? { tone: "bad", text: "Needs a reviewer" } : { tone: "good", text: "None" }} caption="Not yet accepted" />
+        <KpiTile label="Pending review" value={n("Pending review")} delta={n("Pending review") ? { tone: "watch", text: "Needs a reviewer" } : { tone: "good", text: "None" }} caption="Awaiting review by a second person" />
         <KpiTile label="Accepted" value={n("Accepted")} caption="Reviewed by a second person" />
         <KpiTile label="Rejected" value={n("Rejected")} caption="Needs fixing" />
       </KpiStrip>

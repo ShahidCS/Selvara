@@ -23,7 +23,7 @@ export function AccessRequests({ canAct }: { canAct: boolean }) {
   ));
   if (!ACCESS_REQUESTS.length) return <Empty icon="access" title="No requests">No access requests are open.</Empty>;
   const cols: DTColumn<Req>[] = [
-    { key: "id", header: "ID", value: (r) => r.id, locked: true, render: (r) => <span className="strong num">{r.id}</span> },
+    { key: "id", header: "ID", value: (r) => r.id, locked: true, render: (r) => <span className="strong num" style={{ whiteSpace: "nowrap" }}>{r.id}</span> },
     { key: "user", header: "User", value: (r) => r.user, render: (r) => <>{r.user}{r.requester && r.requester !== r.user ? <div style={{ fontSize: 11, color: "var(--muted)" }}>requested by {r.requester}</div> : null}</> },
     { key: "system", header: "System", value: (r) => r.system, render: (r) => r.system },
     { key: "level", header: "Level", value: (r) => r.level, render: (r) => r.level },
@@ -32,7 +32,7 @@ export function AccessRequests({ canAct }: { canAct: boolean }) {
       const two = r.status === "Pending" && svc.isPrivilegedRequest(r);
       return (
         <>
-          {r.status === "Approved" ? <Chip cls="ok" icon="check">Approved</Chip> : r.status === "Denied" ? <Chip cls="bad" icon="x">Rejected</Chip> : r.status === "Expired" ? <Chip cls="neutral" icon="clock">Expired</Chip> : <Chip cls="warn" icon="clock">{r.stage === "second" ? "Awaiting 2nd approver" : "Pending"}</Chip>}
+          {r.status === "Approved" ? <Chip cls="ok" icon="check">Approved</Chip> : r.status === "Denied" ? <Chip cls="bad" icon="x">Denied</Chip> : r.status === "Expired" ? <Chip cls="neutral" icon="clock">Expired</Chip> : <Chip cls="warn" icon="clock">{r.stage === "second" ? "Awaiting 2nd approver" : "Pending"}</Chip>}
           {two ? <div style={{ fontSize: 11, color: "var(--muted)" }}>Two approvers required{r.firstApprover ? `; first: ${r.firstApprover}` : ""}</div> : null}
         </>
       );

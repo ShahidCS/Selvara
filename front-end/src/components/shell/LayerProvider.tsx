@@ -104,11 +104,43 @@ function Modal({ l, close }: { l: Extract<Layer, { kind: "modal" }>; close: () =
     </FootCtx.Provider>
   );
 }
+/** Menu and listbox popovers: focus moves to the first item on open and back to the trigger on close; ArrowUp/ArrowDown/Home/End move between
+ *  items (roving focus, as a `menu` or `listbox` role promises); Tab closes the popover; Escape closes it (LayerProvider). */
+const ITEMS = '[role^="menuitem"]:not([disabled]),[role="option"]:not([disabled])';
+function itemsOf(el: HTMLElement | null): HTMLElement[] {
+  if (!el) return [];
+  const own = Array.from(el.querySelectorAll<HTMLElement>(ITEMS));
+  return (own.length ? own : Array.from(el.querySelectorAll<HTMLElement>(FOCUSABLE))).filter((x) => x.offsetParent !== null);
+}
 function Popover({ l, close }: { l: Extract<Layer, { kind: "popover" }>; close: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const trigger = l.trigger;
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      const it = itemsOf(ref.current);
+      const sel = it.find((x) => x.getAttribute("aria-selected") === "true");
+      (sel || it[0] || ref.current)?.focus();
+    });
+    return () => {
+      cancelAnimationFrame(id);
+      // back to the trigger, unless the chosen item already moved focus somewhere real (a dialog it opened, a field)
+      const a = document.activeElement;
+      if (trigger?.isConnected && (!a || a === document.body)) trigger.focus();
+    };
+  }, [trigger]);
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key === "Tab") { e.preventDefault(); close(); return; }
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
+    const it = itemsOf(ref.current); if (!it.length) return;
+    e.preventDefault();
+    const i = it.indexOf(document.activeElement as HTMLElement);
+    const next = e.key === "Home" ? 0 : e.key === "End" ? it.length - 1 : e.key === "ArrowDown" ? (i + 1) % it.length : (i - 1 + it.length) % it.length;
+    it[next].focus();
+  };
   return (
     <>
       <div className="scrim" style={{ background: "transparent", pointerEvents: "auto" }} onClick={close} />
-      <div className="pop" role={l.role || "menu"} aria-label={l.label} style={{ top: l.top, right: l.right, left: l.left }}>{run(l.body, close)}</div>
+      <div ref={ref} tabIndex={-1} className="pop" role={l.role || "menu"} aria-label={l.label} style={{ top: l.top, right: l.right, left: l.left }} onKeyDown={onKey}>{run(l.body, close)}</div>
     </>
   );
 }
@@ -160,7 +192,7 @@ export function LayerProvider({ children }: { children: ReactNode }) {
 
   const closeLayer = useCallback(() => {
     setLayer(null);
-    document.querySelectorAll(".icon-btn.ibopen").forEach((b) => b.classList.remove("ibopen"));
+    document.querySelectorAll(".ibopen").forEach((b) => { b.classList.remove("ibopen"); if (b.hasAttribute("aria-haspopup")) b.setAttribute("aria-expanded", "false"); });
   }, []);
   // route change closes any open layer (prototype: route() -> closeLayer())
   useEffect(() => { const h = () => closeLayer(); router.events.on("routeChangeStart", h); return () => router.events.off("routeChangeStart", h); }, [router.events, closeLayer]);
@@ -188,7 +220,7 @@ export function LayerProvider({ children }: { children: ReactNode }) {
     openModal: (title, body, foot, opts) => setLayer({ kind: "modal", title, body, foot, wide: opts?.wide }),
     popover: (ev, body, opts) => {
       const el = ev.currentTarget as HTMLElement; const b = el.getBoundingClientRect();
-      el.classList?.add("ibopen");
+      el.classList?.add("ibopen"); if (el.hasAttribute?.("aria-haspopup")) el.setAttribute("aria-expanded", "true");
       setLayer({ kind: "popover", top: b.bottom + 6, ...(opts?.align === "start" ? { left: Math.max(8, Math.min(b.left, window.innerWidth - 248)) } : { right: window.innerWidth - b.right }), body, trigger: el, role: opts?.role, label: opts?.label });
     },
     openPalette: () => setLayer({ kind: "palette" }),

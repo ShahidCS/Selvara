@@ -7,6 +7,7 @@ import { clampText } from "@/lib/security";
 import { wsLog } from "@/lib/audit";
 import { iAm } from "@/lib/grcSod";
 import * as svc from "@/features/issues/services/issues";
+import { useRiskDrawer } from "@/features/risk";
 import { DueText, attempt, openAddTask, openDecideClosure, openDelete, openLink, openProposeClosure } from "./IssueLayers";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -16,7 +17,7 @@ const STEPS = svc.ISSUE_STATUSES.map((s) => ({ key: s, label: s }));
  *  the short dialogs (closure note, add task, link, delete) remain dialogs. */
 export function IssueDetail({ id }: { id: string }) {
   useData(); useApp((s) => s.role);
-  const L = useLayer(); const go = useGo();
+  const L = useLayer(); const go = useGo(); const openRisk = useRiskDrawer();
   const back = { href: "/ws/issues", label: "Issues" };
   const i: any = svc.issFind(id);
   const [rc, setRc] = useState(() => String(i?.rootCause ?? "")); const [ca, setCa] = useState(() => String(i?.corrective ?? ""));
@@ -38,8 +39,8 @@ export function IssueDetail({ id }: { id: string }) {
   return (
     <Page title={i.title} sub={`${i.id}, owner ${i.owner}`} back={back} acts={<>
       <StatusChip s={i.sev} /><StatusChip s={i.status} />
-      <button className="btn btn-ghost" {...dis(writeWhy)} onClick={() => go(`/ws/issues/${encodeURIComponent(id)}/edit`)}><Icon name="team" />Edit</button>
-      <button className="btn btn-ghost" {...dis(delWhy)} onClick={() => openDelete(L, id, () => go("/ws/issues"))}><Icon name="x" />Delete</button>
+      <button className="btn btn-ghost" {...dis(writeWhy)} onClick={() => go(`/ws/issues/${encodeURIComponent(id)}/edit`)}><Icon name="edit" />Edit</button>
+      <button className="btn btn-ghost" {...dis(delWhy)} onClick={() => openDelete(L, id, () => go("/ws/issues"))}><Icon name="trash" />Delete</button>
     </>}>
       <div className="scroll rec-scroll">
         {pend ? (
@@ -60,11 +61,16 @@ export function IssueDetail({ id }: { id: string }) {
             <div className="card"><div className="c-head"><h3>Progress</h3><span className="sub">{i.status}</span></div>
               <div className="c-body">
                 <Stepper label="Issue progress" steps={STEPS} current={step} overdue={/Overdue/.test(i.due) && i.status !== "Closed"} />
-                <div className="btngrp" style={{ marginTop: 12 }}>{svc.ISSUE_STATUSES.map((s) => {
-                  const toClosed = s === "Closed" && high && i.status !== "Closed";
-                  const why = i.status === s ? null : toClosed ? proposeWhy : pend ? "A closure is awaiting verification." : writeWhy;
-                  return <button key={s} className={`btn ${i.status === s ? "btn-primary" : "btn-secondary"} sm`} disabled={i.status === s || !!why} title={why || undefined} onClick={() => (toClosed ? openProposeClosure(L, id) : setStatus(s))}>{toClosed ? "Propose closure" : s}</button>;
-                })}</div>
+                {/* the current status is a state, not a button; only the other statuses are offered as moves */}
+                <div className="btngrp" style={{ marginTop: 12, alignItems: "center" }}>
+                  <span style={{ fontSize: 13, color: "var(--muted)" }}>Status</span> <StatusChip s={i.status} />
+                  <span style={{ fontSize: 13, color: "var(--muted)", marginLeft: 8 }}>Move to</span>
+                  {svc.ISSUE_STATUSES.filter((s) => s !== i.status).map((s) => {
+                    const toClosed = s === "Closed" && high;
+                    const why = toClosed ? proposeWhy : pend ? "A closure is awaiting verification." : writeWhy;
+                    return <button key={s} className="btn btn-secondary sm" disabled={!!why} title={why || undefined} onClick={() => (toClosed ? openProposeClosure(L, id) : setStatus(s))}>{toClosed ? "Propose closure" : s}</button>;
+                  })}
+                </div>
                 {high && i.status !== "Closed" ? <p className="field help" style={{ margin: "8px 0 0" }}>Closing a {i.sev} issue needs a verifier who is not the assignee, the owner or the person proposing, with a verification note.</p> : null}
                 {writeWhy ? <p className="field help" style={{ margin: "8px 0 0" }} role="note">{writeWhy}</p> : null}
               </div></div>
@@ -89,13 +95,14 @@ export function IssueDetail({ id }: { id: string }) {
           <aside className="rec-side">
             <div className="card"><div className="c-head"><h3>Details</h3></div><div className="c-body">
               <dl className="meta-grid"><dt>Severity</dt><dd><StatusChip s={i.sev} /></dd><dt>Owner</dt><dd>{i.owner}</dd><dt>Due</dt><dd><DueText due={i.due} />{i.dueDate ? <span style={{ color: "var(--muted)" }}> ({i.dueDate})</span> : null}</dd><dt>Status</dt><dd><StatusChip s={i.status} /></dd>
+                {delWhy && !writeWhy ? <><dt>Delete</dt><dd style={{ color: "var(--muted)" }}>{delWhy}</dd></> : null}
                 {i.verification ? <><dt>Verified closure</dt><dd>{i.verification.by} on {i.verification.at}: {i.verification.note} (proposed by {i.verification.proposedBy})</dd></> : null}</dl>
             </div></div>
             <div className="card"><div className="c-head"><h3>Linked controls &amp; risks</h3></div><div className="c-body">
               <div className="btngrp" style={{ marginBottom: 8 }}>
                 {i.linkedControls.length + i.linkedRisks.length === 0 ? <span style={{ color: "var(--muted)", fontSize: 13 }}>Nothing linked</span> : null}
                 {i.linkedControls.map((c: string) => <button key={"c" + c} className="fchip" onClick={() => go(`/ws/controls/${encodeURIComponent(c)}`)}><Icon name="controls" />{c}</button>)}
-                {i.linkedRisks.map((r: string) => <span key={"r" + r} className="tag num">{r}</span>)}
+                {i.linkedRisks.map((r: string) => <button key={"r" + r} className="fchip" onClick={() => openRisk(r)}><Icon name="risk" />{r}</button>)}
               </div>
               <div className="btngrp">
                 <button className="btn btn-ghost sm" {...dis(writeWhy)} onClick={() => openLink(L, id, "control")}><Icon name="controls" />Link control</button>

@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import { useLayer } from "@/hooks/useLayer";
 import { LayerFoot } from "@/components/shell/LayerProvider";
-import { Icon } from "@/components/ui";
 import { wsLog } from "@/lib/audit";
 import { bumpData } from "@/lib/store";
 import * as svc from "@/features/api/services/api";
@@ -22,7 +21,7 @@ export function KeyCreated({ full, label, scope, close }: { full: string; label:
       <div className="field"><input ref={ref} className="input num" id="ak-full" readOnly value={full} style={{ fontSize: 12 }} aria-label={API_ON ? "New API key" : "New API key (demo)"} autoComplete="off" spellCheck={false} /></div>
       <p className="field help">{label} · {scope} scope</p>
       <p className="field help">{API_ON ? "Selvara keeps only a fingerprint of this key: if it is lost, revoke it and create a new one." : "Demo key only: generated in this browser, accepted by nothing."}</p>
-      <LayerFoot><button className="btn btn-secondary" onClick={copy}><Icon name="download" />Copy key</button><button className="btn btn-primary" onClick={close}>Done</button></LayerFoot>
+      <LayerFoot><button className="btn btn-secondary" onClick={copy}>Copy key</button><button className="btn btn-primary" onClick={close}>Done</button></LayerFoot>
     </>
   );
 }
@@ -71,7 +70,7 @@ export function RevealSecretModal({ id, close }: { id: string; close: () => void
     <>
       <p style={{ margin: "0 0 10px" }}>Copy this signing secret now and store it where your endpoint verifies signatures. It will not be shown again.</p>
       <div className="field"><input ref={ref} className="input num" readOnly value={s} style={{ fontSize: 12 }} aria-label="Webhook signing secret" autoComplete="off" spellCheck={false} /></div>
-      <LayerFoot><button className="btn btn-secondary" onClick={copy}><Icon name="download" />Copy secret</button><button className="btn btn-primary" onClick={() => { setS(null); close(); }}>Done</button></LayerFoot>
+      <LayerFoot><button className="btn btn-secondary" onClick={copy}>Copy secret</button><button className="btn btn-primary" onClick={() => { setS(null); close(); }}>Done</button></LayerFoot>
     </>
   );
   return (

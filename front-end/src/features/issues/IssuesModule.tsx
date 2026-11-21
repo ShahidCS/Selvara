@@ -1,4 +1,4 @@
-import { DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, activate, type DTColumn } from "@/components/ui";
+import { DataTable, Icon, KpiStrip, KpiTile, Page, Segmented, StatusChip, activate, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { ModuleTip } from "@/components/kit/ModuleTip";
 import { API_ON } from "@/lib/rbac";
@@ -36,7 +36,7 @@ function IssuesList() {
   const [view, setView] = useModState<"table" | "kanban">("issues.view", "table");
   const open = (id: string) => go(`/ws/issues/${encodeURIComponent(id)}`);
   const cols: DTColumn<Issue>[] = [
-    { key: "id", header: "ID", value: (i) => i.id, locked: true, render: (i) => <span className="strong num">{i.id}</span> },
+    { key: "id", header: "ID", value: (i) => i.id, locked: true, render: (i) => <span className="strong num" style={{ whiteSpace: "nowrap" }}>{i.id}</span> },
     { key: "title", header: "Issue", value: (i) => i.title, render: (i) => i.title },
     { key: "sev", header: "Severity", value: (i) => i.sev, sortBy: (i) => SEV_RANK(i.sev), render: (i) => <StatusChip s={i.sev} /> },
     { key: "owner", header: "Owner", value: (i) => i.owner, render: (i) => i.owner },
@@ -55,10 +55,8 @@ function IssuesList() {
         <KpiTile label="In progress" value={live.filter((i: Issue) => i.status === "In progress").length} caption="Being worked on" />
       </KpiStrip>
       <div className="card" style={{ flex: "1 1 auto" }}>
-        <div className="c-head"><h3>Remediation</h3><div className="r"><div className="seg" role="tablist">
-          <button role="tab" aria-selected={view === "table"} onClick={() => setView("table")}><Icon name="rows" />Table</button>
-          <button role="tab" aria-selected={view === "kanban"} onClick={() => setView("kanban")}><Icon name="grid" />Kanban</button>
-        </div></div></div>
+        <div className="c-head"><h3>Remediation</h3><div className="r"><Segmented<"table" | "kanban"> label="Issue view" value={view === "kanban" ? "kanban" : "table"} onChange={setView}
+          options={[{ value: "table", label: <><Icon name="rows" />Table</>, text: "Table" }, { value: "kanban", label: <><Icon name="grid" />Kanban</>, text: "Kanban" }]} /></div></div>
         <div className={`c-body ${view === "table" ? "flush" : ""} scroll`} style={view === "table" ? { padding: 0 } : undefined} id="issBody">
           {view === "table" ? (
             <DataTable<Issue> id="issues" label="Issues" rows={DATA.issues} rowKey={(i) => i.id} columns={cols}
@@ -67,17 +65,18 @@ function IssuesList() {
               exportName="issues" onOpen={(i) => open(i.id)}
               rowActions={(i) => [{ label: "Open issue", run: () => open(i.id) }, { label: "Copy ID", run: () => { void navigator.clipboard?.writeText(i.id); L.toast("Issue ID copied"); } }]} />
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, alignItems: "start" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: 12, alignItems: "start" }}>
               {COLS.map((c) => {
                 const items = DATA.issues.filter((i) => i.status === c);
                 return (
                   <div key={c} style={{ background: "var(--surface-2)", borderRadius: 10, padding: 10 }}>
                     <div className="sectitle" style={{ margin: "2px 0 8px" }}>{c} <span className="tag">{items.length}</span></div>
                     {items.length ? items.map((i) => (
-                      <div key={i.id} className="card clickable" style={{ boxShadow: "var(--shadow-sm)", marginBottom: 8 }} {...activate(() => open(i.id))}>
+                      <div key={i.id} className="card clickable" style={{ marginBottom: 8 }} {...activate(() => open(i.id))}>
                         <div className="c-body" style={{ padding: 11 }}>
                           <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 6 }}>{i.title}</div>
-                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}><StatusChip s={i.sev} /><span className="tag num">{i.id}</span></div>
+                          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}><StatusChip s={i.sev} /><span className="tag num">{i.id}</span></div>
+                          <div style={{ display: "flex", gap: 8, justifyContent: "space-between", flexWrap: "wrap", marginTop: 6, fontSize: 12, color: "var(--muted)" }}><span>{i.owner}</span><DueText due={i.due} /></div>
                         </div>
                       </div>
                     )) : <div style={{ color: "var(--faint)", fontSize: 12, padding: 8 }}>Nothing here.</div>}

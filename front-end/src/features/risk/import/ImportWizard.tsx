@@ -27,7 +27,7 @@ const bandTint = (col: string, p: number) => `color-mix(in srgb, ${col} ${p}%, v
 const bandText = (col: string) => `color-mix(in srgb, ${col} 50%, var(--ink))`;
 function ScoreChip({ score }: { score: number }) {
   const b = rband(score);
-  return <span className="chip" style={{ background: bandTint(b.col, 15), color: bandText(b.col), border: `1px solid ${bandTint(b.col, 30)}`, fontVariantNumeric: "tabular-nums" }}>{score}</span>;
+  return <span className="chip" style={{ background: bandTint(b.col, 15), color: bandText(b.col), border: `1px solid ${bandTint(b.col, 30)}`, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{score} {b.name}</span>;
 }
 
 function Stepper({ step }: { step: number }) {

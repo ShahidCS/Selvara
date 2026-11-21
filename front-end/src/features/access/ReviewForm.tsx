@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Icon } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { sodMessage } from "@/lib/approvalFlow";
@@ -12,7 +13,7 @@ export function ReviewForm({ close }: { close: () => void }) {
   const [name, setName] = useState(""); const [scope, setScope] = useState("All privileged accounts"); const [err, setErr] = useState(false);
   const submit = async () => {
     const n = clampText(name, 120);
-    if (!n) { setErr(true); return; }
+    if (!n) { setErr(true); document.getElementById("arv-name")?.focus(); return; }
     try {
       await svc.createReview({ name: n, scope: clampText(scope, 160) });
       close(); L.toast("Access review started");
@@ -21,10 +22,12 @@ export function ReviewForm({ close }: { close: () => void }) {
   };
   return (
     <>
-      <div className="field"><label htmlFor="arv-name">Review name <span style={{ color: "var(--bad-ink)" }}>*</span></label><input className="input" id="arv-name" data-focus maxLength={120} placeholder="e.g. Q1 2027 recertification" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={err} aria-describedby={err ? "arv-err" : undefined} /></div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="field"><label htmlFor="arv-name">Review name <span style={{ color: "var(--bad-ink)" }}>*</span></label><input className="input" id="arv-name" data-focus maxLength={120} placeholder="e.g. Q1 2027 recertification" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={err} aria-describedby={err ? "arv-err" : undefined} />
+        <p className="errmsg" id="arv-err" role="alert" style={{ margin: "4px 0 0", display: err ? "flex" : "none" }}><Icon name="alert" /><span>Review name is required.</span></p></div>
       <div className="field"><label htmlFor="arv-scope">Scope</label><input className="input" id="arv-scope" maxLength={160} value={scope} onChange={(e) => setScope(e.target.value)} /></div>
       <p className="field help">Starting a review freezes the account scope at this point in time.</p>
-      <p className="field help" id="arv-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>Review name is required.</p>
+      </div>
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={submit}>Start review &amp; freeze scope</button></LayerFoot>
     </>
   );

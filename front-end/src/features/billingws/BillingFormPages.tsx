@@ -34,14 +34,14 @@ export function PlanPage() {
   return (
     <Page title="Change plan" sub="Changing plan takes effect next billing cycle. Downgrades may require reducing seats or modules first." back={back}>
       <div className="scroll rec-scroll"><form className="rec-form" onSubmit={submit} noValidate>
-        <FormSection n={1} title="Plan" note={`You are on ${s.plan}, billed ${s.cycle.toLowerCase()}.`}>
+        <FormSection n={1} title="Plan" note={`You are on ${s.plan}, billed ${s.cycle === "Annual" ? "annually" : s.cycle === "Monthly" ? "monthly" : s.cycle.toLowerCase()}.`}>
           <div role="radiogroup" aria-label="Plan">
             {names.map((pn) => {
               const p = svc.PLANS[pn]; const cur = pn === s.plan;
               return (
-                <label key={pn} style={{ display: "block", border: `1px solid ${pick === pn ? "var(--accent)" : "var(--line,#e5e7eb)"}`, borderRadius: 10, padding: 12, marginBottom: 8, cursor: "pointer" }}>
+                <label key={pn} style={{ display: "block", border: `1px solid ${pick === pn ? "var(--accent)" : "var(--line)"}`, borderRadius: 10, padding: 12, marginBottom: 8, cursor: "pointer" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <input type="radio" name="planpick" value={pn} checked={pick === pn} onChange={() => setPick(pn)} />
+                    <input type="radio" name="planpick" value={pn} checked={pick === pn} onChange={() => setPick(pn)} style={{ accentColor: "var(--accent)" }} />
                     <span style={{ fontWeight: 600 }}>{pn}</span>{cur ? <Chip cls="ok" icon="check">Current</Chip> : null}
                     <span style={{ marginLeft: "auto" }} className="num">{money(p.price)}/mo</span>
                   </div>
@@ -62,15 +62,24 @@ export function PaymentPage() {
   const role = useApp((s) => s.role);
   const L = useLayer(); const go = useGo(); const p = svc.SUBSCRIPTION.payment;
   const [brand, setBrand] = useState(p.brand); const [last4, setLast4] = useState(p.last4); const [exp, setExp] = useState(p.exp); const [name, setName] = useState(p.name);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false); const [errs, setErrs] = useState<{ last4?: string; exp?: string }>({});
+  const expRef = useRef<HTMLInputElement>(null);
   const dirty = !busy && (brand !== p.brand || last4 !== p.last4 || exp !== p.exp || name !== p.name);
   const { allowLeave } = useUnsavedGuard(dirty, L);
   const ref = useRef<HTMLInputElement>(null); useEffect(() => { ref.current?.focus(); }, []);
   if (!svc.billingCanManage(role)) return <Denied title="Update payment method" />;
   const submit = async (e: FormEvent) => {
-    e.preventDefault(); setBusy(true);
+    e.preventDefault();
+    const bad: { last4?: string; exp?: string } = {};
+    if (!/^\d{4}$/.test(last4.trim())) bad.last4 = "Enter exactly 4 digits.";
+    const m = /^(\d{2})\s*\/\s*(\d{2})$/.exec(exp.trim());
+    if (!m || Number(m[1]) < 1 || Number(m[1]) > 12) bad.exp = "Enter the expiry as MM / YY, for example 08 / 28.";
+    setErrs(bad);
+    if (bad.last4) { ref.current?.focus(); return; }
+    if (bad.exp) { expRef.current?.focus(); return; }
+    setBusy(true);
     try {
-      const r = await svc.savePayment({ brand, last4: last4.replace(/\D/g, "").slice(0, 4), exp: clampText(exp, 7), name: clampText(name, 80) });
+      const r = await svc.savePayment({ brand, last4: last4.replace(/\D/g, "").slice(0, 4), exp: clampText(m ? `${m[1]} / ${m[2]}` : exp, 7), name: clampText(name, 80) });
       wsLog("billing.payment.updated", r.brand + " ···· " + r.last4, "System"); allowLeave(); L.toast("Payment method updated"); bumpData(); go(LIST);
     } catch { setBusy(false); L.toast("Could not update the payment method", false); }
   };
@@ -81,8 +90,10 @@ export function PaymentPage() {
         <FormSection n={1} title="Card" note="How it appears on your invoices.">
           <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div className="field"><label htmlFor="pm-brand">Card type</label><select className="select" id="pm-brand" value={brand} onChange={(e) => setBrand(e.target.value)}>{svc.CARD_BRANDS.map((b) => <option key={b}>{b}</option>)}</select></div>
-            <div className="field"><label htmlFor="pm-last4">Last 4 digits</label><input ref={ref} className="input num" id="pm-last4" maxLength={4} inputMode="numeric" autoComplete="off" value={last4} onChange={(e) => setLast4(e.target.value)} /></div>
-            <div className="field"><label htmlFor="pm-exp">Expiry</label><input className="input" id="pm-exp" maxLength={7} autoComplete="off" value={exp} onChange={(e) => setExp(e.target.value)} /></div>
+            <div className="field"><label htmlFor="pm-last4">Last 4 digits</label><input ref={ref} className="input num" id="pm-last4" maxLength={4} inputMode="numeric" pattern="[0-9]{4}" placeholder="4242" autoComplete="off" value={last4} onChange={(e) => setLast4(e.target.value)} aria-invalid={!!errs.last4} aria-describedby={errs.last4 ? "pm-last4-err" : undefined} />
+              {errs.last4 ? <FormMessage id="pm-last4-err">{errs.last4}</FormMessage> : null}</div>
+            <div className="field"><label htmlFor="pm-exp">Expiry</label><input ref={expRef} className="input num" id="pm-exp" maxLength={7} placeholder="MM / YY" autoComplete="off" value={exp} onChange={(e) => setExp(e.target.value)} aria-invalid={!!errs.exp} aria-describedby={errs.exp ? "pm-exp-err" : undefined} />
+              {errs.exp ? <FormMessage id="pm-exp-err">{errs.exp}</FormMessage> : null}</div>
             <div className="field"><label htmlFor="pm-name">Billed to</label><input className="input" id="pm-name" maxLength={80} autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} /></div>
           </div>
         </FormSection>

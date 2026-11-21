@@ -29,6 +29,12 @@ export function alogRows(f: AlogFilter): AdminEntry[] {
     return true;
   }).slice().reverse();
 }
+/** One display format for people in the log: the initial form used by the seed entries ("Dana Whitfield" shows as "D. Whitfield").
+ *  Display only: the stored entry, search and exports keep the actor exactly as recorded. */
+export function actorDisplay(actor: string): string {
+  const m = /^([A-Z])[a-z'-]+ (.+)$/.exec(actor.trim());
+  return m ? `${m[1]}. ${m[2]}` : actor;
+}
 export const tenantName = (t?: string) => (t ? (CUSTOMERS[t] ? CUSTOMERS[t].name : t) : "Platform");
 /** Sealed only if the hash matches the fields AND the link points at the predecessor's hash. */
 export function linkOk(l: AdminEntry, i: number): boolean {

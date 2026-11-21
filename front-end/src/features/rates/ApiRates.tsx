@@ -42,12 +42,12 @@ export function ApiRates() {
     { key: "cand", header: "Proposed", align: "end", value: (r) => r.candidate?.rate ?? 0, render: (r) => (r.candidate ? <span className="num" title={`ECB ${r.candidate.ecb ?? "—"}, open.er-api.com ${r.candidate.er ?? "—"}`}>{fmt(r.candidate.rate)}</span> : "") },
     { key: "tax", header: "Tax", value: (r) => `${r.taxType} ${r.taxRate}%`, render: (r) => `${r.taxType} ${r.taxRate} %` },
     { key: "eff", header: "Tax from", value: (r) => r.taxEffective, defaultHidden: true, render: (r) => <span className="num">{r.taxEffective}</span> },
-    { key: "status", header: "Status", value: (r) => r.status, render: (r) => (r.status === "Held" ? <span title={r.candidate?.reason}><Chip cls="warn" icon="alert">Held for review</Chip></span> : r.status === "Reference" ? <Chip cls="neutral" icon="dot">Reference only</Chip> : <StatusChip s="Applied" />) },
+    { key: "status", header: "Status", value: (r) => r.status, render: (r) => (r.status === "Held" ? <Chip cls="warn" icon="alert">Held for review</Chip> : r.status === "Reference" ? <Chip cls="neutral" icon="dot">Reference only</Chip> : <StatusChip s="Applied" />) },
     { key: "source", header: "Source", value: (r) => r.source, defaultHidden: true, render: (r) => <span style={{ fontSize: 12.5 }}>{r.source}{r.at ? `, ${utcMin(r.at)}` : ""}</span> },
     { key: "why", header: "Why held", value: (r) => r.candidate?.reason ?? "", render: (r) => <span style={{ fontSize: 12.5 }}>{r.candidate?.reason ?? ""}</span> },
   ];
   return (
-    <Page mod="rates" sub="Exchange rates and tax used when invoices are issued." acts={<button className="btn btn-primary" onClick={refresh} disabled={busy || !!lock} title={lock} aria-busy={busy}>{busy ? <span className="spin" /> : <Icon name="refresh" />}Refresh rates</button>}>
+    <Page mod="rates" sub="Exchange rates and tax used when invoices are issued." acts={!s.loaded || s.canElevate ? <button className="btn btn-primary" onClick={refresh} disabled={busy || !!lock} title={lock} aria-busy={busy}>{busy ? <span className="spin" /> : <Icon name="refresh" />}Refresh rates</button> : undefined}>
       <ServerElevationBanner s={s} />
       <ModuleTip mod="rates" force={!!d && !d.lastRefresh} />
       {d ? (
@@ -64,7 +64,7 @@ export function ApiRates() {
           {err ? <p role="alert" style={{ padding: 12, color: "var(--bad-ink)" }}>{err}</p> : !d ? <p style={{ padding: 12, color: "var(--muted)" }}>Loading…</p>
             : view === "requests" ? <div style={{ padding: 16 }}><RatesRequests /></div>
             : <DataTable<Rate> id="rates-api" label="Exchange rates and tax" rows={d.rates} rowKey={(r) => r.code} columns={cols} searchText={(r) => `${r.country} ${r.currency} ${r.code}`}
-              rowActions={(r) => r.status === "Held" ? [
+              rowActions={s.loaded && !s.canElevate ? undefined : (r) => r.status === "Held" ? [
                 { label: "Release (needs approval)", whyNot: lock ?? null, run: () => L.openModal(`Release the held rate: ${r.country}`, (close) => <HeldForm r={r} release close={close} />) },
                 { label: "Reject, keep the rate in force", whyNot: lock ?? null, run: () => L.openModal(`Reject the held rate: ${r.country}`, (close) => <HeldForm r={r} release={false} close={close} />) },
               ] : r.currency === "USD" && r.code === "US" ? [] : [{ label: "Override (needs approval)", whyNot: lock ?? null, run: () => L.openDrawer(`Override ${r.country}`, "Currency, exchange rate and tax", (close) => <OverrideForm r={r} close={close} />) }]}

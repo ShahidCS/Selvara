@@ -1,4 +1,5 @@
-import { Chip, Icon, Page, StatusChip, Table } from "@/components/ui";
+import { AIPanel, Chip, Icon, Page, StatusChip, Switch, Table } from "@/components/ui";
+import { fmtDay, parseDay } from "@/lib/grcSod";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
 import { API_ON } from "@/lib/rbac";
@@ -17,6 +18,9 @@ import { useLayer } from "@/hooks/useLayer";
 
 const TABS: [string, string][] = [["resources", "Resources"], ["access", "Access & requests"], ["activity", "Activity & history"], ["chat", "Chatbot"]];
 const SEC = { margin: "0 0 8px" } as const;
+/** Decision rows made in the session use ISO dates and full names; show them like the seeded rows ("22 Oct 2026", "J. Avery"). */
+const dayText = (s: string) => { const d = parseDay(s); return d ? fmtDay(d) : s; };
+const shortName = (s: string) => { const m = /^([A-Z])[a-z]+ (\S+)$/.exec(String(s ?? "").trim()); return m ? `${m[1]}. ${m[2]}` : s; };
 
 /** Trust Center admin (source trustAdminView, lines 3369-3399). */
 export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: () => void }) {
@@ -42,12 +46,16 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
   const unblock = (d: string) => API_ON ? askReason(L, { title: "Unblock " + d, label: "Reason", confirm: "Unblock", intro: "Someone else must approve requests from this domain afterwards.",
     run: async (why) => { await svc.unblockDomain(d, why); return d + " unblocked"; } }) : attempt(L, async () => { await svc.unblockDomain(d); wsLog("trust.domain.unblocked", d, "Policy"); L.toast(d + " unblocked"); bumpData(); });
   const toggleChatbot = () => attempt(L, async () => { const on = await svc.setChatbot(!TRUST.chatbot); wsLog("trust.chatbot." + (on ? "enabled" : "disabled"), "Trust Center chatbot", "Policy"); bumpData(); });
-  const toggleVis = (i: number) => attempt(L, async () => {
+  const doToggleVis = (i: number) => attempt(L, async () => {
     const t = await svc.toggleVisibility(i);
     if (t.pending) { wsLog("trust.visibility.publish_requested", t.name, "Policy"); L.toast("Publishing " + t.name + " needs approval from a different admin or owner"); bumpData(); return; }
     wsLog("trust.visibility.changed", t.name + " → " + t.access, "Policy");
     L.toast(t.name + " is now access-controlled"); bumpData();
   });
+  /** Making a resource private takes effect at once and making it public again needs a second approver, so ask first. */
+  const toggleVis = (i: number) => DATA.trust[i]?.access !== "Public" ? doToggleVis(i) : askReason(L, { title: "Make " + DATA.trust[i].name + " private?", label: "", confirm: "Make private", danger: true,
+    intro: "Visitors lose access to it at once. Making it public again needs approval from a different admin or owner.",
+    run: async () => { const t = await svc.toggleVisibility(i); if (t.pending) { wsLog("trust.visibility.publish_requested", t.name, "Policy"); return "Publishing " + t.name + " needs approval from a different admin or owner"; } wsLog("trust.visibility.changed", t.name + " → " + t.access, "Policy"); return t.name + " is now access-controlled"; } });
 
   let body;
   if (tab === "resources") {
@@ -83,10 +91,10 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
                   <td className="strong num">{r.id}</td>
                   <td>{r.who}{svc.isBlockedWho(r.who) ? <> <span className="chip bad" style={{ marginLeft: 4 }}><Icon name="alert" />Blocked domain</span></> : null}<div style={{ fontSize: 11.5, color: "var(--muted)" }}>{r.company} · {r.at}</div></td>
                   <td>{r.resource}</td><td style={{ fontSize: 12, color: "var(--muted)" }}>{r.reason}</td>
-                  <td className="r" style={{ whiteSpace: "nowrap" }}>
-                    {(() => { const why = svc.approveBlockReason(r); return (<>
+                  <td className="r">
+                    {(() => { const why = svc.approveBlockReason(r); return (<><div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }}>
                       <button className="btn btn-ghost sm" disabled={!!why} aria-describedby={why ? "tra-" + r.id : undefined} onClick={() => approve(r.id)}><Icon name="check" />Approve</button>
-                      <button className="btn btn-ghost sm" disabled={!canAct} title={noRole || undefined} onClick={() => deny(r.id)}>Deny</button>
+                      <button className="btn btn-ghost sm" disabled={!canAct} title={noRole || undefined} onClick={() => deny(r.id)}><Icon name="x" />Deny</button></div>
                       <WhyNot id={"tra-" + r.id} text={why} />
                     </>); })()}
                   </td>
@@ -114,9 +122,9 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
               <Table cols={[{ t: "When" }, { t: "Requester" }, { t: "Resource" }, { t: "Decision" }, { t: "By" }, { t: "Note" }]}>
                 {TRUST.decisions.map((d, i) => (
                   <tr key={i}>
-                    <td style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>{d.at}</td><td style={{ fontSize: 12 }}>{d.who}</td><td style={{ fontSize: 12 }}>{d.resource}</td>
+                    <td style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>{dayText(d.at)}</td><td style={{ fontSize: 12 }}>{d.who}</td><td style={{ fontSize: 12 }}>{d.resource}</td>
                     <td>{d.decision === "Approved" ? <Chip cls="ok" icon="check">Approved</Chip> : <Chip cls="bad" icon="x">Denied</Chip>}</td>
-                    <td style={{ fontSize: 12 }}>{d.by}</td><td style={{ fontSize: 11.5, color: "var(--muted)" }}>{d.note || "—"}</td>
+                    <td style={{ fontSize: 12 }}>{shortName(d.by)}</td><td style={{ fontSize: 11.5, color: "var(--muted)" }}>{d.note || "—"}</td>
                   </tr>
                 ))}
               </Table>
@@ -125,7 +133,8 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
           <section><div className="sectitle" style={SEC}>Blocked domains</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
               {TRUST.blocked.length ? TRUST.blocked.map((d) => (
-                <span className="chip neutral" key={d}>{d} <button onClick={() => unblock(d)} aria-label={"Unblock " + d} style={{ appearance: "none", border: 0, background: "none", color: "var(--muted)", cursor: "pointer", padding: "0 0 0 4px" }}>×</button></span>
+                <span className="chip neutral" key={d} style={{ paddingRight: 2 }}>{d} <button type="button" className="btn btn-ghost sm" onClick={() => unblock(d)} aria-label={"Unblock " + d} title={"Unblock " + d} disabled={!canAct}
+                  style={{ minWidth: 24, minHeight: 24, width: 24, height: 24, padding: 0, justifyContent: "center" }}><Icon name="x" aria-hidden="true" /></button></span>
               )) : <span style={{ fontSize: 12.5, color: "var(--muted)" }}>No blocked domains.</span>}
             </div>
             <button className="btn btn-secondary sm" disabled={!canAct} title={noRole || undefined} onClick={() => L.openModal("Block a domain", <BlockDomainForm L={L} />)}><Icon name="plus" />Block a domain</button>
@@ -152,19 +161,18 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
     body = (
       <div style={{ maxWidth: 760 }}>
         <div className="card" style={{ boxShadow: "none", background: "var(--accent-weak)", borderColor: "transparent", marginBottom: 12 }}>
-          <div className="c-body" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px" }}>
-            <div style={{ flex: "1 1 auto" }}><div style={{ fontWeight: 600 }}>Trust Center chatbot</div><div style={{ fontSize: 12.5, color: "var(--muted)" }}>Answers visitor questions from your published FAQ and verified answer library only. {TRUST.chatbot ? "Currently on." : "Currently off."}</div></div>
-            <button className={`btn ${TRUST.chatbot ? "btn-secondary" : "btn-primary"} sm`} disabled={!canAct} title={noRole || undefined} onClick={toggleChatbot}>{TRUST.chatbot ? "Turn off" : "Turn on"}</button>
+          <div className="c-body" style={{ padding: "12px 14px" }} title={noRole || undefined}>
+            <Switch id="trust-chatbot" label="Trust Center chatbot" hint="Answers visitor questions from your published FAQ and verified answer library only." checked={!!TRUST.chatbot} disabled={!canAct} onChange={() => toggleChatbot()} />
           </div>
         </div>
         {API_ON ? <PublicPageCard canAct={canAct} noRole={noRole} /> : null}
         <div className="sectitle" style={SEC}>Conversation log</div>
         {TRUST.chats.length ? TRUST.chats.map((c, i) => (
-          <div className="card" key={i} style={{ boxShadow: "none", background: "var(--surface-2)", marginBottom: 8 }}><div className="c-body" style={{ padding: "11px 13px" }}>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>{c.at} · visitor ({c.who})</div>
-            <div style={{ fontWeight: 500, marginBottom: 4 }}>{c.q}</div>
-            <div style={{ fontSize: 13, color: "var(--ink-2)" }}><Icon name="assistant" /> {c.a}</div>
-          </div></div>
+          <div key={i} style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>{dayText(c.at)} · visitor ({c.who})</div>
+            <div style={{ fontWeight: 500, marginBottom: 6 }}>{c.q}</div>
+            <AIPanel source="Trust Center chatbot" label={"Chatbot answer to: " + c.q}><p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--ink-2)" }}>{c.a}</p></AIPanel>
+          </div>
         )) : <p className="field help">No conversations yet.</p>}
       </div>
     );
@@ -172,13 +180,13 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
 
   return (
     <Page mod="trust" acts={<>
-      <button className="btn btn-secondary" onClick={setPublic}><Icon name="ext" />Preview public page</button>
+      <button className="btn btn-secondary" onClick={setPublic}><Icon name="eye" />Preview public page</button>
       {tab === "resources" ? <button className="btn btn-primary" disabled={!canAct} title={noRole || undefined} onClick={() => L.openModal("Publish resource", <PublishForm L={L} />)}><Icon name="plus" />Publish resource</button> : null}
     </>}>
       <ModuleTip mod="trust" force={API_ON && !DATA.trust.length} />
       <div className="card" style={{ flex: "0 1 auto", minHeight: 0 }}>
-        <div className="c-head"><div className="seg" role="tablist">{TABS.map((t) => (
-          <button key={t[0]} role="tab" aria-selected={tab === t[0]} onClick={() => setTab(t[0])}>{t[1]}{t[0] === "access" && reqCount ? <> <span className="tag" style={{ marginLeft: 4 }}>{reqCount}</span></> : null}</button>
+        <div className="c-head"><div className="tabs" role="tablist" aria-label="Trust Center admin">{TABS.map((t) => (
+          <button key={t[0]} type="button" className="tab" role="tab" aria-selected={tab === t[0]} onClick={() => setTab(t[0])}>{t[1]}{t[0] === "access" && reqCount ? <> <span className="tag" style={{ marginLeft: 4 }}>{reqCount}</span></> : null}</button>
         ))}</div></div>
         <div className="c-body scroll" id="trustAdmBody">{body}</div>
       </div>

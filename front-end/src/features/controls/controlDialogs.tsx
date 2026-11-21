@@ -35,8 +35,8 @@ function AttestBody({ h, c }: { h: FormHandle; c: any }) {
     <>
       <p style={{ margin: "0 0 8px" }}>The control owner confirms this control is designed appropriately and operating as intended for the current period.</p>
       <div className="field"><label htmlFor="ca-by">Attested by</label><input className="input" id="ca-by" value={getActor().name} readOnly /><p className="field help">Only the control owner ({c.owner}) can attest; the name is set from your sign-in.</p></div>
-      <div className="field"><label htmlFor="ca-note">Statement {REQ}</label><textarea className="input" id="ca-note" rows={2} style={{ resize: "vertical" }} placeholder="e.g. Reviewed configuration and evidence; control operating effectively" ref={h.ref("note")} /></div>
-      <p className="field help" id="ca-err" role={err ? "alert" : undefined} style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>A statement is required.</p>
+      <div className="field"><label htmlFor="ca-note">Statement {REQ}</label><textarea className="input" id="ca-note" rows={2} style={{ resize: "vertical" }} placeholder="e.g. Reviewed configuration and evidence; control operating effectively" ref={h.ref("note")} aria-invalid={err} aria-describedby={err ? "ca-err" : undefined} />
+        <p className="field help" id="ca-err" role={err ? "alert" : undefined} style={{ color: "var(--bad-ink)", display: err ? "block" : "none", margin: 0 }}>A statement is required.</p></div>
     </>
   );
 }
@@ -45,7 +45,7 @@ export function openAttestModal(L: LayerApi, id: string) {
   const h = newForm();
   const submit = async () => {
     const note = val(h, "note").trim();
-    if (!note) { h.showErr?.(); return; }
+    if (!note) { h.showErr?.(); h.els.note?.focus(); return; }
     try {
       await svc.attestControl(id, note);
       L.closeLayer(); L.toast("Attestation recorded"); bumpData();
@@ -62,9 +62,9 @@ function MappingBody({ h }: { h: FormHandle }) {
     <>
       <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div className="field"><label htmlFor="cm-fw">Framework</label><select className="select" id="cm-fw" ref={h.ref("fw")}>{DATA.frameworks.map((f) => <option key={f.id} value={f.id}>{FW_SHORT[f.id] || f.id}</option>)}</select></div>
-        <div className="field"><label htmlFor="cm-ref">Requirement code {REQ}</label><input className="input" id="cm-ref" placeholder="e.g. A.8.9" ref={h.ref("ref")} /></div>
+        <div className="field"><label htmlFor="cm-ref">Requirement code {REQ}</label><input className="input" id="cm-ref" placeholder="e.g. A.8.9" ref={h.ref("ref")} aria-invalid={err} aria-describedby={err ? "cm-err" : undefined} />
+          <p className="field help" id="cm-err" role={err ? "alert" : undefined} style={{ color: "var(--bad-ink)", display: err ? "block" : "none", margin: 0 }}>Requirement code is required.</p></div>
       </div>
-      <p className="field help" id="cm-err" role={err ? "alert" : undefined} style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>Requirement code is required.</p>
     </>
   );
 }
@@ -72,7 +72,7 @@ export function openMappingModal(L: LayerApi, id: string) {
   const h = newForm();
   const submit = async () => {
     const ref = val(h, "ref").trim();
-    if (!ref) { h.showErr?.(); return; }
+    if (!ref) { h.showErr?.(); h.els.ref?.focus(); return; }
     const fw = val(h, "fw");
     try {
       await svc.addMapping(id, fw, ref);

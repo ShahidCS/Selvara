@@ -14,7 +14,7 @@ export function startIncident(summary: string) {
   return viaApi(() => {
     assertRole("starting the incident clock", "admin", "owner");
     if (INCIDENT.active) throw new SodError("An incident is already active.");
-    INCIDENT.active = true; INCIDENT.started = nowStamp(); INCIDENT.startedBy = getActor().name; delete INCIDENT.closedBy; return INCIDENT;
+    INCIDENT.active = true; INCIDENT.started = nowStamp(); INCIDENT.startedBy = getActor().name; INCIDENT.summary = summary || undefined; delete INCIDENT.closedBy; return INCIDENT;
   }, () => wsPost<unknown>("/ws/incidents", { summary }));
 }
 export function closeIncident(outcome = "") {

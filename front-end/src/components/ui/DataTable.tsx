@@ -68,7 +68,7 @@ function ColumnsMenu<T>({ id, cols, sizes, close }: { id: string; cols: DTColumn
         return (
           <button key={c.key} role="menuitemcheckbox" aria-checked={on} disabled={c.locked}
             onClick={() => setSt({ ...st, hidden: on ? [...st.hidden, c.key] : st.hidden.filter((k) => k !== c.key) })}>
-            <Icon name={on ? "check" : "dot"} />{c.header || "Actions"}
+            <Icon name={on ? "check" : "blank"} />{c.header || "Actions"}
           </button>
         );
       })}
@@ -105,7 +105,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
     <>
       {[ALL, ...f.options].map((o) => {
         const on = (st.filters[f.key] || ALL) === o;
-        return <button key={o} role="option" aria-selected={on} onClick={() => { patch({ filters: { ...st.filters, [f.key]: o }, page: 1 }); close(); }}><Icon name={on ? "check" : "dot"} />{f.labels?.[o] ?? o}</button>;
+        return <button key={o} role="option" aria-selected={on} onClick={() => { patch({ filters: { ...st.filters, [f.key]: o }, page: 1 }); close(); }}><Icon name={on ? "check" : "blank"} />{f.labels?.[o] ?? o}</button>;
       })}
     </>
   ), { role: "listbox", label: f.label, align: "start" });

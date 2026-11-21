@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { adminLog } from "@/lib/adminAudit";
-import { Chip, Empty, Icon, Kpi, Page, StatusChip, Table } from "@/components/ui";
+import { Chip, Empty, Icon, KpiStrip, KpiTile, Page, StatusChip, Table } from "@/components/ui";
 import { useApp, useData, useModState, bumpData } from "@/lib/store";
 import { wsLog } from "@/lib/audit";
 import { downloadText } from "@/lib/format";
@@ -23,7 +23,13 @@ const STAGE_TONE: Record<string, string> = { Planned: "info", Fieldwork: "warn",
 export const StageChip = ({ st }: { st: string }) => <Chip cls={STAGE_TONE[st] || "neutral"} icon={st === "Complete" ? "check" : "clock"}>{st}</Chip>;
 /** Management (admin/owner base roles, so admin2 too) owns the organisation's audit records. Auditors and everyone else are read-only (deny by default). The API must enforce this again. */
 export const auditCanManage = (role: string) => hasRole(role, "admin", "owner");
-const pbcTone = (s: string) => (s === "Received" ? "Done" : s === "Outstanding" ? "Overdue" : "Pending");
+/* Each record shows its own status word once, with a tone and an icon (never colour alone). */
+const PBC_CHIP: Record<string, [string, string]> = { Received: ["ok", "check"], Outstanding: ["bad", "alert"], Requested: ["warn", "clock"] };
+const PbcChip = ({ s }: { s: string }) => { const [c, i] = PBC_CHIP[s] || ["neutral", "dot"]; return <Chip cls={c} icon={i}>{s}</Chip>; };
+/** What the PBC button does next (the service cycles Requested, Outstanding, Received, then back to Requested). */
+const PBC_NEXT: Record<string, [string, string]> = { Requested: ["Mark outstanding", "alert"], Outstanding: ["Mark received", "check"], Received: ["Reopen", "refresh"] };
+const IR_CHIP: Record<string, [string, string]> = { Open: ["warn", "clock"], Answered: ["info", "check"], Closed: ["ok", "check"] };
+const IrChip = ({ s }: { s: string }) => { const [c, i] = IR_CHIP[s] || ["neutral", "dot"]; return <Chip cls={c} icon={i}>{s}</Chip>; };
 
 export function AuditNotFound() {
   return <Page title="Audit not found" back={{ href: "/ws/audits", label: "Audits" }}><Empty icon="audits" title="No such audit">There is no audit with that ID, or it is not assigned to you. It may have been removed, or the link may be wrong.</Empty></Page>;
@@ -85,14 +91,14 @@ export function AuditDetail({ id }: { id: string }) {
   let body;
   if (tab === "over") {
     body = (
-      <div style={{ maxWidth: 820 }}>
-        <div className="kpis">
-          <Kpi icon="audits" label="Stage" value={a.stage} tone="neutral" />
-          <Kpi icon="controls" label="Progress" value={a.progress + "%"} tone="accent" />
-          <Kpi icon="evidence" label="Requests" value={a.pbc.filter((p: any) => p.status === "Received").length + "/" + a.pbc.length + " in"} tone="info" />
-          <Kpi icon="alert" label="Open findings" value={open} tone={open ? "bad" : "good"} />
-        </div>
-        <dl className="meta-grid" style={{ marginTop: 14 }}>
+      <div>
+        <KpiStrip label="Audit summary">
+          <KpiTile label="Stage" value={a.stage} />
+          <KpiTile label="Progress" value={a.progress + "%"} />
+          <KpiTile label="Requests received" value={a.pbc.filter((p: any) => p.status === "Received").length + "/" + a.pbc.length} caption="Prepared-by-client requests" />
+          <KpiTile label="Open findings" value={open} delta={open ? { tone: "bad", text: "Needs action" } : undefined} />
+        </KpiStrip>
+        <dl className="meta-grid" style={{ marginTop: 14, maxWidth: 560 }}>
           <dt>Scope</dt><dd>{a.scope}</dd><dt>Framework</dt><dd>{a.fw}</dd><dt>Auditor</dt><dd>{a.auditor}</dd><dt>Lead</dt><dd>{a.lead}</dd><dt>Timeline</dt><dd>{a.period}</dd><dt>Opened</dt><dd>{a.opened}</dd>
         </dl>
         <div className="card" style={{ boxShadow: "none", background: "var(--surface-2)", marginTop: 14 }}><div className="c-body">
@@ -127,11 +133,12 @@ export function AuditDetail({ id }: { id: string }) {
           <div className="sectitle" style={{ margin: 0 }}>Prepared-by-client requests</div>
           <button className="btn btn-secondary sm" style={{ marginLeft: "auto" }} {...dis(manageWhy)} onClick={addPbc}><Icon name="plus" />Add request</button>
         </div>
+        {manageWhy && role !== "auditor" ? <p className="field help" role="note" style={{ margin: "0 0 8px" }}>{manageWhy}</p> : null}
         {a.pbc.length ? (
           <Table cols={[{ t: "ID" }, { t: "Request" }, { t: "Owner" }, { t: "Status" }, { t: "" }]}>
             {a.pbc.map((p: any) => (
-              <tr key={p.id}><td className="strong num">{p.id}</td><td>{p.item}</td><td>{p.owner}</td><td><StatusChip s={pbcTone(p.status)} /></td>
-                <td className="r"><button className="btn btn-ghost sm" {...dis(manageWhy)} onClick={() => cycle(p.id)}><Icon name="check" />Advance</button></td></tr>
+              <tr key={p.id}><td className="strong num">{p.id}</td><td>{p.item}</td><td>{p.owner}</td><td><PbcChip s={p.status} /></td>
+                <td className="r">{(() => { const [lbl, ic] = PBC_NEXT[p.status] || ["Next status", "check"]; return <button className="btn btn-ghost sm" style={{ whiteSpace: "nowrap" }} {...dis(manageWhy)} aria-label={`${lbl}: ${p.id}`} onClick={() => cycle(p.id)}><Icon name={ic} />{lbl}</button>; })()}</td></tr>
             ))}
           </Table>
         ) : <Empty icon="evidence" title="No requests yet">Add the evidence requests the auditor needs from the team.</Empty>}
@@ -144,19 +151,19 @@ export function AuditDetail({ id }: { id: string }) {
           <div className="sectitle" style={{ margin: 0 }}>Information requests</div>
           <button className="btn btn-secondary sm" style={{ marginLeft: "auto" }} {...dis(audWhy)} onClick={() => openRaiseIr(L, id, a.name)}><Icon name="plus" />Raise request</button>
         </div>
-        {audWhy && role === "auditor" ? <p className="field help" style={{ margin: "0 0 8px" }}>{audWhy}</p> : null}
+        {audWhy && a.irs.length ? <p className="field help" role="note" style={{ margin: "0 0 8px" }}>Raise request: {audWhy}</p> : null}
         {a.irs.length ? (
           <Table cols={[{ t: "ID" }, { t: "Request" }, { t: "Raised by" }, { t: "Status" }, { t: "Response" }, { t: "" }]}>
             {a.irs.map((r: any) => (
               <tr key={r.id}><td className="strong num">{r.id}</td><td>{r.item}</td><td>{r.by}<div style={{ fontSize: 11.5, color: "var(--muted)" }}>{r.at}</div></td>
-                <td><StatusChip s={r.status === "Closed" ? "Done" : r.status === "Answered" ? "Approved" : "Pending"} /> <span style={{ fontSize: 12 }}>{r.status}</span></td><td>{r.response || "—"}</td>
+                <td><IrChip s={r.status} /></td><td>{r.response || "—"}</td>
                 <td className="r"><div className="btngrp" style={{ justifyContent: "flex-end" }}>
                   {r.status === "Open" ? <button className="btn btn-ghost sm" {...dis(manageWhy)} onClick={() => openRespondIr(L, id, r.id)}><Icon name="check" />Respond</button> : null}
                   {r.status !== "Closed" ? <button className="btn btn-ghost sm" {...dis(API_ON && canManage && r.status === "Answered" ? null : audWhy)} onClick={() => attempt(L, async () => { await svc.closeInformationRequest(id, r.id); L.toast("Request closed"); bumpData(); })}><Icon name="x" />Close</button> : null}
                 </div></td></tr>
             ))}
           </Table>
-        ) : <Empty icon="evidence" title="No information requests">Auditors raise requests here; management responds.</Empty>}
+        ) : <Empty icon="evidence" title="No information requests">{audWhy && role === "auditor" ? audWhy : "Auditors raise requests here; management responds."}</Empty>}
       </>
     );
   } else if (tab === "tests") {
@@ -179,7 +186,7 @@ export function AuditDetail({ id }: { id: string }) {
           <div className="sectitle" style={{ margin: 0 }}>Findings</div>
           <button className="btn btn-secondary sm" style={{ marginLeft: "auto" }} {...dis(audWhy)} onClick={() => openDraftFinding(L, id, a.name)}><Icon name="plus" />Draft finding</button>
         </div>
-        {audWhy && role === "auditor" ? <p className="field help" style={{ margin: "0 0 8px" }}>{audWhy}</p> : null}
+        {audWhy && a.findings.length ? <p className="field help" role="note" style={{ margin: "0 0 8px" }}>Draft finding: {audWhy}</p> : null}
         {a.findings.length ? (
           <Table cols={[{ t: "ID" }, { t: "Finding" }, { t: "Severity" }, { t: "Status" }, { t: "Linked issue" }, { t: "" }]}>
             {a.findings.map((f: any) => (
@@ -196,7 +203,7 @@ export function AuditDetail({ id }: { id: string }) {
               </tr>
             ))}
           </Table>
-        ) : <Empty icon="check" title="No findings">No findings have been raised for this audit.</Empty>}
+        ) : <Empty icon="check" title="No findings">{audWhy && role === "auditor" ? `No findings have been raised for this audit. ${audWhy}` : "No findings have been raised for this audit."}</Empty>}
       </>
     );
   }
@@ -210,15 +217,15 @@ export function AuditDetail({ id }: { id: string }) {
       </>}>
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head" style={{ padding: "0 8px" }}>
-          <div className="tabs" role="tablist">
+          <div className="tabs" role="tablist" aria-label="Audit sections" style={{ overflowX: "auto", flexWrap: "nowrap", maxWidth: "100%", scrollbarWidth: "thin" }}>
             {TABS.map((t) => (
-              <button key={t[0]} className="tab" role="tab" aria-selected={tab === t[0]} onClick={() => setTab(t[0])}>
+              <button key={t[0]} className="tab" role="tab" id={`aud-tab-${t[0]}`} aria-controls="audDtBody" aria-selected={tab === t[0]} style={{ whiteSpace: "nowrap", flex: "0 0 auto" }} onClick={() => setTab(t[0])}>
                 {t[1]}{t[0] === "findings" && a.findings.length ? <> <span className="tag" style={{ marginLeft: 4 }}>{a.findings.length}</span></> : null}
               </button>
             ))}
           </div>
         </div>
-        <div className="c-body scroll" id="audDtBody" role="tabpanel">{body}</div>
+        <div className="c-body scroll" id="audDtBody" role="tabpanel" aria-labelledby={`aud-tab-${tab}`}>{body}</div>
       </div>
     </Page>
   );

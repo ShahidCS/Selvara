@@ -71,10 +71,12 @@ export default function RiskModule() {
   return (
     <Page mod="risk" acts={acts}>
       <ModuleTip mod="risk" force={TIP_API && !DATA.risks.length} />
-      <div className="seg" role="tablist" style={{ flex: "0 0 auto", marginBottom: 12 }}>
-        {TABS.map((t) => <button key={t[0]} role="tab" aria-selected={tab === t[0]} onClick={() => riskSetTab(t[0])}>{t[1]}</button>)}
+      <div style={{ flex: "0 0 auto", marginBottom: 12, maxWidth: "100%", overflowX: "auto", scrollbarWidth: "thin" }}>
+        <div className="seg" role="tablist" aria-label="Risk register sections">
+          {TABS.map((t) => <button key={t[0]} id={`risk-tab-${t[0]}`} role="tab" aria-selected={tab === t[0]} aria-controls="riskMain" style={{ whiteSpace: "nowrap" }} onClick={() => riskSetTab(t[0])}>{t[1]}</button>)}
+        </div>
       </div>
-      <div className="scroll" id="riskMain" role="tabpanel" style={{ flex: "1 1 auto", minHeight: 0, overflow: "auto", display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
+      <div className="scroll" id="riskMain" role="tabpanel" aria-labelledby={`risk-tab-${tab}`} style={{ flex: "1 1 auto", minHeight: 0, overflow: "auto", display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
         {tab === "dash" ? <RiskDash /> : tab === "reg" ? <RiskRegister /> : tab === "crit" ? <RiskCrit /> : tab === "ip" ? <RiskParties /> : <RiskGov />}
       </div>
     </Page>

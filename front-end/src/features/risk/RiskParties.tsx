@@ -6,7 +6,7 @@ import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
 import { RISK_PARTIES, riskCanEdit } from "@/lib/risk";
 import { bumpData, useApp } from "@/lib/store";
-import { attempt } from "@/features/issues";
+import { attemptR as attempt } from "./util";
 import * as svc from "@/features/risk/services/risks";
 import { riskOpenDetail } from "./nav";
 

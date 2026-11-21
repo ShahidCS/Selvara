@@ -53,7 +53,7 @@ export function Topbar() {
             <div role="group" aria-labelledby="co-h">
               {companies.map((c) => (
                 <button key={c.ref} role="menuitemradio" aria-checked={c.ref === company?.ref} disabled={c.ref === company?.ref} onClick={() => void doSwitch(c.ref)}>
-                  <Icon name={c.ref === company?.ref ? "check" : "dot"} />{c.name}
+                  <Icon name={c.ref === company?.ref ? "check" : "blank"} />{c.name}
                 </button>
               ))}
             </div>
@@ -62,7 +62,7 @@ export function Topbar() {
         <div className="div" />
         {modAllowed(roleId, "ws", "me") ? <button role="menuitem" onClick={() => { close(); go("/ws/me"); }}><Icon name="user" />My workspace</button> : null}
         <button role="menuitem" onClick={() => { close(); go("/auth"); }}><Icon name="access" />Sign-in &amp; security</button>
-        <button role="menuitemcheckbox" aria-checked={density === "compact"} onClick={() => { const d = density === "compact" ? "comfortable" : "compact"; appStore.set({ density: d }); persist(); close(); L.toast("Density: " + d); }}><Icon name={density === "compact" ? "check" : "dot"} />Compact density</button>
+        <button role="menuitemcheckbox" aria-checked={density === "compact"} onClick={() => { const d = density === "compact" ? "comfortable" : "compact"; appStore.set({ density: d }); persist(); close(); L.toast("Density: " + d); }}><Icon name={density === "compact" ? "check" : "blank"} />Compact density</button>
         <button role="menuitem" onClick={() => { close(); openShortcuts(L); }}><Icon name="grid" />Keyboard shortcuts</button>
         <div className="div" />
         <button role="menuitem" onClick={doSignOut}><Icon name="back" />Sign out</button>

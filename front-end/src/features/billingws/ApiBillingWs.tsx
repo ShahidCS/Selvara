@@ -117,7 +117,7 @@ function PlanForm({ d, close }: { d: Data; close: () => void }) {
       <fieldset style={{ border: 0, padding: 0, margin: 0 }}><legend className="sectitle" style={{ marginTop: 0 }}>Plans</legend>
         {d.plans.map((p) => (
           <label key={p.name} className="listrow" style={{ display: "flex", gap: 10, alignItems: "center", cursor: "pointer", marginBottom: 6 }}>
-            <input type="radio" name="plan" checked={plan === p.name} onChange={() => { setPlan(p.name); setErr(""); }} />
+            <input type="radio" name="plan" checked={plan === p.name} onChange={() => { setPlan(p.name); setErr(""); }} style={{ accentColor: "var(--accent)" }} />
             <span style={{ flex: 1 }}><span className="strong">{p.name}</span>{p.name === cur ? " (current)" : ""}<div style={{ fontSize: 12, color: "var(--muted)" }}>Up to {p.seats} seats</div></span>
             <span className="num">{minorMoney(p.monthlyUsd, "USD")} a month</span>
           </label>

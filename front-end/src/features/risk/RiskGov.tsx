@@ -8,7 +8,7 @@ import { bumpData, useApp } from "@/lib/store";
 import { API_ON } from "@/lib/rbac";
 import { downloadText } from "@/lib/format";
 import { safeFileName } from "@/lib/security";
-import { attempt } from "@/features/issues";
+import { attemptR as attempt } from "./util";
 import * as svc from "@/features/risk/services/risks";
 import { riskOpenDetail } from "./nav";
 import { ScoreChip } from "./RiskBits";

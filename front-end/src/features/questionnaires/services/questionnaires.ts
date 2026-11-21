@@ -17,9 +17,16 @@ import { wsPost, wsUpload } from "@/services/ws";
 const stillPending = (id?: string) => !!id && getApproval(id)?.status === "Pending";
 /** Questionnaire work (import, answer, submit for review): the workspace roles that can open the module. Vendors only use the portal view. */
 const work = (what: string) => assertRole(what, "admin", "owner", "employee");
-/** Lazily gives every record a stable id (the source addressed them by array index only). */
+/** Lazily gives every record a stable id (the source addressed them by array index only). The id comes from the name (as vendor ids do), so the same
+ *  record has the same address after a reload or in a shared link; a numeric suffix keeps ids unique. The server assigns its own ids in production. */
 export const qidOf = (q: any): string => qid(q);
-const qid = (q: any): string => { if (!q.qid) q.qid = "Q-" + (globalThis.crypto?.randomUUID?.() || String(Date.now())).slice(0, 8); return q.qid; };
+const qid = (q: any): string => {
+  if (q.qid) return q.qid;
+  const base = "Q-" + (String(q.name ?? "").replace(/[^a-z0-9]+/gi, "").slice(0, 8).toUpperCase() || "X");
+  let id = base, n = 2;
+  while (DATA.questionnaires.some((x: any) => x !== q && x.qid === id)) id = base + n++;
+  q.qid = id; return id;
+};
 /** Everyone who wrote or changed this questionnaire: they can never be its reviewer. */
 export const qContributors = (q: any): string[] => [q.author, ...(q.editors || [])].filter(Boolean);
 

@@ -25,7 +25,7 @@ const ENTRY_LABEL: Record<string, string> = { payment: "Payment", markpaid: "Mar
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function ApiBilling({ param }: { param?: string | null }) {
-  const v = useData(); const s = useServerElevation(); const L = useLayer(); const go = useGo();
+  const v = useData(); const s = useServerElevation(); const L = useLayer();
   const [b, setB] = useState<api.Billing | null>(null); const [err, setErr] = useState("");
   const [view, setView] = useModState<string>("billing.api.view", "accounts");
   useEffect(() => { let on = true; api.billing().then((x) => { if (on) { setB(x); setErr(""); } }, (e) => { if (on) setErr(apiMessage(e, "Could not load billing")); }); return () => { on = false; }; }, [v]);
@@ -37,7 +37,7 @@ export function ApiBilling({ param }: { param?: string | null }) {
   if (param) {
     const acc = b?.accounts.find((a) => a.tenantId === param);
     return (
-      <Page mod="billing" acts={<button className="btn btn-secondary" onClick={() => go("/admin/billing")}><Icon name="back" />All accounts</button>}>
+      <Page mod="billing" title={acc?.company} back={{ href: "/admin/billing", label: "Billing" }}>
         <ServerElevationBanner s={s} />
         {err ? <p role="alert" style={{ color: "var(--bad-ink)" }}>{err}</p> : !b ? <p style={{ color: "var(--muted)" }}>Loading…</p>
           : !acc ? <Empty icon="billing" title="No billing account">This company has no billing account yet.</Empty> : <AccountDetail b={b} acc={acc} lock={lock} />}
@@ -105,9 +105,9 @@ function AccountDetail({ b, acc, lock }: { b: api.Billing; acc: api.Account; loc
           <button className="btn btn-secondary sm" disabled={!!lock} title={lock} onClick={() => L.openModal(`Billing account of ${acc.company}`, (close) => <AccountForm b={b} acc={acc} close={close} />)}><Icon name="edit" />Change account</button></div>
       </div>
       <div className="c-body scroll">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16, maxWidth: 820 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))", gap: 16 }}>
           <dl className="meta-grid"><dt>Plan</dt><dd>{acc.plan}{acc.pendingPlan ? ` (${acc.pendingPlan.plan} from the next period)` : ""}</dd><dt>Billing cycle</dt><dd>{acc.cycle}</dd><dt>Currency</dt><dd>{acc.currency}</dd><dt>Tax country</dt><dd>{acc.country}</dd><dt>Next period starts</dt><dd className="num">{acc.nextPeriod}</dd>{acc.trialEnds ? <><dt>Trial ends</dt><dd className="num">{acc.trialEnds}</dd></> : null}</dl>
-          <dl className="meta-grid"><dt>Billing contact</dt><dd>{acc.contact.name}</dd><dt>Email</dt><dd>{acc.contact.email}</dd><dt>Address</dt><dd>{acc.address || "—"}</dd><dt>Method</dt><dd>{acc.method}</dd><dt>Balance</dt><dd className="num" style={{ color: acc.balance ? "var(--bad-ink)" : "var(--ok-ink)" }}>{minorMoney(acc.balance, acc.currency)}</dd></dl>
+          <dl className="meta-grid"><dt>Billing contact</dt><dd>{acc.contact.name}</dd><dt>Email</dt><dd>{acc.contact.email}</dd><dt>Address</dt><dd>{acc.address || "—"}</dd><dt>Method</dt><dd>{acc.method}</dd><dt>Balance</dt><dd><span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}><span className="num" style={{ color: acc.balance ? "var(--bad-ink)" : "var(--ink)" }}>{minorMoney(acc.balance, acc.currency)}</span>{acc.pastDue ? <Chip cls="bad" icon="alert">Past due</Chip> : acc.balance ? <Chip cls="warn" icon="clock">Due</Chip> : <Chip cls="ok" icon="check">Paid up</Chip>}</span></dd></dl>
         </div>
         {acc.pastDue ? <div className="banner warn" role="status" style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}><Icon name="alert" />{acc.pastDue} invoice{acc.pastDue > 1 ? "s are" : " is"} past due.</div> : null}
         <div className="tabs" role="tablist" style={{ marginTop: 14 }}>{["Invoices", "Ledger"].map((t) => <button key={t} className="tab" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}>{t}</button>)}</div>
@@ -350,7 +350,7 @@ function FinanceForm({ b, inv, kind, close }: { b: api.Billing; inv: api.Invoice
       <ReasonTicket p="fin" reason={reason} setReason={(x) => { setReason(x); setErr(""); }} ticket={ticket} setTicket={(x) => { setTicket(x); setErr(""); }} />
       <p className="field help" style={{ display: "flex", gap: 6, alignItems: "center" }}><Icon name={second ? "clock" : "check"} />{second ? `A second platform super admin approves this (${kind === "writeoff" ? "every write-off" : `above USD ${b.thresholdUsd.toLocaleString("en-US")}${alone ? ", counting what was already applied alone on this invoice" : ""}`}). The server makes the final check.` : `You can apply this yourself (USD ${b.thresholdUsd.toLocaleString("en-US")} or less).`}</p>
       <p className="field help" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
-      <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" disabled={busy} onClick={go}>{second ? "Send for approval" : KIND_LABEL[kind]}</button></LayerFoot>
+      <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className={"btn " + (kind === "void" || kind === "writeoff" ? "btn-danger" : "btn-primary")} disabled={busy} onClick={go}>{second ? "Send for approval" : KIND_LABEL[kind]}</button></LayerFoot>
     </>
   );
 }

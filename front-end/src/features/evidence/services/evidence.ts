@@ -23,10 +23,12 @@ const enc = encodeURIComponent;
 /** Tombstones of deleted evidence (who, why, who approved). In a real system this is an immutable server-side record. */
 export const EVIDENCE_TOMBSTONES: { id: string; name: string; at: string; requestedBy: string; approvedBy: string; reason: string }[] = [];
 
-/** source evInit: fill defaults on a record (idempotent). The random size is a demo value only. */
+/** Demo file size, derived from the file name so the same file always shows the same size (it is not read from a real file). */
+const demoSize = (name: string, base: number, span: number) => { let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return (base + (h % span)) + " KB"; };
+/** source evInit: fill defaults on a record (idempotent). The size is a demo value only. */
 export function evInit(e: any) {
   if (!e.ver) e.ver = 1;
-  if (!e.attachments) e.attachments = [{ name: String(e.name).replace(/[^a-z0-9]+/gi, "-").toLowerCase() + "." + (EXT[e.type] || "pdf"), size: (80 + Math.floor(Math.random() * 900)) + " KB", by: e.by }];
+  if (!e.attachments) e.attachments = [{ name: String(e.name).replace(/[^a-z0-9]+/gi, "-").toLowerCase() + "." + (EXT[e.type] || "pdf"), size: demoSize(String(e.name), 80, 900), by: e.by }];
   if (!e.history) e.history = [{ ver: 1, at: e.updated, by: e.by, note: "Initial version collected" }];
   if (!e.review) e.review = { status: "Pending review" };
   return e;
@@ -131,7 +133,7 @@ export function withdrawDelete(id: string) {
 export function addAttachment(id: string, name: string) {
   return viaApi(() => {
     const e = need(id); guard(whyCannotWrite());
-    e.attachments.push({ name, size: (60 + Math.floor(Math.random() * 700)) + " KB", by: getActor().name });
+    e.attachments.push({ name, size: demoSize(name, 60, 700), by: getActor().name });
     touch(e, "attachment added");
     wsLog("evidence.attachment.added", `${e.id} v${e.ver}: ${name}`, "Control");
     return e;

@@ -9,7 +9,7 @@ import * as svc from "@/services/team";
 import { CredentialPolicy } from "./CredentialPolicy";
 import { SignInProtection } from "./SignInProtection";
 
-/** Prototype: "settings" view. Selects apply immediately (with a toast); text fields apply on change (blur/Enter); "Save settings" only logs. */
+/** Prototype: "settings" view. Every control applies as soon as it changes and confirms with a toast; the button records the settings in the audit log. */
 export function SettingsTab({ manage }: { manage: boolean }) {
   const L = useLayer(); const T = svc.TEAM_SETTINGS;
   const [sla, setSla] = useState(T.controlSla); const [crit, setCrit] = useState(T.critSla);
@@ -20,10 +20,10 @@ export function SettingsTab({ manage }: { manage: boolean }) {
   const commit = async (key: "controlSla" | "critSla", raw: string) => {
     const v = clampText(raw, 40);
     if (!manage || v === T[key]) return;
-    try { await svc.setSetting(key, v); bumpData(); } catch { L.toast("Could not update the setting", false); }
+    try { await svc.setSetting(key, v); bumpData(); L.toast((key === "controlSla" ? "Standard remediation SLA" : "Critical remediation SLA") + ": " + v); } catch { L.toast("Could not update the setting", false); }
   };
   const save = async () => {
-    try { await svc.saveSettings(); wsLog("team.settings.saved", "review cycles & SLAs", "System"); L.toast("Settings saved"); } catch { L.toast("Could not save the settings", false); }
+    try { await svc.saveSettings(); wsLog("team.settings.saved", "review cycles & SLAs", "System"); L.toast("Settings recorded in the audit log"); } catch { L.toast("Could not save the settings", false); }
   };
   const pickBrand = async (id: BrandId) => {
     if (!manage || id === T.brand) return;
@@ -38,6 +38,7 @@ export function SettingsTab({ manage }: { manage: boolean }) {
   return (
     <div style={{ maxWidth: 640 }}>
       <div className="sectitle" style={{ marginTop: 0 }}>Review cycles, appetite and SLAs</div>
+      {manage ? <p className="field help" style={{ margin: "0 0 8px", maxWidth: "62ch" }}>Each setting on this tab applies as soon as you change it (text fields when you leave them or press Enter).</p> : null}
       <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div className="field"><label htmlFor="ts-cycle">Access/control review cycle</label><select className="select" id="ts-cycle" disabled={!manage} value={T.reviewCycle} onChange={(e) => pick("reviewCycle", e.target.value, svc.REVIEW_CYCLES, "Review cycle")}>{svc.REVIEW_CYCLES.map((x) => <option key={x}>{x}</option>)}</select></div>
         <div className="field"><label htmlFor="ts-app">Risk appetite</label><select className="select" id="ts-app" disabled={!manage} value={T.appetite} onChange={(e) => pick("appetite", e.target.value, svc.APPETITES, "Appetite")}>{svc.APPETITES.map((x) => <option key={x}>{x}</option>)}</select></div>
@@ -58,7 +59,7 @@ export function SettingsTab({ manage }: { manage: boolean }) {
       ) : <p style={{ margin: 0 }}>{svc.TRACK_RECORD_CHOICES.find((c) => c.value === T.agentTrackRecord)?.label ?? "3 suggestions"}. Only an admin can change it.</p>}
       <SignInProtection manage={manage} />
       <CredentialPolicy manage={manage} />
-      {manage ? <button className="btn btn-primary sm" style={{ marginTop: 10 }} onClick={save}><Icon name="check" />Save settings</button> : <p className="field help" style={{ marginTop: 10 }}>Read-only for your role.</p>}
+      {manage ? <button className="btn btn-secondary sm" style={{ marginTop: 10 }} onClick={save}><Icon name="log" />Record settings in audit log</button> : <p className="field help" style={{ marginTop: 10 }}>Read-only for your role.</p>}
     </div>
   );
 }

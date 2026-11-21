@@ -31,20 +31,20 @@ export default function AuditLogModule() {
   const doRopa = (fmt: "json" | "csv") => run(() => svc.exportRopa(fmt), () => L.toast("RoPA register exported (" + fmt.toUpperCase() + ")"));
   const doPackage = () => run(svc.generatePackage, (id) => L.toast("Evidence package " + String(id) + " generated"));
   const expBtns = (fn: (f: "json" | "csv") => void) => (
-    <><button className="btn btn-secondary" disabled={!can} onClick={() => fn("json")}><Icon name="download" />JSON</button><button className="btn btn-secondary" disabled={!can} onClick={() => fn("csv")}><Icon name="download" />CSV</button></>
+    <><button className="btn btn-secondary" disabled={!can} onClick={() => fn("json")}><Icon name="download" />Export JSON</button><button className="btn btn-secondary" disabled={!can} onClick={() => fn("csv")}><Icon name="download" />Export CSV</button></>
   );
   const acts = view === "ropa" ? expBtns(doRopa) : view === "exp" ? undefined : view === "log" ? expBtns(doExport) : undefined;
   const rows = WS_AUDIT.slice().reverse();
   const cols: DTColumn<Entry>[] = [
     { key: "seq", header: "#", value: (l) => l.seq, render: (l) => <span className="num" style={{ color: "var(--muted)" }}>{l.seq}</span> },
     { key: "at", header: "Timestamp", value: (l) => l.at, render: (l) => <span className="num" style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{l.at}</span> },
-    { key: "cat", header: "Category", value: (l) => l.cat, render: (l) => <Chip cls={l.cat === "RoPA" ? "info" : "neutral"}>{l.cat}</Chip> },
-    { key: "actor", header: "Actor", value: (l) => l.actor, locked: true, render: (l) => <span className="strong">{l.actor}</span> },
+    { key: "cat", header: "Category", value: (l) => l.cat, render: (l) => <Chip cls="neutral">{l.cat}</Chip> },
+    { key: "actor", header: "Actor", value: (l) => l.actor, locked: true, render: (l) => <span className="strong" style={{ whiteSpace: "nowrap" }}>{l.actor}</span> },
     { key: "action", header: "Action", value: (l) => l.action, render: (l) => <span className="num">{l.action}</span> },
-    { key: "target", header: "Target", value: (l) => l.target, render: (l) => l.target },
+    { key: "target", header: "Target", value: (l) => l.target, render: (l) => <span style={{ display: "block", minWidth: 160, maxWidth: 320 }}>{l.target}</span> },
     { key: "ropa", header: "RoPA activity", value: (l) => ropaFor(l) || "", render: (l) => {
       const rp = ropaById(ropaFor(l));
-      return rp ? <span className="tag num" style={{ cursor: "pointer" }} aria-label={`Open RoPA register, ${rp.id}`} {...activate(() => setV("ropa"))}>{rp.id}</span> : <span className="tag num" style={{ cursor: "pointer" }} aria-label="Open RoPA register" {...activate(() => setV("ropa"))}>—</span>;
+      return rp ? <span className="tag num" style={{ cursor: "pointer" }} aria-label={`Open RoPA register, ${rp.id}`} {...activate(() => setV("ropa"))}>{rp.id}</span> : <span style={{ color: "var(--faint)" }}>—</span>;
     } },
     { key: "hash", header: "Hash", value: (l) => l.hash, render: (l) => <span className="num" title={l.hash} style={{ fontSize: 11, color: "var(--muted)" }}>{API_ON && l.hash ? l.hash.slice(0, 12) + "…" : l.hash}</span> },
   ];
@@ -53,7 +53,7 @@ export default function AuditLogModule() {
       <ModuleTip mod="auditlog" />
       <div className="card" style={{ flex: "0 1 auto", minHeight: 0 }}>
         <div className="c-head" style={{ flexWrap: "wrap", gap: 8 }}>
-          <div className="seg" role="tablist">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div>
+          <div className="tabs" role="tablist" aria-label="Audit log views">{VIEWS.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div>
           <span className="r" style={{ marginLeft: "auto", fontSize: 12 }} role="status">
             {API_ON && !svc.lastVerified() ? <span style={{ color: "var(--muted)" }}><Icon name="clock" /> Not verified yet: use Chain integrity</span>
               : chainOk ? <span style={{ color: "var(--ok-ink)" }}><Icon name="check" /> {API_ON ? `Verified ${svc.lastVerified()}, ` : ""}Chain intact, {WS_AUDIT.length}{API_ON && WS_AUDIT.length >= 500 ? "+ (newest 500 shown; export for all)" : ""} entries</span> : <span style={{ color: "var(--bad-ink)" }}><Icon name="alert" /> Chain broken</span>}

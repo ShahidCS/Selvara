@@ -1,14 +1,18 @@
 import { API_ON } from "@/lib/rbac";
-import { Empty, Icon, Page, StatusChip, Table } from "@/components/ui";
+import { Chip, Empty, Icon, Page, StatusChip, Table } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { bumpData, useApp, useData } from "@/lib/store";
 import { useGo } from "@/lib/route";
 import { safeFileName } from "@/lib/security";
 import { iAm, uiMessage } from "@/lib/grcSod";
 import * as svc from "@/features/evidence/services/evidence";
-import { AttachFile, DeleteEvidence, NewVersion, ReasonModal } from "./EvidenceForms";
+import { AttachFile, ConfirmRemoveFile, DeleteEvidence, NewVersion, ReasonModal } from "./EvidenceForms";
 
-export const reviewChip = (status: string) => (status === "Accepted" ? "Approved" : status === "Rejected" ? "Rejected" : "Pending");
+/** Review state as a chip with icon and words. One name for the waiting state everywhere: "Pending review" (tab, KPI and chip). */
+export function ReviewChip({ status }: { status: string }) {
+  if (status === "Accepted" || status === "Rejected") return <StatusChip s={status} />;
+  return <Chip cls="warn" icon="clock">Pending review</Chip>;
+}
 
 /** An evidence item as a page (`/ws/evidence/:id`): review, attachments, version history and the two-person deletion. Same service calls as the old preview;
  *  the reason and choice dialogs (accept, reject, deletion request and decision, attach file, new version) remain dialogs. */
@@ -25,9 +29,9 @@ export function EvidenceDetail({ id }: { id: string }) {
   const pend = svc.pendingDelete(e);
   const decideWhy = pend ? svc.whyCannotDecideDelete(e) : null;
   const rv = e.review as { status: string; by?: string; at?: string; note?: string };
-  const detach = async (ai: number) => {
-    try { await svc.removeAttachment(id, ai); L.toast("File removed"); bumpData(); } catch (x) { L.toast(uiMessage(x), false); }
-  };
+  const detach = (ai: number, file: string) => L.openModal("Remove file", (close) => <ConfirmRemoveFile file={file} evidence={e.name} close={close} run={async () => {
+    try { await svc.removeAttachment(id, ai); L.toast(file + " removed"); bumpData(); } catch (x) { L.toast(uiMessage(x), false); }
+  }} />);
   /** Production: a link valid for 60 seconds, served by the storage service as a download (never shown inline here). */
   const download = async (fileId: string) => { try { const { url } = await svc.attachmentLink(id, fileId); window.location.assign(url); } catch (x) { L.toast(uiMessage(x), false); } };
   const decide = (decision: "approve" | "reject") => L.openModal(decision === "approve" ? "Approve deletion" : "Reject deletion", (close) =>
@@ -40,13 +44,12 @@ export function EvidenceDetail({ id }: { id: string }) {
 
   return (
     <Page title={e.name} sub={`${e.id}, ${e.type}, v${e.ver}`} back={back} acts={<>
-      <StatusChip s={reviewChip(rv.status)} />
-      {btn("Edit", "team", writeWhy, () => go(`/ws/evidence/${encodeURIComponent(id)}/edit`), "btn-ghost", "")}
-      {btn("Request deletion", "x", delWhy, () => L.openModal("Request deletion", (close) => <DeleteEvidence id={id} close={close} />), "btn-ghost", "")}
+      {btn("Edit", "edit", writeWhy, () => go(`/ws/evidence/${encodeURIComponent(id)}/edit`), "btn-secondary", "")}
+      {btn("Request deletion", "trash", delWhy, () => L.openModal("Request deletion", (close) => <DeleteEvidence id={id} close={close} />), "btn-ghost", "")}
     </>}>
       <div className="scroll rec-scroll">
         {pend ? (
-          <div className="card" style={{ background: "var(--warn-bg)", borderColor: "var(--warn-ink)", marginBottom: 12 }} role="alert"><div className="c-body" style={{ padding: 12 }}>
+          <div className="card" style={{ background: "var(--warn-bg)", borderColor: "var(--warn-ink)", marginBottom: 12 }} role="status"><div className="c-body" style={{ padding: 12 }}>
             <div style={{ fontWeight: 600 }}><Icon name="alert" /> Deletion requested by {pend.requestedBy}</div>
             <div style={{ fontSize: 12.5, color: "var(--muted)", margin: "3px 0 8px" }}>Reason: {e.deleteRequest?.reason}. A second admin must approve; nothing is deleted yet.</div>
             <div className="btngrp">
@@ -60,9 +63,9 @@ export function EvidenceDetail({ id }: { id: string }) {
 
         <div className="rec-grid">
           <div className="rec-main">
-            <div className="card"><div className="c-head"><h3>Review</h3><StatusChip s={reviewChip(rv.status)} /></div><div className="c-body">
+            <div className="card"><div className="c-head"><h3>Review</h3><ReviewChip status={rv.status} /></div><div className="c-body">
               <p className="field help" style={{ marginTop: 0 }}>{rv.status}{rv.by ? ` by ${rv.by} on ${rv.at}` : ""}{rv.note ? `: ${rv.note}` : ""}. A reviewer who did not collect, version or attach to this evidence accepts or rejects it.</p>
-              <div className="btngrp">
+              <div className="btngrp" style={{ marginTop: 12 }}>
                 {btn("Accept", "check", reviewWhy, () => review("Accepted"), "btn-primary")}
                 {btn("Reject", "x", rv.status === "Rejected" ? "Already rejected." : reviewWhy, () => review("Rejected"), "btn-secondary")}
               </div>
@@ -76,7 +79,7 @@ export function EvidenceDetail({ id }: { id: string }) {
                   <Table cols={[{ t: "File" }, { t: "Size" }, { t: "" }]}>
                     {e.attachments.map((a: { id?: string; name: string; size: string }, ai: number) => (
                       <tr key={ai}><td className="strong"><Icon name="evidence" /> {safeFileName(a.name)}</td><td className="num" style={{ color: "var(--muted)" }}>{a.size}</td>
-                        <td className="r">{API_ON && a.id ? <button className="btn btn-ghost sm" aria-label={`Download ${safeFileName(a.name)}`} onClick={() => download(a.id!)}><Icon name="download" />Download</button> : null}<button className="btn btn-ghost sm" disabled={!!writeWhy} title={writeWhy || undefined} aria-label={`Remove ${safeFileName(a.name)}`} onClick={() => detach(ai)}><Icon name="x" />Remove</button></td></tr>
+                        <td className="r">{API_ON && a.id ? <button className="btn btn-ghost sm" aria-label={`Download ${safeFileName(a.name)}`} onClick={() => download(a.id!)}><Icon name="download" />Download</button> : null}<button className="btn btn-ghost sm" disabled={!!writeWhy} title={writeWhy || undefined} aria-label={`Remove ${safeFileName(a.name)}`} onClick={() => detach(ai, safeFileName(a.name))}><Icon name="x" />Remove</button></td></tr>
                     ))}
                   </Table>
                 ) : <Empty icon="evidence" title="No files attached">Attach the file this evidence refers to.</Empty>}

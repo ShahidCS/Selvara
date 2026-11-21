@@ -11,12 +11,13 @@ import { sodMessage, settle } from "@/lib/approvalFlow";
 import { memberRole } from "@/lib/teamRoles";
 import { sodReason } from "@/lib/sod";
 import { PendingApprovals } from "@/features/mfa";
-import { bumpData, useApp, useData, useModState } from "@/lib/store";
+import { useApp, useData, useModState } from "@/lib/store";
 import { useLayer } from "@/hooks/useLayer";
 import * as svc from "@/services/team";
 import { useOpenPerson } from "@/features/people";
 import { useGo, useRoute } from "@/lib/route";
 import { ApproverForm, ChangeRoleForm } from "./TeamForms";
+import { askReason } from "@/components/kit/ReasonDialog";
 import { InviteFormPage } from "./InviteFormPage";
 import { SettingsTab } from "./SettingsTab";
 
@@ -43,27 +44,28 @@ function TeamTabs() {
   const T = svc.TEAM_SETTINGS;
   useEffect(() => { const t = () => { svc.sweepInvites(); settle(); }; t(); const iv = setInterval(t, 30_000); return () => clearInterval(iv); }, []);
   const flush = view === "members" || view === "perms";
-  const removeApprover = async (i: number) => {
-    try { const a = await svc.removeApprover(i); if (a === null) { L.toast("Approver not found", false); return; } bumpData(); }
-    catch (e) { L.toast(sodMessage(e, "Could not remove the approver"), false); }
-  };
+  const removeApprover = (i: number, name: string) => askReason(L, { title: `Remove ${name} as approver?`, label: "", danger: true, confirm: "Remove approver",
+    intro: "They no longer approve procurement requests. You can add them again later.",
+    run: async () => { const a = await svc.removeApprover(i); if (a === null) throw new Error("Approver not found"); return "Approver removed"; } });
   const memberCols: DTColumn<Member>[] = [
     { key: "name", header: "Member", value: (p) => p.name, locked: true, render: (p) => <span className="strong">{p.name}</span> },
     { key: "title", header: "Job title", value: (p) => p.role, render: (p) => p.role },
     { key: "role", header: "Workspace role", value: (p) => memberRole(p), render: (p) => memberRole(p) },
     { key: "mfa", header: "MFA", value: (p) => (p.mfa ? "Enrolled" : "No MFA"), render: (p) => (p.mfa ? <Chip cls="ok" icon="check">Enrolled</Chip> : <Chip cls="neutral" icon="dot">No MFA</Chip>) },
     { key: "status", header: "Status", value: () => "Active", render: () => <StatusChip s="Active" /> },
-    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (p) => (manage ? <button className="btn btn-ghost sm" disabled={!!sodReason("nobody changes their own role", p.name)} title={sodReason("nobody changes their own role", p.name) || undefined} aria-label={`Change role of ${p.name}`} onClick={() => L.openModal("Change role, " + p.name, (close) => <ChangeRoleForm personId={p.id} close={close} />)}><Icon name="access" />Role</button> : null) },
+    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (p) => (manage ? (sodReason("nobody changes their own role", p.name)
+      ? <span style={{ color: "var(--muted)", fontSize: 12, whiteSpace: "nowrap" }}>You<span className="vh">: another admin changes your role</span></span>
+      : <button className="btn btn-ghost sm" aria-label={`Change role of ${p.name}`} onClick={() => L.openModal("Change role, " + p.name, (close) => <ChangeRoleForm personId={p.id} close={close} />)}><Icon name="access" />Role</button>) : null) },
   ];
   const spaces: [string, string][] = [["ws", "Workspace"], ["admin", "Admin"]];
   return (
     <Page mod="team" acts={view === "members" && manage ? <button className="btn btn-primary" onClick={() => go("/ws/team/invite")}><Icon name="plus" />Invite member</button> : undefined}>
       <div className="card" style={{ flex: "1 1 auto" }}>
-        <div className="c-head"><div className="seg" role="tablist">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
+        <div className="c-head" style={{ padding: "0 8px" }}><div className="tabs" role="tablist" aria-label="Team and settings">{VIEWS.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className={`c-body ${flush ? "flush" : ""} scroll`} style={flush ? { padding: 0 } : undefined} id="teamBody">
           {view === "members" ? (
             <>
-            <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+            <div className="empty:hidden" style={{ padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
               <JoinRequests manage={manage} />
               <PendingApprovals kinds={svc.KINDS} title="Pending approvals (privileged roles and invitations)" subjectLabel="Subject" />
               {svc.INVITATIONS.length ? (
@@ -93,7 +95,7 @@ function TeamTabs() {
               <div className="sectitle" style={{ marginTop: 0 }}>Procurement gate approvers</div>
               <Table cols={[{ t: "Approver" }, { t: "" }]}>
                 {T.approvers.map((a, i) => (
-                  <tr key={i}><td className="strong">{a}</td><td className="r">{manage ? <button className="btn btn-ghost sm" aria-label={`Remove approver ${a}`} onClick={() => removeApprover(i)}><Icon name="x" />Remove</button> : null}</td></tr>
+                  <tr key={i}><td className="strong">{a}</td><td className="r">{manage ? <button className="btn btn-ghost sm" aria-label={`Remove approver ${a}`} onClick={() => removeApprover(i, a)}><Icon name="trash" />Remove</button> : null}</td></tr>
                 ))}
               </Table>
               {manage ? <button className="btn btn-ghost sm" style={{ marginTop: 8 }} onClick={() => L.openModal("Add approver", (close) => <ApproverForm close={close} />)}><Icon name="plus" />Add approver</button> : null}
@@ -102,17 +104,17 @@ function TeamTabs() {
             </div>
           ) : (
             <div className="scroll">
-              <div style={{ padding: "0 0 8px 10px", fontSize: 12, color: "var(--muted)" }}>Server-side permission model: which roles may reach each space. Enforced by the route guard and nav filter.</div>
+              <div style={{ padding: "12px 14px 8px", fontSize: 12, color: "var(--muted)" }}>Server-side permission model: which roles may reach each space. Enforced by the route guard and nav filter.</div>
               <table className="tbl">
                 <thead><tr><th scope="col">Role</th><th scope="col">Tenant</th>{spaces.map((s) => <th scope="col" key={s[0]}>{s[1]} modules</th>)}</tr></thead>
                 <tbody>
-                  {ROLES.map((r) => (
+                  {ROLES.filter((r, i) => ROLES.findIndex((x) => x.name === r.name) === i).map((r) => (
                     <tr key={r.id}>
                       <td className="strong">{r.name}</td>
-                      <td>{r.tenant ? r.tenant : <span style={{ color: "var(--muted)" }}>Platform</span>}</td>
+                      <td>{r.tenant ? r.tenant : <span style={{ color: "var(--muted)" }}>{r.spaces.includes("admin") ? "Platform" : "External"}</span>}</td>
                       {spaces.map((s) => {
                         const m = (ROLE_MODS[r.id] || {})[s[0]];
-                        return <td key={s[0]}>{m === "*" ? <Chip cls="ok" icon="check">All</Chip> : Array.isArray(m) ? <span className="num" style={{ fontSize: 12 }}>{m.length} modules</span> : <span style={{ color: "var(--faint)" }}>—</span>}</td>;
+                        return <td key={s[0]}>{m === "*" ? <Chip cls="ok" icon="check">All</Chip> : Array.isArray(m) ? <span className="num" style={{ fontSize: 12 }}>{m.length} {m.length === 1 ? "module" : "modules"}</span> : <span style={{ color: "var(--faint)" }}>—</span>}</td>;
                       })}
                     </tr>
                   ))}

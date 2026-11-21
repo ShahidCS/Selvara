@@ -34,6 +34,14 @@ function DistBlock({ open, which, title, note }: { open: any[]; which: "cur" | "
   );
 }
 
+const mixText = (list: any[]) => RBANDS.map((b) => [b.name, list.filter((r) => rband(sCur(r)).name === b.name).length] as const).filter(([, n]) => n).map(([nm, n]) => `${n} ${nm}`).join(", ");
+/** Swatch plus band name for each rating, so the coloured bars and cells are never read by colour alone. */
+function BandLegend({ fill }: { fill?: boolean }) {
+  return <span style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 12, color: "var(--muted)" }}>{RBANDS.map((b) => (
+    <span key={b.name} style={{ display: "inline-flex", gap: 5, alignItems: "center" }}><span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: 3, background: fill ? heatFill(b) : bandTint(b.col, 60), border: `1px solid ${bandTint(b.col, 42)}`, display: "inline-block" }} />{b.name}</span>
+  ))}</span>;
+}
+
 function Breakdown({ open, k, title }: { open: any[]; k: "cat" | "team" | "jur"; title: string }) {
   const groups: Record<string, any[]> = {};
   open.forEach((r) => { const key = r[k] || "—"; (groups[key] = groups[key] || []).push(r); });
@@ -43,16 +51,19 @@ function Breakdown({ open, k, title }: { open: any[]; k: "cat" | "team" | "jur";
       {Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length).map((g) => {
         const list = groups[g];
         return (
-          <button key={g} className="rbd" onClick={() => riskGoReg({ [k]: g, rating: "all", status: "all", cell: null })}>
+          <button key={g} className="rbd" aria-label={`${g}: ${list.length} open, ${mixText(list)}. Show in the register`} title={`${g}: ${mixText(list)}`} onClick={() => riskGoReg({ [k]: g, rating: "all", status: "all", cell: null })}>
             <span style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13 }}><span>{g}</span><span className="strong">{list.length}</span></span>
-            <span className="rbdbar">{RBANDS.map((b) => {
+            <span className="rbdbar" aria-hidden="true">{RBANDS.map((b) => {
               const n = list.filter((r) => rband(sCur(r)).name === b.name).length;
               return n ? <span key={b.name} style={{ height: "100%", width: `${(n / list.length * 100).toFixed(1)}%`, background: bandTint(b.col, 60) }} /> : null;
             })}</span>
           </button>
         );
       })}
-      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>Bars show the current-rating mix of open risks.</div>
+      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4, display: "flex", flexDirection: "column", gap: 6 }}>
+        <span>Bars show the current-rating mix of open risks.</span>
+        <BandLegend />
+      </div>
     </div></section>
   );
 }
@@ -96,7 +107,7 @@ export default function RiskDash() {
   return (
     <div className="rcaps">
       <KpiStrip label="Risk summary">
-        <KpiTile label="Open risks" value={open.length} caption={`${DATA.risks.length} on the register`} />
+        <KpiTile label="Open risks" value={open.length} caption={`Not closed or accepted (includes in review); ${DATA.risks.length} on the register`} />
         <KpiTile label="Above appetite (High+)" value={aboveApp} delta={aboveApp ? { tone: "bad", text: "Needs treatment" } : { tone: "good", text: "None" }} caption="Current rating" />
         <KpiTile label="Awaiting approval" value={awaiting} delta={awaiting ? { tone: "watch", text: "Needs a decision" } : undefined} caption="Submitted for review" />
         <KpiTile label="Accepted and valid" value={accepted} caption="Within their expiry" />
@@ -117,13 +128,12 @@ export default function RiskDash() {
           <div className="heat" style={{ gridTemplateColumns: "auto repeat(5,1fr)" }}>{cells}</div>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 12, color: "var(--muted)", marginTop: 10 }}>
             <span>Impact up, likelihood across. Numbers are open risks; colour is the {word} rating of every cell. Outlined cells are at or above appetite ({RISK_APPETITE}). Click a cell to filter.</span>
-            <span style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>{RBANDS.map((b) => (
-              <span key={b.name} style={{ display: "inline-flex", gap: 5, alignItems: "center" }}><span style={{ width: 11, height: 11, borderRadius: 3, background: heatFill(b), border: `1px solid ${bandTint(b.col, 42)}`, display: "inline-block" }} />{b.name}</span>
-            ))}</span>
+            <BandLegend fill />
           </div>
         </div></section>
         <section className="card"><div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div><h3 style={{ margin: "0 0 10px" }}>Risk status</h3><div className="rstats">{statusCards}</div></div>
+          <div><h3 style={{ margin: "0 0 2px" }}>Risk status</h3><p className="sub" style={{ margin: "0 0 10px" }}>Count by workflow status. &ldquo;Open risks&rdquo; above also counts those in review.</p>
+            <div className="rstats" style={{ gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>{statusCards}</div></div>
           <DonutChart title="Current rating of open risks" segments={mix} center={String(open.length)} centerSub="open risks" />
         </div></section>
       </div>

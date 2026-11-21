@@ -1,4 +1,4 @@
-import { DataTable, Icon, KpiCard, Page, StatusChip, Table, type DTColumn } from "@/components/ui";
+import { Chip, DataTable, Icon, KpiCard, Page, StatusChip, Table, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { API_ON } from "@/lib/rbac";
 import { SodError } from "@/lib/sod";
@@ -14,11 +14,13 @@ import { useLayer } from "@/hooks/useLayer";
 import * as svc from "@/features/vendors/services/vendors";
 import { ApprovalsPanel, WhyNot, attempt } from "@/components/kit/sodKit";
 import { useGo, useRoute } from "@/lib/route";
-import { VendorDetail, scoreColor } from "./VendorDetail";
+import { ScoreChip, VendorDetail, scoreColor } from "./VendorDetail";
 import { ReassessFormPage, VendorFormPage, WaiverFormPage } from "./VendorForms";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Vendor = any;
+/** Tier chip: the real tier word with a tone and an icon. */
+const TIER_CHIP: Record<string, [string, string]> = { Critical: ["bad", "alert"], Medium: ["warn", "dot"], Low: ["neutral", "dot"] };
 /** `/ws/vendors` is the register; `/new`, `/:id`, `/:id/reassess` and `/:id/waiver` are pages. */
 export default function VendorsModule() {
   const { param, sub } = useRoute();
@@ -53,8 +55,8 @@ function VendorsList() {
   const cols: DTColumn<Vendor>[] = [
     { key: "name", header: "Vendor", value: (v) => v.name, locked: true, render: (v) => <span className="strong">{v.name}</span> },
     { key: "cat", header: "Category", value: (v) => v.cat, render: (v) => v.cat },
-    { key: "tier", header: "Tier", value: (v) => v.tier, sortBy: (v) => { const i = VENDOR_TIERS.indexOf(v.tier); return i < 0 ? 99 : i; }, render: (v) => <StatusChip s={v.tier === "Critical" ? "High" : v.tier} /> },
-    { key: "score", header: "Risk score", value: (v) => v.score, render: (v) => <><span style={{ fontWeight: 600, color: scoreColor(v.score) }}>{v.score}</span><span style={{ color: "var(--muted)" }}>/100</span></> },
+    { key: "tier", header: "Tier", value: (v) => v.tier, sortBy: (v) => { const i = VENDOR_TIERS.indexOf(v.tier); return i < 0 ? 99 : i; }, render: (v) => { const [cl, ic] = TIER_CHIP[v.tier] || ["neutral", "dot"]; return <Chip cls={cl} icon={ic}>{v.tier}</Chip>; } },
+    { key: "score", header: "Risk score", value: (v) => v.score, render: (v) => <span style={{ display: "inline-flex", gap: 6, alignItems: "center", whiteSpace: "nowrap" }}><span><span style={{ fontWeight: 600, color: scoreColor(v.score) }}>{v.score}</span><span style={{ color: "var(--muted)" }}>/100</span></span><ScoreChip s={v.score} /></span> },
     { key: "due", header: "Review due", value: (v) => v.due, sortBy: (v) => { const m = /Overdue (\d+)d/.exec(v.due); if (m) return -Number(m[1]); const t = Date.parse(v.due); return Number.isNaN(t) ? Number.MAX_SAFE_INTEGER : t; }, render: (v) => (/Overdue/.test(v.due) ? <span style={{ color: "var(--bad-ink)", fontWeight: 500 }}>{v.due}</span> : <>{v.due}</>) },
     { key: "status", header: "Status", value: (v) => v.status, render: (v) => <StatusChip s={v.status} /> },
   ];
@@ -84,11 +86,10 @@ function VendorsList() {
                     <td className="strong">{r.name}<div style={{ fontSize: 11.5, color: "var(--muted)" }}>{r.cat} · {r.crit} tier{r.data ? <> · <span style={{ color: "var(--warn-ink)" }}>processes our data</span></> : null}</div></td>
                     <td style={{ fontSize: 12.5 }}>{r.reason}</td>
                     <td style={{ fontSize: 12, color: "var(--muted)" }}>{r.requester}<div style={{ fontSize: 11 }}>{r.at}</div></td>
-                    <td className="r" style={{ whiteSpace: "nowrap" }}>
+                    <td className="r"><div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }}>
                       <button className="btn btn-ghost sm" disabled={!!why} aria-describedby={why ? "vrw-" + r.id : undefined} aria-label={`${crit ? "Request approval to add" : "Add"} ${r.name} to inventory`} onClick={() => approve(r.id)}><Icon name="check" />{crit ? "Request approval" : "Add to inventory"}</button>
-                      <button className="btn btn-ghost sm" disabled={waiting} aria-label={`Dismiss request ${r.id}`} onClick={() => dismiss(r.id)}>Dismiss</button>
-                      <WhyNot id={"vrw-" + r.id} text={why} />
-                    </td>
+                      <button className="btn btn-ghost sm" disabled={waiting} aria-label={`Dismiss request ${r.id}`} onClick={() => dismiss(r.id)}><Icon name="x" />Dismiss</button>
+                    </div><WhyNot id={"vrw-" + r.id} text={why} /></td>
                   </tr>
                 );
               })}

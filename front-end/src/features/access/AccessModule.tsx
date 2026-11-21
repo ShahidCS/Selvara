@@ -1,10 +1,11 @@
+import type { KeyboardEvent } from "react";
 import { ModuleTip } from "@/components/kit/ModuleTip";
 import { RecordGrantForm } from "./GrantForms";
 import { API_ON } from "@/lib/rbac";
 import { Icon, Page } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData, useModState } from "@/lib/store";
-import { ACCESS_REQUESTS, ACCESS_REVIEWS } from "@/lib/requests";
+import { ACCESS_REVIEWS } from "@/lib/requests";
 import { useLayer } from "@/hooks/useLayer";
 import { ACCESS_VIEWS, canActOnAccess } from "@/services/access";
 import { AccessRequestForm } from "@/features/work";
@@ -20,9 +21,14 @@ export default function AccessModule() {
   const canAct = canActOnAccess(role);
   const [v, setV] = useModState<string>("access.view", "inventory");
   const view = ACCESS_VIEWS.some((x) => x[0] === v) ? v : "inventory"; // never trust stored state blindly
-  const count = view === "inventory" ? DATA.access.length + " grants"
-    : view === "requests" ? ACCESS_REQUESTS.filter((r) => r.status === "Pending").length + " pending"
-    : ACCESS_REVIEWS.filter((r) => r.status === "Open").length + " open";
+  /* the registers show their own row count; only the reviews view (cards, no table) needs a count here */
+  const count = view === "reviews" ? ACCESS_REVIEWS.filter((r) => r.status === "Open").length + " open" : null;
+  const tabKey = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
+    const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    const n = e.key === "Home" ? 0 : e.key === "End" ? ACCESS_VIEWS.length - 1 : d ? (i + d + ACCESS_VIEWS.length) % ACCESS_VIEWS.length : -1;
+    if (n < 0) return; e.preventDefault();
+    setV(ACCESS_VIEWS[n][0]); document.getElementById(`acc-tab-${ACCESS_VIEWS[n][0]}`)?.focus();
+  };
   const acts = view === "requests"
     ? <button className="btn btn-primary" onClick={() => L.openModal("Request access", (close) => <AccessRequestForm close={close} />)}><Icon name="plus" />Request access</button>
     : view === "reviews" && canAct
@@ -35,12 +41,14 @@ export default function AccessModule() {
       <ModuleTip mod="access" force={API_ON && !DATA.access.length} />
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head">
-          <div className="seg" role="tablist">
-            {ACCESS_VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}
+          <div style={{ maxWidth: "100%", overflowX: "auto", scrollbarWidth: "thin" }}>
+            <div className="seg" role="tablist" aria-label="Access views">
+              {ACCESS_VIEWS.map((x, i) => <button key={x[0]} id={`acc-tab-${x[0]}`} role="tab" aria-selected={view === x[0]} aria-controls="accBody" tabIndex={view === x[0] ? 0 : -1} style={{ whiteSpace: "nowrap" }} onKeyDown={(e) => tabKey(e, i)} onClick={() => setV(x[0])}>{x[1]}</button>)}
+            </div>
           </div>
-          <div className="r"><span className="tag" id="accCount">{count}</span></div>
+          {count ? <div className="r"><span className="tag" id="accCount">{count}</span></div> : null}
         </div>
-        <div className="c-body flush scroll" style={{ padding: 0 }} id="accBody">
+        <div className="c-body flush scroll" style={{ padding: 0 }} id="accBody" role="tabpanel" aria-labelledby={`acc-tab-${view}`}>
           {view === "inventory" ? <GrantsTable /> : view === "requests" ? <AccessRequests canAct={canAct} /> : <AccessReviews canAct={canAct} />}
         </div>
       </div>

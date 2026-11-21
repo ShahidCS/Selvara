@@ -29,7 +29,7 @@ export function NewKeyPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const lb = clampText(label, 80);
-    if (!lb) { setErr("Label is required."); return; }
+    if (!lb) { setErr("Label is required."); ref.current?.focus(); return; }
     const sc = svc.KEY_SCOPES.includes(scope) ? scope : "Read";
     setBusy(true);
     try {
@@ -65,7 +65,8 @@ export function NewWebhookPage() {
   const L = useLayer(); const go = useGo();
   useData(); // production: the event list arrives with the workspace data, possibly after this page opened
   const ev0 = svc.WH_EVENTS.slice(0, 2);
-  const [url, setUrl] = useState(""); const [picked, setPicked] = useState<string[] | null>(null); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const [url, setUrl] = useState(""); const [picked, setPicked] = useState<string[] | null>(null); const [err, setErr] = useState(""); const [errOn, setErrOn] = useState<"url" | "events">("url"); const [busy, setBusy] = useState(false);
+  const evRef = useRef<HTMLFieldSetElement>(null);
   const sel = picked ?? ev0; // the first two events until the person changes the choice
   const setSel = (f: (p: string[]) => string[]) => setPicked(f(sel));
   const dirty = !busy && (url !== "" || sel.join() !== ev0.join());
@@ -75,8 +76,8 @@ export function NewWebhookPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const u = url.trim();
-    if (!isSafeWebhookUrl(u)) { setErr("A valid https URL is required."); return; }
-    if (!sel.length) { setErr("Choose at least one event."); return; }
+    if (!isSafeWebhookUrl(u)) { setErr("A valid https URL is required."); setErrOn("url"); ref.current?.focus(); return; }
+    if (!sel.length) { setErr("Choose at least one event."); setErrOn("events"); evRef.current?.querySelector("input")?.focus(); return; }
     setBusy(true);
     try {
       await svc.addWebhook({ url: u, events: svc.WH_EVENTS.filter((x) => sel.includes(x)) });
@@ -87,16 +88,16 @@ export function NewWebhookPage() {
     <Page title="Add webhook" sub="A new webhook does not deliver anything until a second admin approves it." back={back}>
       <div className="scroll rec-scroll"><form className="rec-form" onSubmit={submit} noValidate>
         <FormSection n={1} title="Endpoint" note="Where signed events are sent. https only.">
-          <div className="field"><label htmlFor="wh-url">Endpoint URL <Req /></label><input ref={ref} className="input" id="wh-url" maxLength={2048} inputMode="url" autoComplete="off" spellCheck={false} placeholder="https://hooks.example.com/grc" value={url} onChange={(e) => setUrl(e.target.value)} aria-invalid={!!err} aria-describedby={err ? "wh-err" : undefined} /></div>
+          <div className="field"><label htmlFor="wh-url">Endpoint URL <Req /></label><input ref={ref} className="input" id="wh-url" maxLength={2048} inputMode="url" autoComplete="off" spellCheck={false} placeholder="https://hooks.example.com/grc" value={url} onChange={(e) => setUrl(e.target.value)} aria-invalid={!!err && errOn === "url"} aria-describedby={err && errOn === "url" ? "wh-err" : undefined} /></div>
           <p className="field help">A signing secret (HMAC-SHA256) is generated automatically{API_ON ? " when a second admin approves the webhook, and shown once to you" : ""}. Verify the signature on every delivery{API_ON ? ": the x-selvara-signature header is v1= followed by the HMAC of \"<x-selvara-timestamp>.<body>\"" : ""}.</p>
         </FormSection>
         <FormSection n={2} title="Events" note="Which events this endpoint receives.">
-          <fieldset className="field" style={{ border: 0, padding: 0, margin: 0 }}>
+          <fieldset ref={evRef} className="field" style={{ border: 0, padding: 0, margin: 0 }} aria-invalid={!!err && errOn === "events"} aria-describedby={err && errOn === "events" ? "wh-err" : undefined}>
             <legend className="vh">Events</legend>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {svc.WH_EVENTS.map((x) => (
                 <label key={x} style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 400, fontSize: 13 }}>
-                  <input type="checkbox" className="wh-ev" value={x} checked={sel.includes(x)} onChange={(ev) => setSel((p) => (ev.target.checked ? [...p, x] : p.filter((y) => y !== x)))} /> {x}
+                  <input type="checkbox" className="wh-ev" style={{ accentColor: "var(--accent)" }} value={x} checked={sel.includes(x)} onChange={(ev) => setSel((p) => (ev.target.checked ? [...p, x] : p.filter((y) => y !== x)))} /> {x}
                 </label>
               ))}
             </div>
@@ -121,7 +122,7 @@ export function NewTestPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const n = clampText(name, 120);
-    if (!n) { setErr("Test name is required."); return; }
+    if (!n) { setErr("Test name is required."); ref.current?.focus(); return; }
     setBusy(true);
     try {
       await svc.createTest({ name: n, target: clampText(target, 80), schedule: sched });

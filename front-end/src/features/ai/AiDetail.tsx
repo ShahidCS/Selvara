@@ -41,7 +41,7 @@ export function AiDetail({ id }: { id: string }) {
     : act(() => svc.attachEvidence(id), (r) => { aiLog("ai.evidence.attached", a.name); L.toast("Evidence attached to " + r.name); bumpData(); }));
 
   const tabs = (
-    <div className="tabs" role="tablist" style={{ marginBottom: 14 }}>
+    <div className="tabs" role="tablist" style={{ marginBottom: 14, flexWrap: "wrap" }}>
       {AI_TABS.map((t) => <button key={t[0]} className="tab" role="tab" aria-selected={tab === t[0]} onClick={() => setTab(t[0])}>{t[1]}</button>)}
     </div>
   );
@@ -53,7 +53,7 @@ export function AiDetail({ id }: { id: string }) {
     body = (
       <>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}><span className="tag">{a.lifecycle}</span></div>
-        <dl className="meta-grid">
+        <dl className="meta-grid lstart">
           <dt>Surface</dt><dd>{a.surface}</dd><dt>Model</dt><dd>{a.model}</dd><dt>Provider</dt><dd>{a.provider}</dd><dt>Data it can reach</dt><dd>{a.dataReached}</dd><dt>Autonomy</dt><dd>{a.autonomy}</dd><dt>Users</dt><dd>{a.users}</dd><dt>Discovered by</dt><dd>{a.discovered}</dd>
           {a.tools ? <><dt>Tools &amp; MCP servers</dt><dd>{a.tools}</dd></> : null}
           <dt>Owner</dt><dd>{a.owner}</dd><dt>Added on</dt><dd>{a.added || "-"}</dd><dt>Next review</dt><dd>{a.nextReview || "-"}</dd><dt>Evidence</dt><dd>{a.evidence ? a.evidence : "None attached"}</dd>
@@ -107,8 +107,8 @@ export function AiDetail({ id }: { id: string }) {
         {manage ? (
           <>
             <div className="btngrp" style={{ marginTop: 14 }}>
-              <button className="btn btn-primary sm" onClick={() => openEuClassify(L, id)}><Icon name="shieldcheck" />{st.state === "Not classified" ? "Classify under EU AI Act" : "Re-run classification"}</button>
-              {st.state === "Draft" ? <button className="btn btn-secondary sm" disabled={!canConfirm} onClick={() => act(() => svc.confirmEu(id), (r) => { aiLog("ai.euact.confirmed", a.name); bumpData(); L.toast("Classification confirmed" + (r.note ? ". " + r.note : "")); })}><Icon name="check" />Confirm classification</button> : null}
+              <button className={`btn ${canConfirm ? "btn-secondary" : "btn-primary"} sm`} onClick={() => openEuClassify(L, id)}><Icon name="shieldcheck" />{st.state === "Not classified" ? "Classify under EU AI Act" : "Re-run classification"}</button>
+              {st.state === "Draft" ? <button className={`btn ${canConfirm ? "btn-primary" : "btn-secondary"} sm`} disabled={!canConfirm} onClick={() => act(() => svc.confirmEu(id), (r) => { aiLog("ai.euact.confirmed", a.name); bumpData(); L.toast("Classification confirmed" + (r.note ? ". " + r.note : "")); })}><Icon name="check" />Confirm classification</button> : null}
             </div>
             {st.state === "Draft" && !canConfirm ? <WhyNot text={confirmWhy} /> : null}
           </>

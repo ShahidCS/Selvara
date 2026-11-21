@@ -1,4 +1,4 @@
-import { Icon, StatusChip, Table } from "@/components/ui";
+import { Chip, Icon, StatusChip, Table } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { sodMessage } from "@/lib/approvalFlow";
 import { sodReason } from "@/lib/sod";
@@ -38,12 +38,15 @@ export function AccessReviews({ canAct }: { canAct: boolean }) {
                 {rv.accounts.map((a: { user: string; system: string; level: string; decision: string; revoked?: boolean }, ai: number) => (
                   <tr key={a.user + a.system + ai}>
                     <td className="strong">{a.user}</td><td>{a.system}</td><td>{a.level}</td>
-                    <td>{a.decision ? <><StatusChip s={a.decision === "Keep" ? "Active" : "Rejected"} />{a.revoked ? <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 6 }}>Revoked</span> : null}</> : canAct ? (
-                      <div className="btngrp">
-                        <button className="btn btn-ghost sm" disabled={!!sodReason("you cannot decide on your own access", a.user)} title={sodReason("you cannot decide on your own access", a.user) || undefined} aria-label={`Keep ${a.user} on ${a.system}`} onClick={() => decide(rv.id, ai, "Keep")}>Keep</button>
-                        <button className="btn btn-ghost sm" disabled={!!sodReason("you cannot decide on your own access", a.user)} title={sodReason("you cannot decide on your own access", a.user) || undefined} aria-label={`Revoke ${a.user} on ${a.system}`} onClick={() => decide(rv.id, ai, "Revoke")}>Revoke</button>
-                      </div>
-                    ) : <span style={{ color: "var(--muted)", fontSize: 12 }}>Read-only</span>}</td>
+                    <td>{a.decision ? <>{a.decision === "Keep" ? <Chip cls="ok" icon="check">Kept</Chip> : <Chip cls="bad" icon="x">{a.revoked ? "Revoked" : "To revoke"}</Chip>}{a.decision !== "Keep" && !a.revoked && rv.status === "Open" ? <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 6 }}>applied when the review completes</span> : null}</> : canAct ? (() => {
+                      const own = sodReason("you cannot decide on your own access", a.user);
+                      return own ? <span style={{ fontSize: 12, color: "var(--muted)", display: "inline-flex", gap: 5, alignItems: "center" }}><Icon name="alert" />You cannot decide on your own access</span> : (
+                        <div className="btngrp">
+                          <button className="btn btn-ghost sm" aria-label={`Keep ${a.user} on ${a.system}`} onClick={() => decide(rv.id, ai, "Keep")}><Icon name="check" />Keep</button>
+                          <button className="btn btn-ghost sm" style={{ color: "var(--bad-ink)" }} aria-label={`Revoke ${a.user} on ${a.system}`} onClick={() => decide(rv.id, ai, "Revoke")}><Icon name="x" />Revoke</button>
+                        </div>
+                      );
+                    })() : <span style={{ color: "var(--muted)", fontSize: 12 }}>Read-only</span>}</td>
                   </tr>
                 ))}
               </Table>
