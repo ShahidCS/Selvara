@@ -51,6 +51,12 @@ export function TourHost() {
     if (vw < 600) { setPos({ top: 0, left: 0, arrow: null, arrowX: 0, ring: el ? el.getBoundingClientRect() : null, sheet: true }); return; }
     if (!el) { setPos({ top: Math.max(EDGE, (vh - bh) / 2), left: (vw - bw) / 2, arrow: null, arrowX: 0, ring: null, sheet: false }); return; }
     const r = el.getBoundingClientRect();
+    // a large area (a whole table or panel) leaves no room above or below: the bubble sits inside its top right corner, the ring marks it
+    if (vh - r.bottom < bh + GAP + EDGE && r.top < bh + GAP + EDGE) {
+      const top = Math.min(Math.max(EDGE, r.top + GAP), vh - bh - EDGE);
+      const left = Math.min(Math.max(EDGE, r.right - bw - GAP), vw - bw - EDGE);
+      setPos({ top, left, arrow: null, arrowX: 0, ring: r, sheet: false }); return;
+    }
     const below = vh - r.bottom >= bh + GAP + EDGE || r.top < bh + GAP + EDGE;
     const top = below ? Math.min(r.bottom + GAP, vh - bh - EDGE) : r.top - GAP - bh;
     const left = Math.min(Math.max(EDGE, r.left + r.width / 2 - bw / 2), vw - bw - EDGE);
@@ -62,7 +68,7 @@ export function TourHost() {
   useLayoutEffect(() => {
     if (!step) return;
     const el = find(step);
-    if (el) el.scrollIntoView({ block: "center", inline: "nearest" });
+    if (el) el.scrollIntoView({ block: el.getBoundingClientRect().height > window.innerHeight * 0.55 ? "start" : "center", inline: "nearest" });
     const raf = window.requestAnimationFrame(place);
     const t = window.setTimeout(() => { place(); box.current?.focus({ preventScroll: true }); }, 60);
     return () => { window.cancelAnimationFrame(raf); window.clearTimeout(t); };
