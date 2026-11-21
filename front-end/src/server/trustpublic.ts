@@ -69,7 +69,7 @@ const view = guard(async (d, r) => {
       visitor: v ? {
         email: maskEmail(v.email), account: acct ? { company: acct.company, nda: acct.nda.startsWith("Accepted") ? "Accepted" : "Pending", access: acct.access } : null,
         requests: (await t.list<TrustRequest>("trust-request")).map((x) => x.data).filter((x) => x.who === v.email).map((x) => ({ resource: x.resource, status: x.status, at: x.at })),
-        subscribed: !!(await t.get("trust-sub", `v-${h(v.email).slice(0, 32)}`)),
+        subscribed: !!(await t.get<Sub>("trust-sub", `v-${h(v.email).slice(0, 32)}`))?.data.token,
       } : null,
     };
   });
@@ -86,7 +86,7 @@ const code = guard(async (d, r) => {
 const verify = guard(async (d, r) => {
   const tenantId = await onPage(d, r, r.path[1], async (_t, tid) => tid); if (!tenantId) return err(404, NOT_PUBLIC);
   const email = s(r.body.email, 254).toLowerCase();
-  const res = await checkCode(d, { tenantId, purpose: "trust", subject: "visitor", email }, s(r.body.code, 12));
+  const res = await checkCode(d, r, { tenantId, purpose: "trust", subject: "visitor", email }, s(r.body.code, 12));
   if (res.ok === false) return err(400, res.error);
   await d.ws.tx(actorFor(tenantId, r.ip, { tenantId, email } as Visitor), d.now(), (t) => t.audit("trust.visitor.verified", maskEmail(email), "Policy"));
   return ok({ ok: true }, [res.cookie]);
@@ -99,7 +99,11 @@ const request = guard(async (d, r) => {
     const rec = (await t.get<Resource>("trust-resource", s(r.body.resourceId, 20))) ?? bad("Document not found.", 404);
     const reqs = (await t.list<TrustRequest>("trust-request")).map((x) => x.data);
     if (reqs.filter((x) => x.who === v.email && x.atMs > t.now - HOUR).length >= 3) bad("Too many requests. Please wait an hour before trying again.", 429);
-    if (rec.data.access === "Public" || reqs.some((x) => x.who === v.email && x.resourceId === rec.id && x.status === "Pending") || reqs.filter((x) => x.status === "Pending").length >= 200) return { queued: false };
+    if (rec.data.access === "Public") return { queued: false, why: "This document is public: open it directly." };
+    if (reqs.some((x) => x.who === v.email && x.resourceId === rec.id && x.status === "Pending")) return { queued: false, why: "You already asked for this document. You get an email when it is decided." };
+    const dom = v.email.split("@")[1];
+    if (reqs.filter((x) => x.status === "Pending" && x.who.endsWith(`@${dom}`)).length >= 10) bad("Your organisation has many requests waiting. Please wait until they are decided.", 429);
+    if (reqs.filter((x) => x.status === "Pending").length >= 200) bad("Requests cannot be taken right now. Please try again later, or ask your contact at the company.", 503);
     const id = `TR-${await t.next("trust-request", 0)}`;
     await t.insert("trust-request", id, { id, who: v.email, whoId: "", company: labelOf(v.email), resource: rec.data.name, resourceId: rec.id, reason: s(r.body.reason, 300) || "—", at: new Date(t.now).toISOString().slice(0, 10), atMs: t.now, status: "Pending" } satisfies TrustRequest);
     await t.audit("trust.access.requested", `${id}: ${rec.data.name} (public page)${blockedBy(v.email, (await settings(t)).data.blocked.map((b) => b.domain)).length ? "; blocked domain" : ""}`, "Policy");
@@ -119,6 +123,8 @@ const nda = guard(async (d, r) => {
   return out ? ok(out) : err(404, NOT_PUBLIC);
 });
 const docLink = guard(async (d, r) => {
+  const tid = await companyOf(d, r.path[1]); if (!tid) return err(404, NOT_PUBLIC);
+  if (!(await under(d, "trust-open", h(`${tid}|${r.ip}`).slice(0, 32), 60)) || !(await under(d, "trust-open-co", h(tid).slice(0, 32), 1000))) return err(429, "Too many documents opened. Please wait an hour.");
   const out = await onPage(d, r, r.path[1], async (t, _tid, _page, v) => {
     const x = ((await t.get<Resource>("trust-resource", s(r.path[3], 20))) ?? bad("Document not found.", 404)).data;
     if (!x.file) bad("No file has been attached to this document yet.", 404);
@@ -135,8 +141,10 @@ const docLink = guard(async (d, r) => {
 const subscribe = guard(async (d, r) => {
   const out = await onPage(d, r, r.path[1], async (t, _tid, _page, v0) => {
     const v = verified(v0); const id = `v-${h(v.email).slice(0, 32)}`;
-    if (await t.get("trust-sub", id)) bad("You are already subscribed.", 409);
-    await t.insert("trust-sub", id, { email: v.email, at: new Date(t.now).toISOString().slice(0, 10), token: randomBytes(24).toString("base64url") } satisfies Sub);
+    const sub: Sub = { email: v.email, at: new Date(t.now).toISOString().slice(0, 10), token: randomBytes(24).toString("base64url") };
+    const was = await t.get<Sub>("trust-sub", id);
+    if (was?.data.token) bad("You are already subscribed.", 409);
+    if (was) await t.update("trust-sub", id, sub, was.version); else await t.insert("trust-sub", id, sub); // again after unsubscribing
     await t.audit("trust.subscribed", `${maskEmail(v.email)} (public page)`, "Policy");
     return { ok: true };
   });
@@ -145,17 +153,22 @@ const subscribe = guard(async (d, r) => {
 /** One-click unsubscribe from the link in an update email (no session needed; the token is the subscription's own). */
 const unsubscribe = guard(async (d, r) => {
   const token = s(r.body.token, 64); if (token.length < 20) return err(404, "This link is not valid.");
-  const out = await onPage(d, r, r.path[1], async (t) => {
-    const sub = (await t.list<Sub>("trust-sub")).find((x) => x.data.token === token); if (!sub) return "gone" as const;
+  // works even when the page has been turned off: a subscriber can always leave
+  const tenantId = await companyOf(d, r.path[1]); if (!tenantId) return err(404, "This link is not valid.");
+  const out = await d.ws.tx(actorFor(tenantId, r.ip), d.now(), async (t) => {
+    const sub = (await t.list<Sub>("trust-sub")).find((x) => x.data.token && x.data.token === token); if (!sub) return "gone" as const;
     await t.update("trust-sub", sub.id, { ...sub.data, email: "", token: "", ended: new Date(t.now).toISOString().slice(0, 10) }, sub.version); // kept as a tombstone, without the address
     await t.audit("trust.unsubscribed", "a subscriber (public page)", "Policy");
     return "done" as const;
   });
-  return out === null ? err(404, NOT_PUBLIC) : out === "gone" ? err(404, "This subscription has already ended.") : ok({ ok: true });
+  return out === "gone" ? err(404, "This subscription has already ended.") : ok({ ok: true });
 });
 const ask = guard(async (d, r) => {
   const q = s(r.body.q, 1000); if (!q) return err(400, "Enter a question first");
-  if (!(await under(d, "trust-ask", h(`${s(r.path[1], 40)}|${r.ip}`).slice(0, 32), 20))) return err(429, "Too many questions. Please wait an hour before asking again.");
+  const tid = await companyOf(d, r.path[1]); if (!tid) return err(404, NOT_PUBLIC);
+  // per network address and per company (the company's own log and records stay bounded)
+  if (!(await under(d, "trust-ask", h(`${tid}|${r.ip}`).slice(0, 32), 20))) return err(429, "Too many questions. Please wait an hour before asking again.");
+  if (!(await under(d, "trust-ask-co", h(tid).slice(0, 32), 300))) return err(429, "This Trust Center has had many questions in the last hour. Please try again later.");
   const out = await onPage(d, r, r.path[1], async (t, _tid, _page, v) => {
     const pool = (await t.list<Answer>("answer")).map((x) => x.data).filter((x) => x.verified);
     const ans = (await settings(t)).data.chatbot ? botAnswer(q, pool) : null;
@@ -167,15 +180,36 @@ const ask = guard(async (d, r) => {
   return out ? ok(out) : err(404, NOT_PUBLIC);
 });
 
-/* Update emails: after a document's publication is approved and committed, each verified subscriber gets a title and a link. */
+/* Update emails: after a document's publication is approved and committed, one message per subscriber goes to an outbox (kept for 7 days),
+   which is sent in small concurrent batches within a time budget: 15 seconds right after the approval, and 5 more each time an admin opens
+   the Trust Center, until it is empty. A lock keeps two requests from sending the same messages. */
+interface Out { to: string; title: string; token: string }
+const OUTBOX_MS = 7 * 86_400_000;
 onCommitted(async (d, a) => {
   const titles = (a.committed ?? []).filter((x) => x.action === "trust.visibility.changed" && x.target.includes(" → Public")).map((x) => x.target.split(" → Public")[0]);
   if (!titles.length) return;
-  const { page, subs } = await d.ws.tx({ ...a, committed: undefined }, d.now(), async (t) => ({ page: (await settings(t)).data.publicPage, subs: (await t.list<Sub>("trust-sub")).map((x) => x.data).filter((x) => x.email && x.token) }));
-  if (!page?.on) return;
-  for (const sub of subs.slice(0, 500)) for (const title of titles)
-    await sendMail(d, sub.email, { t: "trust-update", company: page.name, title, link: `${d.site.origin}/trust/${page.ref}`, unsubscribe: `${d.site.origin}/trust/${page.ref}#unsubscribe=${sub.token}` }, { tenantId: a.tenantId, actor: "System", ip: "system" });
+  const subs = await d.ws.tx({ ...a, committed: undefined }, d.now(), async (t) => ((await settings(t)).data.publicPage?.on ? (await t.list<Sub>("trust-sub")).map((x) => x.data).filter((x) => x.email && x.token) : []));
+  if (!subs.length) return;
+  const box = (await d.store.kvGet<Out[]>("trust-outbox", a.tenantId)) ?? [];
+  await d.store.kvSet("trust-outbox", a.tenantId, [...box, ...subs.slice(0, 2000).flatMap((x) => titles.map((title) => ({ to: x.email, title, token: x.token })))].slice(0, 5000), OUTBOX_MS);
+  await drainOutbox(d, a.tenantId, 15_000);
 });
+/** Sends what waits in a company's update outbox, within `budgetMs`. */
+export async function drainOutbox(d: Deps, tenantId: string, budgetMs: number) {
+  if (!(await d.store.kvGet("trust-outbox", tenantId))) return;
+  if (await d.store.kvGet("trust-outbox-lock", tenantId)) return;
+  await d.store.kvSet("trust-outbox-lock", tenantId, 1, budgetMs + 30_000);
+  try {
+    const page = await d.ws.tx(actorFor(tenantId, "system"), d.now(), async (t) => (await t.get<Settings>("trust-settings", "settings"))?.data.publicPage);
+    const start = Date.now(); let box = (await d.store.kvGet<Out[]>("trust-outbox", tenantId)) ?? [];
+    while (box.length && page?.on && Date.now() - start < budgetMs) {
+      const batch = box.slice(0, 5); box = box.slice(5);
+      await Promise.all(batch.map((m) => sendMail(d, m.to, { t: "trust-update", company: page.name, title: m.title, link: `${d.site.origin}/trust/${page.ref}`, unsubscribe: `${d.site.origin}/trust/${page.ref}#unsubscribe=${m.token}` }, { tenantId, actor: "System", ip: "system" })));
+      if (box.length) await d.store.kvSet("trust-outbox", tenantId, box, OUTBOX_MS); else await d.store.kvDel("trust-outbox", tenantId);
+    }
+    if (!page?.on) await d.store.kvDel("trust-outbox", tenantId); // the page was turned off: nothing more is announced
+  } finally { await d.store.kvDel("trust-outbox-lock", tenantId); }
+}
 
 export function trustPublicRoutes(): Record<string, (d: Deps, r: Req) => Promise<Res>> {
   return {

@@ -25,7 +25,7 @@ export const PORTAL_QUESTIONS = (questions as { questions: PortalQuestion[] }).q
 export type PortalAnswer = "" | "Y" | "P" | "N" | "NA";
 export interface PortalItem { answer: PortalAnswer; comment: string; file?: { name: string; path: string; at: number } }
 export interface Portal {
-  email: string; tokenHash: string; expiresAt: number; due: string; fails: number; dead: boolean;
+  email: string; tokenHash: string; expiresAt: number; due: string; fails: number; dead: boolean; /** the link cannot start a new sign-in after a submission */ linkUsed?: boolean;
   items: Record<string, PortalItem>; version: number; clarify: string[]; clarifyNote?: string; base?: Record<string, PortalItem>; history: { version: number; at: number }[];
 }
 export type PortalQuestionnaire = VendorQuestionnaire & { portal?: Portal };
@@ -70,11 +70,15 @@ async function withQ<T>(d: Deps, tenantId: string, qid: string, a: Actor, work: 
 const refusal = (e: unknown): Res | null => (e instanceof WsRefused ? err(e.status, e.message) : e instanceof WsConflict ? err(409, e.message) : null);
 const guard = (fn: (d: Deps, r: Req) => Promise<Res>) => async (d: Deps, r: Req): Promise<Res> => { try { return await fn(d, r); } catch (e) { const x = refusal(e); if (x) return x; throw e; } };
 const live = (p: Portal, now: number) => !p.dead && p.expiresAt > now;
+async function under(d: Deps, bucket: string, key: string, max: number) {
+  const now = d.now(); const list = ((await d.store.kvGet<number[]>(bucket, key)) ?? []).filter((x) => now - x < 3600_000);
+  if (list.length >= max) return false; await d.store.kvSet(bucket, key, [...list, now], 3600_000); return true;
+}
 
 /* ---------------- before sign-in: the link, the address, the code ---------------- */
 const open = guard(async (d, r) => {
   const k = await byToken(d, r.body.token); if (!k) return err(404, DEAD);
-  const v = await withQ(d, k.tenantId, k.qid, visitorActor(k.tenantId, "", r.ip), async (_t, rec, p) => (p.tokenHash === h(s(r.body.token, 100)) && live(p, d.now()) ? { customer: rec.data.customer, vendor: rec.data.vendor, due: p.due, expiresAt: p.expiresAt, mail: mailConfigured(d) } : null));
+  const v = await withQ(d, k.tenantId, k.qid, visitorActor(k.tenantId, "", r.ip), async (_t, rec, p) => (p.tokenHash === h(s(r.body.token, 100)) && live(p, d.now()) && !p.linkUsed ? { customer: rec.data.customer, vendor: rec.data.vendor, due: p.due, expiresAt: p.expiresAt, mail: mailConfigured(d) } : null));
   return v ? ok(v) : err(404, DEAD);
 });
 const verifyEmail = guard(async (d, r) => {
@@ -83,7 +87,7 @@ const verifyEmail = guard(async (d, r) => {
   const email = s(r.body.email, 254).toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return err(400, "Enter a valid email address.");
   const block = workEmailBlock(email); if (block) return err(400, block);
   const out = await withQ(d, k.tenantId, k.qid, visitorActor(k.tenantId, email, r.ip), async (t, rec, p) => {
-    if (p.tokenHash !== h(s(r.body.token, 100)) || !live(p, t.now)) return "dead" as const;
+    if (p.tokenHash !== h(s(r.body.token, 100)) || !live(p, t.now) || p.linkUsed) return "dead" as const;
     if (email !== p.email) {
       p.fails++; if (p.fails >= 3) p.dead = true; await t.update("vendor-questionnaire", rec.id, rec.data, rec.version);
       await t.audit(p.dead ? "vendor.portal.link_ended" : "vendor.portal.email_mismatch", `${rec.data.vendor} (${rec.id}): attempt ${p.fails} of 3`, "Vendor");
@@ -92,14 +96,15 @@ const verifyEmail = guard(async (d, r) => {
     return "ok" as const;
   });
   if (out === null || out === "dead") return err(404, DEAD);
-  if (out === "mismatch") return err(400, "We couldn’t verify this request. Check the address, or ask your contact to send it again.");
+  // a wrong address gets the same answer as the right one (no code is sent), so the reply never reveals the invited address
+  if (out === "mismatch") return ok({ sent: true, to: maskEmail(email) });
   if (!(await sendCode(d, r, { tenantId: k.tenantId, purpose: "vendor-portal", subject: k.qid, email }, "the security questionnaire"))) return err(429, "Too many codes asked for. Wait an hour, then try again.");
   return ok({ sent: true, to: maskEmail(email) });
 });
 const verifyCode = guard(async (d, r) => {
   const k = await byToken(d, r.body.token); if (!k) return err(404, DEAD);
   const email = s(r.body.email, 254).toLowerCase();
-  const res = await checkCode(d, { tenantId: k.tenantId, purpose: "vendor-portal", subject: k.qid, email }, s(r.body.code, 12));
+  const res = await checkCode(d, r, { tenantId: k.tenantId, purpose: "vendor-portal", subject: k.qid, email }, s(r.body.code, 12));
   if (res.ok === false) return err(400, res.error);
   await withQ(d, k.tenantId, k.qid, visitorActor(k.tenantId, email, r.ip), (t, rec) => t.audit("vendor.portal.signed_in", `${rec.data.vendor} (${rec.id})`, "Vendor"));
   return ok({ ok: true }, [res.cookie]);
@@ -137,16 +142,19 @@ const upload = signedIn(async (d, r, v) => {
   const qid = s(r.path[2], 10); if (!PORTAL_QUESTIONS.some((q) => q.id === qid)) return err(404, "Question not found.");
   const bytes = r.raw ?? new Uint8Array(); const f = checkFile(r.body.name, bytes); if ("error" in f) return err(400, f.error);
   if (!["pdf", "docx", "xlsx", "png", "jpg", "jpeg"].includes(f.ext)) return err(400, "Allowed: pdf, docx, xlsx, png, jpg.");
-  const path = `${v.tenantId}/vendor-q/${v.subject}/${qid}-${randomBytes(6).toString("hex")}.${f.ext}`;
+  if (!(await under(d, `vupload-${v.tenantId}`, h(v.email).slice(0, 32), 60))) return err(429, "Too many files in the last hour. Please wait, then try again.");
+  const path = `${v.tenantId}/vendor-q/${v.subject}/${qid}-${randomBytes(6).toString("hex")}.${f.ext}`; let replaced = ""; let stored = false;
   const out = await withQ(d, v.tenantId, v.subject, visitorActor(v.tenantId, v.email, r.ip), async (t, rec, p) => {
     if (!live(p, t.now) || p.email !== v.email) return null;
     if (!editable(rec, p).includes(qid)) throw new WsRefused("This answer cannot change now.", 409);
-    await d.files.put(path, bytes, f.type);
+    await d.files.put(path, bytes, f.type); stored = true;
+    const old = p.items[qid]?.file?.path; replaced = old && old !== p.base?.[qid]?.file?.path ? old : ""; // a submitted version's file stays
     p.items[qid] = { ...p.items[qid], file: { name: f.name, path, at: t.now } };
     await t.update("vendor-questionnaire", rec.id, rec.data, rec.version);
     await t.audit("vendor.portal.file_added", `${rec.data.vendor} (${rec.id}) ${qid}: ${f.name}`, "Vendor");
     return view(rec, p);
-  });
+  }).catch(async (e) => { if (stored) await d.files.remove([path]).catch(() => undefined); throw e; }); // nothing is left behind when the change fails
+  if (out && replaced) await d.files.remove([replaced]).catch(() => undefined); // a file replaced before submission is not kept
   return out ? ok(out) : err(404, DEAD);
 });
 const submit = signedIn(async (d, r, v) => {
@@ -158,7 +166,7 @@ const submit = signedIn(async (d, r, v) => {
     if (rd.noEvidence) throw new WsRefused(`${rd.noEvidence} "Yes" answer${rd.noEvidence === 1 ? "" : "s"} on required items still need${rd.noEvidence === 1 ? "s" : ""} evidence attached.`, 400);
     if (rd.clar) throw new WsRefused('Add a new clarification for each reopened answer, and new evidence for any "Yes".', 400);
     const clarified = rec.data.status === "Reopened";
-    p.version++; p.history.push({ version: p.version, at: t.now }); p.clarify = []; delete p.base; delete p.clarifyNote;
+    p.version++; p.history.push({ version: p.version, at: t.now }); p.clarify = []; delete p.base; delete p.clarifyNote; p.linkUsed = true; // a clarification sends a new link
     rec.data.status = "Submitted"; rec.data.submittedAt = new Date(t.now).toISOString().slice(0, 10); rec.data.answers = portalAnswers(p);
     await t.update("vendor-questionnaire", rec.id, rec.data, rec.version);
     await t.audit(clarified ? "vendor.questionnaire.clarified" : "vendor.questionnaire.submitted", `${rec.data.vendor} (${rec.id}) version ${p.version}, through the vendor portal`, "Vendor");

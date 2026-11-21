@@ -95,7 +95,11 @@ export function trustRoutes(h: WsHelpers) {
       subscribed: !!(await t.get("trust-sub", a.id)),
     };
   }
-  const data = wsRoute(h, "trust", async (d, _r, c) => ok(await tx(d, c, async (t) => {
+  const data = wsRoute(h, "trust", async (d, _r, c) => {
+    if (!trustManageBlock(c.actor.role)) await (await import("../trustpublic")).drainOutbox(d, c.actor.tenantId, 5_000).catch(() => undefined); // update emails still waiting
+    return dataOf(d, c);
+  });
+  const dataOf = async (d: Deps, c: { actor: Actor }) => ok(await tx(d, c, async (t) => {
     await sweepApprovals(t, TRUST_KINDS);
     const pending = await pendingOf(t, TRUST_KINDS);
     const resources = (await t.list<Resource>("trust-resource")).map((x) => ({ ...x.data, file: x.data.file ? { name: x.data.file.name, size: x.data.file.size } : undefined, publishPending: pending.find((a) => a.payload.resourceId === x.id)?.id }));
@@ -116,7 +120,7 @@ export function trustRoutes(h: WsHelpers) {
       modeHist: (await t.list<{ at: string; who: string; change: string }>("trust-history")).map((x) => x.data).reverse().slice(0, 50),
       approvals: await approvalsView(t, TRUST_KINDS, names),
     };
-  })));
+  }));
 
   /* ----- administration ----- */
   const approve = wsRoute(h, "trust", async (d, r, c) => {
@@ -128,6 +132,11 @@ export function trustRoutes(h: WsHelpers) {
       const s = (await settings(t)).data;
       if (blockedBy(q.who, s.blocked.map((b) => b.domain)).length) { await t.audit("trust.access.approve.denied", `${q.id} (blocked domain)`, "Policy"); return "blocked"; }
       if (q.whoId === me.id) refuse("Segregation of duties: you raised this request, so another admin or owner must approve it.");
+      // a request from the public page carries only an address: the approver's own, or any member's, is refused (members use the workspace)
+      if (!q.whoId) {
+        const mine = await emailOf(d, me.id); if (q.who === mine) refuse("Segregation of duties: you raised this request, so another admin or owner must approve it.");
+        const ms = await membersOf(d, me); for (const m of ms) if ((await emailOf(d, m.id)) === q.who) refuse("This address belongs to a member of your company. Members open documents in the workspace, not through the public page.");
+      }
       if (blockedBy(q.who, Object.keys(s.unblocked)).some((dom) => s.unblocked[dom] === me.id)) refuse("Segregation of duties: you unblocked this domain, so another admin or owner must approve its requests.");
       q.status = "Approved"; q.by = me.name; q.byId = me.id; q.decidedAt = isoDayOf(t.now); await t.update("trust-request", rec.id, q, rec.version);
       const accs = await t.list<Account>("trust-account"); const acc = accs.find((x) => x.data.domain === domainOf(q.who));
@@ -149,17 +158,22 @@ export function trustRoutes(h: WsHelpers) {
     if (out.visitor && out.page) await sendMail(d, out.who, { t: "trust-decided", company: out.page.name, resource: out.resource, approved: true, note: "", link: `${d.site.origin}/trust/${out.page.ref}` }, { tenantId: me.tenantId, actor: me.name, ip: r.ip });
     return ok({ ok: true });
   });
-  const deny = admin(async (d, t, b, p, me) => {
+  const deny = wsRoute(h, "trust", async (d, r, c) => {
+    refuse(trustManageBlock(c.actor.role));
+    const out = await tx(d, c, async (t) => denyIn(t, r.body, r.path, c.actor));
+    // after the decision committed: a visitor without an account is told by email
+    if (out.mailTo && out.page) await sendMail(d, out.mailTo, { t: "trust-decided", company: out.page.name, resource: out.resource, approved: false, note: out.note, link: `${d.site.origin}/trust/${out.page.ref}` }, { tenantId: c.actor.tenantId, actor: c.actor.name, ip: r.ip });
+    return ok({ ok: true });
+  });
+  async function denyIn(t: WsTx, b: Record<string, unknown>, p: string[], me: Actor) {
     const rec = (await t.get<TrustRequest>("trust-request", str(p[3], 20))) ?? missing("Request"); const q = rec.data;
     if (q.status !== "Pending") invalid("This request was already decided.");
     const note = txt(b.note, 300);
     q.status = "Denied"; q.by = me.name; q.byId = me.id; q.note = note; q.decidedAt = isoDayOf(t.now); await t.update("trust-request", rec.id, q, rec.version);
     await t.audit("trust.access.denied", `${q.id}: ${q.company} → ${q.resource}${note ? `; note: ${note}` : ""}`, "Policy");
     await t.notify(q.whoId, `Your request for ${q.resource} was declined${note ? `: ${note}` : "."}`);
-    const page = (await settings(t)).data.publicPage;
-    if (!q.whoId && page) await sendMail(d, q.who, { t: "trust-decided", company: page.name, resource: q.resource, approved: false, note, link: `${d.site.origin}/trust/${page.ref}` }, { tenantId: me.tenantId, actor: me.name, ip: me.ip });
-    return { ok: true };
-  });
+    return { mailTo: q.whoId ? "" : q.who, page: (await settings(t)).data.publicPage, resource: q.resource, note };
+  }
   const revoke = admin(async (_d, t, b, p) => {
     const rec = (await t.get<Account>("trust-account", str(p[3], 20))) ?? missing("Account"); const a = rec.data;
     if (a.status === "Revoked") invalid("Access is already revoked.");

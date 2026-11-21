@@ -25,18 +25,23 @@ async function under(d: Deps, bucket: string, key: string, max: number): Promise
 export async function sendCode(d: Deps, r: Req, v: Omit<Visitor, "created" | "last">, purposeText: string): Promise<boolean> {
   if (!(await under(d, "vcode-ip", h(r.ip).slice(0, 32), 30)) || !(await under(d, "vcode-to", h(v.email).slice(0, 32), 5))) return false;
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
-  await d.store.kvSet("vcode", codeKey(v), { hash: h(code), exp: d.now() + CODE_MS, tries: 0 }, CODE_MS);
+  await d.store.kvSet("vcode", codeKey(v), { hash: h(code), exp: d.now() + CODE_MS }, CODE_MS);
   await sendMail(d, v.email, { t: "code", code, purpose: purposeText }, { tenantId: v.tenantId, actor: "Visitor", ip: r.ip });
   return true;
 }
-/** Checks a code; on success the visitor's session cookie. A wrong code counts; the fifth ends the code. */
-export async function checkCode(d: Deps, v: Omit<Visitor, "created" | "last">, code: string): Promise<{ ok: true; cookie: string } | { ok: false; error: string }> {
-  const k = codeKey(v); const rec = await d.store.kvGet<{ hash: string; exp: number; tries: number }>("vcode", k);
-  if (!rec || rec.exp < d.now() || rec.tries >= 5) return { ok: false, error: "That code has expired. Ask for a new one." };
+/** Checks a code; on success the visitor's session cookie. Every try is counted first, atomically, in the company's own counter (one
+ *  per code, `insert … on conflict … returning` in the database), so tries sent in parallel cannot exceed 5; the fifth ends the code. At most
+ *  60 checks an hour from one network address. */
+export async function checkCode(d: Deps, r: Req, v: Omit<Visitor, "created" | "last">, code: string): Promise<{ ok: true; cookie: string } | { ok: false; error: string }> {
+  if (!(await under(d, "vcheck-ip", h(r.ip).slice(0, 32), 60))) return { ok: false, error: "Too many attempts. Wait an hour, then try again." };
+  const k = codeKey(v); const rec = await d.store.kvGet<{ hash: string; exp: number }>("vcode", k);
+  if (!rec || rec.exp < d.now()) return { ok: false, error: "That code has expired. Ask for a new one." };
+  const n = await d.ws.tx({ id: "", name: "Visitor", role: "viewer", tenantId: v.tenantId, ip: r.ip }, d.now(), (t) => t.next(`vc-${h(`${k}|${rec.exp}`).slice(0, 32)}`, 0));
+  if (n > 5) { await d.store.kvDel("vcode", k); return { ok: false, error: "Too many wrong codes. Ask for a new one." }; }
   const a = Buffer.from(h(String(code).replace(/\D/g, "").slice(0, 6))); const b = Buffer.from(rec.hash);
   if (!timingSafeEqual(a, b)) {
-    rec.tries++; await d.store.kvSet("vcode", k, rec, Math.max(1000, rec.exp - d.now()));
-    return { ok: false, error: rec.tries >= 5 ? "Too many wrong codes. Ask for a new one." : "That code did not work." };
+    if (n >= 5) await d.store.kvDel("vcode", k);
+    return { ok: false, error: n >= 5 ? "Too many wrong codes. Ask for a new one." : "That code did not work." };
   }
   await d.store.kvDel("vcode", k);
   const token = randomBytes(32).toString("base64url"); const now = d.now();

@@ -303,4 +303,16 @@ Where the inventory (`inventory/group8-admin-billing-email.md` section 6; `inven
   - Update emails go out after a publication is approved, each with a one-click unsubscribe. An unsubscribed address is removed.
   - Chatbot questions: 20 an hour per network address, answered only from verified answers.
 - **Every visitor action** is in the company's audit log as "Visitor" or "Vendor contact" with a masked address.
+- **Limits.**
+  - Code tries are counted atomically in the database, so guesses sent at once still stop at 5. Code checks are limited to 60 an hour per network address.
+  - A wrong address in the vendor portal gets the same answer as the right one, but no code is sent.
+  - A portal link cannot start a new sign-in after a submission; a clarification sends a new link.
+  - Portal uploads: 60 an hour per contact. A replaced file is deleted unless it belongs to a submitted version.
+  - Public Trust Center:
+    - documents opened: 60 an hour per network address and 1,000 per company;
+    - questions: 20 an hour per network address and 300 per company, counted per company whatever the letter case of the address;
+    - pending requests: 10 per requesting domain and 200 in all, with an honest message when a request is not queued.
+  - Update emails go through an outbox, sent in batches within a time budget. Subscribers can unsubscribe even after the page is turned off, and subscribe again later.
+- **Segregation of duties.** A public-page request from the approver's own address, or from a member's address, cannot be approved.
+- **The public address uses the company code**, which is also used to ask to join. Join requests always need an admin's approval; the admin card says so.
 

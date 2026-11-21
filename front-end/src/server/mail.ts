@@ -11,7 +11,7 @@ import { createHash } from "node:crypto";
 import { httpsNet, type Net } from "./integrations/net";
 import type { Deps } from "./types";
 
-export interface MailMessage { to: string; subject: string; text: string; html: string }
+export interface MailMessage { to: string; subject: string; text: string; html: string; /** e.g. List-Unsubscribe for update emails */ headers?: Record<string, string> }
 export interface Mailer { provider: "resend" | "postmark"; from: string; send(m: MailMessage): Promise<void> }
 
 const EMAIL_RE = /^[^\s@<>"']{1,64}@[A-Za-z0-9.-]{1,190}\.[A-Za-z]{2,24}$/;
@@ -22,11 +22,11 @@ export function mailerFromEnv(e: Record<string, string | undefined>, net: Net = 
   if (!key || !from || (provider !== "resend" && provider !== "postmark") || !/^[^<>]{0,80}<?[^\s@<>]+@[^\s@<>]+>?$/.test(from)) return undefined;
   const fail = (status: number) => { throw new Error(`mail provider answered ${status}`); };
   if (provider === "resend") return { provider, from, async send(m) {
-    const r = await net("https://api.resend.com/emails", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ from, to: [m.to], subject: m.subject, text: m.text, html: m.html }) });
+    const r = await net("https://api.resend.com/emails", { method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" }, body: JSON.stringify({ from, to: [m.to], subject: m.subject, text: m.text, html: m.html, ...(m.headers ? { headers: m.headers } : {}) }) });
     if (r.status !== 200 && r.status !== 202) fail(r.status);
   } };
   return { provider: "postmark", from, async send(m) {
-    const r = await net("https://api.postmarkapp.com/email", { method: "POST", headers: { "x-postmark-server-token": key, "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ From: from, To: m.to, Subject: m.subject, TextBody: m.text, HtmlBody: m.html, MessageStream: "outbound" }) });
+    const r = await net("https://api.postmarkapp.com/email", { method: "POST", headers: { "x-postmark-server-token": key, "content-type": "application/json", accept: "application/json" }, body: JSON.stringify({ From: from, To: m.to, Subject: m.subject, TextBody: m.text, HtmlBody: m.html, MessageStream: m.headers ? "broadcast" : "outbound", ...(m.headers ? { Headers: Object.entries(m.headers).map(([Name, Value]) => ({ Name, Value })) } : {}) }) });
     if (r.status !== 200) fail(r.status);
   } };
 }
@@ -66,7 +66,9 @@ export function compose(to: string, m: Template): MailMessage {
   const r = render(m);
   const text = [...r.lines, ...(r.link ? ["", `${r.button}: ${r.link}`] : []), ...(r.foot ? ["", r.foot] : []), "", "Selvara"].join("\n");
   const html = `<!doctype html><html><body style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;color:#1b1b1f">${r.lines.map((l) => `<p>${esc(l)}</p>`).join("")}${r.link ? `<p><a href="${esc(r.link)}">${esc(r.button)}</a></p>` : ""}${r.foot ? `<p style="font-size:12px;color:#5b5b66">${esc(r.foot)}</p>` : ""}<p style="font-size:12px;color:#5b5b66">Selvara</p></body></html>`;
-  return { to, subject: r.subject.replace(/[\r\n]+/g, " "), text, html };
+  // bulk updates carry a one-click unsubscribe (RFC 8058) that mail providers show next to the sender
+  const headers = m.t === "trust-update" ? { "List-Unsubscribe": `<${m.unsubscribe}>` } : undefined;
+  return { to, subject: r.subject.replace(/[\r\n]+/g, " "), text, html, headers };
 }
 
 export const maskEmail = (e: string) => { const [u, dom] = e.split("@"); return dom ? `${u.slice(0, 1)}•••@${dom}` : "•••"; };

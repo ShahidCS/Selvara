@@ -46,7 +46,7 @@ export default function PublicTrustPage({ code }: { code: string }) {
                 <span style={{ flex: "1 1 200px" }} className="strong">{d.name}</span>
                 {d.access === "Public" ? <Chip cls="ok" icon="check">Public</Chip> : <Chip cls="neutral" icon="access">On request, NDA</Chip>}
                 {d.open && d.file ? <button className="btn btn-ghost sm" aria-label={`Open ${d.name}`} onClick={() => open(d)}><Icon name="ext" />Open</button>
-                  : d.access !== "Public" ? (pending(d.name) ? <Chip cls="warn" icon="clock">Requested</Chip> : v.visitor ? <RequestButton d={d} onSend={(reason) => act(() => post(`${base}/requests`, { resourceId: d.id, reason }), `Request sent for ${d.name}. You get an email when it is decided.`)} /> : <span className="field help" style={{ margin: 0 }}>Confirm your email to request it</span>)
+                  : d.access !== "Public" ? (pending(d.name) ? <Chip cls="warn" icon="clock">Requested</Chip> : v.visitor ? <RequestButton d={d} onSend={async (reason) => { try { const r = await post<{ queued: boolean; why?: string }>(`${base}/requests`, { resourceId: d.id, reason }); say(r.queued ? `Request sent for ${d.name}. You get an email when it is decided.` : r.why ?? "Your request was not queued.", r.queued); await reload(); } catch (e) { say(msg(e), false); } }} /> : <span className="field help" style={{ margin: 0 }}>Confirm your email to request it</span>)
                   : <span className="field help" style={{ margin: 0 }}>No file yet</span>}
               </div>
             )) : <p style={{ margin: 0, color: "var(--muted)" }}>No documents are published yet.</p>}

@@ -102,8 +102,10 @@ describe("standalone vendor portal", () => {
     expect(data).not.toContain("tokenHash"); expect(data).toContain("contact@vendor.example");
     expect(body<{ customer: string; vendor: string }>(await call("POST", "vendor-portal/open", { token }))).toMatchObject({ customer: "Acme Test Co", vendor: "Example Vendor Ltd" });
     expect((await call("POST", "vendor-portal/open", { token: "x".repeat(43) })).status).toBe(404);
-    // another address: refused without saying which is right
-    expect((await call("POST", "vendor-portal/verify-email", { token, email: "other@vendor.example" })).status).toBe(400);
+    // another address: the same answer as the right one, but no code is sent (the reply never reveals the invited address)
+    const n0 = sent.length;
+    expect(body<{ to: string }>(await call("POST", "vendor-portal/verify-email", { token, email: "other@vendor.example" })).to).toBe("o•••@vendor.example");
+    expect(sent.length).toBe(n0);
     const n = sent.length;
     expect(body<{ to: string }>(await call("POST", "vendor-portal/verify-email", { token, email: "Contact@Vendor.example" })).to).toBe("c•••@vendor.example");
     expect(sent.length).toBe(n + 1); const otp = codeOf(last());
@@ -124,6 +126,7 @@ describe("standalone vendor portal", () => {
     expect((await call("POST", "vendor-portal/submit", {}, vc)).status).toBe(200);
     expect(log("vendor.questionnaire.submitted")[0].actor).toBe("Vendor contact c•••@vendor.example");
     expect((await call("POST", "vendor-portal/draft", { items }, vc)).status).toBe(409); // locked
+    expect((await call("POST", "vendor-portal/open", { token })).status).toBe(404); // the link cannot start a new sign-in after submitting
     // the company opens the evidence through a short link, and asks for a clarification on two questions
     const vq = body<{ questionnaires: { id: string; status: string; answers: string[] }[] }>(await call("GET", "ws/data/vendors", {}, jordan.c)).questionnaires[0];
     expect(vq.status).toBe("Submitted"); expect(vq.answers[0]).toMatch(/^Yes: Answer for G1 \[evidence: G1\.pdf\]$/);
@@ -150,12 +153,22 @@ describe("standalone vendor portal", () => {
     const { jordan, vendorId } = await setup();
     const s = body<{ id: string }>(await call("POST", `ws/vendors/${vendorId}/questionnaire/email`, { email: "contact@vendor.example" }, jordan.c));
     const token = tokenOf(last());
-    for (let i = 0; i < 2; i++) expect((await call("POST", "vendor-portal/verify-email", { token, email: `guess${i}@vendor.example` })).status).toBe(400);
+    for (let i = 0; i < 2; i++) expect((await call("POST", "vendor-portal/verify-email", { token, email: `guess${i}@vendor.example` })).status).toBe(200);
     expect((await call("POST", "vendor-portal/verify-email", { token, email: "guess3@vendor.example" })).status).toBe(404);
     expect((await call("POST", "vendor-portal/verify-email", { token, email: "contact@vendor.example" })).status).toBe(404);
     expect(log("vendor.portal.link_ended")).toHaveLength(1);
     expect((await call("POST", `ws/vendor-questionnaires/${s.id}/link`, {}, jordan.c)).status).toBe(200);
     expect((await call("POST", "vendor-portal/verify-email", { token: tokenOf(last()), email: "contact@vendor.example" })).status).toBe(200);
+  });
+  it("counts code tries atomically: guesses sent together cannot exceed five", async () => {
+    const { jordan, vendorId } = await setup();
+    await call("POST", `ws/vendors/${vendorId}/questionnaire/email`, { email: "contact@vendor.example" }, jordan.c);
+    const token = tokenOf(last());
+    await call("POST", "vendor-portal/verify-email", { token, email: "contact@vendor.example" }); const otp = codeOf(last());
+    const wrong = otp === "000001" ? "000002" : "000001";
+    const res = await Promise.all(Array.from({ length: 20 }, () => call("POST", "vendor-portal/verify-code", { token, email: "contact@vendor.example", code: wrong })));
+    expect(res.every((x) => x.status === 400)).toBe(true);
+    expect((await call("POST", "vendor-portal/verify-code", { token, email: "contact@vendor.example", code: otp })).status).toBe(400); // the code ended
   });
   it("is closed while email is off", async () => {
     const { jordan, vendorId } = await setup(); d.mail = null;
@@ -225,9 +238,37 @@ describe("public Trust Center (anonymous visitors)", () => {
     await call("POST", `ws/trust/resources/${soc.id}/visibility`, {}, jordan.c); await approve("trust.publish");
     const upd = sent.find((m) => m.subject === "Acme Test Co Trust Center update")!; expect(upd.to).toBe("reader@customer.example"); expect(upd.text).toContain("SOC 2 report");
     const token = /#unsubscribe=([A-Za-z0-9_-]+)/.exec(upd.text)![1];
+    expect(upd.headers?.["List-Unsubscribe"]).toBe(`<${ORIGIN}/trust/acme-eu#unsubscribe=${token}>`);
     expect((await call("POST", "trust-public/acme-eu/unsubscribe", { token })).status).toBe(200);
     expect((await call("POST", "trust-public/acme-eu/unsubscribe", { token })).status).toBe(404);
     for (let i = 0; i < 20; i++) expect((await call("POST", "trust-public/acme-eu/questions", { q: "Do you encrypt data at rest?" }, {}, undefined, "203.0.113.9")).status).toBe(200);
     expect((await call("POST", "trust-public/acme-eu/questions", { q: "One more?" }, {}, undefined, "203.0.113.9")).status).toBe(429);
+  });
+  it("refuses an admin approving their own visitor request, and a member's address", async () => {
+    const { jordan, casey, approve, soc } = await setup();
+    await call("POST", "ws/trust/public-page", { enabled: true }, jordan.c); await approve("trust.public-page");
+    const visit = async (email: string) => { await call("POST", "trust-public/acme-eu/code", { email }); const v = await call("POST", "trust-public/acme-eu/verify", { email, code: /is (\d{6})/.exec(last().text)![1] }); return { [VCOOKIE]: v.cookies![0].match(new RegExp(`${VCOOKIE}=([^;]*)`))![1] }; };
+    await call("POST", "trust-public/acme-eu/requests", { resourceId: soc.id }, await visit("jordan@acme.example"));
+    const rq = body<{ requests: { id: string }[] }>(await call("GET", "ws/data/trust", {}, jordan.c)).requests[0];
+    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, {}, jordan.c)).status).toBe(403); // their own address
+    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, {}, casey.c)).status).toBe(403); // a member's address
+  });
+  it("keys limits on the company, says when a request is not queued, and lets an unsubscribed visitor subscribe again", async () => {
+    const { jordan, approve, iso } = await setup();
+    await call("POST", "ws/trust/public-page", { enabled: true }, jordan.c); await approve("trust.public-page");
+    for (let i = 0; i < 20; i++) await call("POST", `trust-public/${i % 2 ? "ACME-EU" : "Acme-Eu"}/questions`, { q: "Anything?" }, {}, undefined, "203.0.113.30");
+    expect((await call("POST", "trust-public/acme-eu/questions", { q: "One more?" }, {}, undefined, "203.0.113.30")).status).toBe(429);
+    await call("POST", "trust-public/acme-eu/code", { email: "reader@customer.example" });
+    const v = await call("POST", "trust-public/acme-eu/verify", { email: "reader@customer.example", code: /is (\d{6})/.exec(last().text)![1] });
+    const vc = { [VCOOKIE]: v.cookies![0].match(new RegExp(`${VCOOKIE}=([^;]*)`))![1] };
+    expect(body<{ queued: boolean; why: string }>(await call("POST", "trust-public/acme-eu/requests", { resourceId: iso.id }, vc)).why).toMatch(/public/);
+    await call("POST", "trust-public/acme-eu/subscribe", {}, vc);
+    const db = d.ws as unknown as { tx: Deps["ws"]["tx"] };
+    const token = await db.tx({ id: "", name: "t", role: "admin", tenantId: ACME, ip: "x" }, clock, async (t) => (await t.list<{ token: string }>("trust-sub"))[0].data.token);
+    await call("POST", "ws/trust/public-page", { enabled: false }, jordan.c); // even with the page off, a subscriber can leave
+    expect((await call("POST", "trust-public/acme-eu/unsubscribe", { token })).status).toBe(200);
+    await call("POST", "ws/trust/public-page", { enabled: true }, jordan.c); await approve("trust.public-page");
+    expect(body<{ visitor: { subscribed: boolean } }>(await call("GET", "trust-public/acme-eu", {}, vc)).visitor.subscribed).toBe(false);
+    expect((await call("POST", "trust-public/acme-eu/subscribe", {}, vc)).status).toBe(200);
   });
 });

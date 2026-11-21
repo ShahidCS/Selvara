@@ -199,6 +199,7 @@ function PublicPageCard({ canAct, noRole }: { canAct: boolean; noRole?: string |
         <div style={{ flex: "1 1 320px" }}>
           <div style={{ fontWeight: 600 }}>Public page for visitors without an account</div>
           <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{pg.on ? <>On since {pg.since} (approved by {pg.by}): <a href={url} target="_blank" rel="noopener noreferrer">{url}</a></> : pg.pending ? "Turning it on is waiting for a second admin or owner (Approvals)." : "Off. When on, anyone can see your published documents, verified answers, approved sub-processors and control status."}
+            {" The address uses your company code, which is also what people type to ask to join your workspace; a join request always needs an admin's approval."}
             {!pg.mail ? " Email is not set up for the platform, so visitors cannot verify an address to request documents or subscribe." : " Visitors confirm a work email with a code before they request a document, accept the NDA or subscribe."}</div>
         </div>
         <button className={`btn ${pg.on ? "btn-secondary" : "btn-primary"} sm`} disabled={!canAct || (!pg.on && !!pg.pending)} title={noRole || undefined} onClick={toggle}>{pg.on ? "Turn off" : "Ask to turn on"}</button>
