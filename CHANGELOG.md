@@ -4,6 +4,9 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Documentation
+- `docs/guides/SUPABASE.md`: step-by-step setup of the `evidence` storage bucket (section 4d), which holds every uploaded file (evidence, Trust Center, knowledge base, vendor portal), with checks and fixes; the schema check now expects version `10`; section 4c and the go-live table no longer say that modules are missing from the server.
+
 ## [0.2.0] - 2026-11-21
 
 The production programme is complete: every module of the demonstration runs on the server in production (groups 1 to 8). Run migrations `0008`, `0009` and `0010` before deploying (`docs/guides/SUPABASE.md`, section 2).
