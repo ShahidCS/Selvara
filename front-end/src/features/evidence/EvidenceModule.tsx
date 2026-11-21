@@ -35,14 +35,14 @@ function EvidenceList() {
   ];
   const n = (s: string) => DATA.evidence.filter((e: Ev) => status(e) === s).length;
   return (
-    <Page mod="evidence" acts={<button className="btn btn-primary" disabled={!!writeWhy} title={writeWhy || undefined} onClick={() => go("/ws/evidence/new")}><Icon name="plus" />Add evidence</button>}>
+    <Page mod="evidence" acts={<button className="btn btn-primary" data-tour={writeWhy ? undefined : "evidence-add"} disabled={!!writeWhy} title={writeWhy || undefined} onClick={() => go("/ws/evidence/new")}><Icon name="plus" />Add evidence</button>}>
       <KpiStrip label="Evidence summary">
         <KpiTile label="Evidence items" value={DATA.evidence.length} caption="On record" />
         <KpiTile label="Pending review" value={n("Pending review")} delta={n("Pending review") ? { tone: "watch", text: "Needs a reviewer" } : { tone: "good", text: "None" }} caption="Awaiting review by a second person" />
         <KpiTile label="Accepted" value={n("Accepted")} caption="Reviewed by a second person" />
         <KpiTile label="Rejected" value={n("Rejected")} caption="Needs fixing" />
       </KpiStrip>
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="evidence-table" style={{ flex: "1 1 auto" }}>
         <div className="c-body flush scroll" style={{ padding: 0 }} id="evList">
           <DataTable<Ev> id="evidence" label="Evidence" rows={DATA.evidence} rowKey={(e) => e.id} columns={cols} searchText={(e) => `${e.id} ${e.name} ${e.type} ${e.by}`}
             tabs={REVIEW_STATES.map((s) => ({ key: s, label: s, match: (e: Ev) => status(e) === s }))}

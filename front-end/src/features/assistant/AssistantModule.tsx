@@ -24,12 +24,12 @@ function AssistantViews() {
   const nav = SUBNAV.assistant; // the sidebar sub-nav shares this state key
   const [v, setV] = useModState<string>(nav.stateKey, nav.initial);
   const view = nav.items.some((x) => x[0] === v) ? v : nav.initial;
-  const acts = view === "agents" && manage ? <button className="btn btn-primary" onClick={() => go("/ws/assistant/new")}><Icon name="plus" />Create agent</button> : undefined;
+  const acts = view === "agents" && manage ? <button className="btn btn-primary" data-tour="assistant-create" onClick={() => go("/ws/assistant/new")}><Icon name="plus" />Create agent</button> : undefined;
   return (
     <Page mod="assistant" acts={acts}>
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head" style={{ padding: "0 8px" }}>
-          <div className="tabs" role="tablist" aria-label="Assistant views">
+          <div className="tabs" role="tablist" aria-label="Assistant views" data-tour="assistant-views">
             {nav.items.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}
           </div>
         </div>

@@ -33,7 +33,7 @@ function VendorPortalLive({ L }: { L: LayerApi }) {
     <Page mod="questionnaires" title={PORTAL_TITLE} sub={PORTAL_SUB} acts={<span className="tag"><Icon name="access" />Vendor portal</span>}>
       <div className="scroll" style={{ overflow: "auto" }}><div style={{ maxWidth: 760, margin: "0 auto" }}>
         {!list.length ? <Empty icon="questionnaires" title="No questionnaires yet">When a customer sends you a security questionnaire, it appears here.</Empty> : null}
-        {list.length > 1 ? <div className="btngrp" style={{ marginBottom: 12, flexWrap: "wrap" }}>{list.map((x) => <button key={x.id} className={`btn sm ${x.id === q?.id ? "btn-primary" : "btn-secondary"}`} onClick={() => setOpen(x.id)}>{x.customer}: {x.vendor} ({x.status})</button>)}</div> : null}
+        {list.length > 1 ? <div className="btngrp" data-tour="questionnaires-portal-list" style={{ marginBottom: 12, flexWrap: "wrap" }}>{list.map((x) => <button key={x.id} className={`btn sm ${x.id === q?.id ? "btn-primary" : "btn-secondary"}`} onClick={() => setOpen(x.id)}>{x.customer}: {x.vendor} ({x.status})</button>)}</div> : null}
         {q ? <AssignedForm key={q.id + q.status} q={q} L={L} /> : null}
       </div></div>
     </Page>
@@ -51,7 +51,7 @@ function AssignedForm({ q, L }: { q: WsVendorQ; L: LayerApi }) {
   };
   return (
     <>
-      <div className="card" style={{ background: "var(--accent-weak)", borderColor: "transparent", marginBottom: 14 }}><div className="c-body" style={{ padding: 18 }}>
+      <div className="card" data-tour="questionnaires-portal" style={{ background: "var(--accent-weak)", borderColor: "transparent", marginBottom: 14 }}><div className="c-body" style={{ padding: 18 }}>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><div style={{ fontWeight: 600, fontSize: 17 }}>Security questionnaire — {q.customer}</div><StatusChip s={locked ? "Complete" : q.status === "Reopened" ? "Review" : "Pending"} /></div>
         <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>About {q.vendor}, sent {q.at} by {q.sentBy}. {answered}/{q.questions.length} answered.</div>
         {q.status === "Reopened" && q.note ? <p className="field help" style={{ margin: "8px 0 0" }}>Clarification requested: {q.note}</p> : null}
@@ -66,7 +66,7 @@ function AssignedForm({ q, L }: { q: WsVendorQ; L: LayerApi }) {
         </div></div>
       ))}
       {!locked ? <MissingSummary n={(miss || []).filter((i) => !ans[i]?.trim()).length} /> : null}
-      {!locked ? <div style={{ display: "flex", gap: 8, margin: "12px 0 24px", flexWrap: "wrap" }}>
+      {!locked ? <div data-tour="questionnaires-portal-submit" style={{ display: "flex", gap: 8, margin: "12px 0 24px", flexWrap: "wrap" }}>
         <button className="btn btn-secondary" onClick={() => run(() => svc.saveAssigned(q.id, ans), "Draft saved")}><Icon name="check" />Save draft</button>
         <button className="btn btn-primary" onClick={() => run(() => svc.submitAssigned(q.id, ans), "Questionnaire submitted to " + q.customer, true)}><Icon name="check" />Submit to {q.customer}</button>
       </div> : null}
@@ -95,7 +95,7 @@ function VendorPortalDemo({ L }: { L: LayerApi }) {
   return (
     <Page mod="questionnaires" title={PORTAL_TITLE} sub={PORTAL_SUB} acts={<span className="tag"><Icon name="access" />Vendor portal</span>}>
       <div className="scroll" style={{ overflow: "auto" }}><div style={{ maxWidth: 760, margin: "0 auto" }}>
-        <div className="card" style={{ background: "var(--accent-weak)", borderColor: "transparent", marginBottom: 14 }}><div className="c-body" style={{ padding: 18 }}>
+        <div className="card" data-tour="questionnaires-portal" style={{ background: "var(--accent-weak)", borderColor: "transparent", marginBottom: 14 }}><div className="c-body" style={{ padding: 18 }}>
           <div style={{ fontWeight: 600, fontSize: 17 }}>Security questionnaire — ACME Ltd</div>
           <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>Requested from your organisation. {answered}/{total} answered.</div>
           <div className="bar-track" style={{ marginTop: 10 }}>{answered > 0 ? <span className="bar-fill" style={{ width: `${Math.round((answered / total) * 100)}%`, background: "var(--accent)" }}></span> : null}</div>
@@ -109,7 +109,7 @@ function VendorPortalDemo({ L }: { L: LayerApi }) {
           </div></div>
         ))}
         <MissingSummary n={(miss || []).filter((i) => !ans[i]?.trim()).length} />
-        <div style={{ display: "flex", gap: 8, margin: "12px 0 24px", flexWrap: "wrap" }}>
+        <div data-tour="questionnaires-portal-submit" style={{ display: "flex", gap: 8, margin: "12px 0 24px", flexWrap: "wrap" }}>
           <button className="btn btn-secondary" onClick={saveDraft}><Icon name="check" />Save draft</button>
           <button className="btn btn-primary" onClick={submit}><Icon name="check" />Submit to ACME Ltd</button>
         </div>

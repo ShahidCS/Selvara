@@ -103,8 +103,8 @@ All screenshots use synthetic data.
 - **Board and executive pack**: printable HTML report generated client-side with escaped output.
 - **Reports**: stored and scheduled packs, with external distribution subject to approval.
 
-### Workspace and platform administration
-- **Team and settings**: members, roles, invitations with expiry, review cycles, SLAs, approvers, credential policy.
+### Settings and platform administration
+- **Team & Rules**: members, roles, invitations with expiry, review cycles, SLAs, approvers, credential policy.
 - **Integrations, API and webhooks, custom tests, AI assistant** (draft-only answers, approval-gated agent actions, MCP access).
 - **Audit logs**: tamper-evident workspace log, chain-integrity view, RoPA register, evidence export.
 - **Platform admin console**: customers and usage, billing and invoices, exchange rates and tax, MFA resets, admin audit log, elevated access.
@@ -195,12 +195,12 @@ Twelve demo personas cover nine roles. Second personas exist so that dual contro
 |---|---|---|
 | Platform Super Admin (x2) | Admin console | Customers, billing, rates, MFA resets, admin log, elevated access (no workspace content) |
 | Platform Support | Admin console | Customers, billing, rates, MFA reset requests, admin log (read-focused) |
-| Company Admin (x2) | Workspace | All workspace modules |
-| Control, Policy and Risk Owner (x2) | Workspace | Assurance, risk, vendors, trust, questionnaires, commitments |
-| Risk Analyst | Workspace | Risk, issues, controls, work |
-| Employee | Workspace | Overview, my workspace, policies (read and acknowledge), access, questionnaires |
-| External Auditor | Workspace | Audits, controls, evidence, policies, frameworks (read-only) |
-| Vendor Contact, Trust Center Visitor | Workspace (restricted) | Questionnaires and Trust Center only |
+| Company Admin (x2) | Company | All company modules |
+| Control, Policy and Risk Owner (x2) | Company | Assurance, risk, vendors, trust, questionnaires, commitments |
+| Risk Analyst | Company | Risk, issues, controls, work |
+| Employee | Company | Overview, My Work, policies (read and acknowledge), access, questionnaires |
+| External Auditor | Company | Audits, controls, evidence, policies, frameworks (read-only) |
+| Vendor Contact, Trust Center Visitor | Company (restricted) | Questionnaires and Trust Center only |
 
 ### Signing in (demo accounts)
 
@@ -211,7 +211,7 @@ The app opens on a sign-in page. There is no role switcher: sign out from the ac
 - **Platform super admins** sign in with a **passkey** (fingerprint, face, PIN or a security key), added at the first sign-in. In the demonstration build, a device without passkeys can use a labelled on-screen code instead.
 - **Demo accounts** (below) exist only in the demonstration build, where there is no backend and the browser runs the checks (`front-end/src/lib/session.ts`). They are limited: labelled as demo, sessions end after one hour, the second step shows its code on screen, and the shared password cannot be changed or reset.
 
-A production build (`NEXT_PUBLIC_API_MODE=http`) has no demo accounts: sign-in, MFA, reset and sessions go to the server routes in `front-end/src/server` (Supabase Auth and Postgres; setup in [docs/guides/SUPABASE.md](docs/guides/SUPABASE.md), contract in [docs/security/CONTROLS.md](docs/security/CONTROLS.md)). In that build, modules whose data is not on the server yet are hidden (decision D4): today a company admin sees Team & Settings and everyone sees their account page. The deploy builds it when the GitHub environment variable `API_MODE` is `http` ([docs/guides/SUPABASE.md](docs/guides/SUPABASE.md) section 4c). Nothing in the demonstration build is an authentication control.
+A production build (`NEXT_PUBLIC_API_MODE=http`) has no demo accounts: sign-in, MFA, reset and sessions go to the server routes in `front-end/src/server` (Supabase Auth and Postgres; setup in [docs/guides/SUPABASE.md](docs/guides/SUPABASE.md), contract in [docs/security/CONTROLS.md](docs/security/CONTROLS.md)). In that build, modules whose data is not on the server yet are hidden (decision D4): today a company admin sees Team & Rules and everyone sees their account page. The deploy builds it when the GitHub environment variable `API_MODE` is `http` ([docs/guides/SUPABASE.md](docs/guides/SUPABASE.md) section 4c). Nothing in the demonstration build is an authentication control.
 
 Every demo account uses the password `selvara-demo`.
 
@@ -238,12 +238,12 @@ After 3 failures a short "Quick check" (a proof-of-work calculation in the brows
 
 | Area | Routes |
 |---|---|
-| Overview | `/ws/overview`, `/ws/me`, `/ws/work`, `/ws/reports` |
+| Overview | `/ws/overview`, `/ws/work` (tabs Tasks, Policies, Account security, Delegation; the old `/ws/me` opens Policies), `/ws/reports` |
 | Assurance | `/ws/frameworks`, `/ws/controls`, `/ws/evidence`, `/ws/policies`, `/ws/audits`, `/ws/issues` |
 | Internal risk | `/ws/people`, `/ws/access`, `/ws/risk`, `/ws/ai` |
 | External risk | `/ws/vendors` |
 | Customer trust | `/ws/trust`, `/ws/questionnaires`, `/ws/commitments` |
-| Workspace | `/ws/integrations`, `/ws/api`, `/ws/assistant`, `/ws/team`, `/ws/billingws`, `/ws/auditlog`, `/ws/appsec` |
+| Settings | `/ws/integrations`, `/ws/api`, `/ws/assistant`, `/ws/team`, `/ws/billingws`, `/ws/auditlog`, `/ws/appsec` |
 | Platform admin | `/admin/customers`, `/admin/billing`, `/admin/rates`, `/admin/mfa`, `/admin/adminlog`, `/admin/elevation`, `/admin/security` |
 | Standalone | `/auth` (sign-in and security gallery), `/vendor-portal` (external vendor assessment) |
 

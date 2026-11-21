@@ -62,7 +62,7 @@ function AskDemo({ scrollRef }: { scrollRef: React.RefObject<HTMLDivElement | nu
         </AIPanel>
       )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{SUGG.map((s) => <button key={s} className="fchip" onClick={() => ask(s)}>{s}</button>)}</div>
-      <div className="field" style={{ margin: 0 }}>
+      <div className="field" style={{ margin: 0 }} data-tour="assistant-question">
         <label className="vh" htmlFor="asstInput">Ask the assistant</label>
         <textarea className="input" id="asstInput" rows={2} maxLength={svc.ASK_MAX} placeholder="Ask about your posture, draft a summary, or summarise open risks…" style={{ resize: "vertical" }} value={text} onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask(); }} />

@@ -36,7 +36,7 @@ function PeopleList() {
     { key: "device", header: "Device", value: (p) => p.device, render: (p) => p.device === "Not connected" ? <span style={{ color: "var(--muted)", fontSize: 12 }}>Not connected</span> : <DeviceChip d={p.device} /> },
     { key: "mfa", header: "MFA", value: (p) => (p.mfa ? "Enrolled" : "Not enrolled"), render: (p) => (p.mfa ? <Chip cls="ok" icon="check">Enrolled</Chip> : <Chip cls="neutral" icon="dot">Not enrolled</Chip>) },
     { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (p) => (canAct ? (
-      <button className="btn btn-ghost sm" disabled={!p.mfa || !!sodReason("self-service MFA reset is not allowed, ask another admin", p.name)} title={sodReason("self-service MFA reset is not allowed, ask another admin", p.name) || (p.mfa ? undefined : "Not enrolled in MFA, so there is nothing to reset.")} aria-label={`Reset MFA for ${p.name}`} onClick={() => resetMfa(p.id)}><Icon name="refresh" />Reset MFA</button>
+      <button className="btn btn-ghost sm" data-tour="people-reset-mfa" disabled={!p.mfa || !!sodReason("self-service MFA reset is not allowed, ask another admin", p.name)} title={sodReason("self-service MFA reset is not allowed, ask another admin", p.name) || (p.mfa ? undefined : "Not enrolled in MFA, so there is nothing to reset.")} aria-label={`Reset MFA for ${p.name}`} onClick={() => resetMfa(p.id)}><Icon name="refresh" />Reset MFA</button>
     ) : null) },
   ];
   const noDevices = DATA.people.every((p) => p.device === "Not connected"); // production before a device integration: nothing to score
@@ -50,13 +50,13 @@ function PeopleList() {
         <KpiTile label="Unmanaged" value={noDevices ? "—" : n - comp} delta={noDevices ? undefined : n - comp ? { tone: "bad", text: "Needs action" } : { tone: "good", text: "None" }} caption={noDevices ? "Shown once devices are connected" : "Devices not compliant"} />
       </KpiStrip>
       <PendingApprovals kinds={KINDS} title="Pending approvals (MFA reset, offboarding)" subjectLabel="Person" />
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="people-table" style={{ flex: "1 1 auto" }}>
         <div className="c-head" style={{ padding: "0 8px", gap: 8, flexWrap: "wrap" }}>
-          <div className="tabs" role="tablist">
+          <div className="tabs" role="tablist" data-tour="people-tabs">
             <button className="tab" role="tab" aria-selected={view === "People"} onClick={() => setV("People")}>People &amp; devices</button>
             <button className="tab" role="tab" aria-selected={view === "Access"} onClick={() => setV("Access")}>Access grants</button>
           </div>
-          {canAct ? <button className="btn btn-secondary sm" style={{ marginLeft: "auto" }} onClick={() => go("/ws/people/new")}><Icon name="plus" />Add contractor</button> : null}
+          {canAct ? <button className="btn btn-secondary sm" data-tour="people-add" style={{ marginLeft: "auto" }} onClick={() => go("/ws/people/new")}><Icon name="plus" />Add contractor</button> : null}
         </div>
         <div className="c-body flush scroll" style={{ padding: 0 }} id="pplBody">
           {view === "People" ? (

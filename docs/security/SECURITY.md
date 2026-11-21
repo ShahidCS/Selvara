@@ -54,7 +54,7 @@ Per-module "Security notes" live in `docs/guides/checklist/<module>.md`.
 ### Phase 5 review (local build, owner-authorized)
 * **Vendor portal (external, standalone):** no app chrome, `noindex`; unknown/invalid emails get fixed wording; attempt limits lock the form; OTP input `one-time-code`/numeric; email/code never in URL, storage, network or logs (masked address only); evidence upload rejects `.exe` and >25 MiB, prefill rejects non-xlsx/csv; hostile text renders inert. Demo OTP/MFA/scan are stubs; the real server must enforce token entropy/expiry, rate limits, enumeration-safe timing, MFA, no-store, malware scan, object-level authorization.
 * **Elevation:** in-memory simulation, super-only, audited (`admin.elevated/ended/expired`); not a control.
-* **RBAC checks:** employee redirected away from `/ws/appsec`, allowed `/ws/me`; support cannot request elevation, can read Platform Security.
+* **RBAC checks:** employee redirected away from `/ws/appsec`, allowed `/ws/work` (My Work; the old `/ws/me` opens its Policies tab); support cannot request elevation, can read Platform Security.
 * **Final regression:** 35 routes render with no console errors or dialogs; `npm audit --omit=dev`: 0 vulnerabilities; name scan: 0 matches.
 
 ## Credential policy

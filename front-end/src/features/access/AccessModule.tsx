@@ -28,18 +28,18 @@ export default function AccessModule() {
     setV(ACCESS_VIEWS[n][0]); document.getElementById(`acc-tab-${ACCESS_VIEWS[n][0]}`)?.focus();
   };
   const acts = view === "requests"
-    ? <button className="btn btn-primary" onClick={() => L.openModal("Request access", (close) => <AccessRequestForm close={close} />)}><Icon name="plus" />Request access</button>
+    ? <button className="btn btn-primary" data-tour="access-request" onClick={() => L.openModal("Request access", (close) => <AccessRequestForm close={close} />)}><Icon name="plus" />Request access</button>
     : view === "reviews" && canAct
-      ? <button className="btn btn-primary" onClick={() => L.openModal("Create access review", (close) => <ReviewForm close={close} />)}><Icon name="plus" />Create access review</button>
+      ? <button className="btn btn-primary" data-tour="access-review-create" onClick={() => L.openModal("Create access review", (close) => <ReviewForm close={close} />)}><Icon name="plus" />Create access review</button>
       : view === "inventory" && canAct && API_ON
-        ? <button className="btn btn-secondary" onClick={() => L.openModal("Record existing access", (close) => <RecordGrantForm close={close} />)}><Icon name="plus" />Record existing access</button>
+        ? <button className="btn btn-secondary" data-tour="access-record" onClick={() => L.openModal("Record existing access", (close) => <RecordGrantForm close={close} />)}><Icon name="plus" />Record existing access</button>
         : undefined;
   return (
     <Page mod="access" acts={acts}>
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="access-panel" style={{ flex: "1 1 auto" }}>
         <div className="c-head">
           <div style={{ maxWidth: "100%", overflowX: "auto", scrollbarWidth: "thin" }}>
-            <div className="seg" role="tablist" aria-label="Access views">
+            <div className="seg" role="tablist" aria-label="Access views" data-tour="access-views">
               {ACCESS_VIEWS.map((x, i) => <button key={x[0]} id={`acc-tab-${x[0]}`} role="tab" aria-selected={view === x[0]} aria-controls="accBody" tabIndex={view === x[0] ? 0 : -1} style={{ whiteSpace: "nowrap" }} onKeyDown={(e) => tabKey(e, i)} onClick={() => setV(x[0])}>{x[1]}</button>)}
             </div>
           </div>

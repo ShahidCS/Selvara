@@ -61,7 +61,7 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
     body = (
       <>
       <ApprovalsPanel prefix="trust." title="Publishing approvals (four-eyes)" />
-      <div className="panels" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gridAutoRows: "min-content", alignContent: "start" }}>
+      <div className="panels" data-tour="trust-resources" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gridAutoRows: "min-content", alignContent: "start" }}>
         {DATA.trust.map((t, i) => (
           <div className="card" key={i}><div className="c-body">
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start" }}><div style={{ fontWeight: 600 }}>{t.name}</div><StatusChip s={t.status} /></div>
@@ -179,11 +179,11 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
 
   return (
     <Page mod="trust" acts={<>
-      <button className="btn btn-secondary" onClick={setPublic}><Icon name="eye" />Preview public page</button>
-      {tab === "resources" ? <button className="btn btn-primary" disabled={!canAct} title={noRole || undefined} onClick={() => L.openModal("Publish resource", <PublishForm L={L} />)}><Icon name="plus" />Publish resource</button> : null}
+      <button className="btn btn-secondary" data-tour="trust-preview" onClick={setPublic}><Icon name="eye" />Preview public page</button>
+      {tab === "resources" ? <button className="btn btn-primary" data-tour="trust-publish" disabled={!canAct} title={noRole || undefined} onClick={() => L.openModal("Publish resource", <PublishForm L={L} />)}><Icon name="plus" />Publish resource</button> : null}
     </>}>
       <div className="card" style={{ flex: "0 1 auto", minHeight: 0 }}>
-        <div className="c-head"><div className="tabs" role="tablist" aria-label="Trust Center admin">{TABS.map((t) => (
+        <div className="c-head"><div className="tabs" role="tablist" aria-label="Trust Center admin" data-tour="trust-tabs">{TABS.map((t) => (
           <button key={t[0]} type="button" className="tab" role="tab" aria-selected={tab === t[0]} onClick={() => setTab(t[0])}>{t[1]}{t[0] === "access" && reqCount ? <> <span className="tag" style={{ marginLeft: 4 }}>{reqCount}</span></> : null}</button>
         ))}</div></div>
         <div className="c-body scroll" id="trustAdmBody">{body}</div>

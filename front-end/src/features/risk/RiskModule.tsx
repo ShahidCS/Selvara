@@ -61,15 +61,15 @@ export default function RiskModule() {
 
   const acts = (
     <>
-      {canEdit ? <button className="btn btn-secondary" onClick={doImport}><Icon name="ext" />Import</button> : null}
-      <button className="btn btn-secondary" onClick={doExport}><Icon name="download" />Export</button>
-      {canEdit ? <button className="btn btn-primary" onClick={add}><Icon name="plus" />Add risk</button> : null}
+      {canEdit ? <button className="btn btn-secondary" data-tour="risk-import" onClick={doImport}><Icon name="ext" />Import</button> : null}
+      <button className="btn btn-secondary" data-tour="risk-export" onClick={doExport}><Icon name="download" />Export</button>
+      {canEdit ? <button className="btn btn-primary" data-tour="risk-add" onClick={add}><Icon name="plus" />Add risk</button> : null}
     </>
   );
   return (
     <Page mod="risk" acts={acts}>
       <div style={{ flex: "0 0 auto", marginBottom: 12, maxWidth: "100%", overflowX: "auto", scrollbarWidth: "thin" }}>
-        <div className="seg" role="tablist" aria-label="Risk register sections">
+        <div className="seg" role="tablist" aria-label="Risk register sections" data-tour="risk-tabs">
           {TABS.map((t) => <button key={t[0]} id={`risk-tab-${t[0]}`} role="tab" aria-selected={tab === t[0]} aria-controls="riskMain" style={{ whiteSpace: "nowrap" }} onClick={() => riskSetTab(t[0])}>{t[1]}</button>)}
         </div>
       </div>

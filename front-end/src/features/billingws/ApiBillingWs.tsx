@@ -52,7 +52,7 @@ export function ApiBillingWs() {
       </span>) },
   ];
   return (
-    <Page mod="billingws" acts={a ? <button className="btn btn-secondary" disabled={!!waiting} title={waiting ? "A plan change is already waiting for the Selvara team" : undefined} onClick={() => L.openModal("Change plan", (close) => <PlanForm d={d} close={close} />)}>Change plan</button> : undefined}>
+    <Page mod="billingws" acts={a ? <button className="btn btn-secondary" data-tour="billingws-plan" disabled={!!waiting} title={waiting ? "A plan change is already waiting for the Selvara team" : undefined} onClick={() => L.openModal("Change plan", (close) => <PlanForm d={d} close={close} />)}>Change plan</button> : undefined}>
       <div className="scroll" style={{ flex: "1 1 auto" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
           {paid ? <div className="banner info" role="status" style={{ display: "flex", gap: 8, alignItems: "center" }}><Icon name="clock" />Thank you. Invoice {paid} shows as paid once the payment provider confirms the payment, usually within a minute.</div> : null}
@@ -65,7 +65,7 @@ export function ApiBillingWs() {
                 <KpiTile label="Open invoices" value={open.length} delta={pastDue ? { tone: "bad", text: `${pastDue} past due` } : { tone: "good", text: "None past due" }} caption={open.length ? minorMoney(open.reduce((n, i) => n + i.outstanding, 0), a.currency) + " due" : "Nothing due"} />
               </KpiStrip>
               <div className="panels" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gridAutoRows: "min-content", alignItems: "stretch" }}>
-                <div className="card"><div className="c-head"><h3>Subscription</h3></div><div className="c-body">
+                <div className="card" data-tour="billingws-subscription"><div className="c-head"><h3>Subscription</h3></div><div className="c-body">
                   <dl className="meta-grid"><dt>Plan</dt><dd className="strong">{a.plan}</dd><dt>Billing cycle</dt><dd>{a.cycle}</dd><dt>Currency</dt><dd>{a.currency}</dd><dt>Status</dt><dd><StatusChip s={a.status} /></dd><dt>Billing contact</dt><dd>{a.contact.name}, {a.contact.email}</dd></dl>
                   {waiting ? <p className="field help" style={{ marginTop: 10 }}><Icon name="clock" /> {waiting.plan} asked by {waiting.by} on {waiting.at}; waiting for the Selvara team.</p> : null}
                 </div></div>
@@ -74,7 +74,7 @@ export function ApiBillingWs() {
                   <p className="field help" style={{ marginTop: 10 }}>{d.canPay ? "Open invoices can be paid by card on the payment provider's own page (Pay). Card details never reach Selvara." : "Pay by bank transfer, using the invoice number as the reference."} To change the billing contact or address, contact the Selvara team.</p>
                 </div></div>
               </div>
-              <div className="card">
+              <div className="card" data-tour="billingws-invoices">
                 <div className="c-head"><h3>Invoices</h3><span className="tag" style={{ marginLeft: "auto" }}>{d.invoices.length}</span></div>
                 <div className="c-body flush scroll" style={{ padding: 0 }}>
                   {d.invoices.length ? <DataTable<Inv> id="invoices-api" label="Invoices" rows={d.invoices} rowKey={(i) => i.id} columns={cols} searchText={(i) => `${i.id} ${i.from} ${i.to}`}

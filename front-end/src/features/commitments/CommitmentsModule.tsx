@@ -46,7 +46,7 @@ export default function CommitmentsModule() {
   const started = parseStamp(INCIDENT.started);
   const deadline = INCIDENT.deadline ? stampText(INCIDENT.deadline) : !API_ON && started ? stampText(new Date(started.getTime() + 48 * 3600_000)) : "";
   const banner = INCIDENT.active ? (
-    <div className="card" style={{ background: "var(--bad-bg,var(--warn-bg))", borderColor: "transparent", marginBottom: 12 }}>
+    <div className="card" data-tour="commitments-incident-banner" style={{ background: "var(--bad-bg,var(--warn-bg))", borderColor: "transparent", marginBottom: 12 }}>
       <div className="c-body" style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 10, color: "var(--bad-ink)" }} role="alert">
         <Icon name="alert" />
         <div style={{ flex: "1 1 auto" }}><div style={{ fontWeight: 600 }}>Incident mode active</div><div style={{ fontSize: 12.5 }}>{INCIDENT.summary ? <div style={{ fontWeight: 500 }}>{INCIDENT.summary}</div> : null}Breach clock started {stampText(INCIDENT.started)}{INCIDENT.startedBy ? " by " + INCIDENT.startedBy : ""}. Customer notice obligations are in effect (48h){deadline ? <>: <strong>notify affected customers by {deadline}</strong></> : ""}.{INCIDENT.overdue ? " The notice deadline has passed." : ""}</div></div>
@@ -57,8 +57,8 @@ export default function CommitmentsModule() {
   return (
     <Page mod="commitments" acts={INCIDENT.active ? undefined : (
       <>
-        <button className="btn btn-secondary" disabled={!can} title={why} onClick={() => L.openModal("Import contract", <ImportContractForm L={L} />)}><Icon name="plus" />Import contract</button>
-        <button className="btn btn-secondary" disabled={!can} title={why} onClick={() => L.openModal("Start incident clock", <StartIncidentForm L={L} />)}><Icon name="alert" />Start incident</button>
+        <button className="btn btn-secondary" data-tour="commitments-import" disabled={!can} title={why} onClick={() => L.openModal("Import contract", <ImportContractForm L={L} />)}><Icon name="plus" />Import contract</button>
+        <button className="btn btn-secondary" data-tour="commitments-incident" disabled={!can} title={why} onClick={() => L.openModal("Start incident clock", <StartIncidentForm L={L} />)}><Icon name="alert" />Start incident</button>
       </>
     )}>
       {banner}
@@ -69,15 +69,15 @@ export default function CommitmentsModule() {
       </KpiStrip>
       <div className="scroll" style={{ flex: "1 1 auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,340px),1fr))", gap: 14, alignItems: "start", paddingRight: 2 }}>
-          <div className="card">
-            <div className="c-head"><h3>Commitments</h3><button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} onClick={() => openAnalysis(L)}><Icon name="search" />Run contract analysis</button></div>
+          <div className="card" data-tour="commitments-table">
+            <div className="c-head"><h3>Commitments</h3><button className="btn btn-ghost sm" data-tour="commitments-analysis" style={{ marginLeft: "auto" }} onClick={() => openAnalysis(L)}><Icon name="search" />Run contract analysis</button></div>
             <div className="c-body flush" style={{ padding: 0 }}>
               <DataTable<Commitment> id="commitments" label="Commitments" rows={DATA.commitments} rowKey={(c) => c.id ?? c.name} columns={cols} searchText={(c) => `${c.name} ${c.detail}`}
                 filters={[{ key: "status", label: "Status", options: Array.from(new Set<string>(DATA.commitments.map((c: Commitment) => String(c.status)))), get: (c: Commitment) => c.status }]} exportName="commitments" />
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div className="card">
+          <div className="card" data-tour="commitments-terms">
             <div className="c-head"><h3>Standard terms</h3></div>
             <div className="c-body flush" style={{ padding: 0 }}>
               <Table cols={[{ t: "Term" }, { t: "Commitment" }]}>

@@ -29,8 +29,8 @@ export function ApiTeam() {
   return (
     <Page mod="team" sub={company ? `People and sign-in settings of ${company.name}` : undefined}>
       <div className="card" style={{ flex: "1 1 auto" }}>
-        <div className="c-head" style={{ padding: "0 8px" }}><div className="tabs" role="tablist" aria-label="Team and rules">{VIEWS.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
-        <div className={`c-body ${view === "members" ? "flush" : ""} scroll`} style={view === "members" ? { padding: 0 } : undefined}>
+        <div className="c-head" style={{ padding: "0 8px" }}><div className="tabs" role="tablist" aria-label="Team and rules" data-tour="team-views">{VIEWS.map((x) => <button key={x[0]} className="tab" role="tab" data-tour={x[0] === "requests" ? "team-approvals" : undefined} aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
+        <div className={`c-body ${view === "members" ? "flush" : ""} scroll`} style={view === "members" ? { padding: 0 } : undefined} data-tour="team-body">
           {view === "members" ? <Members /> : view === "invitations" ? <Invitations /> : view === "requests" ? <RequestsTable id="team-requests-api" load={svc.listApprovals} decide={svc.decideRequest} note="Granting or inviting an admin or owner needs a second admin. Nobody approves their own request or a request about themselves. A request expires after 72 hours." /> : view === "signin" ? <SignIn /> : <ApiSupportAccess />}
         </div>
       </div>
@@ -124,7 +124,7 @@ function Invitations() {
   ];
   return (
     <>
-      <form onSubmit={send} noValidate style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr) auto", gap: 8, alignItems: "end", maxWidth: 720 }}>
+      <form onSubmit={send} noValidate data-tour="team-invite" style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr) auto", gap: 8, alignItems: "end", maxWidth: 720 }}>
         <div className="field" style={{ margin: 0 }}><label htmlFor="iv-email">Work email</label><input className="input" id="iv-email" type="email" autoComplete="off" maxLength={254} value={email} onChange={(e) => { setEmail(e.target.value); setFerr(""); }} aria-invalid={!!ferr} aria-describedby="iv-help iv-err" /></div>
         <div className="field" style={{ margin: 0 }}><label htmlFor="iv-role">Role</label><select className="input" id="iv-role" value={role} onChange={(e) => setRole(e.target.value)}>{ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{roleName(r)}</option>)}</select></div>
         <button type="submit" className="btn btn-primary" disabled={busy}>Invite</button>

@@ -37,7 +37,7 @@ In **each** project (staging and production separately), open SQL Editor → New
 
 6. [`supabase/migrations/0006_platform_console.sql`](../../supabase/migrations/0006_platform_console.sql) (from v0.1.11): the Admin Console. Company creation, suspension and reactivation through a second platform super admin's approval, one elevation at a time, and the platform audit log check. The database itself refuses these changes unless the caller is an active platform super admin with a live elevation. Run it just before you deploy v0.1.11 (v0.1.11 refuses a database without it; v0.1.10 keeps working with it).
 
-7. [`supabase/migrations/0007_support_access.sql`](../../supabase/migrations/0007_support_access.sql) (from v0.1.12): support access. A company admin gives Selvara support a read-only grant (8 hours at most, revocable) in Team & Settings, Support access; platform staff then open a support session in that company (reason, ticket, 60 minutes at most) from Customers & Usage, Support access. The database shows a company to platform staff only during such a session, refuses every platform write to company data, and writes the session and each view to the company's own audit log. Run it just before you deploy v0.1.12 (v0.1.12 refuses a database without it; v0.1.11 keeps working with it).
+7. [`supabase/migrations/0007_support_access.sql`](../../supabase/migrations/0007_support_access.sql) (from v0.1.12): support access. A company admin gives Selvara support a read-only grant (8 hours at most, revocable) in Team & Rules, Support access; platform staff then open a support session in that company (reason, ticket, 60 minutes at most) from Customers & Usage, Support access. The database shows a company to platform staff only during such a session, refuses every platform write to company data, and writes the session and each view to the company's own audit log. Run it just before you deploy v0.1.12 (v0.1.12 refuses a database without it; v0.1.11 keeps working with it).
 
 8. [`supabase/migrations/0008_workspace_records.sql`](../../supabase/migrations/0008_workspace_records.sql) (production programme, group 1, from v0.2.0): the workspace modules' records (Frameworks, Controls and Tests, Evidence; later groups add theirs), one row per record, walled off per company by row level security, never deleted (a removed record keeps its row), read-only to platform staff. Evidence **files** are not stored in the database but in Supabase Storage (section 4d). Run it with the release that needs schema version 8.
 9. [`supabase/migrations/0009_company_audit_verify.sql`](../../supabase/migrations/0009_company_audit_verify.sql) (production programme, group 5, from v0.2.0): lets a company admin verify their own company's audit chain from the workspace Audit log. Run it with the release that needs schema version 9.
@@ -202,7 +202,7 @@ Without these, Selvara sends no email. Links are shown to the person who creates
    - `MAIL_PROVIDER`: `resend` or `postmark`.
    - `MAIL_API_KEY`: the provider's API key, or the Postmark server token. Mark it **Sensitive**.
    - `MAIL_FROM`: for example `Selvara <no-reply@mail.<your domain>>`.
-3. Redeploy. Invite a test person in Team & Settings: the screen says "Invitation emailed".
+3. Redeploy. Invite a test person in Team & Rules: the screen says "Invitation emailed".
 4. Password reset emails are sent by Supabase Auth, not by Selvara. In Supabase, Authentication, SMTP settings, enter the same provider's SMTP details so reset emails reach real users.
 
 The provider becomes a sub-processor (record it in RoPA PA-16). Messages carry a title and a link only.
@@ -255,7 +255,7 @@ Granting or inviting an admin or owner needs a second admin's approval, so a com
 select public.add_company_admin('acme-eu', 'second.admin@yourcompany.example');
 ```
 
-It refuses a person who is not an active member of that company and platform staff, and writes `member.role.changed` to the company's audit log as "Platform owner". From then on the two admins approve each other's privileged changes in Team & Settings → Requests.
+It refuses a person who is not an active member of that company and platform staff, and writes `member.role.changed` to the company's audit log as "Platform owner". From then on the two admins approve each other's privileged changes in Team & Rules → Requests.
 
 ## Troubleshooting
 

@@ -39,8 +39,8 @@ export default function AppSecModule() {
     <Page mod="appsec">
       <div className="scroll" style={{ overflow: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
         <p className="sub" style={{ margin: 0 }}>{spec.intro}</p>
-        <div className="banner" role="note" style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--surface-2)", color: "var(--muted)" }}><Icon name="edit" aria-hidden="true" style={{ flex: "0 0 auto", width: 16, height: 16, marginTop: 1 }} /><span>Specification text only. It describes what the server must enforce; nothing on this page changes behaviour or records evidence. Draft content that needs review by qualified security staff.</span></div>
-        <nav aria-label="Sections" style={{ flex: "0 0 auto", display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <div className="banner" role="note" data-tour="appsec-note" style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--surface-2)", color: "var(--muted)" }}><Icon name="edit" aria-hidden="true" style={{ flex: "0 0 auto", width: 16, height: 16, marginTop: 1 }} /><span>Specification text only. It describes what the server must enforce; nothing on this page changes behaviour or records evidence. Draft content that needs review by qualified security staff.</span></div>
+        <nav aria-label="Sections" data-tour="appsec-sections" style={{ flex: "0 0 auto", display: "flex", flexWrap: "wrap", gap: 8 }}>
           {SECTIONS.map(([id, label]) => <button key={id} type="button" className="btn btn-secondary sm" onClick={() => jump(id)}>{label}</button>)}
         </nav>
 
@@ -56,7 +56,7 @@ export default function AppSecModule() {
 
         <section id="appsec-controls" tabIndex={-1} aria-labelledby="appsec-controls-h" style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", gap: 10 }}>
           <div id="appsec-controls-h">{secHead("controls", "Control groups")}</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+          <div data-tour="appsec-search" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
             <label className="field" style={{ flex: "1 1 260px", margin: 0 }}><span className="flab">Search controls</span>
               <input className="input" type="search" value={q} maxLength={80} onChange={(e) => setQ(e.target.value)} placeholder="IDOR, lockout, CSRF, API3…" /></label>
             <button type="button" className="btn btn-ghost sm" onClick={() => setOpen(Object.fromEntries(GROUPS.map((g) => [g.id, true])))}>Expand all</button>

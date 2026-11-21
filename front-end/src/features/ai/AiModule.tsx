@@ -61,7 +61,7 @@ function AiList() {
     ["High-risk under a Restricted guardrail", live.filter((a) => a.tier === "High" && a.guardrail === "Restricted").length + " / " + euHigh],
   ];
   return (
-    <Page mod="ai" acts={<button className="btn btn-primary" disabled={!canReg} title={canReg ? undefined : "Only admin, owner or analyst can register AI systems"} onClick={() => go("/ws/ai/new")}><Icon name="plus" />Register system</button>}>
+    <Page mod="ai" acts={<button className="btn btn-primary" data-tour="ai-register" disabled={!canReg} title={canReg ? undefined : "Only admin, owner or analyst can register AI systems"} onClick={() => go("/ws/ai/new")}><Icon name="plus" />Register system</button>}>
       <div className="scroll" style={{ flex: "1 1 auto" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
           <KpiStrip label="AI governance summary">
@@ -70,11 +70,11 @@ function AiList() {
             <KpiTile label="Classifications to confirm" value={unconf} delta={unconf ? { tone: "watch", text: "Needs a second person" } : { tone: "good", text: "None" }} caption="Draft determinations" />
             <KpiTile label="Shadow AI found" value={AI_SHADOW.length} delta={AI_SHADOW.length ? { tone: "watch", text: "Unregistered" } : { tone: "good", text: "None" }} caption="Awaiting registration" />
           </KpiStrip>
-          <details className="card" style={{ flex: "0 0 auto", boxShadow: "none", background: "var(--surface-2)", borderColor: "transparent" }}>
+          <details className="card" data-tour="ai-review" style={{ flex: "0 0 auto", boxShadow: "none", background: "var(--surface-2)", borderColor: "transparent" }}>
             <summary style={{ cursor: "pointer", padding: "10px 14px", fontSize: 12.5, color: "var(--muted)", display: "flex", gap: 8, alignItems: "center" }}><Icon name="shieldcheck" aria-hidden="true" style={{ width: 16, height: 16, flex: "0 0 auto" }} />Classifications and assessments are drafts for qualified compliance and legal review. <span style={{ color: "var(--ink-2)", textDecoration: "underline" }}>How decisions are made</span></summary>
             <div style={{ padding: "0 14px 10px 38px", fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>Do not rely on a classification or assessment until that review is done. EU AI Act classifications must be confirmed by an admin or owner other than the drafter, impact assessments approved by someone other than the submitter, and guardrail changes and archiving approved by a second person. Registering a system does not approve it. Only the AI system owner, an admin or an owner can change a system or triage its signals.</div>
           </details>
-          <div className="card"><div className="c-head"><h3>AI inventory</h3></div><div className="c-body flush" style={{ padding: 0 }}>
+          <div className="card" data-tour="ai-inventory"><div className="c-head"><h3>AI inventory</h3></div><div className="c-body flush" style={{ padding: 0 }}>
             <DataTable<AiSys> id="ai-inventory" label="AI inventory" rows={DATA.ai} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.id} ${a.name} ${a.model} ${a.provider} ${a.owner} ${a.surface}`}
               tabs={["Approved", "In review", "Archived"].map((st) => ({ key: st, label: st, match: (a: AiSys) => a.status === st }))}
               filters={[{ key: "eu", label: "EU AI Act", options: Array.from(new Set<string>(DATA.ai.map((a: AiSys) => String(a.euClass || "Not classified")))), get: (a: AiSys) => a.euClass || "Not classified" }, { key: "guard", label: "Guardrail", options: Array.from(new Set<string>(DATA.ai.map((a: AiSys) => String(a.guardrail || "Controlled")))), get: (a: AiSys) => a.guardrail || "Controlled" }]}
@@ -93,7 +93,7 @@ function AiList() {
               </div>
               {API_ON ? <p className="field help" style={{ margin: "10px 0 0" }}>No discovery source is connected yet: they arrive with integrations. Register the AI your company uses with Register system. The AI Assistant registers itself when AI is turned on.</p> : null}
             </div></div>
-            <div className="card"><div className="c-head"><h3>Discovered AI awaiting registration</h3>{AI_SHADOW.length ? <span className="tag" style={{ marginLeft: 6 }}>{AI_SHADOW.length}</span> : null}</div>
+            <div className="card" data-tour="ai-discovered"><div className="c-head"><h3>Discovered AI awaiting registration</h3>{AI_SHADOW.length ? <span className="tag" style={{ marginLeft: 6 }}>{AI_SHADOW.length}</span> : null}</div>
               <div className="c-body flush" style={{ padding: 0 }}>
                 {AI_SHADOW.length ? (
                   <Table cols={[{ t: "AI found" }, { t: "Found by" }, { t: "Where" }, { t: "" }]}>
@@ -112,7 +112,7 @@ function AiList() {
               </div>
             </div>
           </div>
-          <div className="card"><div className="c-head"><h3>ISO/IEC 42001 readiness</h3><button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} onClick={() => go("/ws/frameworks")}><Icon name="frameworks" />Open framework</button></div>
+          <div className="card" data-tour="ai-iso42001"><div className="c-head"><h3>ISO/IEC 42001 readiness</h3><button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} onClick={() => go("/ws/frameworks")}><Icon name="frameworks" />Open framework</button></div>
             <div className="c-body" style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
               <Ring pct={iso} size={72} color="var(--accent)" />
               <div style={{ flex: "1 1 220px" }}>

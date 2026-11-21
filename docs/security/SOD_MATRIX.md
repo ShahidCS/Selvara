@@ -19,7 +19,7 @@ Every decision below writes an audit entry (`wsLog`, and `adminLog` for platform
 ## 2. Privileged access (platform) - gate model
 | Rule | Detail |
 |---|---|
-| Space access | `super`/`super2`: admin space only (no `ws`). `support`: admin space subset per ROLE_MODS. Workspace content only via a customer-approved support grant (read-only, expiring). In production (slice 3b, migration 0007): a company admin gives the grant in Team & Settings, Support access (reason, 8 hours at most, revocable at once); platform staff (super or support) open a read-only support session on it from Customers & Usage, Support access (reason of 15+ characters, ticket, 60 minutes at most and never beyond the grant, one live elevation of any kind at a time). The session is not a platform elevation and allows no change anywhere; the database enforces both. Its start, end and every view are written to the company's own audit log. |
+| Space access | `super`/`super2`: admin space only (no `ws`). `support`: admin space subset per ROLE_MODS. Workspace content only via a customer-approved support grant (read-only, expiring). In production (slice 3b, migration 0007): a company admin gives the grant in Team & Rules, Support access (reason, 8 hours at most, revocable at once); platform staff (super or support) open a read-only support session on it from Customers & Usage, Support access (reason of 15+ characters, ticket, 60 minutes at most and never beyond the grant, one live elevation of any kind at a time). The session is not a platform elevation and allows no change anywhere; the database enforces both. Its start, end and every view are written to the company's own audit log. |
 | Elevation | Required for EVERY mutation in `/admin/*` (customers, billing, rates, MFA reset requests/approvals). Browsing stays read-only. `useElevation()`/`elevationActive()` in `src/lib/elevation.ts`. Buttons are disabled with the exact text "Elevate to make changes"; services refuse without an active elevation (`SodError("Elevation required")`). |
 | Elevation request | super only; reason (>= 15 chars) + ticket reference (pattern `[A-Z]{2,6}-\d{1,6}`); max 60 minutes; ends on sign-out, timeout or "End elevation" (a different person never inherits it); audited start/end/expiry. |
 | Admin-log | Read-only for everyone; never editable. Export needs elevation not required (read) but is audited. |
@@ -98,7 +98,7 @@ Decision (2026-11, conservative policy). Where a request names a specific approv
 | Audit | Start (`delegation.created`: who, to whom, until, reason), end (`delegation.revoked`, by whom; `delegation.expired`), and every decision made on behalf (`approval.<kind>.on_behalf`; policies also name it in the version history and the change log). |
 | Ending | The delegator at any time. A company admin may end anyone's delegation (safety valve). |
 
-Enforced in `src/lib/delegation.ts` (`actsAs`), `src/services/delegation.ts` (create and end), `src/lib/approvalFlow.ts` (generic named-approver kinds) and `src/features/policies/services/policies.ts` (approve, publish, return to draft). The real API must enforce all of it server-side; the card in My workspace is not a control. Delegation is draft governance for review by the customer's compliance owner before it is relied on.
+Enforced in `src/lib/delegation.ts` (`actsAs`), `src/services/delegation.ts` (create and end), `src/lib/approvalFlow.ts` (generic named-approver kinds) and `src/features/policies/services/policies.ts` (approve, publish, return to draft). The real API must enforce all of it server-side; the card on the My Work Delegation tab is not a control. Delegation is draft governance for review by the customer's compliance owner before it is relied on.
 
 ## 10. Notification matrix (draft for compliance review)
 Decision (2026-11, designed from the existing bell, draft for review). A person chooses, for each kind of notice, whether it reaches the bell and an email digest. The choice only ever reduces noise: it never changes who may decide something.
@@ -121,7 +121,7 @@ Decision (2026-11, designed from the existing agent behaviour, draft for review)
 |---|---|
 | Rungs | `Suggests only` (a person approves each proposed change, as before) then `Acts (logged)` (applies within its scope at once, each run recorded). A paused agent is off whatever its rung. |
 | Start | Every new agent starts at `Suggests only`, whatever the request asks for. Before this change the creator could pick `Acts (logged)` at creation. |
-| Track record | To be raised, an agent needs N suggestions approved by a person and no rejection among its last N decided changes. N is a company setting (Team & Settings, admin only, audited as `team.agent_track_record.changed`): 3 (default), 2, or Off for teams too small to build a record. Off removes only the record; the second person's approval of the raise always stays. |
+| Track record | To be raised, an agent needs N suggestions approved by a person and no rejection among its last N decided changes. N is a company setting (Team & Rules, admin only, audited as `team.agent_track_record.changed`): 3 (default), 2, or Off for teams too small to build a record. Off removes only the record; the second person's approval of the raise always stays. |
 | Raise | One rung at a time, with a reason (at least 10 characters), as a four-eyes approval (`assistant.agent.autonomy`) by an admin or owner who is neither the requester nor the agent's creator. An agent that runs as a service account needs two different approvers. The rung and the record are checked again when it is decided. |
 | Lower | Immediate, by any admin or owner (safe direction). Climbing back needs the record again. |
 | Rejected applied change | Any admin or owner, including whoever ran it (safe direction), can reject a change an acting agent applied, with a reason. The agent drops to `Suggests only` at once and the rejection counts against its record. The change itself is reversed where it was made. |
@@ -162,7 +162,7 @@ Decision (2026-11). The role switcher is gone: people sign in. Demo accounts are
 Enforced in `src/lib/session.ts`, `src/lib/ipGuard.ts`, `src/services/ipBlocks.ts`, `src/services/joinRequests.ts` and `src/components/shell/AppShell.tsx` (signed-out routes go to `/login`).
 
 ## 13. Automation rules (draft for compliance review)
-Decision (2026-11, designed from the approval and audit model, draft for review). A rule is "when this happens, do one safe thing", set up by company admins in Team & Settings.
+Decision (2026-11, designed from the approval and audit model, draft for review). A rule is "when this happens, do one safe thing", set up by company admins in Team & Rules.
 
 | Rule | Detail |
 |---|---|

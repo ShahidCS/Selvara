@@ -87,22 +87,22 @@ function FrameworksList() {
       const on = fwScopeIn(f.id);
       return (<div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
         <Chip cls={on ? "ok" : "neutral"} icon={on ? "check" : "dot"}>{on ? "In scope" : "Out of scope"}</Chip>
-        {admin ? <button className="btn btn-ghost sm" aria-label={`${f.name}: ${on ? "in scope. Take out of scope" : "out of scope. Bring into scope"}`} aria-pressed={on} onClick={() => toggleScope(f)}>{on ? "Take out" : "Bring in"}</button> : null}
+        {admin ? <button className="btn btn-ghost sm" aria-label={`${f.name}: ${on ? "in scope. Take out of scope" : "out of scope. Bring into scope"}`} data-tour="frameworks-scope" aria-pressed={on} onClick={() => toggleScope(f)}>{on ? "Take out" : "Bring in"}</button> : null}
       </div>);
     } },
     { key: "act", header: "Details", hideHeader: true, align: "end", locked: true, render: (f) => <button className="btn btn-ghost sm" aria-label={`Details for ${f.name}`} onClick={() => open(f.id)}>Details</button> },
   ];
 
   return (
-    <Page mod="frameworks" acts={<button className="btn btn-primary" onClick={() => go("/ws/frameworks/new")}><Icon name="plus" />Add framework</button>}>
+    <Page mod="frameworks" acts={<button className="btn btn-primary" data-tour="frameworks-add" onClick={() => go("/ws/frameworks/new")}><Icon name="plus" />Add framework</button>}>
       <KpiStrip label="Library summary">
         <KpiTile label="In the library" value={DATA.frameworks.length} caption={`${inScope.length} in scope`} />
         <KpiTile label="Average readiness" value={avg + "%"} caption="Frameworks in scope" />
         <KpiTile label="Open gaps" value={gaps} delta={gaps ? { tone: "watch", text: "To close" } : { tone: "good", text: "None" }} caption="Not met or not assessed" />
         <KpiTile label="Snoozed" value={snoozed} caption="Paused, not scored as due" />
       </KpiStrip>
-      <div className="banner warn" style={{ display: "block" }}>Requirement titles are paraphrased; licensed standard text is not reproduced. All requirement-to-control mappings and applicability decisions are draft content requiring review by qualified compliance staff before reliance.</div>
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="banner warn" data-tour="frameworks-draft" style={{ display: "block" }}>Requirement titles are paraphrased; licensed standard text is not reproduced. All requirement-to-control mappings and applicability decisions are draft content requiring review by qualified compliance staff before reliance.</div>
+      <div className="card" data-tour="frameworks-table" style={{ flex: "1 1 auto" }}>
         <div className="c-body flush scroll" style={{ padding: 0 }}>
           <DataTable<Fw> id="frameworks" label="Frameworks" rows={rows} rowKey={(f) => f.id} columns={cols} searchText={(f) => `${f.name} ${f.id} ${f.region || ""}`}
             tabs={KINDS.map((k) => ({ key: k, label: k + "s", match: (f: Fw) => f.kind === k }))}

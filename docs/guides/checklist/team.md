@@ -1,4 +1,4 @@
-# Team & Settings (Phase 3)
+# Team & Rules (Phase 3; was "Team & Settings")
 
 > **Wave E update.** Members are a data table (the row opens the person page) and inviting is a page (`/ws/team/invite`). The role-change and approver dialogs and the privileged-role approval are unchanged.
 

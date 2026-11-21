@@ -81,9 +81,9 @@ export default function OverviewModule() {
 
   return (
     <Page title={`Security posture · ${period}`} sub={`${M.overdueControls} controls failing and ${M.openIssues} open issues need your attention.`} acts={<>
-      <button className="btn btn-secondary" onClick={exportBoardPack}><Icon name="download" />Export board pack</button>
+      <button className="btn btn-secondary" data-tour="overview-boardpack" onClick={exportBoardPack}><Icon name="download" />Export board pack</button>
       {can("reports") ? <button className="btn btn-secondary" onClick={() => go("/ws/reports")}><Icon name="reports" />Reports</button> : null}
-      {can("work") ? <button className="btn btn-primary" onClick={() => go("/ws/work")}><Icon name="work" />Open my work</button> : null}
+      {can("work") ? <button className="btn btn-primary" data-tour="overview-work" onClick={() => go("/ws/work")}><Icon name="work" />Open my work</button> : null}
     </>}>
       <div className="scroll" style={{ flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column", gap: 14 }}>
       <KpiStrip label="Posture summary">
@@ -94,7 +94,7 @@ export default function OverviewModule() {
         <KpiTile label="Upcoming audits" value={M.upcomingAudits} caption={API_ON ? "Not yet complete" : "Not yet complete · next in 136 days"} />
         <KpiTile label="Vendor reviews due" value={M.vendorDue} delta={live(tile("bad", "2 overdue"))} caption="Third-party reassessments" />
       </KpiStrip>
-      <div className="panels" style={{ flex: "0 0 auto", gridTemplateColumns: "1.6fr 1fr 1fr", gridAutoRows: "minmax(320px,auto)" }}>
+      <div className="panels" data-tour="overview-panels" style={{ flex: "0 0 auto", gridTemplateColumns: "1.6fr 1fr 1fr", gridAutoRows: "minmax(320px,auto)" }}>
         <div className="card">
           <div className="c-head"><h3>Risk posture</h3>{can("risk") ? <div className="r"><button className="btn btn-ghost sm" onClick={() => go("/ws/risk")}>Risk register</button></div> : null}</div>
           <div className="c-body scroll">
@@ -110,7 +110,7 @@ export default function OverviewModule() {
             <HBarList title="Lowest readiness first" rows={fwRank.map(({ f, r }) => ({ label: f.name, value: r, text: r + "%", tone: r >= 80 ? "ok" : r >= 50 ? "warn" : "bad" }))} max={100} />
           </div>
         </div>
-        <div className="card">
+        <div className="card" data-tour="overview-attention">
           <div className="c-head"><h3>Needs attention</h3>{can("issues") ? <div className="r"><button className="btn btn-ghost sm" onClick={() => go("/ws/issues")}>All issues</button></div> : null}</div>
           <div className="c-body scroll flush" style={{ padding: "6px 14px" }}>
             <div className="sectitle" style={{ marginTop: 8 }}>Overdue</div>
@@ -139,7 +139,7 @@ export default function OverviewModule() {
           </div>
         </div>
       </div>
-      <div className="card" style={{ flex: "0 0 auto" }}>
+      <div className="card" data-tour="overview-coverage" style={{ flex: "0 0 auto" }}>
         <div className="c-head"><h3>Control coverage</h3><div className="r" style={{ fontSize: 12, color: "var(--muted)" }}>Implemented %, framework × category</div></div>
         <div className="c-body">
           <CoverageHeatmap />

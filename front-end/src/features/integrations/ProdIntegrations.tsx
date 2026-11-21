@@ -63,7 +63,7 @@ function ConnectionList() {
     { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: () => <Icon name="chevron" /> },
   ];
   return (
-    <Page mod="integrations" acts={live.length ? <button className="btn btn-secondary" onClick={syncAll}><Icon name="refresh" />Sync all</button> : undefined}>
+    <Page mod="integrations" acts={live.length ? <button className="btn btn-secondary" data-tour="integrations-sync" onClick={syncAll}><Icon name="refresh" />Sync all</button> : undefined}>
       <div className="scroll" style={{ flex: "1 1 auto" }}><div style={{ display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
         <KpiStrip label="Integration summary">
           <KpiTile label="Connected" value={live.length} caption={`of ${providers.length} connectors`} />
@@ -72,7 +72,7 @@ function ConnectionList() {
           <KpiTile label="Access" value="Read-only" delta={{ tone: "good", text: "Least privilege" }} caption="Nothing is written back" />
         </KpiStrip>
         <ApprovalsPanel prefix="integration." title="Connection approvals (second admin)" />
-        <div className="card"><div className="c-head"><h3>Connectors</h3></div><div className="c-body" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12 }}>
+        <div className="card" data-tour="integrations-connectors"><div className="c-head"><h3>Connectors</h3></div><div className="c-body" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12 }}>
           {providers.map((p) => (
             <div key={p.id} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span className="strong">{p.name}</span><span className="tag">{p.type}</span></div>
@@ -83,7 +83,7 @@ function ConnectionList() {
             </div>
           ))}
         </div></div>
-        <div className="card"><div className="c-head"><h3>Your connections</h3></div><div className="c-body flush" style={{ padding: 0 }}>
+        <div className="card" data-tour="integrations-table"><div className="c-head"><h3>Your connections</h3></div><div className="c-body flush" style={{ padding: 0 }}>
           {connections.length ? <DataTable<Conn> id="integration-connections" label="Connections" rows={connections} rowKey={(c) => c.id} columns={cols} searchText={(c) => `${c.label} ${c.name}`} onOpen={(c) => go(`${LIST}/${encodeURIComponent(c.id)}`)} exportName="integrations" />
             : <Empty icon="ext" title="No connections yet">Set up a connector above. Each one is read-only and is approved by a second admin before it reads anything.</Empty>}
         </div></div>

@@ -1,5 +1,7 @@
 # My Workspace (`/ws/me`, module key `me`) — board `member-workspace`
 
+> **Merged into My Work.** The page is now part of My Work (`/ws/work`): the greeting and counts sit at the top, My tasks and My remarks are on the Tasks tab, published policies on the Policies tab, account security and delegation on their own tabs. The components moved to `src/features/work/` (`WorkModule.tsx` replaces `MeModule.tsx`). `/ws/me` still works and opens the Policies tab. The `me` permission still gates the personal tabs.
+
 Source: board `member-workspace` (template.html, script1.js) and `docs/architecture/SPEC_BOARDS.md` section 4. All data is synthetic.
 
 | Board feature | Gap | React file | Status | Notes |
