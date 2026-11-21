@@ -187,7 +187,7 @@ export function Sidebar() {
                             <Icon name={icon} className="ico" /><span className="lbl">{label}</span>{c ? <span className="cnt" title={`${c} need attention`}>{c}<span className="vh"> need attention</span></span> : null}
                           </button>
                           <button className="nav-chev" tabIndex={-1} aria-hidden="true" onClick={(e) => { e.stopPropagation(); toggleParent(key); }}><Icon name="chevd" /></button>
-                          <div className={`subnav ${opened ? "open" : ""}`} id={subId} role="group" aria-label={label}>
+                          <div className={`subnav ${opened ? "open" : ""}`} id={subId} role="group" aria-label={label} inert={!opened} aria-hidden={opened ? undefined : true}>
                             <div className="subnav-in"><div className="subnav-pad">
                               {sn.items.map(([tk, tl]) => {
                                 const sa = active && curTab === tk;

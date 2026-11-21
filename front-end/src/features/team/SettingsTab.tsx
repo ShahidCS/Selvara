@@ -59,7 +59,7 @@ export function SettingsTab({ manage }: { manage: boolean }) {
       ) : <p style={{ margin: 0 }}>{svc.TRACK_RECORD_CHOICES.find((c) => c.value === T.agentTrackRecord)?.label ?? "3 suggestions"}. Only an admin can change it.</p>}
       <SignInProtection manage={manage} />
       <CredentialPolicy manage={manage} />
-      {manage ? <button className="btn btn-secondary sm" style={{ marginTop: 10 }} onClick={save}><Icon name="log" />Record settings in audit log</button> : <p className="field help" style={{ marginTop: 10 }}>Read-only for your role.</p>}
+      {manage ? <button className="btn btn-primary sm" style={{ marginTop: 10 }} onClick={save}><Icon name="log" />Record settings in audit log</button> : <p className="field help" style={{ marginTop: 10 }}>Read-only for your role.</p>}
     </div>
   );
 }
