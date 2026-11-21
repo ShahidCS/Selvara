@@ -25,7 +25,7 @@ export function ApiTeam() {
   const company = useApp((s) => s.company);
   const [v, setV] = useModState<string>("team.api.view", "members");
   const view = VIEWS.some((x) => x[0] === v) ? v : "members";
-  if (!manage) return <Page mod="team"><Empty icon="alert" title="Not available for your role">Team &amp; Settings is for company admins.</Empty></Page>;
+  if (!manage) return <Page mod="team"><Empty icon="alert" title="Not available for your role">Team &amp; Rules is for company admins.</Empty></Page>;
   return (
     <Page mod="team" sub={company ? `People and sign-in settings of ${company.name}` : undefined}>
       <div className="card" style={{ flex: "1 1 auto" }}>

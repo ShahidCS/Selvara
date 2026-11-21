@@ -475,7 +475,7 @@ const joinDecide = admin(async (d, r, { p: me, a, company }) => {
   const mail = await sendMail(d, p.email, { t: "join-decided", company: company.name, approved: approve, link: `${d.site.origin}/login` }, { tenantId: company.id, actor: me.person, ip: r.ip });
   return ok({ id, status: approve ? "Active" : "Rejected", emailed: mail.sent });
 });
-/** The company's lockout setting, for the Team & Settings page. */
+/** The company's lockout setting, for the Team & Rules page. */
 const lockoutGet = admin(async (d, _r, { p: me, company }) => ok({ lockout: await d.dir.lockoutOf(company.id, me.id) }));
 const lockoutSet = admin(async (d, r, { p: me, a, company }) => {
   const preset = s(r.body.lockout, 20); const custom = r.body.custom as { attempts?: unknown; minutes?: unknown } | undefined;
