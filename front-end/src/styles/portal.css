@@ -797,7 +797,7 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .kpi-tile::after{content:"";position:absolute;top:-1px;inset-inline:calc(var(--kgap) / -2);height:1px;background:var(--line)}
 @container (max-width:899px){.kpi-strip[data-n="5"],.kpi-strip[data-n="6"]{--cols:3}}
 @container (max-width:699px){.kpi-strip[data-n="4"],.kpi-strip[data-n="7"],.kpi-strip[data-n="8"]{--cols:2}}
-@container (max-width:559px){.kpi-strip[data-n="5"],.kpi-strip[data-n="6"]{--cols:2}.kpi-strip{--kgap:28px}.kpi-strip .kpi-v{font-size:30px;line-height:34px}}
+@container (max-width:559px){.kpi-strip:not([data-n="1"]){--cols:2}.kpi-strip{--kgap:28px}.kpi-strip .kpi-v{font-size:30px;line-height:34px}}
 @container (max-width:359px){.kpi-strip{--cols:1}}
 .kpi-fig{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .kpi-v{font-family:var(--font-display);font-size:36px;line-height:40px;font-weight:300;letter-spacing:-1.4px;color:var(--ink)}
