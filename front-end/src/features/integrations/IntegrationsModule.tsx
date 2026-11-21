@@ -29,7 +29,7 @@ function IntegrationsList() {
     { key: "scope", header: "Scope", value: (r) => r.scope, render: (r) => <span title={r.scope} style={{ color: "var(--ink-2)", fontSize: 12.5, display: "block", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.scope}</span> },
     { key: "last", header: "Last sync", value: (r) => r.lastSync, render: (r) => <span style={{ color: "var(--muted)" }}>{r.lastSync}</span> },
     { key: "records", header: "Records", defaultHidden: true, value: (r) => r.records, render: (r) => <span className="num" style={{ color: "var(--muted)" }}>{r.records}</span> },
-    { key: "status", header: "Status", value: (r) => r.status, render: (r) => (r.status === "Connected" ? <HealthChip h={r.health} /> : <Chip cls="neutral" icon="dot">Not connected</Chip>) },
+    { key: "status", header: "Status", value: (r) => r.status, render: (r) => (r.status === "Connected" ? <HealthChip h={r.health} /> : <Chip cls="neutral" icon="x">Not connected</Chip>) },
     { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (r) => (manage ? (r.status === "Connected" ? (
       <div className="btngrp" style={{ justifyContent: "flex-end", flexWrap: "nowrap", whiteSpace: "nowrap" }}>
         <button className="btn btn-ghost sm" aria-label={`Sync ${r.name}`} onClick={() => act.sync(r.name)}><Icon name="refresh" />Sync</button>

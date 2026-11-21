@@ -27,16 +27,16 @@ export default function RiskParties() {
   const [party, setParty] = useState(""); const [req, setReq] = useState(""); const [loc, setLoc] = useState("");
   const link = (pi: number, rid: string) => attempt(L, async () => {
     if (!rid) return;
-    const res = await svc.linkParty(pi, rid); if (!res.ok) { L.toast(res.msg); return; }
+    const res = await svc.linkParty(pi, rid); if (!res.ok) { L.toast(res.msg, false); return; }
     wsLog("risk.party.linked", res.party + " ← " + rid, "Risk"); bumpData();
   });
   const unlink = (pi: number, rid: string) => attempt(L, async () => {
-    const res = await svc.unlinkParty(pi, rid); if (!res.ok) { L.toast(res.msg); return; }
+    const res = await svc.unlinkParty(pi, rid); if (!res.ok) { L.toast(res.msg, false); return; }
     wsLog("risk.party.unlinked", res.party + " ✕ " + rid, "Risk"); bumpData();
   });
   const add = () => attempt(L, async () => {
     if (!party.trim()) { L.toast("Party name required"); return; }
-    const res = await svc.addParty({ party, req, loc }); if (!res.ok) { L.toast(res.msg); return; }
+    const res = await svc.addParty({ party, req, loc }); if (!res.ok) { L.toast(res.msg, false); return; }
     wsLog("risk.party.added", res.party, "Risk"); L.toast("Party added"); setParty(""); setReq(""); setLoc(""); bumpData();
   });
   return (

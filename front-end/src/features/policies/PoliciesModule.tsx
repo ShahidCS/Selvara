@@ -31,7 +31,7 @@ function PoliciesList() {
   const STATES = Array.from(new Set<string>(DATA.policies.map((p: Policy) => policyState(p))));
   const owners = Array.from(new Set(DATA.policies.map((p: Policy) => String(p.owner)))).sort();
   const cols: DTColumn<Policy>[] = [
-    { key: "id", header: "ID", value: (p) => p.id, locked: true, render: (p) => <span className="strong num" style={{ whiteSpace: "nowrap" }}>{p.id}</span> },
+    { key: "id", header: "ID", nowrap: true, value: (p) => p.id, locked: true, render: (p) => <span className="strong num">{p.id}</span> },
     { key: "name", header: "Policy", value: (p) => p.name, render: (p) => p.name },
     { key: "ver", header: "Version", value: (p) => p.ver, render: (p) => p.ver },
     { key: "owner", header: "Owner", value: (p) => p.owner, render: (p) => p.owner },

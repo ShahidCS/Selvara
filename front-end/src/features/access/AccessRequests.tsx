@@ -23,7 +23,7 @@ export function AccessRequests({ canAct }: { canAct: boolean }) {
   ));
   if (!ACCESS_REQUESTS.length) return <Empty icon="access" title="No requests">No access requests are open.</Empty>;
   const cols: DTColumn<Req>[] = [
-    { key: "id", header: "ID", value: (r) => r.id, locked: true, render: (r) => <span className="strong num" style={{ whiteSpace: "nowrap" }}>{r.id}</span> },
+    { key: "id", header: "ID", nowrap: true, value: (r) => r.id, locked: true, render: (r) => <span className="strong num">{r.id}</span> },
     { key: "user", header: "User", value: (r) => r.user, render: (r) => <>{r.user}{r.requester && r.requester !== r.user ? <div style={{ fontSize: 11, color: "var(--muted)" }}>requested by {r.requester}</div> : null}</> },
     { key: "system", header: "System", value: (r) => r.system, render: (r) => r.system },
     { key: "level", header: "Level", value: (r) => r.level, render: (r) => r.level },

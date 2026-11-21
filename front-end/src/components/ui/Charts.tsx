@@ -4,8 +4,9 @@ import { areaOf, barRects, donutArcs, linePoints, niceMax, pathOf, percent, tick
 /* Shared charts. Colour is by tone (these tokens change with the theme); every chart is a <figure> with a caption, an `img` role carrying a one-line
    summary, and a visually hidden data table, so the numbers reach screen readers and the colours never carry meaning alone. Marks are focusable and
    show a dark tooltip on hover or focus. */
-export type Tone = "brand" | "ok" | "warn" | "bad" | "ink" | "muted";
-export const TONE_VAR: Record<Tone, string> = { brand: "var(--accent)", ok: "var(--ok-ink)", warn: "var(--warn-ink)", bad: "var(--bad-ink)", ink: "var(--ink-2)", muted: "var(--faint)" };
+/** `high` is the High risk band (between warning and danger), so a risk chart can match the heat map. */
+export type Tone = "brand" | "ok" | "warn" | "high" | "bad" | "ink" | "muted";
+export const TONE_VAR: Record<Tone, string> = { brand: "var(--accent)", ok: "var(--ok-ink)", warn: "var(--warn-ink)", high: "var(--high-ink)", bad: "var(--bad-ink)", ink: "var(--ink-2)", muted: "var(--faint)" };
 
 interface Tip { x: number; y: number; text: string }
 function useTip() {

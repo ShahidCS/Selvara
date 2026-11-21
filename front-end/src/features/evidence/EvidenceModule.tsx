@@ -27,7 +27,7 @@ function EvidenceList() {
   const status = (e: Ev) => String(e.review?.status ?? "Pending review");
   const owners = Array.from(new Set<string>(DATA.evidence.map((e: Ev) => String(e.by)))).sort();
   const cols: DTColumn<Ev>[] = [
-    { key: "id", header: "ID", value: (e) => e.id, locked: true, render: (e) => <span className="strong num" style={{ whiteSpace: "nowrap" }}>{e.id}</span> },
+    { key: "id", header: "ID", nowrap: true, value: (e) => e.id, locked: true, render: (e) => <span className="strong num">{e.id}</span> },
     { key: "name", header: "Evidence", value: (e) => e.name, render: (e) => e.name },
     { key: "type", header: "Type", value: (e) => e.type, render: (e) => e.type },
     { key: "ver", header: "Version", value: (e) => e.ver, render: (e) => `v${e.ver}` },

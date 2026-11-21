@@ -31,7 +31,7 @@ export default function ReportsModule() {
     // a draft as plain text or CSV (no HTML), file name sanitised
     const ok = downloadText(safeFileName(out.fileName, "report.txt"), out.content, out.type);
     wsLog("report.generated", name, "System");
-    L.toast(ok ? "Generated " + name + (API_ON ? " (draft: review before you share it)" : " (demo)") : "Download not available in this view");
+    L.toast(ok ? "Generated " + name + (API_ON ? " (draft: review before you share it)" : " (demo)") : "Download not available in this view", ok);
   });
   const unschedule = (i: number) => SCHED_PACKS[i]?.external && API_ON ? L.openModal("Remove external schedule", <RemoveScheduleForm L={L} i={i} />) : L.openModal("Remove schedule", <ConfirmRemoveSchedule L={L} i={i} run={() => attempt(L, async () => {
     const r = await svc.removeSchedule(i);

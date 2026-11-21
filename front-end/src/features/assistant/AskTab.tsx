@@ -32,7 +32,7 @@ function AskDemo({ scrollRef }: { scrollRef: React.RefObject<HTMLDivElement | nu
   };
   const copy = async (i: number) => {
     const t = svc.ASST.thread[i]?.text || "";
-    try { await navigator.clipboard.writeText(t); L.toast("Draft copied"); } catch { L.toast("Copy not available in this view"); }
+    try { await navigator.clipboard.writeText(t); L.toast("Draft copied"); } catch { L.toast("Copy not available in this view", false); }
   };
   // Which answers in this thread were marked reviewed, and by whom (kept while the app is open; cleared with the thread).
   const [rev, setRev] = useModState<Record<number, string>>("assistant.reviewed", {});
@@ -50,7 +50,7 @@ function AskDemo({ scrollRef }: { scrollRef: React.RefObject<HTMLDivElement | nu
         <div key={i} style={{ alignSelf: "flex-start", maxWidth: "94%" }}>
           <AIPanel source="Assistant" meta="Draft, review required" label="Assistant answer"
             footer={<>
-              <button className="btn btn-ghost sm" onClick={() => copy(i)}>Copy</button>
+              <button className="btn btn-ghost sm" onClick={() => copy(i)}><Icon name="copy" />Copy</button>
               {rev[i] ? <Chip cls="ok" icon="check">Reviewed by {rev[i]}</Chip> : <button className="btn btn-ghost sm" onClick={() => reviewed(i)}><Icon name="check" />Mark reviewed</button>}
             </>}>
             <div style={{ fontSize: 13.5, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{mm.text}</div>

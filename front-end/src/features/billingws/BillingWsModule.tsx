@@ -39,11 +39,11 @@ function BillingOverview() {
   const unpaid = s.invoices.filter((iv) => iv.status !== "Paid").length;
   const download = (id: string) => {
     const iv = findInvoice(id); if (!iv) return;
-    if (!downloadText(safeFileName(iv.id, "invoice") + ".txt", invoiceText(iv, money))) { L.toast("Download not available in this view"); return; }
+    if (!downloadText(safeFileName(iv.id, "invoice") + ".txt", invoiceText(iv, money))) { L.toast("Download not available in this view", false); return; }
     wsLog("invoice.downloaded", iv.id, "System"); L.toast("Downloading " + iv.id);
   };
   const invCols: DTColumn<Invoice>[] = [
-    { key: "id", header: "Invoice", value: (iv) => iv.id, locked: true, render: (iv) => <span className="strong num">{iv.id}</span> },
+    { key: "id", header: "Invoice", nowrap: true, value: (iv) => iv.id, locked: true, render: (iv) => <span className="strong num">{iv.id}</span> },
     { key: "date", header: "Date", value: (iv) => iv.date, sortBy: (iv) => Date.parse(iv.date) || 0, render: (iv) => iv.date },
     { key: "period", header: "Period", value: (iv) => iv.period, render: (iv) => <span style={{ color: "var(--muted)" }}>{iv.period}</span> },
     { key: "amount", header: "Amount", value: (iv) => iv.amount, align: "end", render: (iv) => <span className="num">{money(iv.amount)}</span> },

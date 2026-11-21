@@ -29,7 +29,7 @@ export function AddRiskForm({ close }: { close: () => void }) {
   const save = () => attempt(L, async () => {
     if (!title.trim()) { setErr(true); document.getElementById("rk-title")?.focus(); return; }
     const res = await svc.createRisk({ title, desc, cat, owner, ownerId: API_ON ? ownerId || myMemberId(members) : undefined, l, i, rl, ri, treat });
-    if (!res.ok) { L.toast(res.msg); return; }
+    if (!res.ok) { L.toast(res.msg, false); return; }
     wsLog("risk.created", title.trim().slice(0, 200), "Risk"); close(); L.toast("Risk " + res.id + " added as draft");
     setModState(K_TAB, "reg"); setModState<string | null>(K_SEL, res.id); bumpData();
   });
@@ -70,7 +70,7 @@ export function AddActionForm({ id, close }: { id: string; close: () => void }) 
   const add = () => attempt(L, async () => {
     if (!text.trim()) { setErr(true); return; }
     const res = await svc.addAction(id, { text, owner, ownerId: API_ON ? ownerId || myMemberId(members) : undefined, due });
-    if (!res.ok) { L.toast(res.msg); return; }
+    if (!res.ok) { L.toast(res.msg, false); return; }
     wsLog("risk.action.added", id + ": " + res.text, "Risk"); close(); bumpData();
   });
   return (

@@ -22,7 +22,7 @@ function useAct() {
   const L = useLayer();
   return (p: () => Promise<svc.Res<any>>, ok: (r: any) => void, onInvalid: (msg: string) => void) => attempt(L, async () => {
     const r = await p();
-    if (!r.ok) { if (/required|between 0 and 100|at least 10|within 12 months/.test(r.msg)) onInvalid(r.msg); else L.toast(r.msg); return; }
+    if (!r.ok) { if (/required|between 0 and 100|at least 10|within 12 months/.test(r.msg)) onInvalid(r.msg); else L.toast(r.msg, false); return; }
     ok(r);
   });
 }

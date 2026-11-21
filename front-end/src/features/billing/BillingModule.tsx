@@ -22,7 +22,7 @@ function DemoBilling({ param }: { param?: string | null }) {
   if (param) {
     if (!findCustomer(param)) return <div className="page"><Empty icon="alert" title="Page not found" action={<button className="btn btn-primary" onClick={() => go("/ws/overview")}>Back to Overview</button>}>That route doesn&apos;t exist or has moved.</Empty></div>;
     const c = findCustomer(param);
-    return <Page mod="billing" title={c.name} sub={`Billing, ${c.plan} plan, ${c.region}`} back={{ href: "/admin/billing", label: "Billing" }} acts={<button className="btn btn-secondary no-print" onClick={() => window.print()}>Print</button>}><ElevateGateBanner />{panel}<BillingDetail id={param} /></Page>;
+    return <Page mod="billing" title={c.name} sub={`Billing, ${c.plan} plan, ${c.region}`} back={{ href: "/admin/billing", label: "Billing" }} acts={<button className="btn btn-secondary no-print" onClick={() => window.print()}><Icon name="print" />Print</button>}><ElevateGateBanner />{panel}<BillingDetail id={param} /></Page>;
   }
   return (
     <Page mod="billing" acts={<>

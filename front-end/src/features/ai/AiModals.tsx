@@ -23,7 +23,7 @@ const NotFound = () => <p className="field help">AI system not found.</p>;
 /** Wraps a service call: failures show the source toast, exceptions a generic one (ASVS 7.4.1). */
 function useAct() {
   const L = useLayer();
-  return (p: () => Promise<svc.Res<any>>, ok: (r: any) => void) => attempt(L, async () => { const r = await p(); if (!r.ok) { L.toast(r.msg); return; } ok(r); });
+  return (p: () => Promise<svc.Res<any>>, ok: (r: any) => void) => attempt(L, async () => { const r = await p(); if (!r.ok) { L.toast(r.msg, false); return; } ok(r); });
 }
 
 /* ---------- classify (tier). Defined in the source but no control calls it ---------- */

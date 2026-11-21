@@ -81,7 +81,7 @@ export function UsersTab({ cid }: { cid: string }) {
         <div style={{ flex: "1 1 220px", minWidth: 0 }}><div className="sectitle" style={{ margin: 0 }}>Directory, {cn}</div><span className="meta">Tenant {cid}</span></div>
         {addBtn}
       </div>
-      <DataTable<User> id={tableId} label={`Users of ${cn}`} rows={list} rowKey={(u) => u.id} columns={cols} searchText={(u) => `${u.name} ${u.email} ${u.role}`}
+      <DataTable<User> id={tableId} label={`Users of ${cn}`} rows={list} rowKey={(u) => u.id} rowLabel={(u) => u.name} columns={cols} searchText={(u) => `${u.name} ${u.email} ${u.role}`}
         filters={[{ key: "status", label: "Status", options: Array.from(new Set(list.map((u) => u.status))), get: (u) => u.status }]}
         bulk={[
           { label: "MFA Resets", icon: "access", run: () => go("/admin/mfa") },

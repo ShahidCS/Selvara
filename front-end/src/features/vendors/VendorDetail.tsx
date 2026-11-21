@@ -47,7 +47,7 @@ export function VendorDetail({ id }: { id: string }) {
   if (!v) return <Page title="Vendor not found" back={back}><Empty icon="vendors" title="No such vendor">There is no vendor with the ID &ldquo;{id}&rdquo;. It may have been removed, or the link may be wrong.</Empty></Page>;
   vInit(v);
   const can = vendorCanManage(role);
-  const act = (p: () => Promise<svc.Res<any>>, ok: (r: any) => void) => attempt(L, async () => { const r = await p(); if (r.ok === false) { L.toast(r.msg); return; } ok(r); });
+  const act = (p: () => Promise<svc.Res<any>>, ok: (r: any) => void) => attempt(L, async () => { const r = await p(); if (r.ok === false) { L.toast(r.msg, false); return; } ok(r); });
   const myQs = g4.vendorQs.filter((q) => q.vendorId === id).slice().reverse();
   const gate = (decision: "Approved" | "Blocked") => API_ON && decision === "Blocked" ? askReason(L, { title: "Block procurement gate", label: "Reason for blocking", confirm: "Block", danger: true,
     run: async (why) => { await must(svc.setGate(id, "Blocked", why)); return "Procurement gate blocked"; } }) : act(() => svc.setGate(id, decision), (r) => {

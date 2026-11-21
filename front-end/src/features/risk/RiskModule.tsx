@@ -49,7 +49,7 @@ export default function RiskModule() {
   useEffect(() => { svc.syncBoardEvidence(); }, [dv]);
 
   const doImport = () => {
-    if (!riskCanEdit()) { L.toast("You do not have permission to import risks"); return; }
+    if (!riskCanEdit()) { L.toast("You do not have permission to import risks", false); return; }
     openImportWizard(L, { onDone: () => { setModState(K_TAB, "reg"); setModState<string | null>(K_SEL, null); bumpData(); } });
   };
   const doExport = async () => {

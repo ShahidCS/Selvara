@@ -23,7 +23,7 @@ export function ConnectorDetail({ name }: { name: string }) {
           <div className="rec-main">
             <div className="card"><div className="c-head"><h3>Status</h3></div><div className="c-body">
               <dl className="meta-grid lstart">
-                <dt>Connection</dt><dd>{r.status === "Connected" ? <HealthChip h={r.health} /> : <Chip cls="neutral" icon="dot">Not connected</Chip>}</dd>
+                <dt>Connection</dt><dd>{r.status === "Connected" ? <HealthChip h={r.health} /> : <Chip cls="neutral" icon="x">Not connected</Chip>}</dd>
                 <dt>Last sync</dt><dd>{r.lastSync}</dd>
                 <dt>Records pulled</dt><dd className="num">{r.records}</dd>
               </dl>

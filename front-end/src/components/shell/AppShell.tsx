@@ -71,9 +71,14 @@ function Frame({ children }: { children: ReactNode }) {
     if (!TITLE[route.mod] && route.mod !== "billing") return; // renders Not Found
     if (!allowedSpaces(s.role).includes(route.space) || !modAllowed(s.role, route.space, route.mod)) {
       const land = landingPath(s.role, route.space);
-      if (router.asPath.replace(/\/$/, "") !== land) router.replace(land);
+      if (router.asPath.replace(/\/$/, "") !== land) {
+        // say why instead of moving silently (the route guard is display only: every service refuses on its own)
+        const name = TITLE[route.mod]?.[0];
+        if (name) L.toast(`Your role does not open ${name}.`, "info");
+        router.replace(land);
+      }
     }
-  }, [s.hydrated, s.signedIn, s.role, route.space, route.mod, router]);
+  }, [s.hydrated, s.signedIn, s.role, route.space, route.mod, router, L]);
   // global shortcuts: Cmd/Ctrl+K palette, +J AI Assistant, +B collapse, +/ shortcut list, Escape closes mobile sidebar
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

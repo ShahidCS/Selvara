@@ -36,8 +36,8 @@ export function AccessRequestForm({ close }: { close: () => void }) {
   };
   return (
     <>
-      <div>
-        <div className="field"><label htmlFor="arq-sys">System <Req /></label><input className="input" id="arq-sys" data-focus placeholder="e.g. Analytics warehouse" value={sys} onChange={(e) => setSys(e.target.value)} aria-invalid={err} aria-describedby={err ? "arq-err" : undefined} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div className={err ? "field err" : "field"}><label htmlFor="arq-sys">System <Req /></label><input className="input" id="arq-sys" data-focus placeholder="e.g. Analytics warehouse" value={sys} onChange={(e) => setSys(e.target.value)} aria-invalid={err} aria-describedby={err ? "arq-err" : undefined} />
           {err ? <p className="field help" id="arq-err" role="alert" style={{ color: "var(--bad-ink)" }}>Enter the system you need access to.</p> : null}</div>
         <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div className="field"><label htmlFor="arq-lvl">Level</label><select className="select" id="arq-lvl" value={lvl} onChange={(e) => setLvl(e.target.value)}>{accessSvc.LEVELS.map((x) => <option key={x}>{x}</option>)}</select></div>
@@ -69,16 +69,18 @@ export function VendorRequestForm({ close }: { close: () => void }) {
   };
   return (
     <>
-      <p style={{ margin: "0 0 10px", fontSize: 13 }}>Ask Security to assess a new supplier before procurement. Your request enters the vendor review queue.</p>
-      <div className="field"><label htmlFor="vr-name">Vendor name <Req /></label><input className="input" id="vr-name" data-focus maxLength={120} placeholder="e.g. Northstar Analytics" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={err.name} aria-describedby={err.name ? "vr-name-err" : undefined} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <p style={{ margin: 0, fontSize: 13 }}>Ask Security to assess a new supplier before procurement. Your request enters the vendor review queue.</p>
+      <div className={err.name ? "field err" : "field"}><label htmlFor="vr-name">Vendor name <Req /></label><input className="input" id="vr-name" data-focus maxLength={120} placeholder="e.g. Northstar Analytics" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={err.name} aria-describedby={err.name ? "vr-name-err" : undefined} />
         {err.name ? <p className="field help" id="vr-name-err" role="alert" style={{ color: "var(--bad-ink)" }}>Enter the vendor name.</p> : null}</div>
       <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div className="field"><label htmlFor="vr-cat">Category</label><input className="input" id="vr-cat" maxLength={60} placeholder="e.g. Analytics" value={cat} onChange={(e) => setCat(e.target.value)} /></div>
         <div className="field"><label htmlFor="vr-crit">Business criticality</label><select className="select" id="vr-crit" value={crit} onChange={(e) => setCrit(e.target.value)}><option>Critical</option><option>Medium</option><option>Low</option></select></div>
       </div>
-      <div className="field"><label htmlFor="vr-reason">What will it be used for? <Req /></label><input className="input" id="vr-reason" maxLength={500} placeholder="e.g. Marketing attribution" value={reason} onChange={(e) => setReason(e.target.value)} aria-invalid={err.reason} aria-describedby={err.reason ? "vr-reason-err" : undefined} />
+      <div className={err.reason ? "field err" : "field"}><label htmlFor="vr-reason">What will it be used for? <Req /></label><input className="input" id="vr-reason" maxLength={500} placeholder="e.g. Marketing attribution" value={reason} onChange={(e) => setReason(e.target.value)} aria-invalid={err.reason} aria-describedby={err.reason ? "vr-reason-err" : undefined} />
         {err.reason ? <p className="field help" id="vr-reason-err" role="alert" style={{ color: "var(--bad-ink)" }}>Say what the vendor will be used for.</p> : null}</div>
       <label className="listrow" style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer" }}><input type="checkbox" id="vr-data" checked={data} onChange={(e) => setData(e.target.checked)} /> <span>It will process our customer or personal data</span></label>
+      </div>
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={submit}>Submit request</button></LayerFoot>
     </>
   );

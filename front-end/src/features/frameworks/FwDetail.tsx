@@ -40,7 +40,7 @@ export function FwDetail({ fwId }: { fwId: string }) {
       return [f.name, r[0], r[1], (r[2] ? r[2] + " " : "") + (gm[r[2]] || ""), st, fwReqControls(f.id, r[0]).map((c) => c.id + " (" + c.status + ")").join("; "), na ? na.reason : ""];
     });
     const csv = [head].concat(body).map((r) => r.map(csvCell).join(",")).join("\r\n");
-    if (!downloadText("gap-assessment-" + f.id + ".csv", csv, "text/csv;charset=utf-8")) { L.toast("Download not available in this view"); return; }
+    if (!downloadText("gap-assessment-" + f.id + ".csv", csv, "text/csv;charset=utf-8")) { L.toast("Download not available in this view", false); return; }
     void fw.logGapExport(f.name, body.length).catch((e) => L.toast(uiMessage(e), false));
     L.toast("Gap assessment exported (" + body.length + " row" + (body.length !== 1 ? "s" : "") + ")");
   };

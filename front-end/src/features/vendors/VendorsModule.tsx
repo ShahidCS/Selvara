@@ -40,13 +40,13 @@ function VendorsList() {
   vInitAll();
   const canManage = vendorCanManage(role);
   const approve = (id: string) => attempt(L, async () => {
-    const r = await svc.approveRequest(id); if (r.ok === false) { L.toast(r.msg); return; }
+    const r = await svc.approveRequest(id); if (r.ok === false) { L.toast(r.msg, false); return; }
     if (r.pending) { wsLog("vendor.request.approval_requested", r.name + " (Critical tier, 2 approvers needed)", "Vendor"); L.toast(API_ON ? "Critical tier: a second admin or owner must confirm before " + r.name + " is added" : "Critical tier: two other approvers must confirm before " + r.name + " is added"); bumpData(); return; }
     wsLog("vendor.request.approved", r.name + " → added to inventory", "Vendor"); L.toast(r.name + " added to the vendor inventory"); bumpData();
   });
   const dismiss = (id: string) => API_ON ? askReason(L, { title: "Dismiss vendor request", label: "Reason (the requester is told)", confirm: "Dismiss", danger: true,
     run: async (why) => { const r = await svc.dismissRequest(id, why); if (r.ok === false) throw new SodError(r.msg); return "Request dismissed"; } }) : attempt(L, async () => {
-    const r = await svc.dismissRequest(id); if (r.ok === false) { L.toast(r.msg); return; }
+    const r = await svc.dismissRequest(id); if (r.ok === false) { L.toast(r.msg, false); return; }
     wsLog("vendor.request.dismissed", r.name, "Vendor"); L.toast("Request dismissed"); bumpData();
   });
   const list = vt === "All" ? DATA.vendors : DATA.vendors.filter((v) => v.tier === vt);

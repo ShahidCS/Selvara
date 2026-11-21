@@ -44,10 +44,11 @@ export function KpiTile({ label, value, delta, caption }: { label: string; value
 export function KpiCard({ icon, label, value, sub, subTone = "flat", onClick, pressed, name }: { icon: string; label: string; value: string | number; sub?: string; subTone?: Desirability; onClick: () => void; /** For a card that toggles a filter: whether the filter is on. */ pressed?: boolean; /** Accessible name when the visible text is not enough. */ name?: string }) {
   return (
     <button type="button" className="kpi-card" onClick={onClick} aria-pressed={pressed} aria-label={name}>
-      <span className="kpi-card-top"><Icon name={icon} /><Icon name="ext" className="kpi-card-go" /></span>
+      {/* a card that toggles a filter shows the filter icon; one that opens a list shows "go" */}
+      <span className="kpi-card-top"><Icon name={icon} /><Icon name={pressed !== undefined ? "filter" : "ext"} className="kpi-card-go" /></span>
       <span className="eyebrow">{label}</span>
       <span className="kpi-v num">{value}</span>
-      {sub ? <span className={`kpi-sub ${subTone}`}>{sub}</span> : null}
+      {sub ? <span className={`kpi-sub ${subTone}`} style={subTone === "bad" || subTone === "watch" ? { display: "inline-flex", gap: 4, alignItems: "center" } : undefined}>{subTone === "bad" ? <Icon name="alert" style={{ width: 13, height: 13 }} /> : subTone === "watch" ? <Icon name="clock" style={{ width: 13, height: 13 }} /> : null}{sub}</span> : null}
     </button>
   );
 }

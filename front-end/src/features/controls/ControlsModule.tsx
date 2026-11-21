@@ -97,7 +97,7 @@ function ControlsList() {
   );
 
   const cols: DTColumn<Control>[] = [
-    { key: "id", header: "Control", value: (c) => c.id, locked: true, render: (c) => <span className="strong num">{c.id}</span> },
+    { key: "id", header: "Control", nowrap: true, value: (c) => c.id, locked: true, render: (c) => <span className="strong num">{c.id}</span> },
     { key: "title", header: "Title", value: (c) => c.title, render: (c) => c.title },
     { key: "domain", header: "Domain", value: (c) => c.domain, render: (c) => c.domain },
     { key: "map", header: "Mapped to", value: (c) => Object.keys(c.map || {}).map((k) => FW_SHORT[k] || k).join(" "), render: (c) => <div style={{ maxWidth: 220 }}><FwChips c={c} /></div> },

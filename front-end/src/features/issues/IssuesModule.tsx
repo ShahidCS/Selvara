@@ -36,7 +36,7 @@ function IssuesList() {
   const [view, setView] = useModState<"table" | "kanban">("issues.view", "table");
   const open = (id: string) => go(`/ws/issues/${encodeURIComponent(id)}`);
   const cols: DTColumn<Issue>[] = [
-    { key: "id", header: "ID", value: (i) => i.id, locked: true, render: (i) => <span className="strong num" style={{ whiteSpace: "nowrap" }}>{i.id}</span> },
+    { key: "id", header: "ID", nowrap: true, value: (i) => i.id, locked: true, render: (i) => <span className="strong num">{i.id}</span> },
     { key: "title", header: "Issue", value: (i) => i.title, render: (i) => i.title },
     { key: "sev", header: "Severity", value: (i) => i.sev, sortBy: (i) => SEV_RANK(i.sev), render: (i) => <StatusChip s={i.sev} /> },
     { key: "owner", header: "Owner", value: (i) => i.owner, render: (i) => i.owner },

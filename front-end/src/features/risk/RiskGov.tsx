@@ -19,7 +19,7 @@ export default function RiskGov() {
   const L = useLayer();
   const admin = riskCanApprove(useApp((s) => s.role));
   const snap = (scope: string) => attempt(L, async () => {
-    const res = await svc.takeSnapshot(scope); if (!res.ok) { L.toast(res.msg); return; }
+    const res = await svc.takeSnapshot(scope); if (!res.ok) { L.toast(res.msg, false); return; }
     wsLog("risk.register.snapshot", res.count + " risks (" + res.scope + "), hash " + res.hash, "Risk"); L.toast("Snapshot taken (" + res.count + " risks)"); bumpData();
   });
   const download = (id: string) => attempt(L, async () => { downloadText(safeFileName(`risk-snapshot-${id}.json`), await svc.snapshotContent(id)); L.toast("Snapshot downloaded"); });

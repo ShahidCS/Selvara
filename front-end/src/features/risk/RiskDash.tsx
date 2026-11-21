@@ -96,7 +96,7 @@ export default function RiskDash() {
   const awaiting = DATA.risks.filter((r) => r.review === "Submitted").length;
   const accepted = DATA.risks.filter((r) => r.acceptance).length;
   const unmapped = open.filter((r) => !(r.linked && r.linked.length)).length;
-  const mix: Segment[] = [["Low", "ok"], ["Medium", "warn"], ["High", "bad"], ["Extreme", "ink"]].map(([name, tone]) => ({ label: name, value: open.filter((r) => rband(sCur(r)).name === name).length, tone: tone as Segment["tone"] }));
+  const mix: Segment[] = [["Low", "ok"], ["Medium", "warn"], ["High", "high"], ["Extreme", "bad"]].map(([name, tone]) => ({ label: name, value: open.filter((r) => rband(sCur(r)).name === name).length, tone: tone as Segment["tone"] }));
   const today = nowStamp().slice(0, 10);
   const plan = open.filter((r) => r.treat !== "Accept").map((r) => {
     const acts: any[] = r.actions || [];

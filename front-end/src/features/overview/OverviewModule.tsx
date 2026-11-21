@@ -76,7 +76,7 @@ export default function OverviewModule() {
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch { /* fall through to download */ }
     if (w) { L.toast("Board pack ready — use Print / Save as PDF"); return; }
-    if (!downloadText("Selvara-Board-Pack.html", html, "text/html;charset=utf-8")) { L.toast("Download not available in this view"); return; }
+    if (!downloadText("Selvara-Board-Pack.html", html, "text/html;charset=utf-8")) { L.toast("Download not available in this view", false); return; }
     L.toast("Board pack downloaded — open it, then Print / Save as PDF");
   };
 
@@ -93,7 +93,7 @@ export default function OverviewModule() {
         <KpiTile label="Open risks" value={M.openRisks} delta={live(tile("good", "2 fewer this month"))} caption={`${M.aboveAppetite} above appetite`} />
         <KpiTile label="Controls failing" value={M.overdueControls} delta={live(tile("bad", "1 more this week"))} caption="Need remediation" />
         <KpiTile label="Open issues" value={M.openIssues} delta={live(tile("flat", "No change"))} caption="Not yet closed" />
-        <KpiTile label="Upcoming audits" value={M.upcomingAudits} delta={live(tile("flat", "Next in 136 days"))} caption="Not yet complete" />
+        <KpiTile label="Upcoming audits" value={M.upcomingAudits} caption={API_ON ? "Not yet complete" : "Not yet complete · next in 136 days"} />
         <KpiTile label="Vendor reviews due" value={M.vendorDue} delta={live(tile("bad", "2 overdue"))} caption="Third-party reassessments" />
       </KpiStrip>
       <div className="panels" style={{ flex: "0 0 auto", gridTemplateColumns: "1.6fr 1fr 1fr", gridAutoRows: "minmax(320px,auto)" }}>

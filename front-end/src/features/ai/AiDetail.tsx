@@ -32,7 +32,7 @@ export function AiDetail({ id }: { id: string }) {
   aiInit(a);
   const manage = aiCanManage(a); const decider = aiCanDecide();
   /** Run a service call; a refusal shows the source toast, an exception a generic one. */
-  const act = (p: () => Promise<svc.Res<any>>, ok: (r: any) => void) => attempt(L, async () => { const r = await p(); if (!r.ok) { L.toast(r.msg); return; } ok(r); });
+  const act = (p: () => Promise<svc.Res<any>>, ok: (r: any) => void) => attempt(L, async () => { const r = await p(); if (!r.ok) { L.toast(r.msg, false); return; } ok(r); });
   /** Production: a step that needs a reason (or a choice) asks for it first; the server checks it again. */
   const withReason = (title: string, label: string, confirm: string, run: (reason: string) => Promise<svc.Res<any>>, done: string) =>
     askReason(L, { title, label, confirm, run: async (reason) => { const r = await run(reason); if (!r.ok) throw new Error((r as { msg: string }).msg); return done; } });

@@ -139,7 +139,7 @@ function Invoices({ b, rows, lock }: { b: api.Billing; rows: api.Invoice[]; lock
     ...(b.payments ? [{ label: "Payment link", whyNot: lock ?? (!open(i) || !i.outstanding ? "Nothing is due" : null), run: link }] : []),
   ];
   const cols: DTColumn<api.Invoice>[] = [
-    { key: "id", header: "Invoice", value: (i) => i.id, locked: true, render: (i) => <span className="strong num">{i.id}</span> },
+    { key: "id", header: "Invoice", nowrap: true, value: (i) => i.id, locked: true, render: (i) => <span className="strong num">{i.id}</span> },
     { key: "company", header: "Company", value: (i) => i.company, render: (i) => i.company },
     { key: "period", header: "Period", value: (i) => i.from, render: (i) => <span className="num" style={{ color: "var(--muted)" }}>{i.from} to {i.to}</span> },
     { key: "issued", header: "Issued", value: (i) => i.issued, defaultHidden: true, render: (i) => <span className="num">{i.issued}</span> },
@@ -362,7 +362,7 @@ function PayLink({ url, email }: { url: string; email: string }) {
     <>
       <p style={{ marginTop: 0 }}>Send this link to the billing contact{email ? ` (${email})` : ""}. The payment is made on the provider&apos;s page and recorded here only when the provider confirms it.</p>
       <div className="field"><label htmlFor="pl-url">Payment link</label><input className="input num" id="pl-url" data-focus readOnly value={url} onFocus={(e) => e.currentTarget.select()} /></div>
-      <LayerFoot><button className="btn btn-primary" onClick={copy}>Copy link</button></LayerFoot>
+      <LayerFoot><button className="btn btn-primary" onClick={copy}><Icon name="copy" />Copy link</button></LayerFoot>
     </>
   );
 }

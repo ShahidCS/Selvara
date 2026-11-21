@@ -39,7 +39,7 @@ export function ApiBillingWs() {
   };
   const download = (i: Inv) => { if (!downloadText(`${safeFileName(i.id, "invoice")}.txt`, invoiceText(i, company))) L.toast("Download not available in this view", false); };
   const cols: DTColumn<Inv>[] = [
-    { key: "id", header: "Invoice", value: (i) => i.id, locked: true, render: (i) => <span className="strong num">{i.id}</span> },
+    { key: "id", header: "Invoice", nowrap: true, value: (i) => i.id, locked: true, render: (i) => <span className="strong num">{i.id}</span> },
     { key: "issued", header: "Issued", value: (i) => i.issued, render: (i) => <span className="num">{i.issued}</span> },
     { key: "period", header: "Period", value: (i) => i.from, render: (i) => <span className="num" style={{ color: "var(--muted)" }}>{i.from} to {i.to}</span> },
     { key: "due", header: "Due", value: (i) => i.due, render: (i) => <span className="num">{i.due}</span> },

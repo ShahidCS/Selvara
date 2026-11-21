@@ -68,7 +68,7 @@ export function AskServer({ scrollRef }: { scrollRef: React.RefObject<HTMLDivEle
     } catch (e) { L.toast(uiMessage(e) || "Could not draft an answer", false); }
     finally { setBusy(false); }
   };
-  const copy = async (t: string) => { try { await navigator.clipboard.writeText(t); L.toast("Draft copied"); } catch { L.toast("Copy not available in this view"); } };
+  const copy = async (t: string) => { try { await navigator.clipboard.writeText(t); L.toast("Draft copied"); } catch { L.toast("Copy not available in this view", false); } };
   const reviewed = async (i: number) => {
     const t = turns[i]; if (!t.draftId) return;
     try { await svc.markReviewed(t.draftId); setTurns((all) => all.map((x, k) => (k === i ? { ...x, reviewed: true } : x))); L.toast("Marked as reviewed"); }
@@ -96,7 +96,7 @@ export function AskServer({ scrollRef }: { scrollRef: React.RefObject<HTMLDivEle
           <AIPanel source="Assistant" meta={`Draft, review required${m.model ? ` · ${m.model}` : ""}`} label="Assistant answer"
             footer={<>
               {m.masked ? <Chip cls="warn" icon="alert">Personal data was masked before sending</Chip> : null}
-              <button className="btn btn-ghost sm" onClick={() => copy(m.text)}>Copy</button>
+              <button className="btn btn-ghost sm" onClick={() => copy(m.text)}><Icon name="copy" />Copy</button>
               {m.reviewed ? <Chip cls="ok" icon="check">Reviewed</Chip> : <button className="btn btn-ghost sm" onClick={() => reviewed(i)}><Icon name="check" />Mark reviewed</button>}
             </>}>
             <div style={{ fontSize: 13.5, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{m.text}</div>

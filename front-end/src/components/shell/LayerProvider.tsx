@@ -11,7 +11,7 @@ type Layer =
   | null
   | { kind: "drawer"; title: string; sub?: ReactNode; body: Content; foot?: Content }
   | { kind: "modal"; title: string; body: Content; foot?: Content; wide?: boolean }
-  | { kind: "popover"; top: number; right?: number; left?: number; body: Content; trigger?: HTMLElement | null; role?: "menu" | "listbox"; label?: string }
+  | { kind: "popover"; top?: number; bottom?: number; maxH: number; right?: number; left?: number; body: Content; trigger?: HTMLElement | null; role?: "menu" | "listbox"; label?: string }
   | { kind: "palette" };
 
 export type ToastTone = "ok" | "bad" | "info";
@@ -143,7 +143,7 @@ function Popover({ l, close }: { l: Extract<Layer, { kind: "popover" }>; close: 
   return (
     <>
       <div className="scrim" style={{ background: "transparent", pointerEvents: "auto" }} onClick={close} />
-      <div ref={ref} tabIndex={-1} className="pop" role={l.role || "menu"} aria-label={l.label} style={{ top: l.top, right: l.right, left: l.left }} onKeyDown={onKey}>{run(l.body, close)}</div>
+      <div ref={ref} tabIndex={-1} className="pop" role={l.role || "menu"} aria-label={l.label} style={{ top: l.top, bottom: l.bottom, right: l.right, left: l.left, maxHeight: l.maxH, overflowY: "auto" }} onKeyDown={onKey}>{run(l.body, close)}</div>
     </>
   );
 }
@@ -224,7 +224,9 @@ export function LayerProvider({ children }: { children: ReactNode }) {
     popover: (ev, body, opts) => {
       const el = ev.currentTarget as HTMLElement; const b = el.getBoundingClientRect();
       el.classList?.add("ibopen"); if (el.hasAttribute?.("aria-haspopup")) el.setAttribute("aria-expanded", "true");
-      setLayer({ kind: "popover", top: b.bottom + 6, ...(opts?.align === "start" ? { left: Math.max(8, Math.min(b.left, window.innerWidth - 248)) } : { right: window.innerWidth - b.right }), body, trigger: el, role: opts?.role, label: opts?.label });
+      // open below the trigger, or above it when there is little room below (a row menu near the bottom of the screen)
+      const below = window.innerHeight - b.bottom, up = below < 320 && b.top > below;
+      setLayer({ kind: "popover", ...(up ? { bottom: window.innerHeight - b.top + 6, maxH: b.top - 18 } : { top: b.bottom + 6, maxH: below - 18 }), ...(opts?.align === "start" ? { left: Math.max(8, Math.min(b.left, window.innerWidth - 248)) } : { right: window.innerWidth - b.right }), body, trigger: el, role: opts?.role, label: opts?.label });
     },
     openPalette: () => setLayer({ kind: "palette" }),
     closeLayer, toast,
