@@ -4,6 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Changed
+- **One meaning per word for "Workspace".** The breadcrumb starts with the company's name, and the sidebar switch reads "Company | Admin Console". The sidebar group of Integrations, API, AI Assistant, Team, Billing, Audit Logs and Security Controls is now **Settings**, and "Team & Settings" is now **Team & Rules**. **My Workspace is merged into My Work**: the greeting and counts sit above the tabs Tasks, Policies, Account security and Delegation. Old `/ws/me` links open the Policies tab.
+- **Guided tours replace the tip banners.** Every module (workspace and Admin Console) has a bubble walkthrough with Next, Back and Skip tour. The person chooses in Sign-in & security, Guided tours: First visit only (default), Again after updates, or Off. The choice is saved on their account (`GET/PUT /api/me/tours`, no migration). The top bar's play button plays a page's tour again.
+
 ## [0.2.1] - 2026-11-21
 
 Interface fixes from a design review of every module; no migration and no new settings. Deploy as usual.

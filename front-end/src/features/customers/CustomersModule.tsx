@@ -25,7 +25,7 @@ function DemoCustomersModule() {
   const pick = (id: string) => { setSel(id); setRecent([id, ...recent.filter((x) => x !== id)].slice(0, 4)); };
   const recents = recent.map((id) => findCustomer(id)).filter(Boolean);
   return (
-    <Page mod="customers" acts={<>{c ? <button className="btn btn-secondary" onClick={() => setSel(null)}><Icon name="x" />Clear</button> : null}<button className="btn btn-primary" onClick={openOnboard} disabled={gate.locked} title={gate.title}><Icon name="plus" />Onboard customer</button></>}>
+    <Page mod="customers" acts={<>{c ? <button className="btn btn-secondary" onClick={() => setSel(null)}><Icon name="x" />Clear</button> : null}<button className="btn btn-primary" data-tour="customers-onboard" onClick={openOnboard} disabled={gate.locked} title={gate.title}><Icon name="plus" />Onboard customer</button></>}>
       <ElevateGateBanner />
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-body" id="custBody" style={{ display: "flex", flexDirection: "column", gap: 14 }}>

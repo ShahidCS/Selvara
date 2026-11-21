@@ -11,7 +11,6 @@ import { AddAnswerPage, ImportFormPage } from "./QuestionnaireForms";
 import { QuestionnaireDetail } from "./QuestionnaireDetail";
 import VendorPortal from "./VendorPortal";
 import { API_ON } from "@/lib/rbac";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { useSyncExternalStore } from "react";
 import { DueCell } from "./QuestionnaireDetail";
 
@@ -71,12 +70,12 @@ function QuestionnairesList() {
     L.toast("Answer verified"); bumpData();
   });
   const acts = view === "flight"
-    ? <button className="btn btn-primary" onClick={() => go("/ws/questionnaires/import")}><Icon name="plus" />Import questionnaire</button>
+    ? <button className="btn btn-primary" data-tour="questionnaires-import" onClick={() => go("/ws/questionnaires/import")}><Icon name="plus" />Import questionnaire</button>
     : view === "library"
-      ? <button className="btn btn-primary" onClick={() => go("/ws/questionnaires/answer")}><Icon name="plus" />Add answer</button>
-      : API_ON ? <label className="btn btn-secondary" style={{ cursor: "pointer" }}><Icon name="plus" />Upload document
+      ? <button className="btn btn-primary" data-tour="questionnaires-add-answer" onClick={() => go("/ws/questionnaires/answer")}><Icon name="plus" />Add answer</button>
+      : API_ON ? <label className="btn btn-secondary" data-tour="questionnaires-upload" style={{ cursor: "pointer" }}><Icon name="plus" />Upload document
           <input type="file" style={{ display: "none" }} aria-label="Upload document" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) attempt(L, async () => { const r = await svc.uploadKbDoc(f); L.toast(`${r.name} added to the knowledge base`); bumpData(); }); }} /></label>
-      : <button className="btn btn-secondary" onClick={() => L.toast("Upload document (demo)")}><Icon name="plus" />Upload document</button>;
+      : <button className="btn btn-secondary" data-tour="questionnaires-upload" onClick={() => L.toast("Upload document (demo)")}><Icon name="plus" />Upload document</button>;
 
   let body;
   if (view === "flight") {
@@ -95,7 +94,7 @@ function QuestionnairesList() {
     );
   } else {
     body = (
-      <div style={{ padding: 12 }}>
+      <div style={{ padding: 12 }} data-tour="questionnaires-kb">
         <Table cols={[{ t: "Document" }, { t: "Type" }, { t: "" }]}>
           {!KB_DOCS.length ? <tr><td colSpan={3} style={{ color: "var(--muted)" }}>No documents yet. Upload policies and reports you use to answer questionnaires.</td></tr> : null}
           {KB_DOCS.map((d, i) => (
@@ -107,9 +106,8 @@ function QuestionnairesList() {
   }
   return (
     <Page mod="questionnaires" acts={acts}>
-      <ModuleTip mod="questionnaires" force={API_ON && !DATA.questionnaires.length && !ANSWER_LIB.length} />
       <div className="card" style={{ flex: "1 1 auto" }}>
-        <div className="c-head"><div className="seg" role="tablist">{VIEWS.map((v) => <button key={v[0]} role="tab" aria-selected={view === v[0]} onClick={() => setView(v[0])}>{v[1]}</button>)}</div></div>
+        <div className="c-head"><div className="seg" role="tablist" data-tour="questionnaires-views">{VIEWS.map((v) => <button key={v[0]} role="tab" aria-selected={view === v[0]} onClick={() => setView(v[0])}>{v[1]}</button>)}</div></div>
         <div className="c-body flush scroll" style={{ padding: 0 }} id="qBody">{body}</div>
       </div>
     </Page>

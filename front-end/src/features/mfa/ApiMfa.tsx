@@ -38,8 +38,8 @@ export function ApiMfa() {
   return (
     <Page mod="mfa" sub="Multi-factor resets for company admins and owners: three identity checks and a named second approver.">
       <ServerElevationBanner s={s} />
-      <div className="card" style={{ flex: "1 1 auto" }}>
-        <div className="c-head"><div className="seg" role="tablist" aria-label="MFA reset views">{[["admins", "Company admins"], ["requests", "Requests"], ["history", "History"]].map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setView(x[0])}>{x[1]}</button>)}</div></div>
+      <div className="card" data-tour="mfa-admins" style={{ flex: "1 1 auto" }}>
+        <div className="c-head"><div className="seg" role="tablist" aria-label="MFA reset views" data-tour="mfa-views">{[["admins", "Company admins"], ["requests", "Requests"], ["history", "History"]].map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setView(x[0])}>{x[1]}</button>)}</div></div>
         <div className="c-body scroll">
           {err ? <p role="alert" style={{ color: "var(--bad-ink)" }}>{err}</p> : !d ? <p style={{ color: "var(--muted)" }}>Loading…</p>
             : view === "requests" ? <MfaRequests />

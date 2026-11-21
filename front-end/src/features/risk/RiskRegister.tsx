@@ -52,7 +52,7 @@ export default function RiskRegister() {
     <>
       <PendingImports />
       <section className="card"><div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
+        <div data-tour="risk-filters" style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
           <label className="field" style={{ flex: "2 1 220px", margin: 0 }}><span className="flab">Search</span>
             <input className="input" type="search" maxLength={100} value={RF.q} onChange={(e) => patch({ q: e.target.value })} placeholder="ID, title, threat, team" /></label>
           <Sel id="rating" val={RF.rating} opts={RBANDS.map((b) => b.name)} label="Rating" set={(v) => patch({ rating: v })} />
@@ -67,7 +67,7 @@ export default function RiskRegister() {
           {RF.cell ? <button className="fchip on" onClick={() => patch({ cell: null })}>{cellLabel} ×</button> : null}
           {hasFilter ? <button className="btn btn-ghost sm" onClick={riskClearFilters}>Clear filters</button> : null}
         </div>
-        <div className="c-body flush" style={{ padding: 0 }}>
+        <div className="c-body flush" data-tour="risk-table" style={{ padding: 0 }}>
           {list.length ? (
             <Table cols={[{ t: "ID" }, { t: "Risk" }, { t: "Team" }, { t: "Jurisdiction" }, { t: "Inherent" }, { t: "Current" }, { t: "Residual" }, { t: "Priority" }, { t: "Treatment" }, { t: "Status" }]} minw={980}>
               {list.map((r) => (

@@ -16,6 +16,9 @@ import { Topbar } from "./Topbar";
 import { LayerProvider, useLayer } from "./LayerProvider";
 import { Empty } from "@/components/ui";
 import { openShortcuts } from "./Shortcuts";
+import { TourHost, startTour, tourRunning } from "@/components/kit/Tour";
+import { MODULE_TOURS } from "@/data/tours";
+import { loadTourPrefs, resetTourPrefs, shouldAutoStart, useTourPrefs } from "@/lib/tours";
 
 function Frame({ children }: { children: ReactNode }) {
   const router = useRouter(); const go = useGo(); const L = useLayer();
@@ -35,6 +38,23 @@ function Frame({ children }: { children: ReactNode }) {
   // Production: load the company's workspace records once signed in, and again whenever the company or role changes (company switch).
   const companyRef = s.company?.ref ?? null;
   useEffect(() => { if (API_MODE === "http" && s.hydrated && s.signedIn) void loadWorkspace(); }, [s.hydrated, s.signedIn, s.role, companyRef]);
+  // guided tours: the person's preference (their account in production), then a module's tour starts by itself on its main page when the
+  // preference says so. Not under browser automation (end-to-end tests), unless a test opts in.
+  const tours = useTourPrefs();
+  useEffect(() => { if (s.hydrated && s.signedIn) void loadTourPrefs(); else resetTourPrefs(); }, [s.hydrated, s.signedIn, s.role, companyRef]);
+  useEffect(() => {
+    if (!tours.loaded || !s.signedIn || route.space === "auth" || route.param) return;
+    const t = MODULE_TOURS[route.mod]; if (!t || !shouldAutoStart(route.mod, t.version)) return;
+    let automated = false; try { automated = navigator.webdriver && localStorage.getItem("selvara.tours.e2e") !== "1"; } catch { automated = navigator.webdriver; }
+    if (automated) return;
+    const at = window.location.pathname;
+    const timer = window.setTimeout(() => {
+      // never over a dialog, a drawer or another tour, and only if the person is still on the same page
+      if (window.location.pathname !== at || tourRunning() || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+      if (allowedSpaces(appStore.get().role).includes(route.space) && modAllowed(appStore.get().role, route.space, route.mod)) startTour(route.mod);
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [tours.loaded, s.signedIn, route.space, route.mod, route.param]);
   // after sign-in: when and where the previous sign-in was, and failed attempts since (shown once; also on the account page)
   useEffect(() => {
     const w = getWelcome(); if (!s.signedIn || !w || w.shown) return;
@@ -109,6 +129,7 @@ function Frame({ children }: { children: ReactNode }) {
         ) : s.hydrated && !allowed ? null : children}
       </main>
       <div id="scrim-sb" onClick={() => appStore.set({ mobOpen: false })} />
+      <TourHost />
     </div>
   );
 }

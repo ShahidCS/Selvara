@@ -38,7 +38,7 @@ export function BillingList() {
         <KpiTile label="On trial" value={trials} caption="Not invoiced yet" />
       </KpiStrip>
       <div className="split" style={{ gridTemplateColumns: "minmax(0, 1.6fr) minmax(0, 1fr)" }}>
-        <div className="card">
+        <div className="card" data-tour="billing-table">
           <div className="c-head" style={{ flexWrap: "wrap", gap: 8 }}><h3>Customers</h3>
             <div className="field" style={{ marginLeft: "auto" }}><input className="input" id="billQ" aria-label="Search customers" placeholder="Search customers…" maxLength={100} style={{ width: 200, height: 32 }} value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} /></div></div>
           <div className="c-body flush scroll" style={{ padding: 0 }} id="billTable">

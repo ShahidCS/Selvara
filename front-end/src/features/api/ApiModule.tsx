@@ -9,7 +9,6 @@ import { useGo, useRoute } from "@/lib/route";
 import { RevealKeyModal, RevealSecretModal, RevokeKeyForm } from "./ApiModals";
 import { API_ON } from "@/lib/rbac";
 import { askReason } from "@/components/kit/ReasonDialog";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { NewKeyPage, NewTestPage, NewWebhookPage } from "./ApiForms";
 
 const TABS: [string, string][] = [["Keys", "API keys"], ["Hooks", "Webhooks"], ["Tests", "Custom tests"], ["Stream", "Event stream"]];
@@ -106,23 +105,22 @@ function ApiTabs() {
     { key: "when", header: "When", value: (r) => r.when, render: (r) => <span style={{ color: "var(--muted)" }}>{r.when}</span> },
   ];
   const acts = manage ? (
-    tab === "Keys" ? <button className="btn btn-primary" onClick={() => go("/ws/api/new-key")}><Icon name="plus" />New API key</button>
-    : tab === "Hooks" ? <button className="btn btn-primary" onClick={() => go("/ws/api/new-webhook")}><Icon name="plus" />Add webhook</button>
-    : tab === "Tests" ? <button className="btn btn-primary" onClick={() => go("/ws/api/new-test")}><Icon name="plus" />New custom test</button>
-    : <button className="btn btn-secondary" onClick={push}><Icon name="refresh" />Push test event</button>
+    tab === "Keys" ? <button className="btn btn-primary" data-tour="api-add" onClick={() => go("/ws/api/new-key")}><Icon name="plus" />New API key</button>
+    : tab === "Hooks" ? <button className="btn btn-primary" data-tour="api-add" onClick={() => go("/ws/api/new-webhook")}><Icon name="plus" />Add webhook</button>
+    : tab === "Tests" ? <button className="btn btn-primary" data-tour="api-add" onClick={() => go("/ws/api/new-test")}><Icon name="plus" />New custom test</button>
+    : <button className="btn btn-secondary" data-tour="api-add" onClick={push}><Icon name="refresh" />Push test event</button>
   ) : undefined;
 
   return (
     <Page mod="api" acts={acts}>
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head" style={{ padding: "0 8px" }}>
-          <div className="tabs" role="tablist">
+          <div className="tabs" role="tablist" data-tour="api-tabs">
             {TABS.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={tab === x[0]} onClick={() => setT(x[0])}>{x[1]}</button>)}
           </div>
         </div>
-        <div className="c-body flush scroll" style={{ padding: 0 }} id="apiBody">
-          <div className="empty:hidden" style={{ padding: "12px 12px 0" }}><ModuleTip mod="api" /></div>
-          {tab === "Keys" || tab === "Hooks" ? <div className="empty:hidden" style={{ padding: "12px 12px 0" }}><ApprovalsPanel prefix="api." title="API approvals (second admin)" /></div> : null}
+        <div className="c-body flush scroll" style={{ padding: 0 }} id="apiBody" data-tour="api-table">
+          {tab === "Keys" || tab === "Hooks" ? <div className="empty:hidden" data-tour="api-approvals" style={{ padding: "12px 12px 0" }}><ApprovalsPanel prefix="api." title="API approvals (second admin)" /></div> : null}
           {tab === "Keys" ? (
             <DataTable<Key> id="api-keys" label="API keys" rows={svc.API.keys} rowKey={(k) => k.id} columns={keyCols} searchText={(k) => `${k.label} ${k.prefix} ${k.scope}`}
               tabs={["Active", "Pending approval", ...(API_ON ? ["Approved, not yet issued", "Expired"] : []), "Not approved", "Revoked"].map((st) => ({ key: st, label: st, match: (k: Key) => k.status === st }))} exportName="api-keys" />

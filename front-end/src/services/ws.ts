@@ -73,7 +73,7 @@ const LOADERS: Record<string, (b: any) => void> = {
     DATA.policies = b.policies; setAcks(appStore.get().who || "", b.acks || {});
     setApprovals(["policy.emergency"], b.approvals); setDelegations(b.delegations || []);
   },
-  /** My workspace: published policies (also for roles without the Policies module), acknowledgements, delegations, tasks. */
+  /** My Work (Policies and Delegation tabs): published policies (also for roles without the Policies module), acknowledgements, delegations, tasks. */
   me(b) {
     if (!modAllowed(appStore.get().role, "ws", "policies")) DATA.policies = b.published;
     setAcks(appStore.get().who || "", b.acks || {}); setDelegations(b.delegations || []); wsMeta.set({ tasks: b.tasks || [] }); setTasks(b.tasks || []);

@@ -39,7 +39,8 @@ export const MODULES: Record<string, ComponentType<ModuleProps>> = {
   mfa: lazy(() => import("@/features/mfa").then((m) => m.MfaModule)),
   adminlog: lazy(() => import("@/features/adminlog").then((m) => m.AdminLogModule)),
   auth: lazy(() => import("@/features/auth").then((m) => m.AuthModule)),
-  me: lazy(() => import("@/features/me").then((m) => m.MeModule)),
+  /* the old "My Workspace" address: opens My Work on its Policies tab */
+  me: lazy(() => import("@/features/work").then((m) => m.MeRedirect)),
   elevation: lazy(() => import("@/features/elevation").then((m) => m.ElevationModule)),
   security: lazy(() => import("@/features/platformsecurity").then((m) => m.PlatformSecurityModule)),
   appsec: lazy(() => import("@/features/appsec").then((m) => m.AppSecModule)),

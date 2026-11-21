@@ -39,7 +39,7 @@ export function SendQuestionnaire({ vendorId, mail, contacts, close }: { vendorI
         </div>
       ) : contacts.length ? (
         <div className="field"><label htmlFor="sq-contact">Vendor contact</label><select className="select" id="sq-contact" value={contact} onChange={(e) => setContact(e.target.value)}>{contacts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-      ) : <p className="field help">No member has the Vendor role yet. Invite the vendor&apos;s contact in Team &amp; Settings with the Vendor role first.</p>}
+      ) : <p className="field help">No member has the Vendor role yet. Invite the vendor&apos;s contact in Team &amp; Rules with the Vendor role first.</p>}
       <p className="field help" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" disabled={busy || (how === "member" && !contacts.length)} onClick={go}>Send</button></LayerFoot>
     </>

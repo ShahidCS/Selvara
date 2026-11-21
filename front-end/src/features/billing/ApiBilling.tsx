@@ -5,7 +5,6 @@ import { ReasonTicket, reasonTicketOk } from "@/components/kit/admin/ReasonTicke
 import { ELEVATE_TEXT, ServerElevationBanner, useServerElevation } from "@/components/kit/admin/ServerElevation";
 import { apiMessage, RequestsTable, utcMin } from "@/components/kit/serverRequests";
 import { useLayer } from "@/hooks/useLayer";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { invoiceText, minorMoney } from "@/lib/billingText";
 import { downloadText } from "@/lib/format";
 import { useGo } from "@/lib/route";
@@ -32,7 +31,7 @@ export function ApiBilling({ param }: { param?: string | null }) {
   const lock = s.locked ? (s.canElevate ? ELEVATE_TEXT : "Support accounts read only") : undefined;
   const acts = b ? <>
     <button className="btn btn-secondary" disabled={!!lock} title={lock} onClick={() => L.openModal("Set up a billing account", (close) => <AccountForm b={b} close={close} />)}><Icon name="plus" />Set up account</button>
-    <button className="btn btn-primary" disabled={!!lock} title={lock} onClick={() => L.openModal("Issue invoices", (close) => <IssueForm b={b} close={close} />)}><Icon name="billing" />Issue invoices</button>
+    <button className="btn btn-primary" data-tour="billing-issue" disabled={!!lock} title={lock} onClick={() => L.openModal("Issue invoices", (close) => <IssueForm b={b} close={close} />)}><Icon name="billing" />Issue invoices</button>
   </> : undefined;
   if (param) {
     const acc = b?.accounts.find((a) => a.tenantId === param);
@@ -49,7 +48,6 @@ export function ApiBilling({ param }: { param?: string | null }) {
   return (
     <Page mod="billing" sub="The platform's billing ledger: accounts, invoices, payments and credits." acts={acts}>
       <ServerElevationBanner s={s} />
-      <ModuleTip mod="billing" force={!!b && !b.accounts.length} />
       {b ? (
         <KpiStrip label="Billing summary">
           <KpiTile label="Billing accounts" value={b.accounts.length} caption={`${b.companies.filter((c) => !c.hasAccount && c.status !== "Closed").length} companies without one`} />
@@ -58,8 +56,8 @@ export function ApiBilling({ param }: { param?: string | null }) {
           <KpiTile label="Card payments" value={b.payments ? (b.payments.mode === "live" ? "Live" : "Test mode") : "Off"} caption={b.payments ? "Through the payment provider" : "Bank transfer only"} />
         </KpiStrip>
       ) : null}
-      <div className="card" style={{ flex: "1 1 auto", marginTop: 12 }}>
-        <div className="c-head"><div className="seg" role="tablist" aria-label="Billing views">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setView(x[0])}>{x[1]}</button>)}</div></div>
+      <div className="card" data-tour="billing-table" style={{ flex: "1 1 auto", marginTop: 12 }}>
+        <div className="c-head"><div className="seg" role="tablist" aria-label="Billing views" data-tour="billing-views">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setView(x[0])}>{x[1]}</button>)}</div></div>
         <div className="c-body scroll">
           {err ? <p role="alert" style={{ color: "var(--bad-ink)" }}>{err}</p> : !b ? <p style={{ color: "var(--muted)" }}>Loading…</p>
             : view === "invoices" ? <Invoices b={b} rows={b.invoices} lock={lock} />

@@ -253,7 +253,7 @@ export function vendorRoutes(h: WsHelpers) {
   const sendQ = manage(async (d, t, rec, b) => {
     const v = rec.data; const ms = await membersOf(d, t.actor);
     const contact = ms.find((m) => m.id === str(b.contactId, 100) && m.role === "vendor");
-    if (!contact) invalid("Choose the vendor's contact. Invite them in Team & Settings with the Vendor role first.");
+    if (!contact) invalid("Choose the vendor's contact. Invite them in Team & Rules with the Vendor role first.");
     const open = (await t.list<VendorQuestionnaire>("vendor-questionnaire")).find((x) => x.data.vendorId === v.id && x.data.status !== "Submitted");
     if (open) invalid("A questionnaire is already waiting for this vendor's answers.");
     const company = (await d.dir.companiesOf(t.actor.id)).find((m) => m.company.id === t.actor.tenantId)?.company.name ?? "your customer";

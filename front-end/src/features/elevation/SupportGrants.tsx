@@ -17,7 +17,7 @@ export function SupportGrants() {
     return la !== lb ? (la ? -1 : 1) : la ? a.expiresAt - b.expiresAt : b.expiresAt - a.expiresAt;
   });
   return (
-    <div className="card">
+    <div className="card" data-tour="elevation-grants">
       <div className="c-head"><h3>Customer-approved support grants</h3></div>
       <p className="field help" style={{ margin: "0 16px 8px" }}>Approved by the customer, read-only and expiring. The customer creates and revokes them; this list is read-only.</p>
       <div className="c-body flush" style={{ padding: 0 }}>

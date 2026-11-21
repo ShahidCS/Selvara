@@ -26,7 +26,7 @@ export function ApiElevation() {
   if (s.loaded && !s.canElevate) return <Page mod="elevation"><Empty icon="access" title="Support accounts do not elevate">You can browse the Admin Console. Changes are made by platform super admins, each with an elevated session.</Empty></Page>;
   return (
     <Page mod="elevation" sub="Time-boxed elevation for platform changes: reason, ticket, 60 minutes at most.">
-      <div className="card" style={{ flex: "1 1 auto" }}><div className="c-body scroll">
+      <div className="card" data-tour="elevation-request" style={{ flex: "1 1 auto" }}><div className="c-body scroll">
         <ServerElevationBanner s={s} />
         {s.el ? (
           <>

@@ -5,7 +5,7 @@ import { apiFetch } from "./http";
 
 const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
 
-/* ---------- the company's side (Team & Settings) ---------- */
+/* ---------- the company's side (Team & Rules) ---------- */
 export interface SupportGrant { id: string; reason: string; grantedBy: string; createdAt: number; expiresAt: number; revokedAt: number | null; revokedBy: string | null; status: "Live" | "Expired" | "Revoked" }
 export interface SupportLogLine { at: number; actor: string; action: string; target: string }
 export const getCompanySupport = () => apiFetch<{ grants: SupportGrant[]; log: SupportLogLine[]; maxHours: number }>("/team/support");

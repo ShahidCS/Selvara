@@ -48,7 +48,7 @@ export default function TrustPublic({ L, manage, back }: { L: LayerApi; manage: 
       <div className="scroll" style={{ overflow: "auto" }}><div style={{ maxWidth: 860, margin: "0 auto" }}>
         {manage ? <p className="field help" style={{ margin: "0 0 14px" }}>Preview: this is the page your customers see.</p> : null}
         <div className="split" style={{ gridTemplateColumns: "1fr 1fr", marginBottom: 14 }}>
-          <div className="card"><div className="c-head"><h3>Your access</h3></div><div className="c-body">
+          <div className="card" data-tour="trust-pub-access"><div className="c-head"><h3>Your access</h3></div><div className="c-body">
             <p className="field help" style={{ margin: "0 0 10px" }}>{!API_ON ? "You are viewing the public page. Accept the NDA to request private documents such as the SOC 2 report."
               : acct ? `Your company has access to ${acct.access.join(", ")}. NDA: ${acct.nda}.` : "You are viewing the public page. Request a private document; once a request is approved, accept the NDA to open it."}</p>
             {API_ON && pub?.myRequests.length ? <p className="field help" style={{ margin: "0 0 10px" }}>Your requests: {pub.myRequests.map((r) => `${r.resource} (${r.status})`).join(", ")}</p> : null}
@@ -57,14 +57,14 @@ export default function TrustPublic({ L, manage, back }: { L: LayerApi; manage: 
               {API_ON && pub?.subscribed ? <span className="sub">Subscribed to updates</span> : <button className="btn btn-secondary sm" onClick={() => L.openModal("Subscribe to updates", <SubscribeForm L={L} />)}><Icon name="bell" />Subscribe to updates</button>}
             </div>
           </div></div>
-          <div className="card"><div className="c-head"><h3>Live control status</h3></div><div className="c-body" style={{ padding: 0 }}>
+          <div className="card" data-tour="trust-pub-controls"><div className="c-head"><h3>Live control status</h3></div><div className="c-body" style={{ padding: 0 }}>
             <Table cols={[{ t: "Category" }, { t: "Status" }]}>
               {!ctrls.length ? <tr><td colSpan={2} style={{ color: "var(--muted)" }}>No controls published yet.</td></tr> : null}
               {ctrls.map((c) => <tr key={c[0]}><td className="strong">{c[0]}</td><td><StatusChip s={c[1] === "Pass" ? "Pass" : "In review"} /></td></tr>)}
             </Table>
           </div></div>
         </div>
-        <div className="card" style={{ marginBottom: 14 }}><div className="c-head"><h3>Documents</h3></div><div className="c-body" style={{ padding: 0 }}>
+        <div className="card" data-tour="trust-pub-docs" style={{ marginBottom: 14 }}><div className="c-head"><h3>Documents</h3></div><div className="c-body" style={{ padding: 0 }}>
           <Table cols={[{ t: "Document" }, { t: "Access" }, { t: "" }]}>
             {DATA.trust.map((t, i) => (
               <tr key={i}>
@@ -93,7 +93,7 @@ export default function TrustPublic({ L, manage, back }: { L: LayerApi; manage: 
           {!TRUST_FAQ.length ? <p className="field help" style={{ margin: 0 }}>No answers published yet.</p> : null}
           {TRUST_FAQ.map((f, i) => <details key={i} style={{ marginBottom: 8 }}><summary style={{ cursor: "pointer", fontWeight: 500 }}>{f.q}</summary><p className="field help" style={{ margin: "6px 0 0" }}>{f.a}</p></details>)}
         </div></div>
-        <div className="card"><div className="c-head"><h3>Ask a question</h3></div><div className="c-body">
+        <div className="card" data-tour="trust-pub-ask"><div className="c-head"><h3>Ask a question</h3></div><div className="c-body">
           {TRUST.chatbot ? <p className="field help" style={{ margin: "0 0 8px" }}>Answered instantly from our published FAQ and verified answer library. Anything it can’t answer is sent to the security team.</p> : null}
           <div className="field"><label htmlFor="tq">Your question</label><textarea className="input" id="tq" rows={2} maxLength={1000} style={{ resize: "vertical" }} placeholder="Ask about our security posture…" value={q} onChange={(e) => { setQ(e.target.value); setQErr(""); }} aria-invalid={!!qErr} aria-describedby={qErr ? "tq-err" : undefined} />{qErr ? <FormMessage id="tq-err">{qErr}</FormMessage> : null}</div>
           <button className="btn btn-primary sm" onClick={ask}><Icon name="assistant" />{TRUST.chatbot ? "Ask the assistant" : "Ask"}</button>

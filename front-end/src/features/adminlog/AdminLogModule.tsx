@@ -34,7 +34,7 @@ function DemoAdminLogModule() {
   const doRopa = (fmt: "json" | "csv") => run(() => svc.exportRopa(fmt), () => L.toast("RoPA register exported (" + fmt.toUpperCase() + ")"));
   const doPackage = () => run(svc.generatePackage, (id) => L.toast("Evidence package " + String(id) + " generated"));
   const expBtns = (fn: (f: "json" | "csv") => void) => (
-    <><button className="btn btn-secondary" disabled={!can} onClick={() => fn("json")}><Icon name="download" />JSON</button><button className="btn btn-secondary" disabled={!can} onClick={() => fn("csv")}><Icon name="download" />CSV</button></>
+    <><button className="btn btn-secondary" data-tour="adminlog-export" disabled={!can} onClick={() => fn("json")}><Icon name="download" />JSON</button><button className="btn btn-secondary" disabled={!can} onClick={() => fn("csv")}><Icon name="download" />CSV</button></>
   );
   // Exports stay on every tab (the RoPA tab exports the register); the demo-wide reset comes last and the same on every tab.
   const acts = (
@@ -87,10 +87,10 @@ function DemoAdminLogModule() {
         <KpiTile label="Tenants touched" value={tenants.length} delta={{ tone: "flat", text: "Includes platform" }} caption="Distinct scopes in the log" />
         <KpiTile label="Latest event" value={all[0] ? all[0].at.slice(0, 10) : "None"} delta={{ tone: "flat", text: all[0] ? all[0].action : "No events" }} caption="Newest entry" />
       </KpiStrip>
-      <div className="card" style={{ flex: "1 1 auto", minHeight: 0 }}>
+      <div className="card" data-tour="adminlog-table" style={{ flex: "1 1 auto", minHeight: 0 }}>
         <div className="c-head" style={{ flexWrap: "wrap", gap: 8 }}>
-          <div className="seg" role="tablist">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div>
-          <span id="alChain" role="status" style={{ marginLeft: "auto", fontSize: 12 }}>
+          <div className="seg" role="tablist" data-tour="adminlog-views">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div>
+          <span id="alChain" role="status" data-tour="adminlog-chain" style={{ marginLeft: "auto", fontSize: 12 }}>
             {chainOk ? <span style={{ color: "var(--ok-ink)" }}><Icon name="check" /> Chain intact, {ADMIN_AUDIT.length} entries</span> : <span style={{ color: "var(--bad-ink)" }}><Icon name="alert" /> Chain broken</span>}
           </span>
         </div>

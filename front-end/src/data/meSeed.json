@@ -1,5 +1,5 @@
 {
-  "_note": "Synthetic demo data for /ws/me. No real people, devices, places or IP addresses.",
+  "_note": "Synthetic demo data for My Work (/ws/work: tasks, Policies and Account security tabs). No real people, devices, places or IP addresses.",
   "ackWindowDays": 14,
   "approved": {
     "P-001": "15 Mar 2026",

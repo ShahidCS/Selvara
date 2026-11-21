@@ -9,7 +9,6 @@ import { useLayer } from "@/components/shell/LayerProvider";
 import * as svc from "@/features/controls/services/controls";
 import { testChip } from "./controlDialogs";
 import { AdoptForm } from "./AdoptForm";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { API_ON } from "@/lib/rbac";
 import { ControlDetail } from "./ControlDetail";
 import { TestDetail } from "./TestDetail";
@@ -53,7 +52,7 @@ function ControlsList() {
   const [view, setView] = useModState<View>("controls.view", "controls");
 
   const seg = (
-    <div className="seg" role="tablist">
+    <div className="seg" role="tablist" data-tour="controls-views">
       {VIEWS.map((v) => <button key={v[0]} role="tab" aria-selected={view === v[0]} onClick={() => setView(v[0])}>{v[1]}</button>)}
     </div>
   );
@@ -83,9 +82,9 @@ function ControlsList() {
   const acts = view === "controls" ? (
     <>
       <button className="btn btn-secondary" onClick={() => go("/ws/frameworks")}><Icon name="frameworks" />Frameworks</button>
-      <button className="btn btn-secondary" onClick={soa}><Icon name="download" />Export SoA</button>
-      {API_ON && !manageWhy ? <button className="btn btn-secondary" onClick={() => L.openModal("Adopt controls from the library", (close) => <AdoptForm close={close} />)}><Icon name="controls" />Adopt from library</button> : null}
-      {!manageWhy ? <button className="btn btn-primary" onClick={() => go("/ws/controls/new")}><Icon name="plus" />Add custom control</button> : null}
+      <button className="btn btn-secondary" data-tour="controls-soa" onClick={soa}><Icon name="download" />Export SoA</button>
+      {API_ON && !manageWhy ? <button className="btn btn-secondary" data-tour="controls-adopt" onClick={() => L.openModal("Adopt controls from the library", (close) => <AdoptForm close={close} />)}><Icon name="controls" />Adopt from library</button> : null}
+      {!manageWhy ? <button className="btn btn-primary" data-tour="controls-add" onClick={() => go("/ws/controls/new")}><Icon name="plus" />Add custom control</button> : null}
     </>
   ) : view === "tests" ? (
     <>
@@ -123,7 +122,7 @@ function ControlsList() {
         {manageNote}
         <div className="card" style={{ flex: "1 1 auto" }}>
           <div className="c-head">{seg}</div>
-          <div className="c-body flush scroll" style={{ padding: 0 }} id="testsBody">
+          <div className="c-body flush scroll" data-tour="controls-tests" style={{ padding: 0 }} id="testsBody">
             <DataTable<Test> id="tests" label="Tests" rows={DATA.tests} rowKey={(t) => t.id} columns={testCols} searchText={(t) => `${t.id} ${t.name} ${t.source} ${t.controls.join(" ")}`}
               tabs={testTabs.map((x) => ({ key: x, label: x, match: (t: Test) => testLabel(t.result) === x }))}
               filters={[{ key: "source", label: "Source", options: Array.from(new Set<string>(DATA.tests.map((t: Test) => String(t.source)))), get: (t: Test) => t.source }]}
@@ -165,13 +164,12 @@ function ControlsList() {
 
   return (
     <Page mod="controls" acts={acts}>
-      <ModuleTip mod="controls" force={API_ON && !DATA.controls.length} />
       {manageNote}
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head" style={{ flexWrap: "wrap", gap: 10 }}>
           {seg}
         </div>
-        <div className="c-body flush scroll" id="ctrlBody" style={{ padding: 0 }}>
+        <div className="c-body flush scroll" data-tour="controls-table" id="ctrlBody" style={{ padding: 0 }}>
           <DataTable<Control> id="controls" label="Controls" rows={DATA.controls} rowKey={(c) => c.id} columns={cols} searchText={(c) => `${c.id} ${c.title} ${c.owner} ${c.domain}`}
             tabs={STATUSES.filter((x) => x !== "All").map((x) => ({ key: x, label: x, match: (c: Control) => c.status === x }))}
             filters={[{ key: "fw", label: "Framework", options: DATA.frameworks.map((f) => f.id), labels: FW_ID, get: () => "", test: (c: Control, want: string) => !!(c.map && c.map[want]) }]}

@@ -38,7 +38,7 @@ function IntegrationsList() {
     ) : <button className="btn btn-ghost sm" aria-label={`Connect read-only: ${r.name}`} onClick={() => act.toggle(r.name)}><Icon name="plus" />Connect read-only</button>) : <Icon name="chevron" />) },
   ];
   return (
-    <Page mod="integrations" acts={manage ? <button className="btn btn-secondary" onClick={act.syncAll}><Icon name="refresh" />Sync all</button> : undefined}>
+    <Page mod="integrations" acts={manage ? <button className="btn btn-secondary" data-tour="integrations-sync" onClick={act.syncAll}><Icon name="refresh" />Sync all</button> : undefined}>
       <KpiStrip label="Integration summary">
         <KpiTile label="Connected" value={conn.length + " / " + INTEGRATIONS.length} caption="Connectors" />
         <KpiTile label="Sync health" value={deg ? deg : "Healthy"} delta={deg ? { tone: "bad", text: "Degraded" } : undefined} caption={deg ? "Connectors need attention" : "Connected connectors"} />
@@ -51,7 +51,7 @@ function IntegrationsList() {
           Connect identity first (Arbor Identity), then cloud logs and monitoring, then source control, scanners and training. Connectors are <b>read-only</b> and scoped to the least privilege needed.
         </div>
       </div>
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="integrations-table" style={{ flex: "1 1 auto" }}>
         <div className="c-body flush scroll" style={{ padding: 0 }}>
           <DataTable<Integration> id="integrations" label="Connectors" rows={rows} rowKey={(r) => r.name} columns={cols} searchText={(r) => `${r.name} ${r.cat} ${r.scope}`}
             tabs={["Connected", "Not connected"].map((st) => ({ key: st, label: st, match: (r: Integration) => r.status === st }))}

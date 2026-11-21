@@ -109,7 +109,7 @@ export function AskServer({ scrollRef }: { scrollRef: React.RefObject<HTMLDivEle
       )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{SUGG.map((x) => <button key={x.q} className="fchip" onClick={() => { setText(x.q); setRecords([]); add(x.pick()); }}>{x.q}</button>)}</div>
 
-      <div className="card" style={{ boxShadow: "none" }}><div className="c-body" style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="card" style={{ boxShadow: "none" }} data-tour="assistant-records"><div className="c-body" style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <strong style={{ fontSize: 13 }}>Records sent with your question</strong><span className="tag">{records.length} of {max}</span>
           {records.length ? <button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} onClick={() => setRecords([])}>Remove all</button> : null}
@@ -126,7 +126,7 @@ export function AskServer({ scrollRef }: { scrollRef: React.RefObject<HTMLDivEle
         </div> : null}
       </div></div>
 
-      <div className="field" style={{ margin: 0 }}>
+      <div className="field" style={{ margin: 0 }} data-tour="assistant-question">
         <label className="vh" htmlFor="asstInput">Ask the assistant</label>
         <textarea className="input" id="asstInput" rows={2} maxLength={svc.ASK_MAX} placeholder="Ask about the records you chose, or draft a summary…" style={{ resize: "vertical" }} value={text} onChange={(e) => setText(e.target.value)}
           aria-describedby={warn.length ? "asst-warn" : undefined} onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask(); }} />

@@ -20,7 +20,7 @@
 | Ctrl/Cmd+B collapse, Escape closes mobile sidebar | 4293-4297 | `AppShell.tsx` | Done |
 | Router + RBAC guard + landing per role + Not found | 1387-1410 | `AppShell.tsx`, `lib/route.ts`, `lib/rbac.ts`, `pages/*` | Done (hash routes became paths) |
 | Persistence (role, theme, collapsed) | 755-757 | `lib/store.ts` | Done |
-| Reset demo data modal (`confirmReset`) | 4271 | not yet | Phase 3 (belongs with Team & Settings) |
+| Reset demo data modal (`confirmReset`) | 4271 | not yet | Phase 3 (belongs with Team & Rules) |
 | Page scaffold, table builder, KPI, delta, chips, status chip, ring, spark, trend chart, empty | 705-720, 1412-1450 | `components/ui/*` | Done |
 | Skip link, visible focus, ARIA landmarks | n/a (added for WCAG 2.2 AA) | `AppShell.tsx` | Added |
 

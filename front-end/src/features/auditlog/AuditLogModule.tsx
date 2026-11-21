@@ -1,4 +1,3 @@
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { Chip, DataTable, Icon, Page, activate, type DTColumn } from "@/components/ui";
 import { WS_AUDIT, verifyWsChain } from "@/lib/audit";
 import { ropaById, ropaFor } from "@/lib/ropa";
@@ -31,7 +30,7 @@ export default function AuditLogModule() {
   const doRopa = (fmt: "json" | "csv") => run(() => svc.exportRopa(fmt), () => L.toast("RoPA register exported (" + fmt.toUpperCase() + ")"));
   const doPackage = () => run(svc.generatePackage, (id) => L.toast("Evidence package " + String(id) + " generated"));
   const expBtns = (fn: (f: "json" | "csv") => void) => (
-    <><button className="btn btn-secondary" disabled={!can} onClick={() => fn("json")}><Icon name="download" />Export JSON</button><button className="btn btn-secondary" disabled={!can} onClick={() => fn("csv")}><Icon name="download" />Export CSV</button></>
+    <><button className="btn btn-secondary" data-tour="auditlog-export" disabled={!can} onClick={() => fn("json")}><Icon name="download" />Export JSON</button><button className="btn btn-secondary" disabled={!can} onClick={() => fn("csv")}><Icon name="download" />Export CSV</button></>
   );
   const acts = view === "ropa" ? expBtns(doRopa) : view === "exp" ? undefined : view === "log" ? expBtns(doExport) : undefined;
   const rows = WS_AUDIT.slice().reverse();
@@ -50,16 +49,15 @@ export default function AuditLogModule() {
   ];
   return (
     <Page mod="auditlog" acts={acts}>
-      <ModuleTip mod="auditlog" />
       <div className="card" style={{ flex: "0 1 auto", minHeight: 0 }}>
         <div className="c-head" style={{ flexWrap: "wrap", gap: 8 }}>
-          <div className="tabs" role="tablist" aria-label="Audit log views">{VIEWS.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div>
-          <span className="r" style={{ marginLeft: "auto", fontSize: 12 }} role="status">
+          <div className="tabs" role="tablist" aria-label="Audit log views" data-tour="auditlog-views">{VIEWS.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div>
+          <span className="r" style={{ marginLeft: "auto", fontSize: 12 }} role="status" data-tour="auditlog-status">
             {API_ON && !svc.lastVerified() ? <span style={{ color: "var(--muted)" }}><Icon name="clock" /> Not verified yet: use Chain integrity</span>
               : chainOk ? <span style={{ color: "var(--ok-ink)" }}><Icon name="check" /> {API_ON ? `Verified ${svc.lastVerified()}, ` : ""}Chain intact, {WS_AUDIT.length}{API_ON && WS_AUDIT.length >= 500 ? "+ (newest 500 shown; export for all)" : ""} entries</span> : <span style={{ color: "var(--bad-ink)" }}><Icon name="alert" /> Chain broken</span>}
           </span>
         </div>
-        <div className={`c-body ${view === "log" ? "flush" : ""} scroll`} style={view === "log" ? { padding: 0 } : undefined} id="audBodyL">
+        <div className={`c-body ${view === "log" ? "flush" : ""} scroll`} style={view === "log" ? { padding: 0 } : undefined} id="audBodyL" data-tour="auditlog-body">
           {view === "chain" ? <ChainView ok={chainOk} onVerify={doVerify} can={can} />
             : view === "ropa" ? <RopaRegister entries={WS_AUDIT} intro={API_ON ? "Record of Processing Activities under GDPR Article 30: a reference register to adapt to your company. Each event in your log is tagged to one of these activities. Confirm with your DPO before relying on it." : "Record of Processing Activities under GDPR Article 30. Each event is tagged to one of these activities. Synthetic sample — confirm with the DPO before relying on it."} />
             : view === "exp" ? <EvidenceView onGenerate={doPackage} can={can} />

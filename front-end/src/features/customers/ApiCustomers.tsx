@@ -22,7 +22,7 @@ export function ApiCustomers() {
     <Page mod="customers" sub="Companies on the platform. Changes need an elevated session and a second platform super admin's approval.">
       <ServerElevationBanner s={s} />
       <div className="card" style={{ flex: "1 1 auto" }}>
-        <div className="c-head"><div className="seg" role="tablist">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
+        <div className="c-head"><div className="seg" role="tablist" data-tour="customers-views">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className="c-body scroll">
           {view === "companies" ? <Companies s={s} /> : view === "support" ? <ApiSupportSessions /> : (
             <RequestsTable id="platform-requests-api" load={svc.listPlatformRequests} decide={svc.decidePlatformRequest}
@@ -78,7 +78,7 @@ function CreateForm({ locked }: { locked: boolean }) {
     setBusy(false);
   };
   return (
-    <form onSubmit={send} noValidate aria-labelledby="cc-h" style={{ marginBottom: 14 }}>
+    <form onSubmit={send} noValidate aria-labelledby="cc-h" data-tour="customers-create" style={{ marginBottom: 14 }}>
       <div className="sectitle" id="cc-h" style={{ marginTop: 0 }}>Create a company</div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end", maxWidth: 960 }}>
         <div className="field" style={{ margin: 0, flex: "1 1 220px" }}><label htmlFor="cc-name">Company name</label><input className="input" id="cc-name" maxLength={120} value={name} onChange={(e) => { setName(e.target.value); setErr(""); }} aria-describedby="cc-help cc-err" /></div>

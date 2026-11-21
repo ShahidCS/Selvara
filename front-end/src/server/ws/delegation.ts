@@ -28,7 +28,7 @@ export async function actsAs(t: WsTx, actor: Actor, namedId: string | null | und
   const d = (await t.list<Delegation>("delegation")).map((x) => x.data).find((x) => x.fromId === namedId && x.toId === actor.id && live(x, t.now));
   return d ? { ok: true, onBehalfOf: d.from } : { ok: false, onBehalfOf: null };
 }
-/** The delegations the person gave or received (for My workspace), with whether each is live. */
+/** The delegations the person gave or received (for My Work, Delegation tab), with whether each is live. */
 export async function delegationsOf(t: WsTx, userId: string) {
   return (await t.list<Delegation>("delegation")).map((x) => x.data).filter((x) => x.fromId === userId || x.toId === userId).map((x) => ({ ...x, live: live(x, t.now) }));
 }

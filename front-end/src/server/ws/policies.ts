@@ -246,7 +246,7 @@ export function policyRoutes(h: WsHelpers) {
     });
   });
 
-  /* ---------- My workspace: published policies, my acknowledgements, my delegations, my tasks (any role with "me") ---------- */
+  /* ---------- My Work (Policies and Delegation tabs): published policies, my acknowledgements, my delegations, my tasks (any role with "me") ---------- */
   const meData = wsRoute(h, "me", async (d, _r, c) => ok(await tx(d, c, async (t) => {
     await sweepDelegations(t);
     const me = c.actor; const acks = (await t.list<Ack>("policy-ack")).map((x) => x.data).filter((a) => a.userId === me.id);

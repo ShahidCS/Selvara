@@ -28,7 +28,7 @@ Status below is the migration state of each route. "Pending" screens render an e
 | `/ws/integrations` | Integrations | `IntegrationsModule` | 3 | Done | [integrations](checklist/integrations.md) |
 | `/ws/api` | API, Webhooks & Custom Tests | `ApiModule` | 3 | Done | [api](checklist/api.md) |
 | `/ws/assistant` | AI Assistant | `AssistantModule` | 3 | Done | [assistant](checklist/assistant.md) |
-| `/ws/team` | Team & Settings | `TeamModule` | 3 | Done | [team](checklist/team.md) |
+| `/ws/team` | Team & Rules | `TeamModule` | 3 | Done | [team](checklist/team.md) |
 | `/ws/billingws` | Billing & Invoices | `BillingWsModule` | 3 | Done | [billingws](checklist/billingws.md) |
 | `/auth` | Sign-in & security | `AuthModule` | 3 | Done | [auth](checklist/auth.md) |
 | `/ws/auditlog` | Audit logs | `AuditLogModule` | 4 | Done | [auditlog](checklist/auditlog.md) |
@@ -37,7 +37,7 @@ Status below is the migration state of each route. "Pending" screens render an e
 | `/admin/rates` | Exchange Rates & Tax | `RatesModule` | 4 | Done | [rates](checklist/rates.md) |
 | `/admin/mfa` | MFA Resets | `MfaModule` | 4 | Done | [mfa](checklist/mfa.md) |
 | `/admin/adminlog` | Admin Audit Log | `AdminLogModule` | 4 | Done | [adminlog](checklist/adminlog.md) |
-| `/ws/me` | Member workspace (spec board) | `MeModule` | 5 | Done | [me](checklist/me.md) |
+| `/ws/me` | Member workspace (spec board), merged into My Work (`/ws/work` tabs Policies, Account security, Delegation; `/ws/me` opens Policies) | `WorkModule` | 5 | Done | [me](checklist/me.md) |
 | `/admin/elevation` | Elevated access (spec board; simulated, not a control) | `ElevationModule` | 5 | Done | [elevation](checklist/elevation.md) |
 | `/admin/security` | Platform security rules (spec board) | `PlatformSecurityModule` | 5 | Done | [platform-security](checklist/platform-security.md) |
 | `/ws/appsec` | Application security controls reference (spec board) | `AppSecModule` | 5 | Done | [appsec](checklist/appsec.md) |

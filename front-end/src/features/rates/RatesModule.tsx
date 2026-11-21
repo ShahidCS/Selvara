@@ -59,7 +59,7 @@ function DemoRates() {
   return (
     <Page mod="rates" acts={el.canElevate ? <>
       <button className="btn btn-secondary" disabled={gate.locked} title={gate.title} onClick={() => L.toast("Sample feed run (demo)")}><Icon name="rates" />Run sample feed <span className="tag" style={{ marginLeft: 4 }}>Offline demo</span></button>
-      <button className="btn btn-primary" id="refreshBtn" onClick={refresh} disabled={refreshing || gate.locked} title={gate.title} aria-busy={refreshing}>{refreshing ? <span className="spin" /> : <Icon name="refresh" />}Refresh rates</button>
+      <button className="btn btn-primary" id="refreshBtn" data-tour="rates-refresh" onClick={refresh} disabled={refreshing || gate.locked} title={gate.title} aria-busy={refreshing}>{refreshing ? <span className="spin" /> : <Icon name="refresh" />}Refresh rates</button>
     </> : undefined}>
       <div className="scroll" style={{ flex: "1 1 auto", display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
       <ElevateGateBanner />
@@ -70,7 +70,7 @@ function DemoRates() {
         <KpiTile label="Pending approvals" value={pending.size} delta={{ tone: pending.size ? "watch" : "flat", text: pending.size ? "Awaiting a second person" : "None" }} caption="Release, reject or edit requests" />
         <KpiTile label="Last updated" value="06:00" delta={{ tone: "flat", text: "GST, every 12 hours" }} caption="From the primary feed" />
       </KpiStrip>
-      <div className="card" style={{ flex: "0 0 auto", minHeight: 360 }}>
+      <div className="card" data-tour="rates-table" style={{ flex: "0 0 auto", minHeight: 360 }}>
         <div className="c-body flush" style={{ padding: 0 }} id="ratesTable">
           <DataTable<svc.RateRow> id="rates" label="Exchange rates and tax" rows={svc.RATE_ROWS} rowKey={(r) => r.code} columns={cols} searchText={(r) => `${r.country} ${r.currency}`}
             filters={[{ key: "region", label: "Region", options: svc.REGIONS.filter((r) => r !== "All"), get: (r) => r.region, test: regionTest }, { key: "status", label: "Status", options: ["Applied", "Held"], get: (r) => r.status, labels: { Held: "Held for review" } }]} exportName="exchange-rates" emptyText="No countries match. Adjust the search or filters." />

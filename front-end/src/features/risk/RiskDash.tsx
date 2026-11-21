@@ -105,7 +105,7 @@ export default function RiskDash() {
   }).sort((a, b) => ((a.due || "9999") < (b.due || "9999") ? -1 : 1));
 
   return (
-    <div className="rcaps">
+    <div className="rcaps" data-tour="risk-dash">
       <KpiStrip label="Risk summary">
         <KpiTile label="Open risks" value={open.length} caption={`Not closed or accepted (includes in review); ${DATA.risks.length} on the register`} />
         <KpiTile label="Above appetite (High+)" value={aboveApp} delta={aboveApp ? { tone: "bad", text: "Needs treatment" } : { tone: "good", text: "None" }} caption="Current rating" />
@@ -118,7 +118,7 @@ export default function RiskDash() {
         <DistBlock open={open} which="res" title="Residual exposure" note="Target exposure after the planned treatment is complete." />
       </div>
       <div className="rgrid2">
-        <section className="card"><div className="c-body">
+        <section className="card" data-tour="risk-heatmap"><div className="c-body">
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 10 }}>
             <h3 style={{ margin: 0 }}>Heat map</h3>
             <div className="btngrp">{([["inh", "Inherent"], ["cur", "Current"], ["res", "Residual"]] as [HeatView, string][]).map((h) => (
@@ -138,7 +138,7 @@ export default function RiskDash() {
         </div></section>
       </div>
       <div className="rgrid3"><Breakdown open={open} k="cat" title="By category" /><Breakdown open={open} k="team" title="By team" /><Breakdown open={open} k="jur" title="By jurisdiction" /></div>
-      <section className="card"><div className="c-body">
+      <section className="card" data-tour="risk-treatment"><div className="c-body">
         <h3 style={{ margin: "0 0 2px" }}>Treatment plan</h3>
         <p className="sub" style={{ margin: "0 0 10px" }}>Open treatments by earliest action due date. Overdue means the date has passed with the action still open.</p>
         {plan.length ? (

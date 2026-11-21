@@ -370,6 +370,26 @@ const security = signed(async (d, r, { s: me, p, a }) => {
     passkeys: (await d.store.passkeysOf(p.id)).map((k) => ({ id: k.id, label: k.label, createdAt: k.createdAt })), passkeyRequired: isSuper(a),
   });
 });
+/* Guided tours (per person, on their account): how often a module's walkthrough starts by itself, and which version of each the person
+   has finished or skipped. A display preference only: no record, no audit entry. */
+const TOUR_FREQ = ["first", "updates", "off"] as const;
+type TourPrefs = { freq: (typeof TOUR_FREQ)[number]; seen: Record<string, number> };
+const tourPrefs = async (d: Deps, id: string): Promise<TourPrefs> => (await d.store.kvGet<TourPrefs>("tours", id)) ?? { freq: "first", seen: {} };
+const getTours = signed(async (d, _r, { p }) => ok(await tourPrefs(d, p.id)));
+const putTours = signed(async (d, r, { p }) => {
+  const cur = await tourPrefs(d, p.id); const b = r.body;
+  if (b.freq !== undefined) { if (!TOUR_FREQ.includes(b.freq as TourPrefs["freq"])) return err(400, "Unknown tour setting."); cur.freq = b.freq as TourPrefs["freq"]; }
+  if (b.reset === true) cur.seen = {};
+  if (b.seen !== undefined) {
+    if (!b.seen || typeof b.seen !== "object" || Array.isArray(b.seen)) return err(400, "Invalid tour progress.");
+    for (const [k, v] of Object.entries(b.seen as Record<string, unknown>)) {
+      if (!/^[a-z]{2,20}$/.test(k) || !Number.isInteger(v) || (v as number) < 1 || (v as number) > 1000) return err(400, "Invalid tour progress.");
+      cur.seen[k] = v as number;
+    }
+    if (Object.keys(cur.seen).length > 80) return err(400, "Invalid tour progress.");
+  }
+  await d.store.kvSet("tours", p.id, cur); return ok(cur);
+});
 const reauth = signed(async (d, r, { s: me, p }) => {
   if (await blocked(d, r.ip)) return err(403, BLOCKED_MSG);
   const res = await d.auth.signInWithPassword(p.email, s(r.body.password, 1024));
@@ -455,7 +475,7 @@ const joinDecide = admin(async (d, r, { p: me, a, company }) => {
   const mail = await sendMail(d, p.email, { t: "join-decided", company: company.name, approved: approve, link: `${d.site.origin}/login` }, { tenantId: company.id, actor: me.person, ip: r.ip });
   return ok({ id, status: approve ? "Active" : "Rejected", emailed: mail.sent });
 });
-/** The company's lockout setting, for the Team & Settings page. */
+/** The company's lockout setting, for the Team & Rules page. */
 const lockoutGet = admin(async (d, _r, { p: me, company }) => ok({ lockout: await d.dir.lockoutOf(company.id, me.id) }));
 const lockoutSet = admin(async (d, r, { p: me, a, company }) => {
   const preset = s(r.body.lockout, 20); const custom = r.body.custom as { attempts?: unknown; minutes?: unknown } | undefined;
@@ -570,7 +590,7 @@ export const ROUTES: Record<string, H> = {
   "POST auth/challenge": challenge, "POST auth/sign-in": signIn, "POST auth/sign-in/verify": verify, "POST auth/sign-in/passkey": passkeyStep,
   "GET system/ready": ready, "GET auth/session": sessionInfo, "POST auth/sign-out": signOut, "POST auth/join-requests": join,
   "POST auth/password/reset-request": resetRequest, "GET auth/password/reset/:token": resetCheck, "POST auth/password/reset": resetDo,
-  "GET me/security": security, "POST auth/company": switchCompany, "GET team/members": memberList, "POST me/reauth": reauth, "POST me/password": changePassword, "POST me/recovery-codes": newCodes,
+  "GET me/security": security, "GET me/tours": getTours, "PUT me/tours": putTours, "POST auth/company": switchCompany, "GET team/members": memberList, "POST me/reauth": reauth, "POST me/password": changePassword, "POST me/recovery-codes": newCodes,
   "POST me/sessions/revoke-others": revokeOthers, "POST me/passkeys/options": passkeyOptions, "POST me/passkeys": passkeyAdd, "DELETE me/passkeys/:id": passkeyDelete,
   "GET team/join-requests": joinList, "POST team/join-requests/:id/:decision": joinDecide, "POST team/settings": lockoutSet, "GET team/settings": lockoutGet,
   "POST team/members/:id/role": roleChange, "GET team/approvals": approvalList, "POST team/approvals/:id/:decision": approvalDecide,

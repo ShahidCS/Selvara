@@ -51,7 +51,7 @@ function BillingOverview() {
     { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (iv) => <button className="btn btn-ghost sm" aria-label={`Download invoice ${iv.id}`} onClick={() => download(iv.id)}><Icon name="download" />Download</button> },
   ];
   return (
-    <Page mod="billingws" acts={manage ? <button className="btn btn-secondary" onClick={openPlan}>Manage plan</button> : undefined}>
+    <Page mod="billingws" acts={manage ? <button className="btn btn-secondary" data-tour="billingws-plan" onClick={openPlan}>Manage plan</button> : undefined}>
       <div className="scroll" style={{ flex: "1 1 auto" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
           <KpiStrip label="Billing summary">
@@ -78,14 +78,14 @@ function BillingOverview() {
               </div>
               <p className="field help" style={{ marginTop: 14 }}>Overage beyond plan limits is billed at the rates in your contract. Synthetic sample for the prototype.</p>
             </div></div>
-            <div className="card"><div className="c-head"><h3>Subscription</h3></div><div className="c-body">
+            <div className="card" data-tour="billingws-subscription"><div className="c-head"><h3>Subscription</h3></div><div className="c-body">
               <dl className="meta-grid"><dt>Plan</dt><dd className="strong">{s.plan}</dd><dt>Billing cycle</dt><dd>{s.cycle}</dd><dt>Renews</dt><dd>{s.nextInvoice}</dd></dl>
               <div className="hr" /><div className="sectitle">Payment method</div>
               <dl className="meta-grid"><dt>Card</dt><dd>{s.payment.brand} ···· {s.payment.last4}</dd><dt>Expires</dt><dd>{s.payment.exp}</dd><dt>Billed to</dt><dd>{s.payment.name}</dd></dl>
               {manage ? <button className="btn btn-secondary sm" style={{ marginTop: 10 }} onClick={() => go("/ws/billingws/payment")}><Icon name="edit" />Update payment method</button> : null}
             </div></div>
           </div>
-          <div className="card">
+          <div className="card" data-tour="billingws-invoices">
             <div className="c-head"><h3>Invoices</h3><span className="tag" style={{ marginLeft: "auto" }}>{s.invoices.length}</span></div>
             <div className="c-body flush scroll" style={{ padding: 0 }}>
               <DataTable<Invoice> id="invoices" label="Invoices" rows={s.invoices} rowKey={(iv) => iv.id} columns={invCols} searchText={(iv) => `${iv.id} ${iv.period}`}

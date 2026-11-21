@@ -23,7 +23,7 @@ export function CustomerSearch({ onPick }: { onPick: (id: string) => void }) {
     else if (e.key === "Escape") setOpen(false);
   };
   return (
-    <div ref={wrap} style={{ position: "relative", maxWidth: 460 }}>
+    <div ref={wrap} data-tour="customers-search" style={{ position: "relative", maxWidth: 460 }}>
       <div className="field"><label htmlFor="custSearch">Find a customer</label>
         <input className="input" id="custSearch" role="combobox" aria-expanded={open} aria-autocomplete="list" aria-controls="custSug" aria-activedescendant={open && list[cur] ? `custSug-${list[cur].id}` : undefined}
           placeholder="Search by name, ID or email…" autoComplete="off" maxLength={100} value={q} onChange={(e) => show(e.target.value)} onFocus={() => show(q)} onKeyDown={onKey} /></div>

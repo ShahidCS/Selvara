@@ -12,7 +12,6 @@ import * as svc from "@/features/reports/services/reports";
 import { ApprovalsPanel, attempt } from "@/components/kit/sodKit";
 import { ConfirmRemoveSchedule, RemoveScheduleForm, ScheduleForm } from "./ReportLayers";
 import { API_ON } from "@/lib/rbac";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 
 const MONTHS = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
 
@@ -40,9 +39,8 @@ export default function ReportsModule() {
   })} />);
 
   return (
-    <Page mod="reports" acts={<button className="btn btn-primary" disabled={!can} title={why} onClick={() => schedule()}><Icon name="plus" />New schedule</button>}>
+    <Page mod="reports" acts={<button className="btn btn-primary" data-tour={can ? "reports-new" : undefined} disabled={!can} title={why} onClick={() => schedule()}><Icon name="plus" />New schedule</button>}>
       <div className="scroll" style={{ overflow: "auto" }}>
-        <ModuleTip mod="reports" />
         <KpiStrip label="Reporting summary">
           <KpiTile label="Weighted compliance" value={M.compliance + "%"} caption="Across frameworks in scope" />
           <KpiTile label="Scheduled packs" value={SCHED_PACKS.length} caption={`${SCHED_PACKS.filter((p) => p.external).length} sent outside the organisation`} />
@@ -53,7 +51,7 @@ export default function ReportsModule() {
           <div className="card"><div className="c-head"><h3>Readiness trend</h3><span className="tag" style={{ marginLeft: "auto" }}>{M.compliance}% now</span></div>
             <div className="c-body">{API_ON ? <p className="field help" style={{ margin: 0 }}>Weighted compliance today is {M.compliance}%. The trend appears here once monthly figures have been recorded.</p>
               : <LineChart title="Weighted compliance over the last 7 months" data={trend.map((v, i) => ({ label: MONTHS[i], value: v }))} unit="%" />}</div></div>
-          <div className="card"><div className="c-head"><h3>Scheduled packs</h3><button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} disabled={!can} title={why} onClick={() => schedule()}><Icon name="plus" />Add</button></div>
+          <div className="card" data-tour="reports-schedules"><div className="c-head"><h3>Scheduled packs</h3><button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} disabled={!can} title={why} onClick={() => schedule()}><Icon name="plus" />Add</button></div>
             <div className="c-body flush scroll" style={{ padding: 0 }}>
               <Table cols={[{ t: "Pack and recipients" }, { t: "Frequency" }, { t: "Next" }, { t: "" }]}>
                 {!SCHED_PACKS.length ? <tr><td colSpan={4} style={{ color: "var(--muted)" }}>No packs are scheduled yet.</td></tr> : null}
@@ -68,7 +66,7 @@ export default function ReportsModule() {
               </Table>
             </div></div>
         </div>
-        <div className="card"><div className="c-head"><h3>Stored reports</h3></div>
+        <div className="card" data-tour="reports-stored"><div className="c-head"><h3>Stored reports</h3></div>
           <div className="c-body flush scroll" style={{ padding: 0 }}>
             <Table cols={[{ t: "Report" }, { t: "Category" }, { t: "Cadence" }, { t: "" }]}>
               {DATA.reports.map((r) => (

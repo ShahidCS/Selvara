@@ -10,11 +10,6 @@
       "overview"
      ],
      [
-      "me",
-      "My Workspace",
-      "user"
-     ],
-     [
       "work",
       "My Work",
       "work"
@@ -117,7 +112,7 @@
     ]
    },
    {
-    "g": "Workspace",
+    "g": "Settings",
     "items": [
      [
       "integrations",
@@ -136,7 +131,7 @@
      ],
      [
       "team",
-      "Team & Settings",
+      "Team & Rules",
       "team"
      ],
      [
@@ -291,8 +286,8 @@
    "Draft answers and summaries (review required)"
   ],
   "team": [
-   "Team & Settings",
-   "People, roles and workspace settings"
+   "Team & Rules",
+   "Members, roles and the rules your company works by"
   ],
   "billingws": [
    "Billing & Invoices",
@@ -323,8 +318,8 @@
    "Immutable record of platform administrator actions"
   ],
   "me": [
-   "My Workspace",
-   "Your tasks, published policies and account security"
+   "My Work",
+   "Old address of My Work: opens its Policies tab"
   ],
   "elevation": [
    "Elevated Access",

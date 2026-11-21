@@ -914,3 +914,25 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .vp-sec summary{list-style:none} .vp-sec summary::-webkit-details-marker{display:none}
 .vp-sec summary:focus-visible{outline-color:var(--ring-inverse)}
 .vp-sec .vp-sec-chev{margin-inline-start:auto;transition:transform var(--dur) var(--ease)} .vp-sec[open] .vp-sec-chev{transform:rotate(180deg)}
+
+/* ============================ guided tour (kit/Tour.tsx) ============================ */
+.tour-ring{position:fixed;z-index:120;border-radius:var(--radius-md);box-shadow:0 0 0 2px var(--accent),0 0 0 6px var(--accent-weak);pointer-events:none;transition:all .18s var(--ease)}
+.tour-bubble{position:fixed;z-index:121;background:var(--surface);color:var(--ink);border:1px solid var(--line-2);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);padding:14px 16px 12px;outline:none}
+.tour-bubble:focus-visible{box-shadow:var(--shadow-lg),0 0 0 3px var(--accent-weak)}
+.tour-bubble.sheet{left:12px;right:12px;bottom:12px;top:auto;width:auto}
+.tour-arrow{position:absolute;width:12px;height:12px;background:var(--surface);border:1px solid var(--line-2);transform:translateX(-50%) rotate(45deg)}
+.tour-arrow.up{top:-7px;border-right:0;border-bottom:0}
+.tour-arrow.down{bottom:-7px;border-left:0;border-top:0}
+.tour-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.tour-k{font-size:11.5px;font-weight:600;letter-spacing:.02em;color:var(--accent-ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tour-n{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;flex:0 0 auto}
+.tour-bubble h2{font-size:15px;line-height:1.35;margin:0 0 4px;font-weight:600}
+.tour-bubble p{margin:0;font-size:13.5px;line-height:1.5;color:var(--ink-2)}
+.tour-dots{display:flex;gap:5px;margin:12px 0 10px}
+.tour-dots span{width:6px;height:6px;border-radius:999px;background:var(--line-2)}
+.tour-dots span.on{background:var(--accent);width:16px}
+.tour-acts{display:flex;align-items:center;gap:8px}
+.tour-sp{flex:1 1 auto}
+.tour-bubble .tour-foot{margin-top:10px;font-size:12px;color:var(--muted)}
+.tour-bubble .tour-foot a{color:var(--accent-ink);text-decoration:underline;text-underline-offset:3px}
+@media (prefers-reduced-motion:reduce){.tour-ring{transition:none}}

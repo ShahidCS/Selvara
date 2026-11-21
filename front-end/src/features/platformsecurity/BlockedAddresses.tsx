@@ -17,7 +17,7 @@ export function BlockedAddresses() {
   const list = blockedAddresses();
   const isSuper = hasRole(role, "super");
   return (
-    <section className="card" aria-labelledby="ipb-h">
+    <section className="card" aria-labelledby="ipb-h" data-tour="security-blocks">
       <div className="c-head"><h3 id="ipb-h">Blocked sign-in addresses</h3><div className="r"><span className="tag">{list.length} blocked</span></div></div>
       <div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <p className="field help" style={{ margin: 0, maxWidth: "80ch" }}>

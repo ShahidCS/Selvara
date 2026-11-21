@@ -3,7 +3,6 @@ import { DATA } from "@/lib/data";
 import { API_ON } from "@/lib/rbac";
 import { SodError } from "@/lib/sod";
 import { askReason } from "@/components/kit/ReasonDialog";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { wsLog } from "@/lib/audit";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { VENDOR_REQS } from "@/lib/requests";
@@ -61,10 +60,9 @@ function VendorsList() {
     { key: "status", header: "Status", value: (v) => v.status, render: (v) => <StatusChip s={v.status} /> },
   ];
   return (
-    <Page mod="vendors" acts={<button className="btn btn-primary" disabled={!canManage} title={canManage ? undefined : "Only admin or owner can add vendors"} onClick={() => go("/ws/vendors/new")}><Icon name="plus" />Add vendor</button>}>
-      <ModuleTip mod="vendors" force={API_ON && !DATA.vendors.length} />
+    <Page mod="vendors" acts={<button className="btn btn-primary" data-tour="vendors-add" disabled={!canManage} title={canManage ? undefined : "Only admin or owner can add vendors"} onClick={() => go("/ws/vendors/new")}><Icon name="plus" />Add vendor</button>}>
       {canManage ? <ApprovalsPanel prefix="vendor." title="Vendor approvals (four-eyes)" /> : null}
-      <div className="kpis" style={{ marginBottom: 12 }} role="group" aria-label="Vendors by tier">
+      <div className="kpis" data-tour="vendors-tiers" style={{ marginBottom: 12 }} role="group" aria-label="Vendors by tier">
         {VENDOR_TIERS.map((t) => {
           const vs = DATA.vendors.filter((v) => v.tier === t); const due = vs.filter((v) => /Overdue/.test(v.due)).length;
           return <KpiCard key={t} icon="vendors" label={`${t} tier`} value={vs.length} sub={due ? `${due} overdue` : "On schedule"} subTone={due ? "bad" : "flat"} pressed={vt === t}
@@ -72,7 +70,7 @@ function VendorsList() {
         })}
       </div>
       {VENDOR_REQS.length && canManage ? (
-        <div className="card" style={{ flex: "0 0 auto", marginBottom: 12, borderColor: "color-mix(in srgb,var(--accent) 30%,var(--line))" }}>
+        <div className="card" data-tour="vendors-requests" style={{ flex: "0 0 auto", marginBottom: 12, borderColor: "color-mix(in srgb,var(--accent) 30%,var(--line))" }}>
           <div className="c-head"><h3>New vendor requests</h3><span className="tag" style={{ marginLeft: 6 }}>{VENDOR_REQS.length}</span></div>
           <div className="c-body flush" style={{ padding: 0 }}>
             <Table cols={[{ t: "Request" }, { t: "Vendor" }, { t: "Purpose" }, { t: "Requested by" }, { t: "" }]}>
@@ -97,7 +95,7 @@ function VendorsList() {
           </div>
         </div>
       ) : null}
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="vendors-table" style={{ flex: "1 1 auto" }}>
         <div className="c-head"><h3>Third parties{vt !== "All" ? ` · ${vt} tier` : ""}</h3>{vt !== "All" ? <button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} onClick={() => setTier("All")}><Icon name="x" />Clear filter</button> : null}</div>
         <div className="c-body flush scroll" style={{ padding: 0 }}>
           <DataTable<Vendor> id="vendors" label="Third parties" rows={list} rowKey={(v) => v.id} columns={cols} searchText={(v) => `${v.name} ${v.cat} ${v.tier} ${v.status}`}
