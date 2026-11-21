@@ -9,7 +9,6 @@ import { useLayer } from "@/components/shell/LayerProvider";
 import * as svc from "@/features/controls/services/controls";
 import { testChip } from "./controlDialogs";
 import { AdoptForm } from "./AdoptForm";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { API_ON } from "@/lib/rbac";
 import { ControlDetail } from "./ControlDetail";
 import { TestDetail } from "./TestDetail";
@@ -165,7 +164,6 @@ function ControlsList() {
 
   return (
     <Page mod="controls" acts={acts}>
-      <ModuleTip mod="controls" force={API_ON && !DATA.controls.length} />
       {manageNote}
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head" style={{ flexWrap: "wrap", gap: 10 }}>

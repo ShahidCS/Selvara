@@ -9,7 +9,7 @@ import * as svc from "@/services/team";
 import { ApiSupportAccess } from "./ApiSupportAccess";
 import { JoinRequests } from "./JoinRequests";
 
-/* Team & Settings in production (NEXT_PUBLIC_API_MODE=http): only what the server holds for the session's company. Members and requests to join
+/* Team & Rules in production (NEXT_PUBLIC_API_MODE=http): only what the server holds for the session's company. Members and requests to join
    come from the server, which scopes them to the company and decides who may see them; the account lockout is the company's own setting. Role
    changes and invitations go through the server's four-eyes engine (slice 2c): admin and owner need a second admin's approval, shown under
    Requests. Support access (slice 3b) is the company's read-only, revocable grant to Selvara support, with every session it allowed. The other settings move here when their server slice ships (docs/architecture/BACKEND_FOUNDATION.md). */
@@ -29,7 +29,7 @@ export function ApiTeam() {
   return (
     <Page mod="team" sub={company ? `People and sign-in settings of ${company.name}` : undefined}>
       <div className="card" style={{ flex: "1 1 auto" }}>
-        <div className="c-head" style={{ padding: "0 8px" }}><div className="tabs" role="tablist" aria-label="Team and settings">{VIEWS.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
+        <div className="c-head" style={{ padding: "0 8px" }}><div className="tabs" role="tablist" aria-label="Team and rules">{VIEWS.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className={`c-body ${view === "members" ? "flush" : ""} scroll`} style={view === "members" ? { padding: 0 } : undefined}>
           {view === "members" ? <Members /> : view === "invitations" ? <Invitations /> : view === "requests" ? <RequestsTable id="team-requests-api" load={svc.listApprovals} decide={svc.decideRequest} note="Granting or inviting an admin or owner needs a second admin. Nobody approves their own request or a request about themselves. A request expires after 72 hours." /> : view === "signin" ? <SignIn /> : <ApiSupportAccess />}
         </div>

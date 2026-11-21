@@ -5,7 +5,6 @@ import { ReasonTicket, reasonTicketOk } from "@/components/kit/admin/ReasonTicke
 import { ELEVATE_TEXT, ServerElevationBanner, useServerElevation } from "@/components/kit/admin/ServerElevation";
 import { apiMessage, RequestsTable, utcMin } from "@/components/kit/serverRequests";
 import { useLayer } from "@/hooks/useLayer";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { bumpData, useData, useModState } from "@/lib/store";
 import { apiFetch } from "@/services/http";
 import * as platform from "@/services/platform";
@@ -49,7 +48,6 @@ export function ApiRates() {
   return (
     <Page mod="rates" sub="Exchange rates and tax used when invoices are issued." acts={!s.loaded || s.canElevate ? <button className="btn btn-primary" onClick={refresh} disabled={busy || !!lock} title={lock} aria-busy={busy}>{busy ? <span className="spin" /> : <Icon name="refresh" />}Refresh rates</button> : undefined}>
       <ServerElevationBanner s={s} />
-      <ModuleTip mod="rates" force={!!d && !d.lastRefresh} />
       {d ? (
         <KpiStrip label="Rates summary">
           <KpiTile label="Countries" value={d.rates.length} caption="With a currency and tax rule" />

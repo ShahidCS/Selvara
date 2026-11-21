@@ -1,9 +1,7 @@
 import type { KeyboardEvent } from "react";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { RecordGrantForm } from "./GrantForms";
 import { API_ON } from "@/lib/rbac";
 import { Icon, Page } from "@/components/ui";
-import { DATA } from "@/lib/data";
 import { useApp, useData, useModState } from "@/lib/store";
 import { ACCESS_REVIEWS } from "@/lib/requests";
 import { useLayer } from "@/hooks/useLayer";
@@ -38,7 +36,6 @@ export default function AccessModule() {
         : undefined;
   return (
     <Page mod="access" acts={acts}>
-      <ModuleTip mod="access" force={API_ON && !DATA.access.length} />
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head">
           <div style={{ maxWidth: "100%", overflowX: "auto", scrollbarWidth: "thin" }}>

@@ -1,4 +1,4 @@
-/* Shared by the production screens that use the server's four-eyes engine (Team & Settings, Admin Console): the requests table, the reason
+/* Shared by the production screens that use the server's four-eyes engine (Team & Rules, Admin Console): the requests table, the reason
    dialog for a decision, and the box that shows an invitation link once. The server decides every rule and explains a refusal (`block`);
    these components only show it. */
 import { useEffect, useState } from "react";

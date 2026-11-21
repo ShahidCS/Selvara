@@ -31,7 +31,7 @@ export function AccessRequestForm({ close }: { close: () => void }) {
       await accessSvc.createRequest({ system: s, level: lvl, user, reason });
       close(); L.toast("Access request submitted");
       setModState("access.view", "requests"); bumpData();
-      if (route.mod !== "access" && modAllowed(appStore.get().role, "ws", "access")) go("/ws/access"); // analysts request from My workspace and stay there
+      if (route.mod !== "access" && modAllowed(appStore.get().role, "ws", "access")) go("/ws/access"); // analysts request from My Work and stay there
     } catch (e) { L.toast(sodMessage(e, "Could not submit the request"), false); }
   };
   return (

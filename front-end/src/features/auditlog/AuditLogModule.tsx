@@ -1,4 +1,3 @@
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { Chip, DataTable, Icon, Page, activate, type DTColumn } from "@/components/ui";
 import { WS_AUDIT, verifyWsChain } from "@/lib/audit";
 import { ropaById, ropaFor } from "@/lib/ropa";
@@ -50,7 +49,6 @@ export default function AuditLogModule() {
   ];
   return (
     <Page mod="auditlog" acts={acts}>
-      <ModuleTip mod="auditlog" />
       <div className="card" style={{ flex: "0 1 auto", minHeight: 0 }}>
         <div className="c-head" style={{ flexWrap: "wrap", gap: 8 }}>
           <div className="tabs" role="tablist" aria-label="Audit log views">{VIEWS.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div>

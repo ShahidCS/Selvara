@@ -4,7 +4,6 @@ import type { LayerApi } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
 import { API_ON } from "@/lib/rbac";
 import { askReason } from "@/components/kit/ReasonDialog";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { wsLog } from "@/lib/audit";
 import { hasRole } from "@/lib/sod";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
@@ -183,7 +182,6 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
       <button className="btn btn-secondary" onClick={setPublic}><Icon name="eye" />Preview public page</button>
       {tab === "resources" ? <button className="btn btn-primary" disabled={!canAct} title={noRole || undefined} onClick={() => L.openModal("Publish resource", <PublishForm L={L} />)}><Icon name="plus" />Publish resource</button> : null}
     </>}>
-      <ModuleTip mod="trust" force={API_ON && !DATA.trust.length} />
       <div className="card" style={{ flex: "0 1 auto", minHeight: 0 }}>
         <div className="c-head"><div className="tabs" role="tablist" aria-label="Trust Center admin">{TABS.map((t) => (
           <button key={t[0]} type="button" className="tab" role="tab" aria-selected={tab === t[0]} onClick={() => setTab(t[0])}>{t[1]}{t[0] === "access" && reqCount ? <> <span className="tag" style={{ marginLeft: 4 }}>{reqCount}</span></> : null}</button>

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { gotoModule, openAs } from "./helpers";
+import { gotoModule, heading, openAs } from "./helpers";
 
 test("bell opens a notifications dialog, an item opens its record, Mark all read can be undone", async ({ browser }, ti) => {
   const s = await openAs(browser, ti, "admin");
@@ -35,7 +35,7 @@ test("bell opens a notifications dialog, an item opens its record, Mark all read
 test("a role with no matching modules has no unread badge; Escape closes the panel", async ({ browser }, ti) => {
   const s = await openAs(browser, ti, "employee");
   const p = s.page;
-  await gotoModule(p, "/ws/me");
+  await gotoModule(p, "/ws/work");
   const bell = p.getByRole("button", { name: "Notifications", exact: true });
   await expect(bell).toBeVisible();
   await bell.click();
@@ -62,7 +62,7 @@ test("keyboard shortcuts: Ctrl+/ lists them, Ctrl+J opens the AI Assistant, the 
   await s.close();
 
   const e = await openAs(browser, ti, "employee");
-  await gotoModule(e.page, "/ws/me");
+  await gotoModule(e.page, "/ws/work");
   await expect(e.page.getByRole("button", { name: /^Ask AI/ })).toHaveCount(0);
   await e.close();
 });
@@ -77,4 +77,32 @@ test("the shell keeps one search landmark and a labelled primary nav, and the ra
   // the rail animates its width (about 200 ms), so wait for it to settle
   await expect.poll(() => p.locator("aside#sidebar").evaluate((el) => Math.round(el.getBoundingClientRect().width))).toBe(72);
   await s.close();
+});
+
+test("the old My Workspace address opens My Work on the Policies tab, and the breadcrumb root is the company's name", async ({ browser }, ti) => {
+  const s = await openAs(browser, ti, "employee");
+  const p = s.page;
+  await p.goto("/ws/me");
+  await expect(p).toHaveURL(/\/ws\/work\?tab=policies$/);
+  await expect(heading(p)).toHaveText("My Work");
+  const tabs = p.getByRole("tablist", { name: "My Work sections" });
+  await expect(tabs.getByRole("tab", { name: "Policies" })).toHaveAttribute("aria-selected", "true");
+  await expect(p.getByRole("tabpanel")).toContainText("Published policies");
+  // the area is named after the company (demo: the seeded company), not "Workspace"
+  const crumbs = p.getByRole("navigation", { name: "Breadcrumb" });
+  await expect(crumbs.getByRole("link").first()).toHaveText("Northwind Payments");
+  await expect(crumbs).toContainText("My Work");
+  // the sidebar has no separate My Workspace entry; the group that holds Team & Rules is Settings
+  await expect(p.getByRole("navigation", { name: "Company" })).toBeVisible();
+  await expect(p.getByRole("navigation", { name: "Company" })).not.toContainText("My Workspace");
+  expect(s.errors).toEqual([]);
+  await s.close();
+
+  const a = await openAs(browser, ti, "admin");
+  await gotoModule(a.page, "/ws/team");
+  const nav = a.page.getByRole("navigation", { name: "Company" });
+  await expect(nav.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
+  await expect(nav).toContainText("Team & Rules");
+  await expect(heading(a.page)).toHaveText("Team & Rules");
+  await a.close();
 });

@@ -5,7 +5,6 @@ import { ReasonTicket, reasonTicketOk } from "@/components/kit/admin/ReasonTicke
 import { ELEVATE_TEXT, ServerElevationBanner, useServerElevation } from "@/components/kit/admin/ServerElevation";
 import { apiMessage, RequestsTable, utcMin } from "@/components/kit/serverRequests";
 import { useLayer } from "@/hooks/useLayer";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { invoiceText, minorMoney } from "@/lib/billingText";
 import { downloadText } from "@/lib/format";
 import { useGo } from "@/lib/route";
@@ -49,7 +48,6 @@ export function ApiBilling({ param }: { param?: string | null }) {
   return (
     <Page mod="billing" sub="The platform's billing ledger: accounts, invoices, payments and credits." acts={acts}>
       <ServerElevationBanner s={s} />
-      <ModuleTip mod="billing" force={!!b && !b.accounts.length} />
       {b ? (
         <KpiStrip label="Billing summary">
           <KpiTile label="Billing accounts" value={b.accounts.length} caption={`${b.companies.filter((c) => !c.hasAccount && c.status !== "Closed").length} companies without one`} />

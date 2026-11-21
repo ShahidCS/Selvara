@@ -3,7 +3,6 @@ import { DataTable, Empty, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTCol
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { apiMessage } from "@/components/kit/serverRequests";
 import { useLayer } from "@/hooks/useLayer";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { invoiceText, minorMoney, type InvoiceLike } from "@/lib/billingText";
 import { downloadText } from "@/lib/format";
 import { safeFileName } from "@/lib/security";
@@ -56,7 +55,6 @@ export function ApiBillingWs() {
     <Page mod="billingws" acts={a ? <button className="btn btn-secondary" disabled={!!waiting} title={waiting ? "A plan change is already waiting for the Selvara team" : undefined} onClick={() => L.openModal("Change plan", (close) => <PlanForm d={d} close={close} />)}>Change plan</button> : undefined}>
       <div className="scroll" style={{ flex: "1 1 auto" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
-          <ModuleTip mod="billingws" force={!d.invoices.length} />
           {paid ? <div className="banner info" role="status" style={{ display: "flex", gap: 8, alignItems: "center" }}><Icon name="clock" />Thank you. Invoice {paid} shows as paid once the payment provider confirms the payment, usually within a minute.</div> : null}
           {!a ? <Empty icon="billing" title="No billing account yet">The Selvara team sets up your company&apos;s billing account (plan, currency and billing contact). Invoices appear here once they are issued.</Empty> : (
             <>

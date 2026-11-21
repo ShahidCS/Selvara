@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Chip, Icon } from "@/components/ui";
+import { Chip, Icon, Segmented } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { getWelcome, hasRecentAuth, REAUTH_MS, SESSION_MS } from "@/lib/accountSecurity";
 import { LENGTH_COPY } from "@/lib/credentials";
 import { useData } from "@/lib/store";
+import { resetTourProgress, setTourFreq, TOUR_FREQ_LABEL, useTourPrefs, type TourFreq } from "@/lib/tours";
 import * as auth from "@/services/authApi";
 import { signOutOthers } from "@/services/me";
 import { ErrP, PwField } from "./AuthFields";
@@ -67,6 +68,8 @@ export function YourAccount() {
 
       {view.demo ? null : <ChangePassword />}
 
+      <GuidedTours />
+
       <section className="card" aria-labelledby="ya-act" style={{ gridColumn: "1 / -1" }}><div className="c-head"><h3 id="ya-act">Security activity</h3></div>
         <div className="c-body">
           {view.notices.length ? (
@@ -77,6 +80,24 @@ export function YourAccount() {
         </div>
       </section>
     </div>
+  );
+}
+
+/** How often a module's guided tour starts by itself; saved on the person's account (this browser in the demo). */
+function GuidedTours() {
+  const L = useLayer(); const { prefs, loaded } = useTourPrefs();
+  useEffect(() => { if (window.location.hash === "#tours") document.getElementById("tours")?.scrollIntoView({ block: "start" }); }, []);
+  const pick = async (f: TourFreq) => { await setTourFreq(f); L.toast(`Guided tours: ${TOUR_FREQ_LABEL[f]}`); };
+  const again = async () => { await resetTourProgress(); L.toast("Every tour will start again the next time you open its page"); };
+  return (
+    <section className="card" id="tours" aria-labelledby="ya-tours"><div className="c-head"><h3 id="ya-tours">Guided tours</h3></div>
+      <div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <p className="field help" style={{ margin: 0 }}>A short walkthrough of a page, in bubbles you move through with Next or skip. Choose when a page&apos;s tour starts by itself. You can always play it again with the play button in the top bar.</p>
+        <Segmented<TourFreq> label="Start tours" value={prefs.freq} onChange={(f) => void pick(f)} options={(["first", "updates", "off"] as const).map((f) => ({ value: f, label: TOUR_FREQ_LABEL[f] }))} />
+        <p className="field help" style={{ margin: 0 }}>{prefs.freq === "first" ? "Each page's tour starts the first time you open the page." : prefs.freq === "updates" ? "Each page's tour starts the first time you open the page, and again when the tour changes in a later release." : "Tours never start by themselves."}{loaded ? "" : " Your setting could not be loaded; tours will not start by themselves until it is."}</p>
+        <div><button className="btn btn-secondary sm" onClick={() => void again()}><Icon name="refresh" />Show all tours again</button></div>
+      </div>
+    </section>
   );
 }
 

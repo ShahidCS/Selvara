@@ -1,5 +1,3 @@
-import { API_ON } from "@/lib/rbac";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData, useModState } from "@/lib/store";
@@ -45,7 +43,6 @@ function PeopleList() {
   const comp = DATA.people.filter((p) => p.device === "Compliant").length, mfa = DATA.people.filter((p) => p.mfa).length, n = DATA.people.length;
   return (
     <Page mod="people">
-      <ModuleTip mod="people" force={API_ON && !DATA.people.length} />
       <KpiStrip label="People summary">
         <KpiTile label="Workforce" value={n} caption="People on record" />
         <KpiTile label="Device compliant" value={noDevices ? "—" : `${comp}/${n}`} caption={noDevices ? "No device integration connected" : "Managed and up to date"} />

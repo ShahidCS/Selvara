@@ -75,7 +75,7 @@ export interface Directory {
 /** Thrown when an approved change can no longer be applied. The Postgres directory catches it inside the transaction and rolls back to a savepoint
  *  taken before the vote, so the vote and the change are undone together. */
 export class ApplyConflict extends Error {}
-/** The request kinds Team & Settings decides; other modules' requests are never decided through it. */
+/** The request kinds Team & Rules decides; other modules' requests are never decided through it. */
 export const TEAM_KINDS = ["team-role", "team-invite"];
 const INVITE_MS = INVITE_TTL_H * 3600_000;
 const facts = (a: ApprovalRow) => ({ status: a.status, expiresAt: a.expiresAt, approverRoles: a.approverRoles, requestedBy: a.requestedBy, forbid: a.forbid, votes: a.votes.map((v) => v.by) });

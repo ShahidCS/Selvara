@@ -241,10 +241,10 @@ export function supportRoutes(h: SupportHelpers): Record<string, H> {
   const open = staff(async (d, r, c) => {
     const ref = s(r.body.ref, 40).trim().toLowerCase(); const e = { reason: s(r.body.reason).trim(), ticket: s(r.body.ticket, 20).trim(), minutes: Number(r.body.minutes) };
     const why = elevationBlock(e); if (why) return err(400, why);
-    const g = (await d.sup.liveGrants(c.p.id, d.now())).find((x) => x.ref === ref); if (!g) return err(409, "This company has no live support grant. Its admin gives one in Team & Settings.");
+    const g = (await d.sup.liveGrants(c.p.id, d.now())).find((x) => x.ref === ref); if (!g) return err(409, "This company has no live support grant. Its admin gives one in Team & Rules.");
     const res = await d.sup.open(c.p.id, g.companyId, e, r.ip, d.now(), h.entry(d, r, c.p, c.a, "platform.support.started", `${g.ref}: ${e.minutes} minutes at most; ticket ${e.ticket}; reason: ${e.reason}`));
     if (res === "busy") return err(409, "End your elevation or support session first: one at a time.");
-    if (res === "no-grant") return err(409, "This company has no live support grant. Its admin gives one in Team & Settings.");
+    if (res === "no-grant") return err(409, "This company has no live support grant. Its admin gives one in Team & Rules.");
     return ok({ session: res });
   });
   const close = staff(async (d, r, c) => {

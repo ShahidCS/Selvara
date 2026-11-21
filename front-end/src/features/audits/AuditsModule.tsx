@@ -1,5 +1,3 @@
-import { ModuleTip } from "@/components/kit/ModuleTip";
-import { API_ON } from "@/lib/rbac";
 import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { setModState, useApp, useData } from "@/lib/store";
@@ -37,18 +35,17 @@ export default function AuditsModule({ param: propParam }: { param?: string | nu
   const outstanding = pool.reduce((n: number, a: Audit) => n + (a.pbc || []).filter((p: { status: string }) => p.status === "Outstanding").length, 0);
   return (
     <Page mod="audits" acts={auditorView
-      ? <button className="btn btn-secondary" disabled={!pool.length} onClick={() => { setModState("audits.tab", "ir"); go("/ws/audits/" + encodeURIComponent(pool[0].id)); }}><Icon name="evidence" />Information requests</button>
-      : <button className="btn btn-primary" disabled={!!whyCannotManage()} title={whyCannotManage() || undefined} onClick={newAudit}><Icon name="plus" />New audit</button>}>
-      {auditorView ? null : <ModuleTip mod="audits" force={API_ON && !DATA.audits.length} />}
+      ? <button className="btn btn-secondary" data-tour="audits-requests" disabled={!pool.length} onClick={() => { setModState("audits.tab", "ir"); go("/ws/audits/" + encodeURIComponent(pool[0].id)); }}><Icon name="evidence" />Information requests</button>
+      : <button className="btn btn-primary" data-tour={whyCannotManage() ? undefined : "audits-add"} disabled={!!whyCannotManage()} title={whyCannotManage() || undefined} onClick={newAudit}><Icon name="plus" />New audit</button>}>
       <KpiStrip label="Audit summary">
         <KpiTile label="In fieldwork" value={pool.filter((a: Audit) => a.stage === "Fieldwork").length} caption={`${pool.length} audits in total`} />
         <KpiTile label="Open findings" value={totalOpen} delta={totalOpen ? { tone: "bad", text: "Needs action" } : undefined} caption="Not yet closed or declined" />
         <KpiTile label="Outstanding requests" value={outstanding} delta={outstanding ? { tone: "watch", text: "Chase owners" } : undefined} caption="Evidence requests (PBC) outstanding" />
         <KpiTile label="Complete" value={pool.filter((a: Audit) => a.stage === "Complete").length} caption="Engagements closed" />
       </KpiStrip>
-      <div className="card" style={{ flex: "1 1 auto" }}><div className="c-body scroll">
+      <div className="card" data-tour="audits-table" style={{ flex: "1 1 auto" }}><div className="c-body scroll">
         {auditorView ? (
-          <div className="card" role="note" style={{ background: "var(--surface-2)", borderColor: "var(--line)", marginBottom: 12 }}><div className="c-body" style={{ padding: 14 }}>
+          <div className="card" role="note" data-tour="audits-auditor-note" style={{ background: "var(--surface-2)", borderColor: "var(--line)", marginBottom: 12 }}><div className="c-body" style={{ padding: 14 }}>
             <div style={{ fontWeight: 600, display: "flex", gap: 6, alignItems: "center" }}><Icon name="eye" /> Audits assigned to you</div>
             <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>As external auditor you have read-only access to the organisation&apos;s records. You can raise information requests and draft findings; management accepts a finding into an issue. You cannot advance stages, freeze populations, end access, create issues or change management requests.</div>
           </div></div>

@@ -1,3 +1,4 @@
+import { hasTour, startTour } from "@/components/kit/Tour";
 import { Icon } from "@/components/ui";
 import { appStore, persist, setModState, useApp, useData, useModVersion } from "@/lib/store";
 import { API_ON, TITLE, landingPath, roleOf, allowedSpaces, modAllowed } from "@/lib/rbac";
@@ -29,6 +30,8 @@ export function Topbar() {
   const canAsk = modAllowed(roleId, "ws", "assistant");
   const [title] = TITLE[route.mod] || [route.mod];
   const homeHref = route.space === "admin" ? "/admin/customers" : "/ws/overview";
+  // the company area is named after the company (production: the session's company; demo: the persona's seeded company)
+  const companyName = (API_ON ? company?.name : me.tenant ? CUSTOMERS[me.tenant]?.name : null) || "Your company";
   const themeIcon = theme === "dark" ? "moon" : theme === "light" ? "sun" : "auto";
 
   const nextTheme = theme === "auto" ? "light" : theme === "light" ? "dark" : "auto";
@@ -63,7 +66,7 @@ export function Topbar() {
           </>
         ) : null}
         <div className="div" />
-        {modAllowed(roleId, "ws", "me") ? <button role="menuitem" onClick={() => { close(); go("/ws/me"); }}><Icon name="user" />My workspace</button> : null}
+        {modAllowed(roleId, "ws", "work") ? <button role="menuitem" onClick={() => { close(); go("/ws/work"); }}><Icon name="user" />My work</button> : null}
         <button role="menuitem" onClick={() => { close(); go("/auth"); }}><Icon name="access" />Sign-in &amp; security</button>
         <button role="menuitemcheckbox" aria-checked={density === "compact"} onClick={() => { const d = density === "compact" ? "comfortable" : "compact"; appStore.set({ density: d }); persist(); close(); L.toast("Density: " + (d === "compact" ? "Compact" : "Comfortable")); }}><Icon name={density === "compact" ? "check" : "blank"} />Compact density</button>
         <button role="menuitem" onClick={() => { close(); openShortcuts(L); }}><Icon name="grid" />Keyboard shortcuts</button>
@@ -79,7 +82,7 @@ export function Topbar() {
       <button className="icon-btn hamburger" aria-label="Open menu" title="Open menu" aria-expanded={mobOpen} aria-controls="sidebar" onClick={() => appStore.set({ mobOpen: true })}><Icon name="menu" /></button>
       <button className="icon-btn collapse-btn" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={`${collapsed ? "Expand" : "Collapse"} sidebar (⌘B)`} aria-expanded={!collapsed} aria-controls="sidebar" onClick={() => { appStore.set((s) => ({ collapsed: !s.collapsed })); persist(); }}><Icon name="rows" /></button>
       <nav className="crumbs" aria-label="Breadcrumb">
-        <Link href={homeHref}>{route.space === "admin" ? "Admin Console" : "Workspace"}</Link>
+        <Link href={homeHref}>{route.space === "admin" ? "Admin Console" : companyName}</Link>
         {route.mod === "billing" && route.param && CUSTOMERS[route.param] ? (
           <>
             <span className="sep"><Icon name="chevron" /></span><Link href="/admin/billing">Billing</Link>
@@ -104,6 +107,7 @@ export function Topbar() {
       {API_ON ? null : <button className="icon-btn nbell" aria-label={unread ? `Notifications, ${unread > 9 ? "9+" : unread} unread` : "Notifications"} title="Notifications" aria-haspopup="dialog" onClick={openNotifications}>
         <Icon name="bell" />{unread ? <span className="nbadge" aria-hidden="true">{unread > 9 ? "9+" : unread}</span> : null}
       </button>}
+      {route.space !== "auth" && !route.param && hasTour(route.mod) ? <button className="icon-btn" aria-label="Take the tour of this page" title="Take the tour of this page" onClick={() => startTour(route.mod)}><Icon name="play" /></button> : null}
       <button className="icon-btn" aria-label={`Theme: ${THEME_NAME[theme] ?? theme}. Change theme`} title={`Theme: ${THEME_NAME[theme] ?? theme} (click for ${THEME_NAME[nextTheme]})`} onClick={cycleTheme}><Icon name={themeIcon} /></button>
       <div className="top-div" aria-hidden="true" />
       <button className="top-user" aria-haspopup="menu" aria-expanded="false" onClick={roleMenu}>

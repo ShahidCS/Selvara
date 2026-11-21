@@ -140,7 +140,7 @@ export function Sidebar() {
     if (route.mod !== key) { lastMod.current = null; go(`/${space}/${key}`); }
   };
   const toggleGroup = (g: string, cur: boolean) => appStore.set({ groupsOpen: { ...s.groupsOpen, [g]: !cur } });
-  const other = space === "admin" ? "Workspace" : "Admin";
+  const other = space === "admin" ? "Company" : "Admin Console";
 
   return (
     <>
@@ -161,14 +161,14 @@ export function Sidebar() {
                 <Icon name={space === "admin" ? "frameworks" : "customers"} />
               </button>
             ) : (
-              <div className="seg" role="tablist" aria-label="Workspace or Admin">
-                <button role="tab" aria-selected={space === "ws"} onClick={() => switchSpace("ws")}><Icon name="frameworks" /><span className="seg-txt">Workspace</span></button>
-                <button role="tab" aria-selected={space === "admin"} onClick={() => switchSpace("admin")}><Icon name="customers" /><span className="seg-txt">Admin</span></button>
+              <div className="seg" role="tablist" aria-label="Company or Admin Console">
+                <button role="tab" aria-selected={space === "ws"} onClick={() => switchSpace("ws")}><Icon name="frameworks" /><span className="seg-txt">Company</span></button>
+                <button role="tab" aria-selected={space === "admin"} onClick={() => switchSpace("admin")}><Icon name="customers" /><span className="seg-txt">Admin Console</span></button>
               </div>
             )}
           </div>
         ) : null}
-        <nav ref={navRef} className="sb-nav scroll" aria-label={space === "admin" ? "Admin Console" : "Workspace"} onScroll={(e) => { scrollTop.current = (e.target as HTMLElement).scrollTop; }}>
+        <nav ref={navRef} className="sb-nav scroll" aria-label={space === "admin" ? "Admin Console" : "Company"} onScroll={(e) => { scrollTop.current = (e.target as HTMLElement).scrollTop; }}>
           {groups.length === 0 ? (
             <div className="empty" style={{ padding: "24px 12px" }}><div className="ei"><Icon name="shieldcheck" /></div><p>{API_ON ? "Nothing to show here yet for your role. More of Selvara appears here as each part moves to live company data." : "This role has no modules in this space."}</p></div>
           ) : groups.map((g) => {

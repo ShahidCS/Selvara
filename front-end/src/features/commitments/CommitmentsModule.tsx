@@ -5,7 +5,6 @@ import { useSyncExternalStore } from "react";
 import { g4Meta } from "@/services/ws";
 import { API_ON } from "@/lib/rbac";
 import { askReason } from "@/components/kit/ReasonDialog";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { wsLog } from "@/lib/audit";
 import { adminLog } from "@/lib/adminAudit";
 import { hasRole } from "@/lib/sod";
@@ -62,7 +61,6 @@ export default function CommitmentsModule() {
         <button className="btn btn-secondary" disabled={!can} title={why} onClick={() => L.openModal("Start incident clock", <StartIncidentForm L={L} />)}><Icon name="alert" />Start incident</button>
       </>
     )}>
-      <ModuleTip mod="commitments" force={API_ON && !DATA.commitments.length} />
       {banner}
       <KpiStrip label="Commitments summary">
         <KpiTile label="Commitments" value={DATA.commitments.length} caption="Made to customers in contracts" />

@@ -57,11 +57,11 @@ function TeamTabs() {
       ? <span style={{ color: "var(--muted)", fontSize: 12, whiteSpace: "nowrap" }}>You<span className="vh">: another admin changes your role</span></span>
       : <button className="btn btn-ghost sm" aria-label={`Change role of ${p.name}`} onClick={() => L.openModal("Change role, " + p.name, (close) => <ChangeRoleForm personId={p.id} close={close} />)}><Icon name="access" />Role</button>) : null) },
   ];
-  const spaces: [string, string][] = [["ws", "Workspace"], ["admin", "Admin"]];
+  const spaces: [string, string][] = [["ws", "Company"], ["admin", "Admin Console"]];
   return (
     <Page mod="team" acts={view === "members" && manage ? <button className="btn btn-primary" onClick={() => go("/ws/team/invite")}><Icon name="plus" />Invite member</button> : undefined}>
       <div className="card" style={{ flex: "1 1 auto" }}>
-        <div className="c-head" style={{ padding: "0 8px" }}><div className="tabs" role="tablist" aria-label="Team and settings">{VIEWS.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
+        <div className="c-head" style={{ padding: "0 8px" }}><div className="tabs" role="tablist" aria-label="Team and rules">{VIEWS.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className={`c-body ${flush ? "flush" : ""} scroll`} style={flush ? { padding: 0 } : undefined} id="teamBody">
           {view === "members" ? (
             <>

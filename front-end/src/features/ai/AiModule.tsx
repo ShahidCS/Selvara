@@ -11,7 +11,6 @@ import { useLayer } from "@/hooks/useLayer";
 import * as svc from "@/features/ai/services/ai";
 import { ApprovalsPanel } from "@/components/kit/sodKit";
 import { askReason } from "@/components/kit/ReasonDialog";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { API_ON } from "@/lib/rbac";
 import { AiDetail } from "./AiDetail";
 import { AiEditPage, AiRegisterPage } from "./AiForms";
@@ -75,7 +74,6 @@ function AiList() {
             <summary style={{ cursor: "pointer", padding: "10px 14px", fontSize: 12.5, color: "var(--muted)", display: "flex", gap: 8, alignItems: "center" }}><Icon name="shieldcheck" aria-hidden="true" style={{ width: 16, height: 16, flex: "0 0 auto" }} />Classifications and assessments are drafts for qualified compliance and legal review. <span style={{ color: "var(--ink-2)", textDecoration: "underline" }}>How decisions are made</span></summary>
             <div style={{ padding: "0 14px 10px 38px", fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>Do not rely on a classification or assessment until that review is done. EU AI Act classifications must be confirmed by an admin or owner other than the drafter, impact assessments approved by someone other than the submitter, and guardrail changes and archiving approved by a second person. Registering a system does not approve it. Only the AI system owner, an admin or an owner can change a system or triage its signals.</div>
           </details>
-          <ModuleTip mod="ai" />
           <div className="card"><div className="c-head"><h3>AI inventory</h3></div><div className="c-body flush" style={{ padding: 0 }}>
             <DataTable<AiSys> id="ai-inventory" label="AI inventory" rows={DATA.ai} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.id} ${a.name} ${a.model} ${a.provider} ${a.owner} ${a.surface}`}
               tabs={["Approved", "In review", "Archived"].map((st) => ({ key: st, label: st, match: (a: AiSys) => a.status === st }))}

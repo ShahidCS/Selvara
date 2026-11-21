@@ -9,7 +9,6 @@ import { useGo, useRoute } from "@/lib/route";
 import { RevealKeyModal, RevealSecretModal, RevokeKeyForm } from "./ApiModals";
 import { API_ON } from "@/lib/rbac";
 import { askReason } from "@/components/kit/ReasonDialog";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { NewKeyPage, NewTestPage, NewWebhookPage } from "./ApiForms";
 
 const TABS: [string, string][] = [["Keys", "API keys"], ["Hooks", "Webhooks"], ["Tests", "Custom tests"], ["Stream", "Event stream"]];
@@ -121,7 +120,6 @@ function ApiTabs() {
           </div>
         </div>
         <div className="c-body flush scroll" style={{ padding: 0 }} id="apiBody">
-          <div className="empty:hidden" style={{ padding: "12px 12px 0" }}><ModuleTip mod="api" /></div>
           {tab === "Keys" || tab === "Hooks" ? <div className="empty:hidden" style={{ padding: "12px 12px 0" }}><ApprovalsPanel prefix="api." title="API approvals (second admin)" /></div> : null}
           {tab === "Keys" ? (
             <DataTable<Key> id="api-keys" label="API keys" rows={svc.API.keys} rowKey={(k) => k.id} columns={keyCols} searchText={(k) => `${k.label} ${k.prefix} ${k.scope}`}

@@ -52,7 +52,7 @@ export function AuditDetail({ id }: { id: string }) {
   const open = a.findings.filter(svc.isOpenFinding).length;
 
   const grant = () => API_ON ? askReason(L, { title: "Send to auditor", label: "Access ends on", textType: "date", min: 10, confirm: "Grant access", select: auditors, selectLabel: "External auditor",
-    intro: auditors.length ? "The auditor sees this engagement only, until the end date, and can raise requests and draft findings. Access ends by itself." : "Invite the external auditor in Team & Settings with the Auditor role first.",
+    intro: auditors.length ? "The auditor sees this engagement only, until the end date, and can raise requests and draft findings. Access ends by itself." : "Invite the external auditor in Team & Rules with the Auditor role first.",
     run: async (until, auditorId) => { await svc.grantAuditorAccess(id, auditorId, until); return "Auditor access granted"; } }) : attempt(L, async () => {
     await svc.grantAuditorAccess(id);
     wsLog("audit.auditor.access.granted", a.name + " → " + a.auditor, "Audit"); L.toast("Auditor access granted for " + a.auditor); bumpData();

@@ -12,7 +12,6 @@ import * as svc from "@/features/reports/services/reports";
 import { ApprovalsPanel, attempt } from "@/components/kit/sodKit";
 import { ConfirmRemoveSchedule, RemoveScheduleForm, ScheduleForm } from "./ReportLayers";
 import { API_ON } from "@/lib/rbac";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 
 const MONTHS = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
 
@@ -42,7 +41,6 @@ export default function ReportsModule() {
   return (
     <Page mod="reports" acts={<button className="btn btn-primary" disabled={!can} title={why} onClick={() => schedule()}><Icon name="plus" />New schedule</button>}>
       <div className="scroll" style={{ overflow: "auto" }}>
-        <ModuleTip mod="reports" />
         <KpiStrip label="Reporting summary">
           <KpiTile label="Weighted compliance" value={M.compliance + "%"} caption="Across frameworks in scope" />
           <KpiTile label="Scheduled packs" value={SCHED_PACKS.length} caption={`${SCHED_PACKS.filter((p) => p.external).length} sent outside the organisation`} />

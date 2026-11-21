@@ -128,7 +128,7 @@ export function auditRoutes(h: WsHelpers) {
   const grant = manage(async (d, t, rec, b) => {
     const a = rec.data; if (a.access.status === "granted") invalid("Auditor access is already granted.");
     const m = (await membersOf(d, t.actor)).find((x) => x.id === str(b.auditorId, 100) && x.role === "auditor");
-    if (!m) invalid("Choose the external auditor. Invite them in Team & Settings with the Auditor role first.");
+    if (!m) invalid("Choose the external auditor. Invite them in Team & Rules with the Auditor role first.");
     const today = isoDayOf(t.now); const until = txt(b.until, 10);
     const ms = Date.parse(until + "T00:00:00Z"); // a real calendar day only ("2026-13-45" or "9999-99-99" never pass)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(until) || Number.isNaN(ms) || isoDayOf(ms) !== until || until < today || ms > t.now + ACCESS_MAX_DAYS * 86400_000) invalid(`Choose an end date within ${ACCESS_MAX_DAYS} days.`);

@@ -34,7 +34,7 @@ export const MODULE_TIPS: Record<string, ModuleTipText> = {
     steps: [
       "Write a policy with New policy. You become its owner: only you edit its text, and an admin can hand it to someone else.",
       "Submit it for review and name an approver: an admin or owner who did not write it. They approve it with an effective date, then publish it.",
-      "Once published, everyone reads and acknowledges it from the policy or from My workspace; the acceptance count shows who has.",
+      "Once published, everyone reads and acknowledges it from the policy or from My Work › Policies; the acceptance count shows who has.",
       "Editing a published policy starts a new draft version; the published one stays in force until the new one is published.",
     ],
     note: "In an emergency an admin can publish at once; another admin or owner must then approve it within 5 business days.",
@@ -57,13 +57,6 @@ export const MODULE_TIPS: Record<string, ModuleTipText> = {
     ],
     note: "Approving or revoking here records the decision; the system's administrators make the change in the system itself.",
   },
-  me: {
-    title: "Your workspace",
-    steps: [
-      "My tasks lists what is waiting on you: policies to read and acknowledge, and policies you are the named approver of.",
-      "Admins and owners can delegate their approvals to another admin or owner while away (up to 14 days).",
-    ],
-  },
   overview: {
     title: "Your security posture at a glance",
     steps: [
@@ -76,8 +69,10 @@ export const MODULE_TIPS: Record<string, ModuleTipText> = {
   work: {
     title: "Your work",
     steps: [
-      "This page lists issues you own and risk treatment actions assigned to you, with their due dates.",
+      "Tasks lists issues you own and risk treatment actions assigned to you, with their due dates, and My tasks: policies to read and acknowledge, and policies you are the named approver of.",
       "Reviews and approvals lists the decisions waiting for you. Open an item to decide it on its page.",
+      "Policies lists every published policy. Read and acknowledge each one there.",
+      "Admins and owners can delegate their approvals to another admin or owner while away (up to 14 days) from the Delegation tab.",
       "Use Request access or Request a new vendor to ask the right team without email.",
     ],
   },
@@ -116,7 +111,7 @@ export const MODULE_TIPS: Record<string, ModuleTipText> = {
       "Requests for new vendors from My Work appear here. Someone other than the requester approves them. A Critical vendor needs two approvers.",
       "Each vendor gets a next review date from its tier: 12, 24 or 36 months. Overdue reviews show in the bell and on the Overview.",
       "Record certificates with their expiry dates. They turn Expiring at 60 days and Expired by themselves. A waiver needs a second person and ends on its date.",
-      "Send questionnaire goes to the vendor's contact. Invite them in Team & Settings with the Vendor role. They answer in their own workspace.",
+      "Send questionnaire goes to the vendor's contact. Invite them in Team & Rules with the Vendor role. They answer in their own workspace.",
     ],
     note: "Risk scores and outcomes are your assessments. Qualified risk staff must review them.",
   },
@@ -152,7 +147,7 @@ export const MODULE_TIPS: Record<string, ModuleTipText> = {
     title: "Running an audit",
     steps: [
       "Create the engagement, then add the requests (PBC) your team must provide. Give each request an owner from your company.",
-      "Send to auditor gives an external auditor access to this engagement only, until an end date. Invite them first in Team & Settings with the Auditor role.",
+      "Send to auditor gives an external auditor access to this engagement only, until an end date. Invite them first in Team & Rules with the Auditor role.",
       "The auditor raises information requests and drafts findings. You answer the requests and accept findings into issues or decline them with a reason.",
       "Complete the engagement when no draft or open request remains. With open findings or outstanding requests you record a reason.",
     ],

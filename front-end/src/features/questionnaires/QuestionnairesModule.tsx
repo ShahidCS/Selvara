@@ -11,7 +11,6 @@ import { AddAnswerPage, ImportFormPage } from "./QuestionnaireForms";
 import { QuestionnaireDetail } from "./QuestionnaireDetail";
 import VendorPortal from "./VendorPortal";
 import { API_ON } from "@/lib/rbac";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { useSyncExternalStore } from "react";
 import { DueCell } from "./QuestionnaireDetail";
 
@@ -107,7 +106,6 @@ function QuestionnairesList() {
   }
   return (
     <Page mod="questionnaires" acts={acts}>
-      <ModuleTip mod="questionnaires" force={API_ON && !DATA.questionnaires.length && !ANSWER_LIB.length} />
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head"><div className="seg" role="tablist">{VIEWS.map((v) => <button key={v[0]} role="tab" aria-selected={view === v[0]} onClick={() => setView(v[0])}>{v[1]}</button>)}</div></div>
         <div className="c-body flush scroll" style={{ padding: 0 }} id="qBody">{body}</div>

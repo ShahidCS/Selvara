@@ -3,7 +3,6 @@ import { DATA } from "@/lib/data";
 import { API_ON } from "@/lib/rbac";
 import { SodError } from "@/lib/sod";
 import { askReason } from "@/components/kit/ReasonDialog";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import { wsLog } from "@/lib/audit";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { VENDOR_REQS } from "@/lib/requests";
@@ -62,7 +61,6 @@ function VendorsList() {
   ];
   return (
     <Page mod="vendors" acts={<button className="btn btn-primary" disabled={!canManage} title={canManage ? undefined : "Only admin or owner can add vendors"} onClick={() => go("/ws/vendors/new")}><Icon name="plus" />Add vendor</button>}>
-      <ModuleTip mod="vendors" force={API_ON && !DATA.vendors.length} />
       {canManage ? <ApprovalsPanel prefix="vendor." title="Vendor approvals (four-eyes)" /> : null}
       <div className="kpis" style={{ marginBottom: 12 }} role="group" aria-label="Vendors by tier">
         {VENDOR_TIERS.map((t) => {

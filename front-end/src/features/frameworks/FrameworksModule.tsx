@@ -1,11 +1,9 @@
 import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, type DTColumn } from "@/components/ui";
 import { DATA, FRAMEWORK_REQS } from "@/lib/data";
 import { setModState, useApp, useData } from "@/lib/store";
-import { useFwEdits, REQ_PAGE, fwCanAdmin, fwLegend, fwReadiness, fwScopeIn, fwScore, fwSnoozed, fwEdits } from "@/lib/frameworks";
+import { useFwEdits, REQ_PAGE, fwCanAdmin, fwLegend, fwReadiness, fwScopeIn, fwScore, fwSnoozed } from "@/lib/frameworks";
 import { useGo, useRoute } from "@/lib/route";
 import { uiMessage } from "@/lib/grcSod";
-import { ModuleTip } from "@/components/kit/ModuleTip";
-import { API_ON } from "@/lib/rbac";
 import { useLayer } from "@/hooks/useLayer";
 import * as fw from "./services/frameworks";
 import { FwDetail } from "./FwDetail";
@@ -97,7 +95,6 @@ function FrameworksList() {
 
   return (
     <Page mod="frameworks" acts={<button className="btn btn-primary" onClick={() => go("/ws/frameworks/new")}><Icon name="plus" />Add framework</button>}>
-      <ModuleTip mod="frameworks" force={API_ON && !Object.values(fwEdits.get().SCOPE).some(Boolean)} />
       <KpiStrip label="Library summary">
         <KpiTile label="In the library" value={DATA.frameworks.length} caption={`${inScope.length} in scope`} />
         <KpiTile label="Average readiness" value={avg + "%"} caption="Frameworks in scope" />

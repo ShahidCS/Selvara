@@ -10,7 +10,7 @@ import { SOD } from "@/lib/sod";
 import * as svc from "@/services/team";
 
 const SRC_EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/; // prototype regex, kept; isEmail adds length caps
-const back = { href: "/ws/team", label: "Team & Settings" };
+const back = { href: "/ws/team", label: "Team & Rules" };
 /** Least-privileged role first, so a privileged invitation is a deliberate choice. */
 const DEFAULT_ROLE = svc.USER_ROLES.includes("Employee") ? "Employee" : svc.USER_ROLES[svc.USER_ROLES.length - 1];
 

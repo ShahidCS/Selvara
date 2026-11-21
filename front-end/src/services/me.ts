@@ -1,4 +1,4 @@
-/* Member workspace API stubs. Mock mode mutates in-memory demo state; the caller does wsLog/toast/bumpData.
+/* My Work (Policies tab) API stubs. Mock mode mutates in-memory demo state; the caller does wsLog/toast/bumpData.
  * A real API must: bind acknowledgement to the authenticated user, policy id + exact version and a server timestamp (non-repudiation);
  * generate and hash recovery codes server-side and return the plaintext once; revoke sessions server-side (refresh/session tokens). */
 import { modAllowed } from "@/lib/rbac";

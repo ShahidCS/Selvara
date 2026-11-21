@@ -12,7 +12,6 @@ import { useGo } from "@/lib/route";
 import { uiMessage } from "@/lib/grcSod";
 import { ApprovalsPanel, attempt } from "@/components/kit/sodKit";
 import { askReason } from "@/components/kit/ReasonDialog";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 import * as svc from "@/features/integrations/services/integrations";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -66,7 +65,6 @@ function ConnectionList() {
   return (
     <Page mod="integrations" acts={live.length ? <button className="btn btn-secondary" onClick={syncAll}><Icon name="refresh" />Sync all</button> : undefined}>
       <div className="scroll" style={{ flex: "1 1 auto" }}><div style={{ display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
-        <ModuleTip mod="integrations" force={!connections.length} />
         <KpiStrip label="Integration summary">
           <KpiTile label="Connected" value={live.length} caption={`of ${providers.length} connectors`} />
           <KpiTile label="Needing attention" value={live.filter((c: Conn) => c.health !== "Healthy").length} delta={live.some((c: Conn) => c.health !== "Healthy") ? { tone: "watch", text: "Check health" } : { tone: "good", text: "All healthy" }} caption="Connections" />

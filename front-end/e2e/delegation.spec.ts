@@ -26,9 +26,9 @@ test("an admin delegates the approver slot; the delegate approves a policy on th
   await nextPush(p, url);
   await expect(p.getByRole("button", { name: "Approve", exact: true })).toBeDisabled();
 
-  // Jordan Avery delegates to Casey Morgan from My workspace
+  // Jordan Avery delegates to Casey Morgan from My Work, Delegation tab
   await switchTo(p, "Jordan Avery");
-  await nextPush(p, "/ws/me");
+  await nextPush(p, "/ws/work?tab=delegation");
   await expect(card(p)).toBeVisible();
   const go = card(p).getByRole("button", { name: "Delegate my approvals" });
   await expect(go).toBeDisabled(); // a reason is needed
@@ -46,7 +46,7 @@ test("an admin delegates the approver slot; the delegate approves a policy on th
 
   // Casey sees what was delegated, and can now approve for Jordan
   await switchTo(p, "Casey Morgan");
-  await nextPush(p, "/ws/me");
+  await nextPush(p, "/ws/work?tab=delegation");
   await expect(card(p)).toContainText("Delegated to you");
   await expect(card(p)).toContainText("Jordan Avery");
   await nextPush(p, url);
@@ -76,7 +76,7 @@ test("a delegation can be ended by the delegator, and then the delegate can no l
   await p.getByLabel(/^Named approver/).selectOption("Jordan Avery");
   await p.getByRole("dialog").getByRole("button", { name: "Submit for review" }).click();
   await switchTo(p, "Jordan Avery");
-  await nextPush(p, "/ws/me");
+  await nextPush(p, "/ws/work?tab=delegation");
   await card(p).getByLabel("Delegate to").selectOption("Casey Morgan");
   await card(p).getByLabel(/^Reason/).fill("Out for the afternoon, covering");
   await card(p).getByRole("button", { name: "Delegate my approvals" }).click();
@@ -92,8 +92,11 @@ test("a delegation can be ended by the delegator, and then the delegate can no l
 test("roles that cannot hold an approver slot do not see the delegation card", async ({ browser }, ti) => {
   const s = await openAs(browser, ti, "employee");
   const p = s.page;
-  await gotoModule(p, "/ws/me");
+  await gotoModule(p, "/ws/work?tab=delegation");
   await expect(p.getByRole("heading", { level: 1 })).toBeVisible();
+  // no Delegation tab is offered, and the link falls back to Tasks
+  await expect(p.getByRole("tab", { name: "Delegation" })).toHaveCount(0);
+  await expect(p.getByRole("tab", { name: "Tasks" })).toHaveAttribute("aria-selected", "true");
   await expect(card(p)).toHaveCount(0);
   await s.close();
 });

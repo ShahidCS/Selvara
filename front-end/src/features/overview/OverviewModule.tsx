@@ -11,7 +11,6 @@ import { downloadText } from "@/lib/format";
 import { useRoute } from "@/lib/route";
 import { useApp } from "@/lib/store";
 import { API_ON, modAllowed } from "@/lib/rbac";
-import { ModuleTip } from "@/components/kit/ModuleTip";
 
 const MONTHS = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
 const tile = (tone: Desirability, text: string) => ({ tone, text });
@@ -87,7 +86,6 @@ export default function OverviewModule() {
       {can("work") ? <button className="btn btn-primary" onClick={() => go("/ws/work")}><Icon name="work" />Open my work</button> : null}
     </>}>
       <div className="scroll" style={{ flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column", gap: 14 }}>
-      <ModuleTip mod="overview" />
       <KpiStrip label="Posture summary">
         <KpiTile label="Weighted compliance" value={M.compliance + "%"} delta={live(tile("good", "+3 pts this month"))} caption="Across frameworks in scope" />
         <KpiTile label="Open risks" value={M.openRisks} delta={live(tile("good", "2 fewer this month"))} caption={`${M.aboveAppetite} above appetite`} />

@@ -1,4 +1,4 @@
-/* Team & Settings stubs. Mock mode keeps TEAM_SETTINGS in memory; the caller does wsLog / toast / bumpData.
+/* Team & Rules stubs. Mock mode keeps TEAM_SETTINGS in memory; the caller does wsLog / toast / bumpData.
  * The real API MUST authorize every settings change and invitation server-side (tenant admin only), send the invitation e-mail itself with a
  * single-use expiring token, and never trust the role chosen in the client. */
 import seed from "@/data/teamSeed.json";
