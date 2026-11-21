@@ -73,6 +73,13 @@ export function TourHost() {
     window.addEventListener("resize", on); document.addEventListener("scroll", on, true);
     return () => { window.removeEventListener("resize", on); document.removeEventListener("scroll", on, true); };
   }, [mod, place]);
+  // Escape skips the tour wherever focus is (the bubble takes focus a moment after it opens), unless a dialog of the page has it
+  useEffect(() => {
+    if (!mod) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !document.querySelector('[role="dialog"][aria-modal="true"]')) end(true); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [mod, end]);
   // leaving the page ends the tour without marking it seen (it was not finished or skipped)
   useEffect(() => { if (!mod) return; const p = window.location.pathname; const iv = window.setInterval(() => { if (window.location.pathname !== p) end(false); }, 400); return () => window.clearInterval(iv); }, [mod, end]);
 
@@ -80,8 +87,7 @@ export function TourHost() {
   const last = i === steps.length - 1;
   const next = () => (last ? end(true) : setI(i + 1));
   const onKey = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") { e.preventDefault(); end(true); }
-    else if (e.key === "ArrowRight") { e.preventDefault(); next(); }
+    if (e.key === "ArrowRight") { e.preventDefault(); next(); }
     else if (e.key === "ArrowLeft" && i > 0) { e.preventDefault(); setI(i - 1); }
   };
   const ring = pos?.ring;
