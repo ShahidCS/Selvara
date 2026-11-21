@@ -229,3 +229,11 @@ Components and props:
 - **Tables:** the right-edge scroll shadow on `.tbl-wrap` and `.tabs` shows only while there is more to scroll. `.tbl td.num` cells never wrap.
 - **Shell:** the route guard says "Your role does not open <module>." before it moves a person to their start page; the mobile drawer traps focus and has a close button; the vendor portal security panel is folded into "How this portal protects you".
 
+
+## Guided tours
+
+Each module has a short walkthrough (`src/data/tours/*`, engine `src/components/kit/Tour.tsx`): a bubble that points at one part of the page at a time with **Back**, **Next** (**Done** on the last step) and **Skip tour**. It replaces the old banner tips.
+- **Writing a tour:** 3 to 7 steps, plain second-person sentences of at most about 220 characters, in reading order: what the page is for, the summary, the main list, the main action, tabs, who approves what. Keep compliance wording exact. Point at elements with `data-tour="<module>-<part>"` hooks in the module's own markup, on an element with size (not `display: contents`). A step whose element is not on the page is left out, so steps for actions a role cannot take simply do not show. Raise `version` when people should see the tour again.
+- **When it starts:** on the module's main page, by the person's preference, which is saved on their account (`GET/PUT /api/me/tours`; this browser in the demo): **First visit only** (default), **Again after updates** (also when the tour's version goes up) or **Off**. The setting is in Sign-in & security, Guided tours, with **Show all tours again**. Finishing or skipping counts as seen. A tour never starts over a dialog, and not under browser automation unless a test opts in (`localStorage["selvara.tours.e2e"] = "1"`).
+- **Replay:** the play button in the top bar ("Take the tour of this page").
+- **Accessibility:** the bubble is a labelled non-modal dialog that takes focus on each step and returns it at the end. Escape skips, and the left and right arrow keys move between steps. The page stays usable; a ring marks the element. Below 600px wide the bubble is a bottom sheet.

@@ -51,7 +51,7 @@ export const TOURS: Tours = {
     steps: [
       { target: H1, title: "Reset a lost second factor", body: "Reset multi-factor authentication for a customer's admin who lost their authenticator. Each reset needs identity checks and a second approver." },
       { target: ELEV, title: "Elevation for super admins", body: "Super admins elevate before they raise or decide a reset. Support can raise a request but never approve one." },
-      { target: '[data-tour="mfa-admins"]', title: "Request a reset", body: "Find the admin and choose Reset MFA. Confirm all three identity checks, pick a reason, add a ticket and name the second approver." },
+      { target: '[data-tour="mfa-admins"]', title: "Request a reset", body: "Find the admin and request a reset from their row. Confirm all three identity checks, pick a reason, add a ticket and name the second approver." },
       { title: "The named approver decides", body: "Only the named platform super admin approves or rejects a reset, never the requester or the person being reset. The requester can withdraw it." },
       { target: '[data-tour="mfa-views"], [data-tour="mfa-history"]', title: "Requests and history", body: "Open requests wait for the named approver. Decided, withdrawn and expired resets stay in the history." },
       { target: '[data-tour="mfa-log"]', title: "Check the audit trail", body: "Every request and decision is recorded. Open the Admin Audit Log to review them." },
@@ -63,7 +63,7 @@ export const TOURS: Tours = {
     steps: [
       { target: H1, title: "What administrators did", body: "An append-only record of platform administrator actions. Entries are never edited or deleted." },
       { target: KPIS, title: "Log at a glance", body: "Shows the number of entries, whether the hash chain is intact, the tenants touched and the latest event." },
-      { target: '[data-tour="adminlog-table"]', title: "Search the log", body: "Search by actor, action or object and use the filters to narrow the list. Click an entry, where it opens, to see its full detail." },
+      { target: '[data-tour="adminlog-table"]', title: "Search the log", body: "Search by actor, action or object and use the filters to narrow the list. Export the rows from the table when you need them." },
       { target: '[data-tour="adminlog-chain"]', title: "Chain check", body: "Each entry hashes the one before it. A broken chain means an entry was changed or removed after it was written." },
       { target: '[data-tour="adminlog-views"]', title: "Chain, RoPA and exports", body: "Chain integrity verifies every link, the RoPA register maps entries to GDPR Article 30 activities, and Evidence export builds a package for auditors." },
       { target: '[data-tour="adminlog-export"]', title: "Export entries", body: "Download the log as JSON or CSV. On the RoPA register tab these buttons export the register instead." },
@@ -77,7 +77,7 @@ export const TOURS: Tours = {
       { target: ELEV, title: "Your current state", body: "Shows whether this session is elevated. Without an elevation, changes across the console stay disabled and the services refuse them." },
       { target: '[data-tour="elevation-request"]', title: "Request elevation", body: "Super admins give a reason of at least 15 characters, a ticket such as SEC-1234 and a duration of 60 minutes at most. Support cannot elevate." },
       { target: '[data-tour="elevation-grants"]', title: "Customer support grants", body: "Customers approve these read-only, expiring grants. They are the only route to a customer's workspace content. This list is read-only." },
-      { title: "End it when you are done", body: "End the elevation as soon as your change is made. It also ends on its own at the time shown." },
+      { title: "End it when done", body: "End the elevation as soon as your change is made. It also ends on its own at the time shown." },
     ],
   },
   security: {
@@ -88,7 +88,7 @@ export const TOURS: Tours = {
       { target: ELEV, title: "Read-only until you elevate", body: "Lifting a block needs an elevated session. Support accounts can see the blocks but not lift them." },
       { target: '[data-tour="security-blocks"]', title: "Blocked sign-in addresses", body: "Addresses blocked after repeated failed sign-ins. Every block ends on its own; only an elevated super admin can lift one early, with a reason." },
       { target: '[data-tour="security-rules"]', title: "Security rules", body: "The password, authentication and privileged-access rules for every tenant and for this console. They are read-only." },
-      { title: "Lifts are recorded", body: "Each lifted block is recorded in the admin audit log with your reason. Review it under Admin Audit Log." },
+      { title: "Lifts are recorded", body: "Each lifted block is recorded in the audit log with your reason. Review it under Admin Audit Log." },
     ],
   },
 };

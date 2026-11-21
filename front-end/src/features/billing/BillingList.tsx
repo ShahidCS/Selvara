@@ -62,7 +62,7 @@ export function BillingList() {
               <div className="r"><button className="btn btn-secondary sm" disabled={page <= 1} onClick={() => setPage(page - 1)}><Icon name="chevl" />Prev</button><span>{page} / {pages}</span><button className="btn btn-secondary sm" disabled={page >= pages} onClick={() => setPage(page + 1)}>Next<Icon name="chevron" /></button></div></div>
           ) : <div className="pager" id="billPager" />}
         </div>
-        <div className="card" data-tour="billing-detail">
+        <div className="card">
           <div className="c-head" style={{ flexWrap: "wrap", gap: 8 }}><h3>Billing details</h3>
             <div style={{ marginLeft: "auto", minWidth: 200 }}><label className="vh" htmlFor="billSel">Invoice customer</label>
               <select className="select" id="billSel" value={sel} onChange={(e) => select(e.target.value)}><option value="">Select a customer…</option>{list.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></div></div>
