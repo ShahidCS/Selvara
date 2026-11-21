@@ -43,7 +43,7 @@ In **each** project (staging and production separately), open SQL Editor → New
 9. [`supabase/migrations/0009_company_audit_verify.sql`](../../supabase/migrations/0009_company_audit_verify.sql) (production programme, group 5, from v0.2.0): lets a company admin verify their own company's audit chain from the workspace Audit log. Run it with the release that needs schema version 9.
 10. [`supabase/migrations/0010_platform_records.sql`](../../supabase/migrations/0010_platform_records.sql) (production programme, group 8a, from v0.2.0): the platform's own records for the Admin Console billing ledger, exchange rates and tax, and invoice numbers. Only an elevated platform super admin (or the verified payment webhook, for payments) may write them; a company reads only its own billing rows. Schema version 10.
 
-All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `9`.
+All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `10` (v0.2.0).
 
 Supabase may warn that a script contains destructive operations: the `drop ... if exists` lines only remove the script's own triggers and policies to recreate them. No data is deleted.
 
@@ -102,17 +102,61 @@ The site is built by GitHub Actions, not by Vercel, so a `NEXT_PUBLIC_API_MODE` 
 2. GitHub → **Settings** → **Environments** → `production` → **Environment variables** → **Add variable**: name `API_MODE`, value `http`.
 3. Deploy: push the next release tag, or re-run the **Production** job of the latest release (the build runs again with the new value).
 
-What changes: the sign-in page uses your real account (no demo accounts), and only modules with a server API are shown (decision D4). Today that is **Team & Settings** for company admins (members and their roles, invitations, requests to join, the second-admin requests, account lockout), **Frameworks**, **Controls & Tests**, **Evidence**, **Policies**, **People**, **Access** and **My workspace** for the roles that have them (production programme groups 1 and 2), and **Your account** for everyone; roles with none of these land on Your account. Each further module appears when its server slice ships. From v0.1.11 platform staff get the Admin Console: Customers & Usage, Elevated Access (super admins only) and the Admin Audit Log. To go back to the demonstration, set `API_MODE` to `mock` (or delete it) and deploy again.
+What changes: the sign-in page uses your real account (no demo accounts), and only modules with a server API are shown (decision D4). Since v0.2.0 every workspace module has one, so each role sees all the modules its role allows, as in the demonstration; **Your account** is there for everyone. Platform staff get the Admin Console (Customers & Usage, Billing, Elevated Access for super admins, and the Admin Audit Log). To go back to the demonstration, set `API_MODE` to `mock` (or delete it) and deploy again.
 
-### 4d. Evidence file storage (you, per project; production programme group 1)
+### 4d. File storage: the `evidence` bucket (you, per project; required from v0.2.0)
 
-Evidence files are kept in a **private** Supabase Storage bucket that only the server reaches (with the service key it already has). Nothing is public: downloads are links valid for 60 seconds, sent as a download, and each download is recorded in the company's audit log.
+One **private** Supabase Storage bucket holds every file Selvara stores: evidence attachments, Trust Center documents, questionnaire knowledge-base documents and files that vendors upload in the vendor portal. Only the server reaches it, with the service key it already has. Nothing in it is public: a download is a signed link valid for 60 seconds, served as an attachment, and each download is recorded in the company's audit log.
 
-1. Supabase → **Storage** → **New bucket**: name `evidence`, **Public bucket: off**. Optional limits on the bucket: file size limit `4 MB`; allowed MIME types `application/pdf, image/png, image/jpeg, text/plain, text/csv, text/markdown, application/json, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` (Selvara checks the same list, and the file's content, before storing it).
-2. Do **not** add storage policies for the `anon` or `authenticated` roles: the browser never talks to Storage directly.
-3. Vercel → the project → **Settings** → **Environment Variables**: name `EVIDENCE_BUCKET`, value `evidence` (not a secret), for the environment of this project. Redeploy.
+**Step 1. Open Storage in the right project.** Sign in to the Supabase dashboard and open the project whose reference matches `SUPABASE_URL` in Vercel for this environment (the reference is in the address, `supabase.com/dashboard/project/<ref>`). In the left menu choose **Storage**.
 
-Until this is done, attaching a file says "File storage is not configured yet"; everything else in Evidence works. Files are stored under the company's id (`<company>/<evidence id>/<random id>.<ext>`); deleting evidence (after the second admin's approval) deletes its files and keeps a tombstone with each file's name and SHA-256.
+**Step 2. Create the bucket.** Choose **New bucket** and fill in:
+
+| Field | Value |
+|---|---|
+| Name | `evidence` (lower case; you can choose another name, but then use the same name in step 4) |
+| Public bucket | **Off**. Never turn it on: a public bucket serves every company's files to anyone with the path |
+| Restrict file size (under additional configuration) | On, `4` MB. Selvara refuses larger files first; this is a second check |
+| Allowed MIME types (under additional configuration) | On, and paste the list below |
+
+```text
+application/pdf, image/png, image/jpeg, text/plain, text/csv, text/markdown, application/json, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+```
+
+This is the list Selvara itself accepts (`.pdf`, `.png`, `.jpg`/`.jpeg`, `.txt`, `.csv`, `.md`, `.json`, `.docx`, `.xlsx`). Selvara also checks that each file's content matches its extension before storing it. Choose **Save** (or **Create bucket**).
+
+**Step 3. Leave the policies empty.** In Storage, **Policies**, the `evidence` bucket must have **no** policies for the `anon` or `authenticated` roles. The browser never talks to Storage directly; the server uses the service role, which does not need a policy. If the dashboard offers a policy template, decline it.
+
+**Step 4. Tell Selvara the bucket's name.** In Vercel, open the project, then **Settings**, **Environment Variables**, **Add**:
+
+| Name | Value | Environments | Sensitive |
+|---|---|---|---|
+| `EVIDENCE_BUCKET` | `evidence` | Production (and Preview with the staging project's own bucket) | no, it is not a secret |
+
+**Step 5. Redeploy.** Variables apply to new deployments only. In GitHub, **Actions**, open the latest **Release** run and choose **Re-run jobs**, then **Re-run all jobs** (the Production job waits for its reviewer if the environment has one). You can set several variables first and redeploy once.
+
+**Step 6. Check it.** Sign in as a company admin or an employee who can add evidence. In **Evidence**, open an item, attach a small PDF, then download it.
+- The file appears with its name and size, and the download starts.
+- In Supabase Storage the `evidence` bucket shows a folder named after the company's id, and inside it a folder named after the evidence item.
+- In the workspace **Audit log** you see the upload and the download.
+
+**If it does not work**
+
+| What you see | Fix |
+|---|---|
+| "File storage is not configured yet" | `EVIDENCE_BUCKET` is not set for this environment, or the deployment predates it: set it and redeploy |
+| 500, and the Vercel log line `api.error` with step `storage.upload` and "Bucket not found" | The bucket name differs from `EVIDENCE_BUCKET` (names are case-sensitive), or the bucket is in the other project |
+| `storage.upload` with "mime type ... is not supported" or "exceeded the maximum allowed size" | The bucket's allowed MIME types or size limit are narrower than the list above: correct them in the bucket's settings |
+| `storage.upload` with 403 or "new row violates row-level security policy" | `SUPABASE_SERVICE_ROLE_KEY` holds the publishable key instead of the secret one |
+| `storage.sign` when downloading | The file was removed from the bucket by hand. Do not delete files in the dashboard; delete evidence in Selvara (it needs a second admin's approval) |
+
+**Where files are kept.** Each path starts with the company's id, so one company's files never share a folder with another's:
+- `<company>/<evidence id>/<random id>.<ext>`: evidence attachments;
+- `<company>/TRUST/<random id>.<ext>`: Trust Center documents;
+- `<company>/KB/<random id>.<ext>`: questionnaire knowledge-base documents;
+- `<company>/vendor-q/<questionnaire>/<question>-<random>.<ext>`: vendor portal uploads.
+
+Deleting evidence (after the second admin's approval) deletes its files and keeps a tombstone with each file's name and SHA-256. Until the bucket is set up, everything else in Selvara works; only attaching files says it is not configured.
 
 ### 4e. AI (you, per project; production programme group 6; optional)
 
@@ -257,8 +301,8 @@ Sign-in answers 409 "not an active member of any company": run section 5b for th
 | **Pro plan for production** | The Free plan has no backups, pauses after 7 days without activity, and has no leaked-password protection. A regulated customer will ask about backups and availability. |
 | **Your own SMTP** (Resend, Postmark, Amazon SES or Microsoft 365) | Built-in email reaches only your Supabase team, at 2 emails per hour. |
 | **Data processing agreement and security report** | Sign Supabase's DPA. Supabase's SOC 2 report is offered on higher plans, so check which plan you need for your vendor-risk file. |
-| **The remaining module APIs** | Authentication, companies, join requests, lockout settings and the member list are on the server; the other modules are not yet. |
-| **Human security review** | Review `front-end/src/server` before go-live. |
+| **File storage, email and a production reviewer** | The `evidence` bucket (4d) holds every uploaded file; email (4h) is needed for password resets to reach real users; a required reviewer on the GitHub `production` environment makes each production deploy wait for approval. |
+| **Human security review** | Review `front-end/src/server` and the migrations before go-live: all generated code, configuration and security controls need technical, security and management review. |
 
 ## What I need from you
 
