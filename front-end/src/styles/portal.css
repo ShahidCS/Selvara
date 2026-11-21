@@ -282,6 +282,9 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 .input,.select{height:36px;padding:0 11px;border:1px solid var(--line-2);border-radius:var(--radius-field);background:var(--surface);color:var(--ink);font-size:14px;font-family:inherit;width:100%}
 .input:hover,.select:hover{border-color:var(--muted)}
 .input:focus,.select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-weak)}
+/* a field the form marked invalid: red edge (the error text beside it carries the words, so not colour alone) */
+.input[aria-invalid="true"],.select[aria-invalid="true"],textarea[aria-invalid="true"]{border-color:var(--bad-ink)}
+.input[aria-invalid="true"]:focus,.select[aria-invalid="true"]:focus,textarea[aria-invalid="true"]:focus{box-shadow:0 0 0 3px var(--bad-bg)}
 .input::placeholder{color:var(--faint)}
 .input[readonly]{background:var(--surface-2);color:var(--muted);cursor:default}
 .linkbtn{font:inherit;background:none;border:0;padding:0;cursor:pointer;color:var(--accent-ink)}
