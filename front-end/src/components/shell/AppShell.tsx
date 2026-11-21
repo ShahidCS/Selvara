@@ -105,7 +105,7 @@ function Frame({ children }: { children: ReactNode }) {
   );
 }
 /** Routes rendered WITHOUT the app chrome (external users have no workspace role, sidebar or role switcher). */
-const STANDALONE = ["/vendor-portal", "/login"];
+const STANDALONE = ["/vendor-portal", "/login", "/trust"];
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useRouter();
   if (STANDALONE.some((p) => pathname === p || pathname.startsWith(p + "/"))) {

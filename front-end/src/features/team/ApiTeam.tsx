@@ -98,13 +98,14 @@ function Invitations() {
     e.preventDefault(); if (busy) return; setBusy(true); setFerr("");
     try {
       const r = await svc.invite(email, role); bumpData(); const to = email.trim().toLowerCase(); setEmail("");
-      if (r.pending || !r.link) L.toast(`Request sent: a second admin approves inviting ${to} as ${roleName(role)} (Requests)`);
-      else L.openModal(`Invitation for ${to}`, () => <LinkBox link={r.link!} email={to} expiresAt={r.expiresAt!} />);
+      if (r.pending) L.toast(`Request sent: a second admin approves inviting ${to} as ${roleName(role)} (Requests)`);
+      else if (r.emailed) L.toast(`Invitation emailed to ${to}`);
+      else if (r.link) L.openModal(`Invitation for ${to}`, () => <LinkBox link={r.link!} email={to} expiresAt={r.expiresAt!} mail={r.mail} />);
     } catch (x) { setFerr(why(x, "Could not create the invitation")); }
     setBusy(false);
   };
   const newLink = async (i: svc.InvitationItem) => {
-    try { const r = await svc.inviteLink(i.id); bumpData(); L.openModal(`Invitation for ${i.email}`, () => <LinkBox link={r.link} email={i.email} expiresAt={r.expiresAt} />); }
+    try { const r = await svc.inviteLink(i.id); bumpData(); if (r.emailed || !r.link) L.toast(`A new invitation was emailed to ${i.email}`); else L.openModal(`Invitation for ${i.email}`, () => <LinkBox link={r.link!} email={i.email} expiresAt={r.expiresAt} mail={r.mail} />); }
     catch (x) { L.toast(why(x, "Could not create a link"), false); }
   };
   const revoke = async (i: svc.InvitationItem) => { try { await svc.revokeInvite(i.id); bumpData(); L.toast(`Invitation for ${i.email} revoked`); } catch (x) { L.toast(why(x, "Could not revoke the invitation"), false); } };

@@ -19,7 +19,8 @@ async function readBody(req: NextApiRequest, max: number): Promise<Buffer | null
 }
 /** The upload routes (core.ts RAW_ROUTES): evidence files, knowledge-base documents and Trust Center documents. */
 const isUpload = (method: string | undefined, p: string[]) => method === "POST" && p[0] === "ws" && (
-  (p.length === 4 && p[1] === "evidence" && p[3] === "files") || (p.length === 2 && p[1] === "kb-docs") || (p.length === 5 && p[1] === "trust" && p[2] === "resources" && p[4] === "file"));
+  (p.length === 4 && p[1] === "evidence" && p[3] === "files") || (p.length === 2 && p[1] === "kb-docs") || (p.length === 5 && p[1] === "trust" && p[2] === "resources" && p[4] === "file")) ||
+  (method === "POST" && p.length === 3 && p[0] === "vendor-portal" && p[1] === "files"); // a vendor's evidence in the standalone portal
 /** The payment provider's webhook keeps its raw body (its signature covers the exact bytes), up to 512 KB. */
 const isWebhook = (method: string | undefined, p: string[]) => method === "POST" && p.length === 3 && p[0] === "billing" && p[1] === "stripe" && p[2] === "webhook";
 export default async function api(req: NextApiRequest, res: NextApiResponse) {

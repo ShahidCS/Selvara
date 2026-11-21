@@ -492,6 +492,17 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
     const me = (userId: string, tenantId: string, name = "Someone", role = "admin"): Actor => ({ id: userId, name, role, tenantId, ip: "198.51.100.7" });
     beforeAll(() => { ws = new PgWsStore(app, new MemoryStore(() => Date.now())); });
 
+    it("someone without an account (a vendor contact, a public Trust Center visitor, an API key) writes and is audited with no user id", async () => {
+      const visitor: Actor = { id: "", name: "Visitor v•••@vendor.example", role: "viewer", tenantId: A, ip: "203.0.113.20" };
+      await ws.tx(visitor, Date.now(), async (t) => {
+        await t.insert("trust-chat", "TC-VIS-1", { q: "Do you encrypt data at rest?" });
+        const rec = (await t.get<{ q: string }>("trust-chat", "TC-VIS-1"))!; await t.update("trust-chat", "TC-VIS-1", { q: rec.data.q, a: "Yes" }, rec.version);
+        await t.audit("trust.question.asked", "Do you encrypt data at rest? (public page)", "Policy");
+      });
+      const row = (await admin.query("select updated_by from public.ws_records where tenant_id = $1 and kind = 'trust-chat' and id = 'TC-VIS-1'", [A])).rows[0];
+      expect(row.updated_by).toBeNull();
+      expect((await admin.query("select actor, actor_id from public.audit_log where tenant_id = $1 and action = 'trust.question.asked'", [A])).rows[0]).toEqual({ actor: "Visitor v•••@vendor.example", actor_id: null });
+    });
     it("a company's records are its own; versions refuse a stale copy; ids come from a per-company counter", async () => {
       await ws.tx(me(alex, A), Date.now(), async (t) => {
         await t.insert("control", "GOV-1", { id: "GOV-1", title: "Company A control" });

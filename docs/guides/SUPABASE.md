@@ -149,6 +149,20 @@ Without these, billing works as an internal ledger and invoices are paid by bank
 
 Payments are recorded only from the webhook: its signature is checked on the raw body, each event is processed once, an event from the other mode (test or live) is refused, and a payment whose currency does not match the invoice is logged and not counted. Keep test and live keys in separate projects.
 
+### 4h. Email (you, per project; production programme group 8b; optional)
+
+Without these, Selvara sends no email. Links are shown to the person who creates them, the vendor portal stays closed, and the public Trust Center is read-only. With them, invitations, join outcomes, MFA reset notices, invoices, vendor questionnaires and Trust Center decisions and updates are emailed.
+
+1. Choose **Resend** or **Postmark**. Verify a sending domain there with its SPF, DKIM and DMARC records, for example `mail.<your domain>`.
+2. Add these to Vercel:
+   - `MAIL_PROVIDER`: `resend` or `postmark`.
+   - `MAIL_API_KEY`: the provider's API key, or the Postmark server token. Mark it **Sensitive**.
+   - `MAIL_FROM`: for example `Selvara <no-reply@mail.<your domain>>`.
+3. Redeploy. Invite a test person in Team & Settings: the screen says "Invitation emailed".
+4. Password reset emails are sent by Supabase Auth, not by Selvara. In Supabase, Authentication, SMTP settings, enter the same provider's SMTP details so reset emails reach real users.
+
+The provider becomes a sub-processor (record it in RoPA PA-16). Messages carry a title and a link only.
+
 ## 5. First accounts (you, per project)
 
 Requests to join need a company admin to approve them, so create the first admin by hand (5a), then their company (5b).

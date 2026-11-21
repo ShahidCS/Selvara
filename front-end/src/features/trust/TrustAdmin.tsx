@@ -11,6 +11,9 @@ import { TRUST } from "@/lib/trustData";
 import * as svc from "@/features/trust/services/trust";
 import { ApprovalsPanel, WhyNot, attempt } from "@/components/kit/sodKit";
 import { BlockDomainForm, DenyForm, PublishForm } from "./TrustModals";
+import { useSyncExternalStore } from "react";
+import { g4Meta } from "@/services/ws";
+import { useLayer } from "@/hooks/useLayer";
 
 const TABS: [string, string][] = [["resources", "Resources"], ["access", "Access & requests"], ["activity", "Activity & history"], ["chat", "Chatbot"]];
 const SEC = { margin: "0 0 8px" } as const;
@@ -154,6 +157,7 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
             <button className={`btn ${TRUST.chatbot ? "btn-secondary" : "btn-primary"} sm`} disabled={!canAct} title={noRole || undefined} onClick={toggleChatbot}>{TRUST.chatbot ? "Turn off" : "Turn on"}</button>
           </div>
         </div>
+        {API_ON ? <PublicPageCard canAct={canAct} noRole={noRole} /> : null}
         <div className="sectitle" style={SEC}>Conversation log</div>
         {TRUST.chats.length ? TRUST.chats.map((c, i) => (
           <div className="card" key={i} style={{ boxShadow: "none", background: "var(--surface-2)", marginBottom: 8 }}><div className="c-body" style={{ padding: "11px 13px" }}>
@@ -179,5 +183,27 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
         <div className="c-body scroll" id="trustAdmBody">{body}</div>
       </div>
     </Page>
+  );
+}
+
+/** Production (group 8b): the anonymous public page at /trust/<company code>. */
+function PublicPageCard({ canAct, noRole }: { canAct: boolean; noRole?: string | null }) {
+  const L = useLayer();
+  const pg = useSyncExternalStore(g4Meta.subscribe, () => g4Meta.get().trustPage, () => g4Meta.get().trustPage);
+  if (!pg) return null;
+  const url = typeof window !== "undefined" && pg.ref ? `${window.location.origin}/trust/${pg.ref}` : "";
+  const toggle = () => attempt(L, async () => { const r = await svc.setPublicPage(!pg.on); L.toast(r.pending ? "Turning the public page on needs a different admin or owner to approve" : r.on ? "Public page on" : "Public page turned off"); bumpData(); });
+  return (
+    <div className="card" style={{ boxShadow: "none", background: "var(--surface-2)", borderColor: "transparent", marginBottom: 12 }}>
+      <div className="c-body" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 320px" }}>
+          <div style={{ fontWeight: 600 }}>Public page for visitors without an account</div>
+          <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{pg.on ? <>On since {pg.since} (approved by {pg.by}): <a href={url} target="_blank" rel="noopener noreferrer">{url}</a></> : pg.pending ? "Turning it on is waiting for a second admin or owner (Approvals)." : "Off. When on, anyone can see your published documents, verified answers, approved sub-processors and control status."}
+            {" The address uses your company code, which is also what people type to ask to join your workspace; a join request always needs an admin's approval."}
+            {!pg.mail ? " Email is not set up for the platform, so visitors cannot verify an address to request documents or subscribe." : " Visitors confirm a work email with a code before they request a document, accept the NDA or subscribe."}</div>
+        </div>
+        <button className={`btn ${pg.on ? "btn-secondary" : "btn-primary"} sm`} disabled={!canAct || (!pg.on && !!pg.pending)} title={noRole || undefined} onClick={toggle}>{pg.on ? "Turn off" : "Ask to turn on"}</button>
+      </div>
+    </div>
   );
 }

@@ -2,6 +2,7 @@
    elevation (reason, ticket, 60 minutes at most) changes anything, and every company change is a request another super admin approves
    (docs/security/SOD_MATRIX.md sections 2 and 3). The database checks the elevation again for the company functions (migration 0006).
    Registered into core.ts's route table through `adminRoutes`, which receives core's helpers (no import cycle). */
+import { sendMail } from "./mail";
 import { approvalBlock, companyBlock, elevationBlock, reasonBlock } from "@/lib/rules";
 import { isEmail } from "@/lib/security";
 import type { Ctx, Req, Res } from "./core";
@@ -75,7 +76,10 @@ export function adminRoutes(h: AdminHelpers): Record<string, H> {
     if (action === "admin-link") {
       const token = h.randomId(32);
       const v = await d.plat.adminInviteLink(c.p.id, co.id, await h.sha256Hex(token), now, h.entry(d, r, c.p, c.a, "platform.company.admin_link_created", co.ref));
-      return v ? ok({ link: `${d.site.origin}/login#invite=${token}`, email: v.email, expiresAt: v.expiresAt }) : err(409, "This company has no pending first-admin invitation from the platform.");
+      if (!v) return err(409, "This company has no pending first-admin invitation from the platform.");
+      const link = `${d.site.origin}/login#invite=${token}`;
+      const m = await sendMail(d, v.email, { t: "first-admin", company: co.name, link, expires: new Date(v.expiresAt).toISOString().slice(0, 16).replace("T", " ") + " UTC" }, { tenantId: null, actor: c.p.person, ip: r.ip });
+      return ok(m.sent ? { emailed: true, email: v.email, expiresAt: v.expiresAt } : { emailed: false, mail: m.reason, link, email: v.email, expiresAt: v.expiresAt });
     }
     const kind: PlatformKind = action === "suspend" ? "platform-company-suspend" : "platform-company-reactivate";
     if (action === "suspend" ? co.status !== "Active" : co.status !== "Suspended") return err(409, `The company is ${co.status.toLowerCase()}.`);

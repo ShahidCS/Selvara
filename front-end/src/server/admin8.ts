@@ -10,6 +10,7 @@
      recovery codes are removed and every session ends; they and the company's log are told.
    - Sign-in blocks are listed for staff and lifted by an elevated super admin with a reason.
    Everything is written to the platform's log; billing changes to a company also to the company's own log. */
+import { mailConfigured, sendMail } from "./mail";
 import { reasonBlock } from "@/lib/rules";
 import { applyFinance, appliedRate, twoDecimals, type Payments, stripeSignatureOk, DAY, FINANCE_DUAL_USD_CENTS, financeBlock, issueFor, METHODS, money, outstanding, priceList, ratesOf, readFeeds, judge, REFERENCE_RATES, shown, stripeFromEnv, usdCents, CYCLES,
   type Account, type Entry, type FinanceKind, type Invoice, type PriceList, type Rate } from "./billing";
@@ -83,6 +84,7 @@ export async function applyGroup8(d: Deps, q: Tx | null, a: ApprovalRow, approve
     await d.auth.resetMfa(uid); await d.store.replaceRecovery(uid, []);
     for (const ss of await d.store.sessionsOf(uid)) if (!ss.revokedAt) await d.store.updateSession(ss.idHash, { revokedAt: d.now(), revokedWhy: "MFA reset by the platform" });
     await d.store.insertNotice({ id: `n${d.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, userId: uid, at: d.now(), text: "Selvara's support team reset your multi-factor authentication. Sign in again and enrol a new authenticator. If you did not ask for this, contact your company admin at once." });
+    const person = await d.store.profileById(uid); if (person) await sendMail(d, person.email, { t: "mfa-reset", link: `${d.site.origin}/login` }, { tenantId: String(p.tenantId), actor: "Platform", ip: "platform" });
   } else throw new WsRefused("This request cannot be applied here.", 409);
 }
 /** A refund of what was paid through the provider goes back through it, up to what the provider received and has not refunded yet. Called
@@ -113,6 +115,8 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
     return { status: 202, body: { pending: true, id } } as Res;
   };
   const pay = (d: Deps) => (d.payments === undefined ? stripeFromEnv(process.env, d.net) : d.payments);
+  const mailInvoice = (d: Deps, r: Req, c: Ctx, to: string, inv: Invoice, resent: boolean) =>
+    sendMail(d, to, { t: "invoice", id: inv.id, amount: money(outstanding(inv) || inv.total, inv.currency), due: new Date(inv.dueAt).toISOString().slice(0, 10), link: `${d.site.origin}/ws/billingws`, resent }, { tenantId: inv.tenantId, actor: c.p.person, ip: r.ip });
 
   /* ---------- billing ---------- */
   const billingData = staff(async (d, _r, c) => ok(await pstoreOf(d).tx(actorOf(c, _r), d.now(), async (t) => {
@@ -125,7 +129,7 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
       invoices: invoices.map((i) => invoiceView(i, now)).reverse(), entries: (await t.list<Entry>("billing-entry")).map((x) => x.data).reverse().slice(0, 300),
       companies: companies.map((x) => ({ id: x.id, ref: x.ref, name: x.name, status: x.status, hasAccount: accounts.some((a) => a.id === x.id) })),
       prices: (await priceList(t)).data, methods: METHODS.filter((m) => m !== "Card (Stripe)" || !!p), payments: p ? { mode: p.mode } : null, planRequests: requests.filter((x) => !answered.has(x.id)).reverse(),
-      thresholdUsd: FINANCE_DUAL_USD_CENTS / 100,
+      thresholdUsd: FINANCE_DUAL_USD_CENTS / 100, mail: mailConfigured(d),
     };
   }, { read: true })));
   /** Sets up (or changes) a company's billing account: plan, cycle, currency, country (tax), contact, address, method. Changes apply from the next invoice. */
@@ -167,14 +171,28 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
   const issue = elevated(async (d, r, c) => {
     const upTo = s(r.body.upTo, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(upTo) || Number.isNaN(Date.parse(upTo))) return err(400, "Choose the last day to invoice up to.");
     if (Date.parse(`${upTo}T00:00:00Z`) > d.now() + 31 * DAY) return err(400, "Invoices can be issued at most a month ahead.");
-    return pstoreOf(d).tx(actorOf(c, r), d.now(), async (t) => {
-      const issued: string[] = []; const skipped: string[] = [];
+    const res = await pstoreOf(d).tx(actorOf(c, r), d.now(), async (t) => {
+      const issued: string[] = []; const skipped: string[] = []; const mails: { to: string; inv: Invoice }[] = [];
       for (const acc of await t.list<Account>("billing-account")) {
-        for (let n = 0; n < 12; n++) { const out = await issueFor(t, acc as never, upTo, c.p.person); if (out.invoice) { issued.push(out.invoice.id); const fresh = await t.get<Account>("billing-account", acc.id); if (fresh) Object.assign(acc, fresh); } else { if (n === 0 && out.skipped !== "not due yet") skipped.push(`${acc.data.ref}: ${out.skipped}`); break; } }
+        for (let n = 0; n < 12; n++) { const out = await issueFor(t, acc as never, upTo, c.p.person); if (out.invoice) { issued.push(out.invoice.id); mails.push({ to: acc.data.contact.email, inv: out.invoice }); const fresh = await t.get<Account>("billing-account", acc.id); if (fresh) Object.assign(acc, fresh); } else { if (n === 0 && out.skipped !== "not due yet") skipped.push(`${acc.data.ref}: ${out.skipped}`); break; } }
       }
       await t.audit("invoices.issued", `${issued.length} invoices up to ${upTo}${skipped.length ? `; skipped: ${skipped.join("; ")}` : ""}`);
-      return ok({ issued, skipped });
+      return { issued, skipped, mails };
     });
+    // after the invoices are saved: each billing contact is emailed when email is set up (a failure never undoes an invoice)
+    let emailed = 0; for (const m of res.mails) if ((await mailInvoice(d, r, c, m.to, m.inv, false)).sent) emailed++;
+    return ok({ issued: res.issued, skipped: res.skipped, emailed, mail: mailConfigured(d) });
+  });
+  /** Emails an invoice to the account's billing contact again. */
+  const sendInvoice = elevated(async (d, r, c) => {
+    if (!mailConfigured(d)) return err(409, "Email is not set up for the platform yet. Download the invoice and send it yourself.");
+    const found = await pstoreOf(d).tx(actorOf(c, r), d.now(), async (t) => {
+      const inv = (await t.get<Invoice>("billing-invoice", s(r.path[3], 40)))?.data; if (!inv) return null;
+      return { inv, to: (await t.get<Account>("billing-account", inv.tenantId))?.data.contact.email ?? "" };
+    }, { read: true });
+    if (!found) return err(404, "Invoice not found.");
+    const m = await mailInvoice(d, r, c, found.to, found.inv, true);
+    return m.sent ? ok({ sent: true }) : err(m.reason === "rate limited" ? 429 : 502, m.reason === "rate limited" ? "Too many messages to this address in the last hour. Try later." : "The email could not be sent. Try again later.");
   });
   /** credit | refund | markpaid | writeoff | void: below the threshold at once, above it (and every write-off) a second super admin approves. */
   const finance = elevated(async (d, r, c) => {
@@ -334,7 +352,7 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
 
   return {
     "GET admin/billing": billingData, "POST admin/billing/accounts": accountSave, "POST admin/billing/pricing": pricing, "POST admin/billing/issue": issue,
-    "POST admin/billing/invoices/:id/:action": finance, "POST admin/billing/invoices/:id/payment-link/create": payLink, "POST admin/billing/plan-requests/:id/:decision": planDecide,
+    "POST admin/billing/invoices/:id/:action": finance, "POST admin/billing/invoices/:id/payment-link/create": payLink, "POST admin/billing/invoices/:id/email/send": sendInvoice, "POST admin/billing/plan-requests/:id/:decision": planDecide,
     "GET admin/rates": ratesData, "POST admin/rates/refresh": refresh, "POST admin/rates/:code/:action": rateAction,
     "GET admin/mfa": mfaData, "POST admin/mfa/requests": mfaRequest, "POST admin/mfa/requests/:id/withdraw": mfaWithdraw,
     "GET admin/security/blocks": blocks, "POST admin/security/blocks/:ip/lift": lift,

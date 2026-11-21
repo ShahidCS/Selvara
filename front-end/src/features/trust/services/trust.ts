@@ -102,6 +102,8 @@ export function blockDomain(d: string) {
 export function unblockDomain(d: string, reason = "") {
   return viaApi(() => { gate("unblocking a domain"); TRUST.blocked = TRUST.blocked.filter((x) => x !== d); return d; }, () => wsPost<string>(`/ws/trust/blocked-domains/${enc(d)}/delete`, { reason }));
 }
+/** Production (group 8b): the anonymous public page; turning it on is a request a second admin or owner approves. */
+export const setPublicPage = (on: boolean) => wsPost<{ on: boolean; pending: boolean }>("/ws/trust/public-page", { enabled: on });
 export function setChatbot(on: boolean) {
   return viaApi(() => { gate("changing the Trust Center chatbot"); TRUST.chatbot = on; return on; }, () => wsPost<boolean>("/ws/trust/chatbot", { enabled: on }));
 }

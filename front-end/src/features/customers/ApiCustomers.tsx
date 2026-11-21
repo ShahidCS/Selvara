@@ -40,7 +40,7 @@ function Companies({ s }: { s: ElevationState }) {
   useEffect(() => { let on = true; svc.listCompanies().then((x) => { if (on) { setRows(x); setErr(""); } }, (e) => { if (on) setErr(apiMessage(e, "Could not load the companies")); }); return () => { on = false; }; }, [v]);
   const gate = s.locked ? ELEVATE_TEXT : undefined;
   const link = async (c: svc.PlatformCompany) => {
-    try { const r = await svc.adminLink(c.ref); bumpData(); L.openModal(`First admin of ${c.name}`, () => <LinkBox link={r.link} email={r.email} expiresAt={r.expiresAt} />); }
+    try { const r = await svc.adminLink(c.ref); bumpData(); if (r.emailed || !r.link) L.toast(`The invitation was emailed to ${r.email}`); else L.openModal(`First admin of ${c.name}`, () => <LinkBox link={r.link!} email={r.email} expiresAt={r.expiresAt} mail={r.mail} />); }
     catch (x) { L.toast(apiMessage(x, "Could not create the link"), false); }
   };
   const cols: DTColumn<svc.PlatformCompany>[] = [

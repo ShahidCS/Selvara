@@ -49,16 +49,18 @@ export interface WsTx {
 export interface CompanyAuditEntry { chainN: number; at: number; actor: string; action: string; target: string; cat: string; hash: string; prevHash: string }
 export interface WsStore { tx<T>(actor: Actor, now: number, work: (t: WsTx) => Promise<T>): Promise<T> }
 
-const entry = (a: Actor, at: number, action: string, target: string, cat = "Control", system = false): AuditRow =>
-  ({ at, actor: system ? "System" : a.name, actorId: system ? null : a.id, tenantId: a.tenantId, action, target: target.slice(0, 1000), cat, space: "ws", ip: system ? "system" : a.ip });
-const KIND_RE = /^[a-z][a-z0-9.-]{1,39}$/;
 const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+/** People without an account (API keys, vendor contacts, public Trust Center visitors) act with an empty id: stored as null, never as text. */
+const entry = (a: Actor, at: number, action: string, target: string, cat = "Control", system = false): AuditRow =>
+  ({ at, actor: system ? "System" : a.name, actorId: system || !isUuid(a.id) ? null : a.id, tenantId: a.tenantId, action, target: target.slice(0, 1000), cat, space: "ws", ip: system ? "system" : a.ip });
+const KIND_RE = /^[a-z][a-z0-9.-]{1,39}$/;
 const checkKind = (k: string) => { if (!KIND_RE.test(k)) throw new Error("bad kind"); };
 
 export class PgWsStore implements WsStore {
   constructor(private db: Db, private store: Store) {}
   async tx<T>(actor: Actor, now: number, work: (t: WsTx) => Promise<T>): Promise<T> {
     const store = this.store; const notices: { userId: string; text: string }[] = []; const done: { action: string; target: string }[] = [];
+    const by = isUuid(actor.id) ? actor.id : null; // the record's last writer (null for someone without an account)
     try {
       const out = await this.db.tx({ tenantId: actor.tenantId, userId: actor.id }, async (q: Tx) => {
         const t: WsTx = {
@@ -76,17 +78,17 @@ export class PgWsStore implements WsStore {
           async insert(kind, id, data) {
             checkKind(kind);
             const r = await q.query(`insert into ws_records (tenant_id, kind, id, data, created_ms, updated_ms, updated_by) values ($1, $2, $3, $4, $5, $5, $6)
-              on conflict (tenant_id, kind, id) do nothing returning id`, [actor.tenantId, kind, id, JSON.stringify(data), now, actor.id]);
+              on conflict (tenant_id, kind, id) do nothing returning id`, [actor.tenantId, kind, id, JSON.stringify(data), now, by]);
             if (!r.length) throw new WsConflict("That id is already taken. Reload and try again.");
           },
           async update(kind, id, data, version) {
             const r = await q.query(`update ws_records set data = $4, version = version + 1, updated_ms = $5, updated_by = $6
-              where tenant_id = $1 and kind = $2 and id = $3 and version = $7 and deleted_ms is null returning id`, [actor.tenantId, kind, id, JSON.stringify(data), now, actor.id, version]);
+              where tenant_id = $1 and kind = $2 and id = $3 and version = $7 and deleted_ms is null returning id`, [actor.tenantId, kind, id, JSON.stringify(data), now, by, version]);
             if (!r.length) throw new WsConflict("Someone changed this record meanwhile. Reload and try again.");
           },
           async remove(kind, id, version) {
             const r = await q.query(`update ws_records set deleted_ms = $4, version = version + 1, updated_ms = $4, updated_by = $5
-              where tenant_id = $1 and kind = $2 and id = $3 and version = $6 and deleted_ms is null returning id`, [actor.tenantId, kind, id, now, actor.id, version]);
+              where tenant_id = $1 and kind = $2 and id = $3 and version = $6 and deleted_ms is null returning id`, [actor.tenantId, kind, id, now, by, version]);
             if (!r.length) throw new WsConflict("Someone changed this record meanwhile. Reload and try again.");
           },
           async next(kind, start) {
