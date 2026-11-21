@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Chip, Icon, Table } from "@/components/ui";
+import { LayerFoot } from "@/components/shell/LayerProvider";
 import { useLayer } from "@/hooks/useLayer";
 import { useGate } from "@/components/kit/admin/ElevateGate";
 import { sodMessage } from "@/lib/approvalFlow";
@@ -31,7 +32,7 @@ export function BlockedAddresses() {
                   <td>{r.level >= LEVEL_LABEL.length ? <Chip cls="bad" icon="alert">{LEVEL_LABEL[r.level - 1]}</Chip> : <Chip cls="warn" icon="clock">{LEVEL_LABEL[r.level - 1]}</Chip>}</td>
                   <td className="num" style={{ fontSize: 12 }}>{fmt(r.until)}</td>
                   <td className="num">{r.blocks}</td>
-                  <td className="r">{isSuper ? <button className="btn btn-ghost sm" disabled={gate.locked} title={gate.title} aria-label={`Lift block: ${r.ip}`} onClick={() => L.openModal(`Lift block on ${r.ip}`, (close) => <Lift ip={r.ip} close={close} />)}><Icon name="check" />Lift block</button> : null}</td>
+                  <td className="r">{isSuper ? <button className="btn btn-ghost sm" disabled={gate.locked} title={gate.title} aria-label={`Lift block: ${r.ip}`} onClick={() => L.openModal(`Lift block on ${r.ip}`, (close) => <Lift ip={r.ip} close={close} />)}><Icon name="access" />Lift block</button> : null}</td>
                 </tr>
               ))}
             </Table>
@@ -60,10 +61,7 @@ function Lift({ ip, close }: { ip: string; close: () => void }) {
       <div className="field"><label htmlFor="ipb-reason">Reason (at least {LIFT_REASON_MIN} characters)</label><textarea className="input" id="ipb-reason" data-focus rows={3} maxLength={300} style={{ resize: "vertical" }} placeholder="Who asked, how you verified them, the ticket" value={reason} onChange={(e) => { setReason(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "ipb-err" : undefined} /></div>
       <p className="field help" id="ipb-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
       <p className="field help">The address can try again at once and its next block starts at {LEVEL_LABEL[0]}. Recorded in the admin log with your elevation ticket.</p>
-      <div className="btngrp" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-        <button className="btn btn-secondary" onClick={close}>Cancel</button>
-        <button className="btn btn-primary" disabled={busy} onClick={go}>Lift block</button>
-      </div>
+      <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" disabled={busy} onClick={go}><Icon name="access" />Lift block</button></LayerFoot>
     </>
   );
 }

@@ -1,7 +1,7 @@
 /* Interested parties tab (source renderRiskIP + riskLinkParty/UnlinkParty/AddParty2, lines 2729-2737). Edit gate: riskCanEdit. */
 import { useState } from "react";
 import { Icon, Table } from "@/components/ui";
-import { useLayer } from "@/components/shell/LayerProvider";
+import { LayerFoot, useLayer } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
 import { RISK_PARTIES, riskCanEdit } from "@/lib/risk";
@@ -9,6 +9,17 @@ import { bumpData, useApp } from "@/lib/store";
 import { attemptR as attempt } from "./util";
 import * as svc from "@/features/risk/services/risks";
 import { riskOpenDetail } from "./nav";
+
+/** Pick one risk to link (a listbox in a short dialog, instead of a select styled as a button). */
+function LinkRiskForm({ options, close, onLink }: { options: { id: string; title: string }[]; close: () => void; onLink: (id: string) => void }) {
+  const [sel, setSel] = useState(options[0]?.id || "");
+  return (
+    <>
+      <div className="field"><label htmlFor="rp-link">Risk</label><select className="select" id="rp-link" data-focus value={sel} onChange={(e) => setSel(e.target.value)}>{options.map((o) => <option key={o.id} value={o.id}>{o.id} · {o.title}</option>)}</select></div>
+      <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" disabled={!sel} onClick={() => sel && onLink(sel)}>Link</button></LayerFoot>
+    </>
+  );
+}
 
 export default function RiskParties() {
   const L = useLayer();
@@ -41,13 +52,12 @@ export default function RiskParties() {
                 {p.links.length ? p.links.map((l) => (
                   <span key={l} style={{ display: "inline-flex", gap: 2, alignItems: "center" }}>
                     <button className="tag num" style={{ cursor: "pointer" }} onClick={() => riskOpenDetail(l)}>{l}</button>
-                    {admin ? <button onClick={() => unlink(pi, l)} aria-label={`Unlink ${l}`} style={{ appearance: "none", WebkitAppearance: "none", border: 0, background: "none", color: "var(--ink-2)", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "2px 3px" }}>×</button> : null}
+                    {admin ? <button className="btn btn-ghost sm" onClick={() => unlink(pi, l)} aria-label={`Unlink ${l} from ${p.party}`} title={`Unlink ${l}`} style={{ minWidth: 24, minHeight: 24, width: 24, height: 24, padding: 0, justifyContent: "center" }}><Icon name="x" /></button> : null}
                   </span>
                 )) : <span style={{ color: "var(--muted)", fontSize: 12 }}>None</span>}
                 {admin ? (
-                  <select className="select" aria-label={`Link a risk to ${p.party}`} style={{ height: 30, fontSize: 12, maxWidth: 150 }} value="" onChange={(e) => link(pi, e.target.value)}>
-                    <option value="">+ Link risk</option>{DATA.risks.filter((r) => !p.links.includes(r.id)).map((r) => <option key={r.id} value={r.id}>{r.id} {String(r.title).slice(0, 30)}</option>)}
-                  </select>
+                  <button className="btn btn-ghost sm" aria-label={`Link a risk to ${p.party}`} disabled={!DATA.risks.some((r) => !p.links.includes(r.id))}
+                    onClick={() => L.openModal(`Link a risk to ${p.party}`, (close) => <LinkRiskForm options={DATA.risks.filter((r) => !p.links.includes(r.id)).map((r) => ({ id: String(r.id), title: String(r.title) }))} close={close} onLink={(rid) => { close(); link(pi, rid); }} />)}><Icon name="plus" />Link risk</button>
                 ) : null}
               </div></td>
             </tr>
