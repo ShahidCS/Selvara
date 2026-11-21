@@ -255,7 +255,9 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 .btn-ghost:hover{background:var(--surface-2);color:var(--ink)}
 .btn-danger{background:var(--surface);color:var(--bad-ink);border-color:var(--line-2)}
 .btn-danger:hover{background:var(--bad-bg);border-color:var(--bad-ink)}
-.btn[disabled]{opacity:.5;cursor:not-allowed;pointer-events:none}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+/* no pointer-events:none: a disabled button still shows its title (why it is blocked) on hover; it ignores clicks by itself */
+.btn[disabled]:hover{filter:none}
 .btn .spin{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:999px;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .btngrp{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
