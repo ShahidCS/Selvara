@@ -14,6 +14,7 @@ type Layer =
   | { kind: "popover"; top: number; right?: number; left?: number; body: Content; trigger?: HTMLElement | null; role?: "menu" | "listbox"; label?: string }
   | { kind: "palette" };
 
+export type ToastTone = "ok" | "bad" | "info";
 export interface LayerApi {
   openDrawer: (title: string, sub: ReactNode | undefined, body: Content, foot?: Content) => void;
   /** Modal. Default footer is a single "Close" button, as in the prototype. */
@@ -22,8 +23,10 @@ export interface LayerApi {
   popover: (ev: { currentTarget: EventTarget | null }, body: Content, opts?: { role?: "menu" | "listbox"; label?: string; align?: "start" | "end" }) => void;
   openPalette: () => void;
   closeLayer: () => void;
-  /** Confirmation toast. With `action` (for example Undo) it stays 7 s, pauses while hovered or focused, and the button runs `run` once. */
-  toast: (msg: string, ok?: boolean, opts?: { action?: { label: string; run: () => void }; ms?: number }) => void;
+  /** Toast. `tone` says what it is, it is never guessed from the text: "ok" (default, a success tick), "bad" (an error: alert icon, red on the
+   *  inverse surface, "Error:" for screen readers) or "info" (no icon). `true` and `false` are kept for existing callers (`false` is "bad").
+   *  With `action` (for example Undo) it stays 7 s, pauses while hovered or focused, and the button runs `run` once. */
+  toast: (msg: string, tone?: ToastTone | boolean, opts?: { action?: { label: string; run: () => void }; ms?: number }) => void;
 }
 const Ctx = createContext<LayerApi | null>(null);
 export function useLayer(): LayerApi {
@@ -185,7 +188,7 @@ function Palette({ close }: { close: () => void }) {
 
 export function LayerProvider({ children }: { children: ReactNode }) {
   const [layer, setLayer] = useState<Layer>(null);
-  const [toastMsg, setToastMsg] = useState<{ msg: string; neg: boolean; k: number; action?: { label: string; run: () => void } } | null>(null);
+  const [toastMsg, setToastMsg] = useState<{ msg: string; tone: ToastTone; k: number; action?: { label: string; run: () => void } } | null>(null);
   const [toastOn, setToastOn] = useState(false);
   const tRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const router = useRouter();
@@ -203,12 +206,12 @@ export function LayerProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("keydown", onKey, true);
   }, [layer, closeLayer]);
 
-  const toast = useCallback((msg: string, ok?: boolean, opts?: { action?: { label: string; run: () => void }; ms?: number }) => {
-    const neg = ok === false || /\b(fail|failed|error|unavailable|not available|can['’]?t|cannot|denied|reject|invalid|unable|removed|deleted)\b/i.test(String(msg));
-    setToastMsg((p) => ({ msg: String(msg), neg, k: (p?.k || 0) + 1, action: opts?.action }));
+  const toast = useCallback((msg: string, tone?: ToastTone | boolean, opts?: { action?: { label: string; run: () => void }; ms?: number }) => {
+    const t: ToastTone = tone === false ? "bad" : tone === true || tone === undefined ? "ok" : tone;
+    setToastMsg((p) => ({ msg: String(msg), tone: t, k: (p?.k || 0) + 1, action: opts?.action }));
     setToastOn(true);
     clearTimeout(tRef.current);
-    tRef.current = setTimeout(() => setToastOn(false), opts?.ms ?? (opts?.action ? 7000 : 2200));
+    tRef.current = setTimeout(() => setToastOn(false), opts?.ms ?? (opts?.action ? 7000 : t === "bad" ? 6000 : 2200)); // an error stays long enough to read
   }, []);
   // a toast with an action is hoverable: hovering or focusing it holds it open, leaving gives a short grace period
   const holdToast = () => clearTimeout(tRef.current);
@@ -236,18 +239,21 @@ export function LayerProvider({ children }: { children: ReactNode }) {
         {layer?.kind === "popover" && <Popover l={layer} close={closeLayer} />}
         {layer?.kind === "palette" && <Palette close={closeLayer} />}
       </div>
-      <div id="toast" role="status" aria-live="polite" style={{
-        position: "fixed", left: "50%", bottom: 24, transform: `translateX(-50%) translateY(${toastOn ? 0 : 6}px)`, background: "var(--ink)", color: "var(--surface)",
+      <div id="toast" role="status" aria-live="polite" data-tone={toastMsg?.tone} style={{
+        position: "fixed", left: "50%", bottom: 24, transform: `translateX(-50%) translateY(${toastOn ? 0 : 6}px)`, background: "var(--bg-inverse)", color: "var(--text-inverse)",
         fontSize: 13, fontWeight: 500, padding: "10px 16px", borderRadius: 10, boxShadow: "var(--shadow-lg)", zIndex: 120, opacity: toastOn ? 1 : 0,
         transition: "opacity .2s, transform .2s", pointerEvents: toastOn && toastMsg?.action ? "auto" : "none", display: "flex", alignItems: "center", gap: 9, maxWidth: "min(92vw,520px)",
       }} onMouseEnter={toastMsg?.action ? holdToast : undefined} onMouseLeave={toastMsg?.action ? releaseToast : undefined}
         onFocus={toastMsg?.action ? holdToast : undefined} onBlur={toastMsg?.action ? releaseToast : undefined}>
-        {toastMsg && !toastMsg.neg ? (
-          <svg key={toastMsg.k} className="tcheck" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: "#49d08b" }}>
+        {toastMsg?.tone === "ok" ? (
+          <svg key={toastMsg.k} className="tcheck" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: "var(--ok-ink-inverse)" }}>
             <circle className="tc-ring" cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.2" />
             <path className="tc-tick" d="M8 12.4l2.6 2.6L16.2 9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
+        ) : toastMsg?.tone === "bad" ? (
+          <Icon key={toastMsg.k} name="alert" width={16} height={16} style={{ color: "var(--bad-ink-inverse)", flex: "0 0 auto" }} />
         ) : null}
+        {toastMsg?.tone === "bad" ? <span className="vh">Error: </span> : null}
         <span>{toastMsg?.msg}</span>
         {toastMsg?.action ? (
           <button type="button" tabIndex={toastOn ? 0 : -1} onClick={runToastAction}

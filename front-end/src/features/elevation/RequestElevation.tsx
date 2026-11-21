@@ -4,6 +4,9 @@ import { ELEV_DURATIONS, ELEV_FAIL, ELEV_MAX_MIN, ELEV_REASON_MAX, ELEV_REASON_M
 import { clampText } from "@/lib/security";
 import { useLayer } from "@/hooks/useLayer";
 
+/** Field errors in the danger colour with an alert icon, so they read differently from the hint they replace. */
+const ERR: React.CSSProperties = { color: "var(--bad-ink)", display: "flex", gap: 6, alignItems: "flex-start" };
+const ERR_IC: React.CSSProperties = { flex: "none", width: 14, height: 14, marginTop: 2 };
 type Step = "form" | "key" | "touch";
 /** Request flow: reason (required) -> duration (60 min max) -> SIMULATED hardware-key prompt. No key, credential or challenge is read or generated. */
 export function RequestElevation() {
@@ -27,7 +30,9 @@ export function RequestElevation() {
   }
   const next = () => {
     const badR = clampText(reason, ELEV_REASON_MAX).length < ELEV_REASON_MIN; const badT = !validTicket(ticket.trim());
-    setErr(badR); setTerr(badT); if (badR || badT) return; setStep("key");
+    setErr(badR); setTerr(badT);
+    if (badR || badT) { document.getElementById(badR ? "elReason" : "elTicket")?.focus(); return; }
+    setStep("key");
   };
   const touch = () => {
     setStep("touch");
@@ -47,12 +52,12 @@ export function RequestElevation() {
             <div className={"field" + (err ? " err" : "")}>
               <label htmlFor="elReason">Reason (required, at least {ELEV_REASON_MIN} characters)</label>
               <textarea className="input" id="elReason" maxLength={ELEV_REASON_MAX} aria-invalid={err} aria-describedby="elReasonH" value={reason} onChange={(e) => { setReason(e.target.value.slice(0, ELEV_REASON_MAX)); setErr(false); }} />
-              <span className="help" id="elReasonH">{err ? ELEV_FAIL.reason + "." : "Recorded in the platform audit log. Maximum " + ELEV_REASON_MAX + " characters."}</span>
+              <span className="help" id="elReasonH" style={err ? ERR : undefined}>{err ? <><Icon name="alert" style={ERR_IC} />{ELEV_FAIL.reason + "."}</> : "Recorded in the platform audit log. Maximum " + ELEV_REASON_MAX + " characters."}</span>
             </div>
-            <div className={"field" + (terr ? " err" : "")} style={{ maxWidth: 220 }}>
+            <div className={"field" + (terr ? " err" : "")} style={{ maxWidth: 420 }}>
               <label htmlFor="elTicket">Ticket reference (required)</label>
-              <input className="input" id="elTicket" maxLength={12} autoComplete="off" placeholder="SEC-1234" aria-invalid={terr} aria-describedby="elTicketH" value={ticket} onChange={(e) => { setTicket(e.target.value.toUpperCase()); setTerr(false); }} />
-              <span className="help" id="elTicketH">{terr ? ELEV_FAIL.ticket + "." : "2 to 6 capital letters, a dash, up to 6 digits. Recorded in every audit entry of this session."}</span>
+              <input className="input" style={{ maxWidth: 220 }} id="elTicket" maxLength={12} autoComplete="off" placeholder="SEC-1234" aria-invalid={terr} aria-describedby="elTicketH" value={ticket} onChange={(e) => { setTicket(e.target.value.toUpperCase()); setTerr(false); }} />
+              <span className="help" id="elTicketH" style={terr ? ERR : undefined}>{terr ? <><Icon name="alert" style={ERR_IC} />{ELEV_FAIL.ticket + "."}</> : "2 to 6 capital letters, a dash, up to 6 digits, such as SEC-1234. Recorded in every audit entry of this session."}</span>
             </div>
             <div className="field" style={{ maxWidth: 220 }}>
               <label htmlFor="elMins">Duration (maximum {ELEV_MAX_MIN} minutes)</label>
