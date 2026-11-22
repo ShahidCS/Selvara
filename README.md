@@ -6,9 +6,9 @@
 [![Deploy staging](https://github.com/ShahidCS/Selvara/actions/workflows/deploy-staging.yml/badge.svg?branch=main)](https://github.com/ShahidCS/Selvara/actions/workflows/deploy-staging.yml)
 ![Licence: proprietary](https://img.shields.io/badge/licence-proprietary%20(all%20rights%20reserved)-lightgrey)
 ![Node 20.9+](https://img.shields.io/badge/node-%E2%89%A520.9-339933)
-![Status: front-end complete, backend pending](https://img.shields.io/badge/status-front--end%20complete%2C%20backend%20pending-orange)
+![Status: server built, in review](https://img.shields.io/badge/status-server%20built%2C%20in%20review-blue)
 
-> **Status: front-end complete, backend not yet built.** The web application is fully built in React / Next.js and runs on synthetic in-memory data. There is no server, database or real authentication yet. See [Project status](#project-status).
+> **Status: front-end and server built; production setup and review pending.** Every module runs on the server (Next.js API routes on Supabase Postgres with row level security per company, Supabase Auth with MFA). The demonstration build still runs on synthetic in-browser data. Before relying on it in production: the owner setup in [docs/guides/SUPABASE.md](docs/guides/SUPABASE.md) and the security, compliance and management review. See [Project status](#project-status).
 
 ![Selvara overview dashboard](docs/screenshots/01-overview.png)
 
@@ -47,7 +47,7 @@ Compliance work usually lives in spreadsheets, shared drives and email. Controls
 - **Decisions with accountability.** Risk acceptance, policy approval, access grants, MFA resets and similar actions follow four-eyes rules: the person who asks can never be the person who approves, and every step is logged.
 - **Built for external parties too.** Auditors get a read-only engagement view, vendors answer assessments in an isolated portal, and customers see a managed Trust Center.
 
-The product ships as a web front-end. Backend requirements (authentication, authorization, persistence, audit storage) are documented so they can be built against a known contract.
+The product is one Next.js application: the web front-end and its server API (`front-end/src/server`, on Supabase Postgres and Supabase Auth). The same front-end also builds as a self-contained demonstration on synthetic data.
 
 ## Who it is for
 
@@ -185,7 +185,7 @@ Selvara is built on the assumption that the people who operate a control must no
 - **Credential policy aligned to OWASP ASVS 2.1 and NIST SP 800-63B**: 12 to 128 characters, no composition rules, Unicode and passphrases accepted, breached and common-password rejection, no forced rotation or history rules, no SMS or voice MFA.
 - **Secure by construction**: no HTML built from strings, safe-link and upload helpers, CSV formula-injection guard, strict webhook URL validation (SSRF hygiene), strict response headers including a Content-Security-Policy, hash-chained audit logs.
 
-> **Important:** rules are enforced in the front-end service layer and mirrored in the UI so they can be demonstrated and tested, but a browser is never a trust boundary. A production deployment must enforce every rule again on the server. The remaining backend requirements and the test log are in [`docs/security/SECURITY.md`](docs/security/SECURITY.md).
+> **Important:** a browser is never a trust boundary. In production (`NEXT_PUBLIC_API_MODE=http`) every rule is enforced by the server and the database (row level security per company); the UI only mirrors it. The demonstration build enforces the same rules in the browser so they can be shown and tested. Known limitations and the test log are in [`docs/security/SECURITY.md`](docs/security/SECURITY.md).
 
 ## Roles and access model
 
@@ -253,7 +253,8 @@ After 3 failures a short "Quick check" (a proof-of-work calculation in the brows
 - **Framework:** Next.js 16 (Pages Router) and React 19, TypeScript
 - **Styling:** the original design tokens and component CSS (kept verbatim), with Tailwind CSS 4 for utilities only (no reset; the legacy CSS sits in a lower cascade layer so a utility beats a legacy class)
 - **State:** small external stores (React `useSyncExternalStore`); no state-management dependency
-- **Data:** synthetic seed data in memory; service layer with API stubs ready for a real backend
+- **Server:** Next.js API routes (`front-end/src/server`, one entry point `src/pages/api/[...path].ts`) on Supabase: Postgres with row level security per company (migrations in `supabase/migrations`), Supabase Auth (passwords, TOTP), Supabase Storage for evidence files
+- **Data:** production reads and writes the database; the demonstration build uses synthetic seed data in the browser
 - **Testing:** Vitest (unit) and Playwright (end to end)
 - **Dependencies:** intentionally minimal (no UI kit, no spreadsheet or charting libraries); production dependencies are checked with `npm audit` in CI
 - **Browsers:** last two versions of Chrome, Edge, Firefox, Safari and iOS Safari
@@ -303,7 +304,7 @@ Copy `front-end/.env.example` to `front-end/.env.local`. There are no secrets in
 - **End-to-end tests (Playwright)** cover every route, the full persona-by-route access matrix, privileged-access gating, read-only roles, the password policy, injection resistance and the vendor portal.
 - **CI** (GitHub Actions) runs type-check, lint, unit tests, build, `npm audit` on production dependencies, and the end-to-end suite on every push and pull request. Dependabot proposes weekly grouped updates.
 
-Details, including what is not covered (backend, visual regression, load), are in [`docs/guides/TESTING.md`](docs/guides/TESTING.md).
+Server routes have unit tests per module group, and a database suite checks company isolation against a real Postgres in CI. Details, including what is not covered (visual regression, load), are in [`docs/guides/TESTING.md`](docs/guides/TESTING.md).
 
 ## CI/CD pipeline
 
@@ -358,18 +359,17 @@ Selvara/
 | Area | State |
 |---|---|
 | Front-end (all screens, roles, workflows) | Complete |
-| Segregation of duties, privileged-access gating, credential policy | Implemented in the front-end service layer |
-| Automated tests and CI/CD | Unit and end-to-end suites; security gates; Vercel deployment pipeline (needs your Vercel secrets and repository settings before first use) |
-| Backend (API, database, authentication, sessions) | **Not built** |
-| Production readiness | **Not production-ready** |
+| Segregation of duties, privileged-access gating, credential policy | Enforced on the server and in the database; mirrored in the UI |
+| Server (API, database, authentication, sessions, tenant isolation) | **Built**: every module ([production programme](docs/architecture/PRODUCTION_PROGRAMME.md), groups 1 to 8) |
+| Automated tests and CI/CD | Unit, database-isolation and end-to-end suites; security gates; tag-driven release to Vercel |
+| Production readiness | **Deployed; owner setup and review pending** |
 
-What a production deployment still needs (details in `docs/security/SECURITY.md`):
+What production still needs:
 
-- Authentication, sessions, CSRF protection and server-side authorization with tenant isolation
-- Stable user identifiers for segregation-of-duties checks (the demo compares display names)
-- Server-side persistence of approvals, elevation records and audit logs (append-only, signed)
-- Real MFA enrolment and recovery codes, rate limiting, upload scanning, signed expiring links
-- A nonce-based Content-Security-Policy (the Pages Router currently needs `'unsafe-inline'` for scripts)
+- **Owner setup** ([`docs/guides/SUPABASE.md`](docs/guides/SUPABASE.md)): a required reviewer on the `production` environment, the platform super admins and the first company, and the email provider. Stripe, AI and integration credentials are optional.
+- **Review:** all generated code, configuration and security controls need technical, security and management review before reliance.
+- **Not built yet (owner decisions):** scheduled jobs (agent schedules, integration syncs, automatic invoicing and rate refresh, email digests; they need a Vercel cron), malware scanning of uploads, usage-based billing, and the other items listed per group in the production programme.
+- **Known limitations** ([`docs/security/SECURITY.md`](docs/security/SECURITY.md)): the Content-Security-Policy still allows inline scripts (the Pages Router needs them; a nonce-based policy is the fix).
 
 > **Compliance notice:** framework mappings, requirement titles, scoring and generated reports are **draft content**. Requirement titles are paraphrased; licensed standard text is not reproduced. Outputs must be reviewed by qualified compliance, legal and risk personnel before reliance, filing or distribution. All generated code, configuration and security controls need technical, security and management review before deployment.
 
@@ -379,9 +379,9 @@ All data in this repository is **synthetic**. Names, customers, vendors, address
 
 Planned work, in rough priority order. This is a direction, not a commitment, and carries no dates.
 
-1. **Backend foundation:** API, database, authentication (sessions, MFA and passkeys), server-side authorization and tenant isolation.
-2. **Server-side enforcement of the rules the front-end already models:** segregation of duties by stable user id, persisted approvals and elevation records, append-only signed audit storage.
-3. **Production hardening:** nonce-based CSP, rate limiting, upload scanning, signed expiring links, server-generated recovery codes.
+1. ~~**Backend foundation and server-side enforcement**~~: built (API, database, authentication with MFA and passkeys, tenant isolation, persisted approvals and elevation, hash-chained audit storage).
+2. **Go-live:** owner setup, security and compliance review, scheduled jobs (Vercel cron).
+3. **Production hardening:** nonce-based CSP, malware scanning of uploads.
 4. **Product depth:** deepen the shallow framework catalogues (for example ISO 22301, ISO/IEC 27701, SOC 2, SAMA CSF), resolve the open items in [`docs/architecture/DECISIONS.md`](docs/architecture/DECISIONS.md), and port the remaining policy-library and third-party-risk improvements described in [`docs/architecture/SPEC_BOARDS.md`](docs/architecture/SPEC_BOARDS.md).
 5. **Engineering quality:** TypeScript strict mode, lint configuration, automated accessibility checks, visual regression tests.
 

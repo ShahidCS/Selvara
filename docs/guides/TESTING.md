@@ -77,7 +77,7 @@ The workflow has `permissions: contents: read`, no secrets, third-party actions 
 
 ## Not covered
 
-- Backend and API behaviour: the app runs on in-memory mock data, so server-side authorization, persistence and audit integrity are untested. UI gating is not a control; the API must enforce every rule (see `docs/security/SECURITY.md` and `docs/security/SOD_MATRIX.md`).
+- The end-to-end suite runs the demonstration build. The server is covered by unit tests of its routes (`tests/unit/server.test.ts`, `ws-group*.test.ts`, `admin-group8.test.ts`, run against an in-memory store) and by the database suite (`tests/db`, real Postgres in CI: company isolation and row level security). There is no end-to-end run against a live Supabase project.
 - Real authentication: sign-in, MFA, passkeys and sessions are simulated. The vendor code `123456` and the "key touch" are demo stand-ins.
 - Visual regression: no screenshot comparison, and no responsive checks. Dark and light themes are covered for accessibility only (axe, below).
 - Cross-browser: Chromium only (Firefox and WebKit are not run).

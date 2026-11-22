@@ -17,11 +17,12 @@ Status: living document. Generated code needs technical, security and management
 | Dialog a11y / focus | Focus trap, Escape, focus restore | `LayerProvider.tsx` |
 
 ## Known limitations (need server-side or follow-up work)
-1. **RBAC is UI-only.** In the demonstration build, sign-in and MFA (`src/lib/session.ts`, `src/lib/totp.ts`: synthetic demo accounts, real accounts with TOTP, all kept in browser storage) and module access are a demo. Production (`NEXT_PUBLIC_API_MODE=http`) has no demo accounts and calls the server (`src/services/authApi.ts` to `src/pages/api`, implemented in `src/server` on Supabase; contract in CONTROLS.md). The other modules have no server API yet. A real API must authenticate (server-side sessions, a slow password hash such as Argon2id, rate limits, MFA) and enforce authorization (ASVS 4.1.1); the UI must never be the only control.
-2. **No authentication/session.** `apiFetch` uses `credentials: "include"` for a future cookie session. CSRF protection (SameSite cookies + anti-CSRF token) must be added server-side when sessions exist (ASVS 4.2.2, 3.4).
+1. **Two builds.** Production (`NEXT_PUBLIC_API_MODE=http`) has no demo accounts: every module calls the server (`src/pages/api/[...path].ts`, implemented in `src/server` on Supabase), which authenticates (Supabase Auth, TOTP, passkeys for platform super admins, lockout and sign-in blocks), authorizes every request and writes the audit entry; the database enforces company isolation with row level security. The demonstration build keeps sign-in, MFA and module access in the browser (`src/lib/session.ts`, `src/lib/totp.ts`) so they can be shown; it is not a control.
+2. **Sessions and CSRF.** Production sessions are an HttpOnly, Secure, `SameSite=Strict` cookie with idle and absolute limits, and every state-changing request must come from the site's own origin (`src/server/core.ts`).
 3. **CSP uses `script-src 'unsafe-inline'`** because the Pages Router injects inline bootstrap scripts. Move to a nonce-based CSP via middleware before production.
-4. **Audit log hash is FNV-1a**, a demo of chaining, not a cryptographic control. Use server-side HMAC/append-only storage in production.
-5. **`Math.random` ids** appear in demo flows (ported from the prototype); they are not security tokens.
+4. **Audit chains.** On the server, company and platform audit logs are hash-chained with SHA-256 in the database (`supabase/migrations`) and can be verified from the Audit log. The demonstration build's chain uses FNV-1a, a demo of chaining, not a cryptographic control.
+5. **`Math.random` ids** appear in demo flows (ported from the prototype) and in server notice ids; they are never security tokens (tokens and codes use `crypto`).
+6. **No malware scanning of uploads.** Evidence and vendor-portal files are checked for type, size and content, but no scanner is configured; the vendor portal says so.
 
 Per-module "Security notes" live in `docs/guides/checklist/<module>.md`.
 
@@ -32,7 +33,7 @@ Per-module "Security notes" live in `docs/guides/checklist/<module>.md`.
 * **Active testing (pentest methodology, `http://localhost`, mock data):** 112 logged payload attempts (HTML/SVG/`javascript:`/template/CSV-formula payloads) in URL params, hash, query and every create/edit form in Work, Issues, Frameworks, Evidence, Policies, People and Controls, then re-visited all pages: no script execution, no injected elements, no dialogs. CSV gap export: no unguarded formula cells. Unknown ids (`/ws/audits/<payload>`) render "Page not found".
 * **Config:** dotfiles, `package.json`, `src/*`, `next.config.js` and source maps return 404/absent; TRACE/PUT/DELETE/OPTIONS return 405; CSP, nosniff, frame-ancestors none, HSTS, Permissions-Policy present on pages and static assets; no server banner.
 * **Fixed during review:** board-pack export opened a tab *and* downloaded (a `noopener` feature makes `window.open` return null); MFA reset had no audit entry (source gap), now logs `person.mfa.reset`; real staff names removed from docs and from `scripts/anonymize.js` (map now supplied locally via `ANON_MAP`).
-* **Not covered (needs a real backend):** authentication, session, CSRF, server-side authorization/IDOR, rate limiting, upload scanning. See "Known limitations".
+* **Not covered in this phase-2 review (the server did not exist yet):** authentication, session, CSRF, server-side authorization/IDOR, rate limiting, upload scanning. These are now built (see "Known limitations" and `CONTROLS.md`) and need their own security review and test pass against a live deployment.
 * **History note:** commits before this one contain real staff names in `docs/architecture/INVENTORY.md`. Rewriting git history is a user decision (not done).
 
 ### Phase 3 review (local build, owner-authorized)
