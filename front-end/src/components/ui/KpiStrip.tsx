@@ -34,7 +34,7 @@ export function KpiTile({ label, value, delta, caption }: { label: string; value
   return (
     <div className="kpi-tile">
       <div className="eyebrow">{label}</div>
-      <div className="kpi-fig"><span className="kpi-v num">{value}</span>{delta ? <DeltaPill tone={delta.tone} icon={delta.icon}>{delta.text}</DeltaPill> : null}</div>
+      <div className="kpi-fig"><span className="kpi-v num" data-long={String(value).length > 6 ? "" : undefined}>{value}</span>{delta ? <DeltaPill tone={delta.tone} icon={delta.icon}>{delta.text}</DeltaPill> : null}</div>
       {caption ? <div className="kpi-cap">{caption}</div> : null}
     </div>
   );

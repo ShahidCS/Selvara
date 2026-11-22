@@ -8,6 +8,7 @@ import { createStore } from "@/lib/store";
 import { markTourSeen } from "@/lib/tours";
 import { MODULE_TOURS, type TourStep } from "@/data/tours";
 import { Icon } from "@/components/ui";
+import { useAnchorWatch } from "@/hooks/useAnchorWatch";
 
 const visible = (el: Element | null): el is HTMLElement => !!el && el instanceof HTMLElement && el.offsetParent !== null && el.getClientRects().length > 0;
 const find = (s: TourStep): HTMLElement | null => { if (!s.target) return null; try { const el = document.querySelector(s.target); return visible(el) ? el : null; } catch { return null; } };
@@ -73,12 +74,8 @@ export function TourHost() {
     const t = window.setTimeout(() => { place(); box.current?.focus({ preventScroll: true }); }, 60);
     return () => { window.cancelAnimationFrame(raf); window.clearTimeout(t); };
   }, [step, place]);
-  useEffect(() => {
-    if (!mod) return;
-    const on = () => place();
-    window.addEventListener("resize", on); document.addEventListener("scroll", on, true);
-    return () => { window.removeEventListener("resize", on); document.removeEventListener("scroll", on, true); };
-  }, [mod, place]);
+  // follow the element when the page moves under the tour: scroll, window size, the sidebar collapsing or expanding, content loading
+  useAnchorWatch(!!mod, () => (step ? find(step) : null), place);
   // Escape skips the tour wherever focus is (the bubble takes focus a moment after it opens), unless a dialog of the page has it
   useEffect(() => {
     if (!mod) return;

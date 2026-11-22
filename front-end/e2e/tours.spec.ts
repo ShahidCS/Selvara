@@ -30,6 +30,28 @@ test("a module's tour starts at the first visit, steps forward and back, and sta
   await s.close();
 });
 
+test("the ring and bubble follow their element when the sidebar collapses or expands", async ({ browser }, ti) => {
+  const s = await openAs(browser, ti, "admin", { width: 1280, height: 800 }); const p = s.page;
+  await gotoModule(p, "/ws/overview");
+  await p.getByRole("button", { name: "Take the tour of this page" }).click();
+  const b = bubble(p); await expect(b).toBeVisible();
+  await b.getByRole("button", { name: /Next/ }).click(); await b.getByRole("button", { name: /Next/ }).click();
+  const target = p.locator('[data-tour="overview-panels"]');
+  const ringOn = async () => {
+    const [r, t] = await Promise.all([p.locator(".tour-ring").boundingBox(), target.boundingBox()]);
+    expect(r && t).toBeTruthy();
+    expect(Math.abs(r!.x + 4 - t!.x)).toBeLessThan(2); expect(Math.abs(r!.width - 8 - t!.width)).toBeLessThan(2);
+  };
+  await ringOn();
+  for (const name of ["Collapse sidebar", "Expand sidebar"]) {
+    await p.getByRole("button", { name }).click();
+    await expect.poll(async () => { try { await ringOn(); return true; } catch { return false; } }).toBe(true);
+    const bb = await b.boundingBox(); expect(bb!.x).toBeGreaterThanOrEqual(0); expect(bb!.x + bb!.width).toBeLessThanOrEqual(1280);
+  }
+  expect(s.errors).toEqual([]);
+  await s.close();
+});
+
 test("Off stops tours from starting by themselves; Show all tours again brings them back", async ({ browser }, ti) => {
   const s = await openAs(browser, ti, "admin"); const p = s.page; await optIn(p);
   await gotoModule(p, "/auth");
