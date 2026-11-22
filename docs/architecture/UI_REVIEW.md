@@ -23,7 +23,8 @@ Each finding has a severity:
 | D | AI governance, Vendors, Trust Center, Questionnaires, Commitments, AppSec | 48 | 4 | [D](ui-review/D.md) |
 | E | Integrations, API, Assistant, Team & Settings, Billing, Audit log | 40 | 3 | [E](ui-review/E.md) |
 | F | Admin Console (Customers, Billing, Rates, MFA resets, Admin log, Elevation, Platform security) | 42 | 6 | [F](ui-review/F.md) |
-| **Total** | | **262** | **21** | |
+| G | Layout and alignment at every width, sidebar open or collapsed; tour, popover and flyout anchoring (November 2026, v0.2.2) | 17 | 5 | [G](ui-review/G.md) |
+| **Total** | | **279** | **26** | |
 
 By severity: 21 critical, 141 moderate and 100 minor.
 By status: 251 fixed, 4 partly fixed and 7 open (all listed below). The Status column of each log gives the outcome per finding.

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { BrandMark, Icon } from "@/components/ui";
 import { appStore, getModState, persist, setModState, useApp, useData, useModVersion } from "@/lib/store";
@@ -6,6 +6,7 @@ import { API_ON, NAV, allowedSpaces, modAllowed, roleOf } from "@/lib/rbac";
 import { countFor } from "@/lib/counts";
 import { SUBNAV } from "@/lib/subnav";
 import { useGo, useRoute } from "@/lib/route";
+import { useAnchorWatch } from "@/hooks/useAnchorWatch";
 import { landingPath } from "@/lib/rbac";
 
 /** Tooltip / sub-menu flyout for the collapsed rail. Portal-positioned (position: fixed), so it is never clipped. */
@@ -14,13 +15,16 @@ function NavTip({ tip, onEnter, onLeave, go, hide }: { tip: { anchor: HTMLElemen
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const route = useRoute();
   useModVersion();
-  useEffect(() => {
+  const place = useCallback(() => {
     if (!tip || !ref.current) { setPos(null); return; }
     const a = tip.anchor.getBoundingClientRect(); const tb = ref.current.getBoundingClientRect();
     let top = Math.round(a.top + a.height / 2 - tb.height / 2);
     top = Math.max(8, Math.min(top, window.innerHeight - tb.height - 8));
     setPos({ left: Math.round(a.right + 10), top });
   }, [tip]);
+  useEffect(place, [place]);
+  // the rail scrolls, or the window changes size, while it is shown: it stays beside its item
+  useAnchorWatch(!!tip, () => tip?.anchor ?? null, place);
   const sn = tip?.parent ? SUBNAV[tip.parent] : null;
   const cur = sn ? getModState(sn.stateKey, sn.initial) : null;
   const onMod = !!tip?.parent && route.mod === tip.parent;

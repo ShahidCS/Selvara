@@ -4,6 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Fixed
+- **Guided tours follow the page.** The ring and bubble stay on their element when the sidebar collapses or expands, the page scrolls or content loads, instead of staying where they first appeared. A layout change that moves the element out of view brings it back; the bubble never leaves the window, the ring never covers the top bar, and the app frame no longer shifts up when a tall area is shown. Popovers and the collapsed-rail flyouts follow their trigger the same way.
+- **Layouts fit the space beside the sidebar.** Pages respond to the width of the content rather than the window, so with the sidebar open on a tablet or small laptop cards stack instead of being squeezed or cut off, and nothing pushes the window sideways. KPI change pills and long figures fit their tile, card headers and colour pickers wrap, and wide tables scroll inside their card. Findings and fixes: [UI review, group G](docs/architecture/ui-review/G.md).
+
 ## [0.2.2] - 2026-11-21
 
 Naming and guided tours; no migration and no new environment variable. Deploy as usual.

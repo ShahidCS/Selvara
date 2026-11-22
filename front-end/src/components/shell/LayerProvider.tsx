@@ -5,13 +5,22 @@ import { Icon } from "@/components/ui";
 import { NAV, modAllowed } from "@/lib/rbac";
 import { appStore } from "@/lib/store";
 import { useGo } from "@/lib/route";
+import { useAnchorWatch } from "@/hooks/useAnchorWatch";
+
+type PopPos = { top?: number; bottom?: number; maxH: number; right?: number; left?: number };
+/** Below the trigger, or above it when there is little room below (a row menu near the bottom of the screen). */
+function popPos(el: HTMLElement, align?: "start" | "end"): PopPos {
+  const b = el.getBoundingClientRect();
+  const below = window.innerHeight - b.bottom, up = below < 320 && b.top > below;
+  return { ...(up ? { bottom: window.innerHeight - b.top + 6, maxH: b.top - 18 } : { top: b.bottom + 6, maxH: below - 18 }), ...(align === "start" ? { left: Math.max(8, Math.min(b.left, window.innerWidth - 248)) } : { right: Math.max(8, window.innerWidth - b.right) }) };
+}
 
 type Content = ReactNode | ((close: () => void) => ReactNode);
 type Layer =
   | null
   | { kind: "drawer"; title: string; sub?: ReactNode; body: Content; foot?: Content }
   | { kind: "modal"; title: string; body: Content; foot?: Content; wide?: boolean }
-  | { kind: "popover"; top?: number; bottom?: number; maxH: number; right?: number; left?: number; body: Content; trigger?: HTMLElement | null; role?: "menu" | "listbox"; label?: string }
+  | ({ kind: "popover"; body: Content; trigger?: HTMLElement | null; align?: "start" | "end"; role?: "menu" | "listbox"; label?: string } & PopPos)
   | { kind: "palette" };
 
 export type ToastTone = "ok" | "bad" | "info";
@@ -118,6 +127,10 @@ function itemsOf(el: HTMLElement | null): HTMLElement[] {
 function Popover({ l, close }: { l: Extract<Layer, { kind: "popover" }>; close: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const trigger = l.trigger;
+  // stays on its trigger when the page moves (window resized, sidebar collapsed with the keyboard, content loading); keeps its place if the trigger is gone
+  const [moved, setMoved] = useState<{ l: typeof l; p: PopPos } | null>(null);
+  useAnchorWatch(!!trigger, () => trigger ?? null, () => { if (trigger?.isConnected && trigger.getClientRects().length) setMoved({ l, p: popPos(trigger, l.align) }); });
+  const p: PopPos = moved && moved.l === l ? moved.p : l;
   useEffect(() => {
     const id = requestAnimationFrame(() => {
       const it = itemsOf(ref.current);
@@ -143,7 +156,7 @@ function Popover({ l, close }: { l: Extract<Layer, { kind: "popover" }>; close: 
   return (
     <>
       <div className="scrim" style={{ background: "transparent", pointerEvents: "auto" }} onClick={close} />
-      <div ref={ref} tabIndex={-1} className="pop" role={l.role || "menu"} aria-label={l.label} style={{ top: l.top, bottom: l.bottom, right: l.right, left: l.left, maxHeight: l.maxH, overflowY: "auto" }} onKeyDown={onKey}>{run(l.body, close)}</div>
+      <div ref={ref} tabIndex={-1} className="pop" role={l.role || "menu"} aria-label={l.label} style={{ top: p.top, bottom: p.bottom, right: p.right, left: p.left, maxHeight: p.maxH, overflowY: "auto" }} onKeyDown={onKey}>{run(l.body, close)}</div>
     </>
   );
 }
@@ -222,11 +235,9 @@ export function LayerProvider({ children }: { children: ReactNode }) {
     openDrawer: (title, sub, body, foot) => setLayer({ kind: "drawer", title, sub, body, foot }),
     openModal: (title, body, foot, opts) => setLayer({ kind: "modal", title, body, foot, wide: opts?.wide }),
     popover: (ev, body, opts) => {
-      const el = ev.currentTarget as HTMLElement; const b = el.getBoundingClientRect();
+      const el = ev.currentTarget as HTMLElement;
       el.classList?.add("ibopen"); if (el.hasAttribute?.("aria-haspopup")) el.setAttribute("aria-expanded", "true");
-      // open below the trigger, or above it when there is little room below (a row menu near the bottom of the screen)
-      const below = window.innerHeight - b.bottom, up = below < 320 && b.top > below;
-      setLayer({ kind: "popover", ...(up ? { bottom: window.innerHeight - b.top + 6, maxH: b.top - 18 } : { top: b.bottom + 6, maxH: below - 18 }), ...(opts?.align === "start" ? { left: Math.max(8, Math.min(b.left, window.innerWidth - 248)) } : { right: window.innerWidth - b.right }), body, trigger: el, role: opts?.role, label: opts?.label });
+      setLayer({ kind: "popover", ...popPos(el, opts?.align), body, trigger: el, align: opts?.align, role: opts?.role, label: opts?.label });
     },
     openPalette: () => setLayer({ kind: "palette" }),
     closeLayer, toast,
