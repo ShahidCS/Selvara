@@ -64,3 +64,6 @@ Most findings came from a few shared causes, so each was fixed once in shared co
 | B-42 | A status tab with no rows says "Nothing matches these filters." | That text is tested; the duplicate "Clear filters" and the empty pager are fixed. |
 | F-25 | "AED 0" against "$0.00" | `money()` is shared with the server, which writes audit entries with it. Changing it would change recorded text, so the UI needs its own formatter. |
 | A-27, A-32 | /auth has no highlighted sidebar item; the vendor portal demo dates are in the past | Highlighting a different page would mislead screen readers. The dates need a seed change or rendering after mount (the page is prerendered). |
+
+## Reference comparison (for decision)
+[ui-review/REFERENCE-fleetflow.md](ui-review/REFERENCE-fleetflow.md) compares Selvara with the FleetFlow AI demo, which shares the same design base: 41 differences, each marked recommended, consider or not applicable, with the effort involved. The owner decides each one before anything is built.
