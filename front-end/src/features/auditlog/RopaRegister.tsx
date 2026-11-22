@@ -12,11 +12,11 @@ export function RopaRegister({ entries, intro }: { entries: { action?: string; c
           return (
             <div className="card" style={{ boxShadow: "none" }} key={p.id}>
               <div className="c-body">
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                  <span className="tag num">{p.id}</span><span style={{ fontWeight: 600 }}>{p.name}</span><span className="tag" style={{ marginLeft: "auto" }}>{p.scope}</span>
+                <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                  <span className="tag num">{p.id}</span><span style={{ fontWeight: 600, minWidth: 0 }}>{p.name}</span><span className="tag" style={{ marginLeft: "auto" }}>{p.scope}</span>
                   {events ? <span className="tag">{events} event{events !== 1 ? "s" : ""}</span> : null}
                 </div>
-                <dl className="meta-grid lstart" style={{ gridTemplateColumns: "max-content 1fr" }}>
+                <dl className="meta-grid lstart" style={{ gridTemplateColumns: "max-content minmax(0,1fr)" }}>
                   <dt>Purpose</dt><dd>{p.purpose}</dd><dt>Lawful basis</dt><dd>{p.basis}</dd><dt>Data subjects</dt><dd>{p.subjects}</dd><dt>Data categories</dt><dd>{p.data}</dd>
                   <dt>Recipients</dt><dd>{p.recipients}</dd><dt>Transfers</dt><dd>{p.transfers}</dd><dt>Retention</dt><dd>{p.retention}</dd><dt>Security measures (Art. 32)</dt><dd>{p.tom}</dd>
                 </dl>

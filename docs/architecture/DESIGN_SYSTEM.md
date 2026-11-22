@@ -230,10 +230,19 @@ Components and props:
 - **Shell:** the route guard says "Your role does not open <module>." before it moves a person to their start page; the mobile drawer traps focus and has a close button; the vendor portal security panel is folded into "How this portal protects you".
 
 
+## Layout follows the space it has
+
+The sidebar takes about 280px when open, so the content of a 1024px window is narrower than a 768px phone layout expects. Page layout therefore responds to the **content's own width**, not only to the window:
+- `main#content` and `#topbar` are size containers (`container: content` and `container: topbar`). Under 760px of content, `.panels`, `.split`, `.grid2`, `.rgrid2/3` and `.fwsplit` stack to one column and the page scrolls (the phone rules); under 900px, `.rgrid3` goes to two columns. The top bar folds the search to its icon under 640px and drops the name in the account button and the company crumb under 560px.
+- Grid children get `min-width:0`, so a wide table scrolls inside its card instead of widening the page.
+- Card heads (`.c-head`), segmented controls (`.seg`) and KPI figures wrap rather than overflow. A long KPI figure (more than 6 characters, such as `$16,750.00`) shrinks with its tile; short ones keep the full size.
+- Anything drawn at a fixed position next to an element (tour, popover, rail flyout) follows the element with `useAnchorWatch`, never a one-off measurement.
+
 ## Guided tours
 
 Each module has a short walkthrough (`src/data/tours/*`, engine `src/components/kit/Tour.tsx`): a bubble that points at one part of the page at a time with **Back**, **Next** (**Done** on the last step) and **Skip tour**. It replaces the old banner tips.
 - **Writing a tour:** 3 to 7 steps, plain second-person sentences of at most about 220 characters, in reading order: what the page is for, the summary, the main list, the main action, tabs, who approves what. Keep compliance wording exact. Point at elements with `data-tour="<module>-<part>"` hooks in the module's own markup, on an element with size (not `display: contents`). A step whose element is not on the page is left out, so steps for actions a role cannot take simply do not show. Raise `version` when people should see the tour again.
 - **When it starts:** on the module's main page, by the person's preference, which is saved on their account (`GET/PUT /api/me/tours`; this browser in the demo): **First visit only** (default), **Again after updates** (also when the tour's version goes up) or **Off**. The setting is in Sign-in & security, Guided tours, with **Show all tours again**. Finishing or skipping counts as seen. A tour never starts over a dialog, and not under browser automation unless a test opts in (`localStorage["selvara.tours.e2e"] = "1"`).
 - **Replay:** the play button in the top bar ("Take the tour of this page").
+- **Following the page:** the ring and bubble re-measure their element every frame while a tour is open (`src/hooks/useAnchorWatch.ts`), so they stay on it when the page scrolls, the sidebar collapses or expands, or content loads. If a layout change (cards stacking or unstacking) takes the element out of view, the page scrolls it back; the bubble is always kept on screen. Popovers and the collapsed-rail flyouts use the same hook.
 - **Accessibility:** the bubble is a labelled non-modal dialog that takes focus on each step and returns it at the end. Escape skips, and the left and right arrow keys move between steps. The page stays usable; a ring marks the element. Below 600px wide the bubble is a bottom sheet.
