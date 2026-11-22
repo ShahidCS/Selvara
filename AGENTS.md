@@ -1,6 +1,6 @@
 # Agent instructions
 
-Selvara is a GRC portal: Next.js 16 (Pages Router), React 19, TypeScript, Tailwind. Data is synthetic and in memory; there is no backend. Canonical instructions for AI coding agents live in this file.
+Selvara is a GRC portal: Next.js 16 (Pages Router), React 19, TypeScript, Tailwind. The server API lives in `front-end/src/server` (Next.js API routes on Supabase Postgres with row level security, and Supabase Auth); `NEXT_PUBLIC_API_MODE=http` uses it, the default demonstration build runs on synthetic in-browser data. Canonical instructions for AI coding agents live in this file.
 
 ## Commands (run in `front-end/`)
 - Install: `npm ci --ignore-scripts`

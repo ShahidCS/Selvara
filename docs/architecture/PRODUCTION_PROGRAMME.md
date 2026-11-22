@@ -59,7 +59,7 @@ The demonstration's screens are rich and already route every change through a se
 | 6 | Merged | none (uses `0008`) | ShahidCS/Selvara#79 |
 | 7 | Merged | none (uses `0008`) | ShahidCS/Selvara#80 |
 | 8a | Merged | `0010` | ShahidCS/Selvara#81 |
-| 8b | Built, in review | none (uses `0008`) | group 8b PR |
+| 8b | Merged | none (uses `0008`) | ShahidCS/Selvara#82 |
 
 ### Group 3 decisions (Risk, Issues, My Work, Overview, Reports)
 
