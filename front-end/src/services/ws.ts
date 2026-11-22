@@ -11,7 +11,7 @@ import { setAcks, setTasks } from "@/lib/me";
 import { ACCESS_REQUESTS, ACCESS_REVIEWS, VENDOR_REQS } from "@/lib/requests";
 import { RISK_ENT, RISK_PARTIES, RISK_SNAPSHOTS } from "@/lib/risk";
 import { ANSWER_LIB, INCIDENT, KB_DOCS, SCHED_PACKS, STANDARD_TERMS, TRUST, TRUST_FAQ, TRUST_SUBPROC, TRUST_UPDATES } from "@/lib/trustData";
-import { API_ON, modAllowed } from "@/lib/rbac";
+import { API_ON, TITLE, allowedSpaces, modAllowed } from "@/lib/rbac";
 import { SERVER_KINDS } from "@/lib/rulesWs";
 import { appStore, bumpData, createStore } from "@/lib/store";
 import { clearG6, G6, g6Settings } from "@/lib/g6";
@@ -166,18 +166,22 @@ function clearAll() {
 export function loadWorkspace(): Promise<void> {
   if (!API_ON || !API_BASE) return Promise.resolve();
   if (inflight) return inflight;
+  // platform staff (Admin Console only) have no company workspace: nothing to load, and asking would only be refused
+  if (!allowedSpaces(appStore.get().role).includes("ws")) { clearAll(); loadedFor = ""; wsMeta.set({ error: "" }); bumpData(); return Promise.resolve(); }
   inflight = (async () => {
     const role = appStore.get().role; const key = `${appStore.get().company?.ref ?? ""}|${role}`;
     if (key !== loadedFor) { clearAll(); loadedFor = key; }
     try {
       const members = await apiFetch<WsMember[]>("/ws/members").catch(() => [] as WsMember[]);
-      const loaded: Record<string, boolean> = {};
+      const loaded: Record<string, boolean> = {}; const failed: string[] = []; let why = "";
+      // each module on its own: one that fails (a server error, a missing setting) must not leave every other module empty
       for (const mod of Object.keys(LOADERS)) {
         if (!modAllowed(role, "ws", mod)) continue;
-        LOADERS[mod](await apiFetch<any>(`/ws/data/${mod}`)); loaded[mod] = true;
+        try { LOADERS[mod](await apiFetch<any>(`/ws/data/${mod}`)); loaded[mod] = true; }
+        catch (e) { failed.push(TITLE[mod]?.[0] ?? mod); if (!why && e instanceof ApiError && e.status > 0 && e.status < 500) why = e.message; }
       }
       refreshFrameworkCounts();
-      wsMeta.set({ members, loaded, error: "" });
+      wsMeta.set({ members, loaded, error: failed.length ? `Could not load ${failed.join(", ")}${why ? ` (${why})` : ""}. Reload the page to try again.` : "" });
     } catch (e) {
       wsMeta.set({ error: e instanceof ApiError && e.status > 0 && e.status < 500 ? e.message : "Could not load your workspace. Reload the page to try again." });
     } finally { inflight = null; bumpData(); }

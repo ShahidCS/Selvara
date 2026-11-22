@@ -102,12 +102,12 @@ export function Sidebar() {
   }, [s.mobOpen]);
 
   const groups = (NAV[space] || []).map((g) => ({ g: g.g, items: g.items.filter((it) => modAllowed(s.role, space, it[0])) })).filter((g) => g.items.length);
-  // like the prototype, a group's open state is fixed the first time it is rendered (the active group opens, others stay closed)
-  const groupOpen = (g: { g: string; items: readonly (readonly unknown[])[] }) => (g.g in s.groupsOpen ? s.groupsOpen[g.g] !== false : g.items.some((it) => it[0] === route.mod));
+  // every group starts open, so each module the role can use is in view; a group the person closes stays closed for the session
+  const groupOpen = (g: { g: string; items: readonly (readonly unknown[])[] }) => (g.g in s.groupsOpen ? s.groupsOpen[g.g] !== false : true);
   useEffect(() => {
     if (!router.isReady) return; // asPath is a placeholder until hydrated
     const missing = groups.filter((g) => !(g.g in appStore.get().groupsOpen));
-    if (missing.length) appStore.set((x) => ({ groupsOpen: { ...x.groupsOpen, ...Object.fromEntries(missing.map((g) => [g.g, g.items.some((it) => it[0] === route.mod)])) } }));
+    if (missing.length) appStore.set((x) => ({ groupsOpen: { ...x.groupsOpen, ...Object.fromEntries(missing.map((g) => [g.g, true])) } }));
   });
 
   const show = (anchor: HTMLElement) => {

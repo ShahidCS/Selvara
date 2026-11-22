@@ -4,6 +4,12 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Fixed
+- **Every module is in view in the sidebar.** All sidebar groups now start open, for company admins and platform super admins alike, instead of only the group of the current page. With the other groups closed, the expanded sidebar showed only group names (Assurance, Internal Risk, Platform Security…) and the modules looked missing. A group someone closes stays closed for the session.
+- **Production waits for the server before acting on the role.** Until the server has confirmed the session, the app no longer redirects, shows a page or loads data from the role this browser last saved (it may be an older role or another account's). A link straight to a module, such as `/ws/frameworks`, now opens it instead of sending the person to the Overview.
+- **One module that fails to load no longer empties the others.** Each module's records are loaded on their own; if one fails, the others still load and a message at the top of the page names what could not be loaded, with Reload. Before, one failure left every module empty with no message.
+- **Platform staff no longer ask for company data.** The Admin Console loaded company records it may not read (refused with 403 errors in the browser console).
+
 ## [0.2.3] - 2026-11-22
 
 Layout and guided-tour fixes, and documentation brought up to date with the server; no migration and no new environment variable. Deploy as usual.
