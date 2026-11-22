@@ -4,6 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-11-22
+
+Sidebar and production loading fixes; no migration and no new environment variable. Deploy as usual.
+
 ### Fixed
 - **Every module is in view in the sidebar.** All sidebar groups now start open, for company admins and platform super admins alike, instead of only the group of the current page. With the other groups closed, the expanded sidebar showed only group names (Assurance, Internal Risk, Platform Security…) and the modules looked missing. A group someone closes stays closed for the session.
 - **Production waits for the server before acting on the role.** Until the server has confirmed the session, the app no longer redirects, shows a page or loads data from the role this browser last saved (it may be an older role or another account's). A link straight to a module, such as `/ws/frameworks`, now opens it instead of sending the person to the Overview.
