@@ -63,3 +63,25 @@ describe("production sign-in", () => {
     expect(store.appStore.get().signedIn).toBe(false);
   });
 });
+
+describe("production workspace loading", () => {
+  it("platform staff have no company workspace: nothing is requested from it", async () => {
+    const ws = await import("@/services/ws");
+    store.appStore.set({ role: "super", signedIn: true, company: null }); calls.length = 0;
+    reply = () => ({ status: 200, json: {} });
+    await ws.loadWorkspace();
+    expect(calls.filter((c) => c.url.includes("/ws/"))).toEqual([]);
+    expect(ws.wsMeta.get().error).toBe("");
+  });
+  it("one module that fails does not stop the others, and the failure is named", async () => {
+    const ws = await import("@/services/ws");
+    store.appStore.set({ role: "admin", signedIn: true, company: { ref: "acme-eu", name: "Acme" } }); calls.length = 0;
+    reply = (url) => (url.endsWith("/ws/data/risk") ? { status: 500 } : { status: 200, json: {} });
+    await ws.loadWorkspace();
+    const asked = calls.map((c) => c.url.replace("https://api.example.test", ""));
+    expect(asked).toContain("/ws/data/risk");
+    expect(asked.indexOf("/ws/data/issues")).toBeGreaterThan(-1); // modules after the failing one are still loaded
+    expect(asked.indexOf("/ws/data/vendors")).toBeGreaterThan(asked.indexOf("/ws/data/risk"));
+    expect(ws.wsMeta.get().error).toMatch(/Could not load .*Risk Register/);
+  });
+});

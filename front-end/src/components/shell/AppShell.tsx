@@ -1,8 +1,8 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/router";
 import { appStore, loadPersisted, persist, setModState, useApp, useData } from "@/lib/store";
 import { restoreSession } from "@/lib/session";
-import { loadWorkspace } from "@/services/ws";
+import { loadWorkspace, wsMeta } from "@/services/ws";
 import { StepUpHost } from "@/components/kit/StepUp";
 import { confirmSession } from "@/services/authApi";
 import { API_MODE } from "@/services/http";
@@ -14,7 +14,7 @@ import { parseRoute, useGo } from "@/lib/route";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { LayerProvider, useLayer } from "./LayerProvider";
-import { Empty } from "@/components/ui";
+import { Empty, Icon } from "@/components/ui";
 import { openShortcuts } from "./Shortcuts";
 import { TourHost, startTour, tourRunning } from "@/components/kit/Tour";
 import { MODULE_TOURS } from "@/data/tours";
@@ -23,11 +23,15 @@ import { loadTourPrefs, resetTourPrefs, shouldAutoStart, useTourPrefs } from "@/
 function Frame({ children }: { children: ReactNode }) {
   const router = useRouter(); const go = useGo(); const L = useLayer();
   const s = useApp((x) => x);
+  const loadError = useSyncExternalStore(wsMeta.subscribe, () => wsMeta.get().error, () => "");
   const route = parseRoute(router.asPath);
 
   // hydrate persisted role/theme/collapsed once on the client
   // mock mode: the browser restores and checks the session (expiry, ended elsewhere); production: the server confirms its HttpOnly session cookie
-  useEffect(() => { loadPersisted(ROLES.map((r) => r.id)); if (API_MODE === "http") void confirmSession(); else restoreSession(); }, []);
+  // production: nothing acts on the role this browser remembered (it may be an older role, or another account's) until the server has confirmed
+  // the session and sent the real role and company: no redirect, no data request, no page
+  const [confirmed, setConfirmed] = useState(API_MODE !== "http");
+  useEffect(() => { loadPersisted(ROLES.map((r) => r.id)); if (API_MODE === "http") void confirmSession().then(setConfirmed); else restoreSession(); }, []);
   useEffect(() => {
     if (API_MODE === "http") return;
     const iv = setInterval(() => { if (appStore.get().signedIn) { restoreSession(); if (!appStore.get().signedIn) L.toast("Your session ended. Sign in again.", false); } }, 30_000);
@@ -37,7 +41,7 @@ function Frame({ children }: { children: ReactNode }) {
   useEffect(() => { if (s.hydrated && !s.signedIn) router.replace("/login"); }, [s.hydrated, s.signedIn, router]);
   // Production: load the company's workspace records once signed in, and again whenever the company or role changes (company switch).
   const companyRef = s.company?.ref ?? null;
-  useEffect(() => { if (API_MODE === "http" && s.hydrated && s.signedIn) void loadWorkspace(); }, [s.hydrated, s.signedIn, s.role, companyRef]);
+  useEffect(() => { if (API_MODE === "http" && confirmed && s.hydrated && s.signedIn) void loadWorkspace(); }, [confirmed, s.hydrated, s.signedIn, s.role, companyRef]);
   // guided tours: the person's preference (their account in production), then a module's tour starts by itself on its main page when the
   // preference says so. Not under browser automation (end-to-end tests), unless a test opts in.
   const tours = useTourPrefs();
@@ -87,7 +91,7 @@ function Frame({ children }: { children: ReactNode }) {
   }, [router.asPath]);
   // RBAC guard: redirect disallowed space/module to the role's landing page
   useEffect(() => {
-    if (!s.hydrated || !s.signedIn || route.space === "auth") return;
+    if (!confirmed || !s.hydrated || !s.signedIn || route.space === "auth") return;
     if (!TITLE[route.mod] && route.mod !== "billing") return; // renders Not Found
     if (!allowedSpaces(s.role).includes(route.space) || !modAllowed(s.role, route.space, route.mod)) {
       const land = landingPath(s.role, route.space);
@@ -98,7 +102,7 @@ function Frame({ children }: { children: ReactNode }) {
         router.replace(land);
       }
     }
-  }, [s.hydrated, s.signedIn, s.role, route.space, route.mod, router, L]);
+  }, [confirmed, s.hydrated, s.signedIn, s.role, route.space, route.mod, router, L]);
   // global shortcuts: Cmd/Ctrl+K palette, +J AI Assistant, +B collapse, +/ shortcut list, Escape closes mobile sidebar
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -124,9 +128,14 @@ function Frame({ children }: { children: ReactNode }) {
       <Sidebar />
       <Topbar />
       <main id="content" tabIndex={-1}>
+        {/* production: a module whose records could not be loaded says so, instead of looking empty */}
+        {API_MODE === "http" && loadError && route.space === "ws" ? (
+          <div className="banner warn load-error" role="alert"><Icon name="alert" aria-hidden="true" /><span>{loadError}</span>
+            <button className="btn btn-secondary sm" onClick={() => window.location.reload()}>Reload</button></div>
+        ) : null}
         {!known ? (
           <div className="page"><Empty icon="alert" title="Page not found" action={<button className="btn btn-primary" onClick={() => go(home)}>Back to {homeLabel}</button>}>That route doesn&apos;t exist or has moved.</Empty></div>
-        ) : s.hydrated && !allowed ? null : children}
+        ) : !confirmed || (s.hydrated && !allowed) ? null : children}
       </main>
       <div id="scrim-sb" onClick={() => appStore.set({ mobOpen: false })} />
       <TourHost />

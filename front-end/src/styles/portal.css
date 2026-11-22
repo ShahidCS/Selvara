@@ -563,6 +563,8 @@ button.tag:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
 .banner{border-radius:10px;padding:10px 14px;font-size:12.5px;line-height:1.5}
 .banner.warn{background:var(--warn-bg);color:var(--warn-ink)}
 .banner.info{background:var(--info-bg);color:var(--info-ink)}
+/* production: records of a module could not be loaded (shell, above the page) */
+.load-error{flex:0 0 auto;margin:12px 20px 0;display:flex;align-items:center;gap:10px}.load-error svg{width:16px;height:16px;flex:0 0 auto}.load-error .btn{margin-inline-start:auto;flex:0 0 auto}
 .fchip.sm{height:28px;padding:0 10px;font-size:12px}
 .fchip.on{border-color:var(--accent);background:var(--accent-weak);color:var(--accent-ink);font-weight:600}
 .fwkinds{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
