@@ -14,6 +14,7 @@ import { ROLES, TITLE, allowedSpaces, landingPath, modAllowed } from "@/lib/rbac
 import { parseRoute, useGo } from "@/lib/route";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
+import { TabBar } from "./TabBar";
 import { LayerProvider, useLayer } from "./LayerProvider";
 import { Empty, Icon } from "@/components/ui";
 import { openShortcuts } from "./Shortcuts";
@@ -138,6 +139,7 @@ function Frame({ children }: { children: ReactNode }) {
           <div className="page"><Empty icon="alert" title="Page not found" action={<button className="btn btn-primary" onClick={() => go(home)}>Back to {homeLabel}</button>}>That route doesn&apos;t exist or has moved.</Empty></div>
         ) : !confirmed || (s.hydrated && !allowed) ? null : route.space === "ws" && SETTINGS_KEYS.includes(route.mod) ? <SettingsFrame mod={route.mod}>{children}</SettingsFrame> : children}
       </main>
+      <TabBar />
       <div id="scrim-sb" onClick={() => appStore.set({ mobOpen: false })} />
       <TourHost />
     </div>

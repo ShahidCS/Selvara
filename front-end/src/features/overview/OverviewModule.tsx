@@ -1,4 +1,5 @@
-import { HBarList, Icon, KpiStrip, KpiTile, LineChart, Page, StatusChip, activate, type Desirability } from "@/components/ui";
+import { HBarList, Icon, KpiStrip, KpiTile, LineChart, Page, Segmented, StatusChip, activate, type Desirability } from "@/components/ui";
+import { DEMO_RISE, PERIODS, demoSeries, periodRange, periodTicks, periodVs, setPeriod, usePeriod } from "@/lib/period";
 import { FocusCard } from "./FocusCard";
 import { ComplianceCalendar } from "./ComplianceCalendar";
 import { PostureBrief } from "./PostureBrief";
@@ -15,7 +16,6 @@ import { useRoute } from "@/lib/route";
 import { useApp } from "@/lib/store";
 import { API_ON, modAllowed, roleOf } from "@/lib/rbac";
 
-const MONTHS = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
 const tile = (tone: Desirability, text: string) => ({ tone, text });
 
 /** The framework label column stays in view while the category columns scroll sideways on a narrow screen. */
@@ -55,7 +55,9 @@ export default function OverviewModule() {
   const fwRank = [...DATA.frameworks].map((f) => ({ f, r: fwReadiness(f.id) })).sort((a, b) => a.r - b.r).slice(0, 6);
   const sev: Record<string, number> = { High: DATA.issues.filter((i) => i.sev === "High").length, Medium: DATA.issues.filter((i) => i.sev === "Medium").length, Low: DATA.issues.filter((i) => i.sev === "Low").length };
   const sevMax = Math.max(1, ...Object.values(sev));
-  const openTrend = [20, 19, 18, 17, 16, 15, M.openRisks];
+  // R34: the trend follows the period chosen here or on Reports (demonstration history only; production has none stored yet)
+  const per = usePeriod(); const rise = DEMO_RISE[per]; const tk = periodTicks(per);
+  const openTrend = demoSeries(M.openRisks, tk.length, -rise.risks, 0, 999);
   /* Only items whose module the role can open are listed, in both modes; each opens its own record. */
   const overdueIssues = DATA.issues.filter((i) => i.status !== "Closed" && /Overdue/.test(i.due));
   const overdueVendors = DATA.vendors.filter((v) => /Overdue/.test(v.due));
@@ -95,8 +97,8 @@ export default function OverviewModule() {
     </>}>
       <div className="scroll" style={{ flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column", gap: 14 }}>
       <KpiStrip label="Posture summary">
-        <KpiTile label="Weighted compliance" value={M.compliance + "%"} delta={live(tile("good", "+3 pts this month"))} caption="Across frameworks in scope" />
-        <KpiTile label="Open risks" value={M.openRisks} delta={live(tile("good", "2 fewer this month"))} caption={`${M.aboveAppetite} above appetite`} />
+        <KpiTile label="Weighted compliance" value={M.compliance + "%"} delta={live(tile("good", `+${rise.compliance} pt${rise.compliance === 1 ? "" : "s"} ${periodVs(per)}`))} caption="Across frameworks in scope" />
+        <KpiTile label="Open risks" value={M.openRisks} delta={live(rise.risks ? tile("good", `${rise.risks} fewer ${periodVs(per)}`) : tile("flat", `No change ${periodVs(per)}`))} caption={`${M.aboveAppetite} above appetite`} />
         <KpiTile label="Controls failing" value={M.overdueControls} delta={live(tile("bad", "1 more this week"))} caption="Need remediation" />
         <KpiTile label="Open issues" value={M.openIssues} delta={live(tile("flat", "No change"))} caption="Not yet closed" />
         <KpiTile label="Upcoming audits" value={M.upcomingAudits} caption={API_ON ? "Not yet complete" : "Not yet complete · next in 136 days"} />
@@ -106,10 +108,12 @@ export default function OverviewModule() {
       <PostureBrief can={can} />
       <div className="panels" data-tour="overview-panels" style={{ flex: "0 0 auto", gridTemplateColumns: "1.6fr 1fr 1fr", gridAutoRows: "minmax(320px,auto)" }}>
         <div className="card">
-          <div className="c-head"><h3>Risk posture</h3>{can("risk") ? <div className="r"><button className="btn btn-ghost sm" onClick={() => go("/ws/risk")}>Risk register</button></div> : null}</div>
+          <div className="c-head" style={{ flexWrap: "wrap" }}><h3>Risk posture</h3><div className="r" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+            <Segmented label="Trend period" value={per} options={PERIODS} onChange={setPeriod} />
+            {can("risk") ? <button className="btn btn-ghost sm" onClick={() => go("/ws/risk")}>Risk register</button> : null}</div></div>
           <div className="c-body scroll">
-            {API_ON ? <p className="field help" style={{ margin: 0 }}>{M.openRisks} open risk{M.openRisks === 1 ? "" : "s"}, {M.aboveAppetite} above appetite. The trend appears here once monthly figures have been recorded.</p>
-              : <LineChart title="Open risks over the last 7 months" data={openTrend.map((v, i) => ({ label: MONTHS[i], value: v }))} unit="" />}
+            {API_ON ? <p className="field help" style={{ margin: 0 }}>{M.openRisks} open risk{M.openRisks === 1 ? "" : "s"}, {M.aboveAppetite} above appetite. The trend for {periodRange(per)} appears here once daily figures have been recorded.</p>
+              : <LineChart title={`Open risks, ${periodRange(per)}`} data={openTrend.map((v, i) => ({ label: tk[i].label, value: v }))} unit="" />}
             <div className="hr" />
             <HBarList title="Open issues by severity" rows={([["High", "bad"], ["Medium", "warn"], ["Low", "muted"]] as const).map(([s, tone]) => ({ label: s, value: sev[s], tone }))} max={sevMax} />
           </div>

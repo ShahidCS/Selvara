@@ -32,8 +32,9 @@ export function ChartFigure({ title, summary, head, rows, children, legend, inte
       <figcaption className="chart-cap">{title}</figcaption>
       <div className="chart-body" role={interactive ? "group" : "img"} aria-label={`${title}. ${summary}`}>{children}</div>
       {legend}
-      <table className="vh"><caption>{title}</caption><thead><tr>{head.map((h) => <th key={h} scope="col">{h}</th>)}</tr></thead>
-        <tbody>{rows.map((r, i) => <tr key={i}>{r.map((c, j) => (j ? <td key={j}>{c}</td> : <th key={j} scope="row">{c}</th>))}</tr>)}</tbody></table>
+      {/* the wrapper is what is visually hidden: a table ignores a 1px width and would widen the page on a phone */}
+      <div className="vh"><table><caption>{title}</caption><thead><tr>{head.map((h) => <th key={h} scope="col">{h}</th>)}</tr></thead>
+        <tbody>{rows.map((r, i) => <tr key={i}>{r.map((c, j) => (j ? <td key={j}>{c}</td> : <th key={j} scope="row">{c}</th>))}</tr>)}</tbody></table></div>
     </figure>
   );
 }
@@ -89,20 +90,52 @@ export function BarChart({ title, data, unit = "", goodLabel = "Value", badLabel
 export interface HBarRow { label: string; value: number; tone?: Tone; /** Overrides the bar's end label (default is the value). */ text?: string }
 /** Ranked horizontal bars with the value written at the end (a track plus a label, so the bar is never the only carrier of the number). */
 /** `wrap` puts each label on its own line above its bar, for long labels (the posture brief's causes). */
-export function HBarList({ title, rows, max, unit = "", wrap }: { title: string; rows: HBarRow[]; max?: number; unit?: string; wrap?: boolean }) {
-  const m = max ?? Math.max(1, ...rows.map((r) => r.value));
+/** `target` draws a marker at that value on every track (R35), and the summary says how many rows reach it. */
+export function HBarList({ title, rows, max, unit = "", wrap, target, targetLabel = "Target" }: { title: string; rows: HBarRow[]; max?: number; unit?: string; wrap?: boolean; target?: number; targetLabel?: string }) {
+  const m = max ?? Math.max(1, ...rows.map((r) => r.value), target ?? 0);
+  const reach = target == null ? "" : ` ${rows.filter((r) => r.value >= target).length} of ${rows.length} at or above the ${targetLabel.toLowerCase()} of ${target}${unit}.`;
   return (
-    <ChartFigure title={title} summary={rows.length ? `${rows.length} rows, largest ${rows.reduce((a, r) => (r.value > a.value ? r : a), rows[0]).label}.` : "No data."}
-      head={["Name", "Value"]} rows={rows.map((r) => [r.label, r.text ?? `${r.value}${unit}`])}>
+    <ChartFigure title={title} summary={rows.length ? `${rows.length} rows, largest ${rows.reduce((a, r) => (r.value > a.value ? r : a), rows[0]).label}.${reach}` : "No data."}
+      head={["Name", "Value"]} rows={rows.map((r) => [r.label, r.text ?? `${r.value}${unit}`])}
+      legend={target != null ? <p className="chart-note"><span className="hbar-tmark-key" aria-hidden="true" />{targetLabel} {target}{unit}</p> : undefined}>
       <ul className={wrap ? "hbar wrap" : "hbar"} aria-hidden="true">
         {rows.map((r) => (
           <li key={r.label} className="hbar-row">
             <span className="hbar-nm">{r.label}</span>
-            <span className="hbar-track"><span className="hbar-fill" style={{ width: `${Math.max(2, (r.value / m) * 100)}%`, background: TONE_VAR[r.tone || "brand"] }} /></span>
+            <span className="hbar-track"><span className="hbar-fill" style={{ width: `${Math.max(2, (r.value / m) * 100)}%`, background: TONE_VAR[r.tone || "brand"] }} />{target != null ? <span className="hbar-tmark" style={{ left: `${Math.min(100, (target / m) * 100)}%` }} /> : null}</span>
             <span className="hbar-v num">{r.text ?? `${r.value}${unit}`}</span>
           </li>
         ))}
       </ul>
+    </ChartFigure>
+  );
+}
+
+export interface PairPoint { label: string; a: number; b: number }
+/** Two series side by side per period (R35), for example issues closed and opened. The last group is "now" and is drawn at full strength,
+ *  earlier groups lighter; the legend names both series, and every bar has a tooltip and a row in the data table. */
+export function PairBarChart({ title, data, aLabel, bLabel, aTone = "brand", bTone = "bad", unit = "" }: { title: string; data: PairPoint[]; aLabel: string; bLabel: string; aTone?: Tone; bTone?: Tone; unit?: string }) {
+  const { tip, bind } = useTip();
+  const max = Math.max(4, Math.ceil(Math.max(...data.map((d) => Math.max(d.a, d.b))) / 4) * 4); // counts: whole-number ticks
+  const iw = BOX.w - BOX.l - BOX.r, ih = BOX.h - BOX.t - BOX.b, slot = iw / (data.length || 1), bw = Math.min(28, slot * 0.3);
+  const H = (v: number) => (Math.max(0, v) / max) * ih; const last = data[data.length - 1];
+  return (
+    <ChartFigure title={title} interactive head={["Period", aLabel, bLabel]} rows={data.map((d) => [d.label, `${d.a}${unit}`, `${d.b}${unit}`])}
+      summary={data.length ? `${data.length} periods. ${last.label}: ${aLabel.toLowerCase()} ${last.a}${unit}, ${bLabel.toLowerCase()} ${last.b}${unit}.` : "No data."}
+      legend={<ul className="legend row">{([[aLabel, aTone], [bLabel, bTone]] as const).map(([l, t]) => <li key={l}><span className="legend-sw" style={{ background: TONE_VAR[t] }} aria-hidden="true" />{l}</li>)}</ul>}>
+      <div className="chart-wrap"><svg viewBox={`0 0 ${BOX.w} ${BOX.h}`} preserveAspectRatio="none" className="chart-svg">
+        {ticks(max).map((t) => { const y = BOX.t + ih * (1 - t / max); return <g key={t}><line x1={BOX.l} x2={BOX.w - BOX.r} y1={y} y2={y} className="chart-grid" /><text x={BOX.l - 6} y={y + 4} textAnchor="end" className="chart-ax">{t}</text></g>; })}
+        {data.map((d, i) => {
+          const cx = BOX.l + slot * i + slot / 2; const op = i === data.length - 1 ? 1 : 0.45; const base = BOX.t + ih;
+          return (
+            <g key={d.label}>
+              <rect x={cx - bw - 2} y={base - H(d.a)} width={bw} height={H(d.a)} rx="4" fill={TONE_VAR[aTone]} fillOpacity={op} className="chart-mark" {...bind(cx - bw / 2, base - H(d.a), `${d.label}: ${aLabel.toLowerCase()} ${d.a}${unit}`)} />
+              <rect x={cx + 2} y={base - H(d.b)} width={bw} height={H(d.b)} rx="4" fill={TONE_VAR[bTone]} fillOpacity={op} className="chart-mark" {...bind(cx + bw / 2, base - H(d.b), `${d.label}: ${bLabel.toLowerCase()} ${d.b}${unit}`)} />
+              <text x={cx} y={BOX.h - 6} textAnchor="middle" className="chart-ax" fontWeight={i === data.length - 1 ? 600 : undefined}>{d.label}</text>
+            </g>
+          );
+        })}
+      </svg><TipBox tip={tip} w={BOX.w} h={BOX.h} /></div>
     </ChartFigure>
   );
 }

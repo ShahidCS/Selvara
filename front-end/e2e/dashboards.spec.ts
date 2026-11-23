@@ -14,20 +14,20 @@ test("overview: KPI strip, line chart and ranked bars carry their numbers in tex
   await expect(kpis).toContainText("Vendor reviews due");
   expect(await charts(p).count()).toBeGreaterThanOrEqual(3);
   // each chart has a caption, a summary and a data table for screen readers
-  const line = p.getByRole("group", { name: /Open risks over the last 7 months/ });
+  const line = p.getByRole("group", { name: /Open risks, \d+ \w+ to \d+ \w+/ });
   await expect(line).toBeVisible();
-  expect(await p.locator("figure.chart table.vh").count()).toBeGreaterThanOrEqual(3);
+  expect(await p.locator("figure.chart .vh table").count()).toBeGreaterThanOrEqual(3);
   await expect(p.getByRole("group", { name: /Control coverage/ })).toBeVisible();
   expect(s.errors).toEqual([]);
   await s.close();
 });
 
-test("reports: KPI strip and the readiness trend chart", async ({ browser }, ti) => {
+test("reports: figures for the period and the compliance trend with its target", async ({ browser }, ti) => {
   const s = await openAs(browser, ti, "admin");
   const p = s.page;
   await gotoModule(p, "/ws/reports");
-  await expect(p.getByRole("group", { name: "Reporting summary" })).toContainText("Scheduled packs");
-  await expect(p.getByRole("group", { name: /Weighted compliance over the last 7 months/ })).toBeVisible();
+  await expect(p.getByRole("group", { name: /^Figures for / })).toContainText("Scheduled packs");
+  await expect(p.getByRole("group", { name: /Weighted compliance, \d+ \w+ to \d+ \w+.*Target 80%/ })).toBeVisible();
   expect(s.errors).toEqual([]);
   await s.close();
 });
