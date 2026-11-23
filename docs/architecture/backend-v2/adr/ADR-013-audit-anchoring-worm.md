@@ -12,7 +12,7 @@
 - v0.2.5 keeps a SHA-256 hash chain per tenant and for the platform, verifiable by `audit_verify` (LOG-05). A hash chain detects edits of the middle of a chain, but anyone with database superuser rights can recompute and replace a whole chain or cut its tail. CONTROLS.md LOG-01 asks for "HMAC or WORM storage".
 - Supabase organisation owners and provider operators have superuser-equivalent access (F-8.2).
 - Tenants (regulated buyers) and their auditors must be able to verify their log independently.
-- The log must also honour erasure: entries hold ciphertext of personal fields (F-D-09).
+- The log must also honour erasure and retention: entries hold personal fields encrypted (`ip_enc` E1, `pd_enc` E2, `details_enc` E1), and the hash input carries those fields only as keyed HMACs (F-D-09, 2B B-D17), so retention can null the personal value while the chain still verifies. (rev P3)
 - No operations team: anchoring must be automatic and self-checking.
 
 ## Options considered
@@ -32,7 +32,7 @@ Adopt **O3**.
 1. **Leaves**: for each chain (each tenant and the platform), leaf = `SHA-256(anchor_id ‖ seq ‖ head_hash)`; `anchor_id` is a random per-chain identifier stored in `audit_anchor`, so the anchor object does not list tenant names or `tkey`s.
 2. **Root**: Merkle tree over all leaves (sorted by `anchor_id`), root signed with the KMS asymmetric key `sig/anchor` (F-K-06), timestamped by an RFC 3161 timestamp authority.
 3. **WORM target**: object-lock bucket in **compliance mode** in `offsite-prod` (H-AC-05; second EU region, separate account from `kms-prod`, Supabase and Vercel); anchors retained 10 years; daily per-tenant segments (that day's entries as stored, encrypted with the tenant DEK) retained 13 months. Bucket deletion and retention reduction impossible by design; versioning on.
-4. **Records**: each tenant's `audit_anchor` row holds root, leaf, proof path, object key, TSA token reference; the platform equivalent in `control.platform_audit_anchor`.
+4. **Records**: each tenant's `audit_anchor` row holds root, leaf, proof path, object key, TSA token reference; the platform equivalent in `control.platform_audit_anchor`. Each chain entry's hash covers every column except the personal-data ciphertexts (`ip_enc`, `pd_enc`, `details_enc`), which are represented in the hash input only by their keyed HMACs (`ip_hmac`, `pd_hmac`, `details_hmac`; key F-K-33), never by plaintext or ciphertext (2F F-D-09, F-L-03; 2B B-D17). (rev P3)
 5. **Cadence and checks**: anchoring hourly (S8 job type), verification daily (recompute chains, compare with the latest anchors, verify signatures and WORM object presence). Missing anchor for 2 h raises F-M-05; mismatch raises F-M-04.
 6. **Tenant verification**: tenant admins download a verification bundle (entries, anchors, proofs, TSA tokens, public keys with validity) and can verify offline. Public keys are published on Selvara's Trust Center.
 7. **Purges**: retention purges (2G) write an anchored "purge" entry describing the range removed, so a later gap is explained and verifiable.
@@ -50,7 +50,7 @@ Adopt **O3**.
 
 - Anchors contain hashes only and no personal data; they can outlive tenant deletion.
 - Segments hold ciphertext encrypted with the tenant DEK; tenant KEK destruction at offboarding makes them unreadable while object lock keeps them until expiry (disclosed in the DPA and in the deletion certificate).
-- Hashes are computed over ciphertext (F-D-09), so subject-key shredding does not break verification and the hash does not reveal plaintext (random nonces).
+- Personal fields enter the hash only as keyed HMACs (F-D-09, B-D17), so retention nulling (2B B-RC32) and subject-key shredding do not break verification, and the hash input reveals neither plaintext nor ciphertext. An HMAC kept after erasure is a pseudonymous value, consistent with OD-10. (rev P3)
 - The signing key never leaves the KMS; its compromise is detectable through KMS logs and is limited by the TSA tokens, which fix the time of each root independently.
 
 ## Verification (Phase 4)
@@ -64,3 +64,4 @@ Adopt **O3**.
 | V13-05 | Offline verification of a tenant bundle with only the published public key and TSA certificate succeeds; altered bundle fails. |
 | V13-06 | Anchor objects and their metadata contain no tenant names, `tkey`s or personal data. |
 | V13-07 | Stop the anchoring job: F-M-05 fires within 2 hours. |
+| V13-08 | Null `ip_enc` and `pd_enc` on old entries (retention purge) and shred a subject key: `audit_verify` and the daily verification still pass; altering an `ip_hmac` fails at that entry. (rev P3) |

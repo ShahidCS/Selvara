@@ -54,9 +54,10 @@
 | D7-3 | `control.provider_configs` holds `kind`, `adapter`, `billing_entity_id`, `environment`, non-secret `settings`, `secret_refs`, `secret_fingerprints`, `review_id`, `status` and `version`. Secrets live only in the secret store chosen under ADR-003, outside the database and its backups. Environment-variable provider keys are retired. |
 | D7-4 | Lifecycle: draft, then test (sandbox call and webhook ping), then a four-eyes request (`provider.activate`, `provider.change`, `provider.live`; elevated requester and a different elevated approver; 24 h; rechecked on apply), then active. Disabling needs one elevated super admin; webhooks are still verified for 30 days after disable. |
 | D7-5 | Billing mode is a property of the payment config. In `merchant_of_record` mode Selvara issues no customer tax invoice and mirrors the provider's documents. In `direct` mode Selvara issues invoices and credit notes and refuses to invoice a jurisdiction without an approved tax rule. |
-| D7-6 | Webhooks: `POST /api/v1/public/billing-webhooks/:config_ref`; signature on the raw body, tolerance, dedupe by `(config, event id)`, mode and currency checks; mismatches go to the `unmatched` ledger for review. |
+| D7-6 | Webhooks: `POST /api/v1/hooks/billing/<config_ref>` (aligned with 2C C-09; rev P3); signature on the raw body, tolerance, dedupe by `(config, event id)`, mode and currency checks; mismatches go to the `unmatched` ledger for review. |
 | D7-7 | AI: activation needs an `approved` `control.ai_provider_reviews` row (training use, retention, region, subprocessors, DPA, zero data retention, licence). Free hosted tiers that train on or retain inputs are rejected by rule. Tenants stay off by default and enable with four-eyes `ai.enable`. A provider change that alters training, retention or region asks for tenant approval again. The PII blocker runs before any adapter. |
-| D7-8 | **The route for the Pakistan entity is not decided by this ADR.** It is an Admin Console configuration made through D7-4 once a route passes legal, tax and KYB checks. Until then: `bank_transfer`. |
+| D7-8 | **The route for the Pakistan entity is not decided by this ADR.** It is an Admin Console configuration made through D7-4 once a route passes legal, tax and KYB checks. Until then: `bank_transfer` (owner decision OD-01). (rev P3) |
+| D7-9 | Outbound provider calls (payment, tax, email, AI) that are not part of a user's synchronous request go through the queue with retry and dead-letter (2D D-90); synchronous calls use a bounded timeout and fail with a retryable error. Every outbound call leaves through the 2H egress design (allow-listed provider destinations, no internal addresses). (rev P3) |
 
 ## Consequences
 
@@ -66,7 +67,7 @@
 | C7-2 | Self-serve card payment is not available at launch unless a MoR or PSP qualifies. Annual and invoiced sales work from day one. |
 | C7-3 | Typed control-plane tables replace the `platform_records` billing kinds (2I I-SD1). |
 | C7-4 | "Void" becomes a full credit note to keep numbering intact (parity ledger, intended change). |
-| C7-5 | Each new adapter needs its own contract tests (J-SEC-23 for webhooks), a subprocessor and DPA review, and an entry in the egress allow-list (2F). |
+| C7-5 | Each new adapter needs its own contract tests (J-SEC-23 for webhooks), a subprocessor and DPA review, and an entry in the egress allow-list (2H egress design; 2F F-AB-14). (rev P3) |
 | C7-6 | Operating cost: two people approve provider changes. This is consistent with the existing four-eyes model and A-08. |
 
 ## Security and privacy implications

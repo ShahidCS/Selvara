@@ -83,7 +83,7 @@ interface InvoiceNumbering { allocate(entityId: string, series: "INV" | "CN", ye
 | ID | Rule |
 |---|---|
 | I-3.2.1 | Every provider call carries an idempotency key that comes from the ledger operation (for example `refund-<ledger_entry_id>`), never from wall-clock time alone. The current `checkout-<invoice>-<amount>-<hour>` key stays acceptable for checkout only. |
-| I-3.2.2 | Provider events reach Selvara only through `POST /api/v1/public/billing-webhooks/<provider_config_ref>`. The handler verifies the signature on the raw body with the config's webhook secret, enforces a 5-minute tolerance and dedupes by `(provider_config_id, event_id)` in `control.provider_events`. Money is recorded only after the event is checked against the invoice, the currency and the live or test mode, the same as today. A mismatch becomes an `unmatched` ledger entry for review (kept from v0.2.5). |
+| I-3.2.2 | Provider events reach Selvara only through `POST /api/v1/hooks/billing/<provider_config_ref>` (aligned with 2C C-09; rev P3). The handler verifies the signature on the raw body with the config's webhook secret, enforces a 5-minute tolerance and dedupes by `(provider_config_id, event_id)` in `control.provider_events`. Money is recorded only after the event is checked against the invoice, the currency and the live or test mode, the same as today. A mismatch becomes an `unmatched` ledger entry for review (kept from v0.2.5). |
 | I-3.2.3 | Adapters are code. Adding an adapter is a release through the normal pipeline, never a runtime upload. Configuring an adapter is data (I-4). |
 | I-3.2.4 | `TaxProvider` launches as `rules_table`, the current per-country tax rule from the rates module made into typed `control.tax_rules`. An external tax-calculation adapter is a later slot (BL-02). In `merchant_of_record` mode `TaxProvider` is not called. |
 | I-3.2.5 | `InvoiceNumbering` allocates from `control.invoice_series` (`entity_id`, `series`, `year`, `next`) with a row lock **inside the transaction that inserts the invoice**. A rollback therefore leaves no gap, and nothing is ever renumbered. Format: `<series>-<entity code>-<YYYY>-<nnnnnn>`, for example `INV-PK-2027-000001`. Credit notes have their own series, `CN`. Whether yearly reset and gapless numbering meet each entity's local rules is listed in I-6.3 *(verify)*. |
@@ -130,7 +130,7 @@ sequenceDiagram
 | I-4.1.2 | `control.plan_entitlements` | Per plan version: `key` (see I-4.2), `kind` (`limit`, `flag`), `value`, `enforcement` (`hard`, `soft`), `grace_pct` and `overage_unit_price_minor` (nullable). |
 | I-4.1.3 | `control.price_lists` | Spine extension. Versioned prices per plan version and currency, replacing `billing-price`. USD base, with optional local price points. |
 | I-4.1.4 | `control.entitlement_overrides` | Spine extension. Per-subscription exceptions (for example a negotiated extra 50 GB): `key`, `value`, `reason`, `expires_at` and `approval_id`. Four-eyes kind `entitlement.override`. |
-| I-4.1.5 | Effective entitlements | `plan_entitlements(plan version) ⊕ overrides`, capped by `platform ceilings` (for example the maximum upload size, Q-10). The result is cached in the routing record with its `entitlements_version`, invalidated on change and never longer than 60 seconds stale. |
+| I-4.1.5 | Effective entitlements | `plan_entitlements(plan version) ⊕ overrides`, capped by `platform ceilings` (for example the maximum upload size, Q-10). The result is cached per function instance alongside the static routing fields (TTL 30 s, R2-01) and keyed by `entitlements_version`; state limits are always checked against the source inside the transaction (I-4.3.3). (rev P3) |
 | I-4.1.6 | Publishing a plan version or price list | Four-eyes `billing.pricing` (kept). Applies to invoices issued afterwards. A running subscription moves to the new plan version only at renewal, unless a migration request is approved. |
 
 ### I-4.2 Entitlement keys, metering and enforcement
@@ -138,7 +138,7 @@ sequenceDiagram
 | ID | Key | Unit | Source of truth | Metering event (to `control.usage_meters`) | Enforcement point (server) | Type | Grace | What the user sees |
 |---|---|---|---|---|---|---|---|---|
 | I-4.2.1 | `seats` | Active members with a paid role (`admin`, `owner`, `analyst`, `employee` and custom roles based on them) | `control.memberships` | `member.activated` and `member.deactivated` (+1/-1) | Invitation create, invitation accept, join approval, SCIM create or activate, role change from a free to a paid role. All are checked in the control-plane transaction with a row lock on the subscription. | Hard | 0 (no over-seating) | 422 `limit.seats`: "Your plan includes N users and N are active. Remove a user or ask your admin to change the plan." SCIM gets an error response that names the limit *(map to the SCIM error schema, verify)*. Admins see a banner at 90%. |
-| I-4.2.2 | `seats` (external roles) | `auditor`, `vendor`, `viewer` | — | Counted for information only | Not limited by seats. Abuse is limited by `external_users` (a soft limit, default ≥ 5× seats). | Soft | — | Admin notice (A-59) |
+| I-4.2.2 | `seats` (external roles) | `auditor`, `vendor`, `viewer` | — | Counted for information only | Not limited by seats. Abuse is limited by `external_users` (I-4.2.14; rev P3). | Soft | — | Admin notice (A-59) |
 | I-4.2.3 | `frameworks` | Active rows in `framework_scope` plus active `custom_framework` rows | Tenant schema | `framework.activated` and `framework.deactivated` | Framework activation endpoint, in the tenant transaction (count, then insert, under an advisory lock keyed on the tenant) | Hard | 0 | 422 `limit.frameworks`. Already-active frameworks are never deactivated by the platform. |
 | I-4.2.4 | `storage_bytes` | Sum of the `file_object.size` values that are not purged, including all versions and quarantine | Tenant schema (`file_object`) | `storage.reserved`, `storage.committed`, `storage.released` | Signed upload URL issue: reserve the declared size against `used + reserved`. On scan completion, commit the actual size and release the difference. | Hard at `limit × (1 + grace_pct)` | 5% (default) for uploads in flight | At 80% and 95% a notice goes to admins. At 100% plus the grace band, upload URL requests get 422 `limit.storage` with the usage figures. Reads, downloads and deletes always work. |
 | I-4.2.5 | `max_upload_bytes` | Per file | min(plan value, tenant setting, platform hard ceiling) | — | Upload URL issue (declared size) and scanner (actual size). Storage enforces the ceiling as well *(Supabase bucket file-size limit, verify)*. | Hard | 0 | 422 `limit.upload_size` with the effective maximum |
@@ -146,6 +146,11 @@ sequenceDiagram
 | I-4.2.7 | `module.<M>` | Flag per module add-on (for example M11 Trust Center, M13 AI governance) | `plan_entitlements` plus overrides | — | Router middleware, before the handler: a module not entitled refuses **writes**. Reads of existing data and exports still work. | Hard (writes) | Data kept read-only | 403 `plan.module_not_included` with the reason. The navigation shows the module with a lock icon and a label (design system: never colour alone). |
 | I-4.2.8 | `ai_tokens_month` | Input plus output tokens of Assistant asks and agent runs | M19 `agent_run` and Assistant metadata (token counts are already stored on drafts) | `ai.tokens` per request | Before the provider call: refuse if the meter is already above the limit. The call that crosses the limit completes. | Hard | One call of overshoot | 422 `limit.ai`: "Your AI allowance for this month is used. It resets on <date>." |
 | I-4.2.9 | `exports_day` (demo parity: exports and evidence packages) | Count | Tenant `report_run` and export jobs | `export.created` | Export endpoint | Soft | — | Notice. **Data export is never blocked by billing state or limits** (I-5.4). |
+| I-4.2.10 | `db_bytes` | Tenant schema size | Fleet observer (2H H-FL-01) | Nightly measurement | None (display and billing) | Soft | — | Notice to admins at 80%; above the plan value, a proposal to move to a dedicated cell (2A A-PH-05). (rev P3) |
+| I-4.2.11 | `byok` | Flag | Plan plus overrides | — | BYOK onboarding endpoint (2F F-K-21) | Hard | — | 403 `plan.feature_not_included` (rev P3) |
+| I-4.2.12 | `sso`, `scim` | Flags | Plan | — | SSO and SCIM configuration endpoints | Hard | — | 403 `plan.feature_not_included` (rev P3) |
+| I-4.2.13 | `dedicated_cell`, `pitr_days` | Flag, limit | Plan | — | Provisioning placement (2A A-PH-04, A-PH-05); a dedicated cell does not count toward a shared cell's CR-1 threshold | Hard | — | n/a (platform-side) (rev P3) |
+| I-4.2.14 | `external_users` | Count of auditor, vendor and viewer members | `control.memberships` | As I-4.2.1 | Invitation create and accept | Soft (default ≥ 5 × seats) | — | Admin notice (rev P3) |
 
 ### I-4.3 Metering pipeline
 
@@ -156,9 +161,9 @@ flowchart LR
     RL[Rate limiter] -->|per-minute aggregate| Q
     W[Worker: usage aggregator] -->|reads| Q
   end
-  W -->|cp_rw, idempotent upsert by event id| UM[(control.usage_meters)]
+  W -->|cp_worker, idempotent upsert by event id| UM[(control.usage_meters)]
   R[Nightly recount job] -->|source-of-truth counts| UM
-  UM --> E[Entitlement cache in routing record]
+  UM --> E[Entitlement cache per instance, 30 s, keyed by entitlements_version]
   UM --> INV[Invoice run: overage lines]
 ```
 
@@ -177,8 +182,16 @@ flowchart LR
 |---|---|
 | I-4.4.1 | A company admin requests a plan change (one open request at a time, kept). Upgrades apply immediately with proration *(proration rule to confirm with finance; MoR providers prorate themselves)*. Downgrades apply at the next period. Both are recorded in `control.plan_change_requests` (a spine extension that replaces `billing-plan-request` and `billing-plan-answer`). |
 | I-4.4.2 | A downgrade that would put state over the new limits is accepted, but the tenant is told before confirming exactly what will be over the limit. From the effective date, creation is blocked for that key only. Nothing is deleted or deactivated by the platform. |
-| I-4.4.3 | Trial: `trial_days` from the plan. Entitlements are those of the plan being trialled, with a storage cap. At trial end with no payment route set up, the subscription becomes `restricted` (I-5). A trial tenant has its own schema from day one (Q-08). |
+| I-4.4.3 | **Trial limits (defined here once; 2H and 2F refer to this row).** Trials are provisioned only by staff under the **standing trial policy** approved four-eyes under OD-04 (`control.trial_policies`; daily digest to both approvers): seats 5, `storage_bytes` 1 GB, `trial_days` 30, region `R1`, AI off, no BYOK, SSO, SCIM or dedicated cell, a daily provisioning cap, and at most 10% of the CR-1 threshold of a cell in concurrent trials (trial schemas count toward CR-1, 2J J-7.2). Feature flags follow the trialled plan within those caps. At trial end without a payment route the subscription becomes `restricted` (I-5); 14 days later the tenant is proposed for decommissioning under the deletion procedure (four-eyes, certificate), and deletion completes no later than 30 days after trial end (2G G-RET-02). A trial tenant has its own schema from day one (Q-08). (rev P3) |
 | I-4.4.4 | Self-serve upgrades through the MoR or Stripe hosted checkout are allowed when the active payment config has `recurring` capability. Otherwise the request goes to the platform (existing accept or decline flow, single elevated super admin, kept). |
+
+### I-4.5 Cost coverage (rev P3)
+
+| ID | Rule |
+|---|---|
+| I-4.5.1 | Plan prices are set against the **corrected** 2H cost model (P3-X3-08, DA-13): it adds the `ks` project and its DR standby, KMS multi-Region replica keys, nightly export egress, the second Vercel project (`console`), the secrets manager, WORM anchors and timestamp service, and the perf cell. Planning figures per tenant per month: about USD 55 at 10 tenants, 10.8 at 100 and 6.4 at 1,000 (were 47, 8.3 and 4.3); marginal cost of one more shared tenant about USD 4.5 to 5.5 *(verify prices, VC-08; OD-11 is restated after verification)*. |
+| I-4.5.2 | Every cost driver that grows with one tenant's use is an entitlement key: seats, storage, API calls, AI tokens (I-4.2.1 to I-4.2.8), database size (`db_bytes`, I-4.2.10), BYOK (`byok`, I-4.2.11, one more KMS key and replica), SSO and SCIM (I-4.2.12, SSO MAU), dedicated cell and PITR window (I-4.2.13). A plan that grants one of them is priced to cover it (risk R-63 in the Phase 3 register). |
+| I-4.5.3 | Capacity rule CR-1 (2J J-7.2, DA-10) sets how many tenants a shared cell holds (provisional 300, then floor_100(0.6 × K)); the shared-cell share of compute in the cost model uses that value. Trial, canary, warm-pool and restore schemas count toward CR-1. |
 
 ## I-5. Dunning, suspension and the tenant lifecycle
 
@@ -235,7 +248,7 @@ All entries are *(verify)* with a qualified adviser. They are the questions Phas
 | I-6.3.2 | Mandatory fields: seller and buyer legal name, address, tax IDs, supply date, description, net, rate, tax, gross, currency, reverse-charge statement, exemption reason | `invoices` holds an immutable `rendered_snapshot` (JSON plus a PDF hash). Fields come from the entity, the subscription and `tax_rules.invoice_notes`. |
 | I-6.3.3 | Tax amount in local currency, and which exchange-rate source is allowed (central bank, or the tax authority's published rate) | `tax_currency_rule` on the tax rule; the invoice stores `tax_amount_local` and `rate_source`. The existing ECB-plus-second-feed rates module supplies rates; a jurisdiction that needs a specific source gets a rule that names it (I-9). |
 | I-6.3.4 | E-invoicing or clearance mandates (for example Saudi Arabia, Malaysia, India for domestic B2B) | Out of scope at launch. `TaxProvider` or an e-invoice adapter slot can be added. A market under a mandate stays blocked until it is supported (I-6.1.2). |
-| I-6.3.5 | Retention of invoices (years per jurisdiction) | `retention_class = 'tax_record'`, kept beyond tenant deletion **in the control plane** (invoices hold only the billing contact, not tenant business data). The period is set per entity by finance and legal *(verify)*. |
+| I-6.3.5 | Retention of invoices (years per jurisdiction) | `retention_class = 'financial'` (2B B-RC15), kept beyond tenant deletion **in the control plane** (invoices hold only the billing contact, not tenant business data); period per billing entity (`billing_entities` row), provisionally 6 years after the end of the tax year *(verify, OD-08)*. (rev P3) |
 | I-6.3.6 | Language (Arabic in some GCC cases, local languages in Central Asia) | Invoice template per entity and language, which needs translation review |
 
 ## I-7. Invoices, credit notes, refunds, ledger
@@ -269,7 +282,7 @@ All entries are *(verify)* with a qualified adviser. They are the questions Phas
 | I-9.2 | Price base is USD. Invoice currency is set per subscription. Local price points (from `control.price_lists`) take precedence over conversion. The rate is locked on the invoice when it is issued (kept). |
 | I-9.3 | In MoR mode the provider converts and settles. Selvara stores the provider's figures, the settlement currency and the payout amount, and does not recompute them. |
 | I-9.4 | Entity functional currency (PKR for `ENT-PK`). Conversion for statutory accounts happens in the accounting system using the rate source the law requires *(verify)*. Selvara exports the transaction currency and the locked rate. |
-| I-9.5 | The rate feeds are public data and go through the egress allow-list (Phase 2F). The second feed is a free public service: availability risk is accepted, because the hold rules fail safe. |
+| I-9.5 | The rate feeds are public data and go through the egress allow-list (2H egress design; rev P3). The second feed is a free public service: availability risk is accepted, because the hold rules fail safe. |
 
 ## I-10. AI provider abstraction
 
@@ -288,10 +301,10 @@ All entries are *(verify)* with a qualified adviser. They are the questions Phas
 
 | ID | Endpoint family | Who |
 |---|---|---|
-| I-11.1 | `GET /api/v1/billing/subscription`, `GET /api/v1/billing/usage`, `GET /api/v1/billing/invoices`, `GET /api/v1/billing/invoices/:id` (PDF through a signed URL), `POST /api/v1/billing/plan-requests`, `POST /api/v1/billing/invoices/:id/checkout`, `POST /api/v1/billing/portal-link` | Tenant `admin` (M25, served by control-plane handlers for the session's tenant) |
+| I-11.1 | `GET /api/v1/billing/subscription`, `GET /api/v1/billing/usage`, `GET /api/v1/billing/invoices`, `GET /api/v1/billing/invoices/:id` (PDF through a signed URL), `POST /api/v1/billing/plan-requests`, `POST /api/v1/billing/invoices/:id/checkout`, `POST /api/v1/billing/portal-link` | Tenant `admin` (M25, served by `cp_tenant_api` functions such as `billing_view` and `plan_request_*`, which derive the tenant from the session record, R2-03; rev P3) |
 | I-11.2 | `/api/v1/platform/billing/{entities,plans,price-lists,subscriptions,invoices,credit-notes,ledger,rates,tax-rules,usage}` | Platform staff: read for `support` and `ciso`, writes under elevation by permitted platform roles, approvals as listed |
 | I-11.3 | `/api/v1/platform/providers` (CRUD on drafts, `PUT /:id/secret/:role` write-only, `POST /:id/test`, `POST /:id/request-activation`, `POST /:id/disable`) and `/api/v1/platform/ai-reviews` | Elevated platform staff with permission `providers.manage` |
-| I-11.4 | `POST /api/v1/public/billing-webhooks/:config_ref` | Provider only (signature) |
+| I-11.4 | `POST /api/v1/hooks/billing/<config_ref>` (rev P3) | Provider only (signature) |
 
 ## I-12. Mapping to the existing system (parity)
 
@@ -321,7 +334,7 @@ All entries are *(verify)* with a qualified adviser. They are the questions Phas
 | I-D2 | ADR-007 (provider abstractions: payment, tax, invoice numbering, AI) |
 | I-D3 | Control-plane table list for Phase 2B (spine extensions, see Spine deviations) |
 | I-D4 | Four-eyes kinds for Phase 2E: `billing.entity`, `provider.activate`, `provider.change`, `provider.live`, `entitlement.override`; kept: `billing.pricing`, `billing.credit`, `.refund`, `.markpaid`, `.writeoff`, `.void` (now a credit note), `rates.release`, `rates.override`, `platform-company-suspend`, `-reactivate`, `ai.enable`, `ai.mask` |
-| I-D5 | Entitlement keys and error codes (`limit.seats`, `limit.frameworks`, `limit.storage`, `limit.upload_size`, `limit.api_calls_month`, `limit.ai`, `plan.module_not_included`, `billing.restricted`) for Phase 2C (API) |
+| I-D5 | Entitlement keys and error codes (`limit.seats`, `limit.frameworks`, `limit.storage`, `limit.upload_size`, `limit.api_calls_month`, `limit.ai`, `plan.module_not_included`, `plan.feature_not_included` (rev P3), `billing.restricted`) for Phase 2C (API) |
 | I-D6 | Tax and invoicing verification checklist (I-6) for the owner's advisers |
 
 ## I-15. Decisions required
@@ -346,6 +359,7 @@ All entries are *(verify)* with a qualified adviser. They are the questions Phas
 | R-52 | In direct mode, tax registrations or e-invoicing mandates are missed in a market (I-6.2) | Medium | High (penalties) | R-A | Hard refusal to invoice without an approved `tax_rules` row; adviser sign-off per market; prefer MoR for B2C | Open |
 | R-53 | Metering drift (lost or duplicate events) leads to wrong limits or wrong overage invoices | Low (outbox and dedupe) | Medium | R-B | Outbox in the same transaction, receipt dedupe, nightly recount with alerts, state limits enforced on source | Open |
 | R-54 | Provider secret misuse or misconfiguration (live key in test, stolen webhook secret, a malicious config change) leads to refund fraud or diverted payouts | Low | High | R-B | Secret references only; fingerprints; four-eyes on activate, change and live; mode check on webhooks; refunds only to the original payment method through the provider | Open |
+| R-64 | Trial flood fills cell capacity (CR-1) and the KMS key count (proposed in the Phase 3 register) (rev P3) | Medium | Medium | R-A | Concurrent-trial cap and daily cap in the trial policy (I-4.4.3); trials provisioned only by staff (OD-04) | Open |
 | R-07 | (existing) Free AI models train on customer data | Medium | High | R-B | I-10.2 and I-10.3: review required; free tiers that train are rejected by rule | Open |
 
 ## I-17. New assumptions
@@ -362,6 +376,6 @@ All entries are *(verify)* with a qualified adviser. They are the questions Phas
 
 | ID | Spine item | Deviation | Reason |
 |---|---|---|---|
-| I-SD1 | S2 "holds (and only this)" | **Additions** to the control plane: `price_lists`, `invoice_lines`, `ledger_entries`, `credit_notes`, `invoice_series`, `provider_events`, `fx_rates`, `tax_rules`, `entitlement_overrides`, `plan_change_requests`, `usage_event_receipts`, `ai_provider_reviews`. All are platform commercial or configuration data. None holds tenant business data. | Typed replacements for today's `platform_records` kinds (AD gap 4), plus four-eyes support records. Consistent with the S2 principle; only the list grows. |
-| I-SD2 | S6 public paths | Adds `/api/v1/public/billing-webhooks/:config_ref` | Provider callbacks are unauthenticated by session and verified by signature, like the other public families |
+| I-SD1 | S2 "holds (and only this)" | **Additions** to the control plane: `price_lists`, `invoice_lines`, `ledger_entries`, `credit_notes`, `invoice_series`, `provider_events`, `fx_rates`, `tax_rules`, `entitlement_overrides`, `plan_change_requests`, `usage_event_receipts`, `ai_provider_reviews`, `trial_policies` (rev P3). All are platform commercial or configuration data. None holds tenant business data. | Typed replacements for today's `platform_records` kinds (AD gap 4), plus four-eyes support records. Consistent with the S2 principle; only the list grows. |
+| I-SD2 | S6 public paths | Adds `/api/v1/hooks/billing/<config_ref>` (one path with 2C C-09 and ADR-007 D7-6; rev P3) | Provider callbacks are unauthenticated by session and verified by signature, like the other public families |
 | I-SD3 | S3 role grants | Tenant roles get `EXECUTE` on `ops.emit_usage` (a `SECURITY DEFINER` function that derives the tenant from context) but no `USAGE` on `ops` | Transactional outbox for metering (I-4.3.1). The tenant cannot name another tenant. Covered by 2J J-ISO tests. |
