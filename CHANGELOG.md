@@ -29,6 +29,12 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
   - **My questions:** the answers, replies and closing a question. You are told in Selvara when support answers, and by email when email is set up.
   - Platform staff answer in the Admin Console, under Customers, Support questions. Staff can be emailed about new questions; the email carries the subject only, never the question.
 - **Vendor logos.** Add a logo on a vendor's page; it replaces the letter tile in lists. The image is redrawn as a small PNG before it is kept, and SVG is not accepted.
+- **Reporting period (reference review, part 5 of 5).** Reports has a period control: 7 days, 30 days or the quarter to date. The figures, the trends and the range shown above the title follow it, and the Overview's risk trend uses the same choice. Production has no stored history yet, so its trends say they will appear once daily figures are recorded instead of showing invented ones.
+- **Richer charts on Reports.** Weighted compliance against the 80% target, issues closed and opened per period, the frameworks furthest from target with a target marker, and open issues by severity. Every point has a tooltip, and every chart has a text summary and a data table for screen readers.
+- **Bottom tab bar on phones.** Overview, My Work, Issues and Risks (or the places your role can open) sit at the bottom of the screen with their counts, and More opens the full menu. The Admin Console shows its own places.
+
+### Fixed
+- **Charts no longer widen the page on a phone.** A chart's hidden data table could push the page wider than the screen.
 
 ## [0.2.4] - 2026-11-22
 

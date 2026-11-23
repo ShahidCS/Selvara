@@ -906,6 +906,13 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .hbar-v{min-width:32px;text-align:end;font-weight:600;color:var(--ink)}
 .hbar.wrap .hbar-row{grid-template-columns:1fr auto;row-gap:4px}
 .hbar.wrap .hbar-nm{grid-column:1 / -1;white-space:normal}
+/* R35: a target marker on each ranked bar, and its key under the chart */
+.hbar-track{position:relative;overflow:visible}
+.hbar-tmark{position:absolute;top:-2px;bottom:-2px;width:2px;margin-left:-1px;background:var(--ink);border-radius:1px}
+.hbar-tmark-key{display:inline-block;width:2px;height:12px;background:var(--ink);border-radius:1px;margin-inline-end:6px;vertical-align:-2px}
+.chart-note{margin:8px 0 0;font-size:12px;color:var(--muted)}
+.legend.row{flex-direction:row;flex-wrap:wrap;gap:4px 12px}.legend.row li{padding:2px 0}
+.chart-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:14px;margin-bottom:14px}
 .donut2{position:relative;width:140px;height:140px;margin:0 auto} .donut2 svg{width:100%;height:100%}
 .donut2-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;color:var(--muted)}
 .donut2-c b{font-family:var(--font-display);font-size:26px;line-height:28px;font-weight:300;letter-spacing:-.8px;color:var(--ink)}
@@ -1199,3 +1206,24 @@ main#content{background:var(--surface);margin:0 8px 8px 0;border-radius:0 0 var(
 .kv-list dd{margin:0;font-weight:500;text-align:right;overflow-wrap:anywhere}
 .kv-edit{display:flex;flex-direction:column;gap:10px;align-items:flex-start}
 .kv-edit>.grid2{width:100%}
+
+/* R5: bottom tab bar on phones. Hidden above the phone breakpoint; below it, a third grid row under the content, within thumb reach. */
+.tabbar{display:none}
+@media (max-width:760px){
+  #app{grid-template-rows:var(--topbar-h) minmax(0,1fr) auto;grid-template-areas:"top" "main" "tabs"}
+  .tabbar{grid-area:tabs;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);background:var(--surface);border-top:1px solid var(--line);
+    padding:4px 4px calc(4px + env(safe-area-inset-bottom));z-index:70}
+  .tabbar-i{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;padding:4px 2px;border:0;background:none;
+    color:var(--muted);font:inherit;font-size:11.5px;font-weight:500;text-decoration:none;border-radius:var(--radius-md);cursor:pointer}
+  .tabbar-i:focus-visible{outline:2px solid var(--ring);outline-offset:-2px}
+  .tabbar-i[aria-current="page"]{color:var(--accent-ink)}
+  .tabbar-i[aria-current="page"] .tabbar-ic{background:var(--accent-weak)}
+  .tabbar-ic{position:relative;display:grid;place-items:center;width:44px;height:28px;border-radius:var(--radius-full)}
+  .tabbar-ic svg{width:20px;height:20px}
+  .tabbar-l{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tabbar-b{position:absolute;top:-3px;left:58%;min-width:16px;height:16px;padding:0 4px;border-radius:var(--radius-full);background:var(--bg-inverse);color:var(--text-inverse);
+    font-size:10px;font-weight:600;line-height:16px;text-align:center;font-variant-numeric:tabular-nums}
+  .tabbar-b.bad{background:var(--bad-ink);color:var(--surface)}
+  body:has(.tabbar) #toast{bottom:calc(76px + env(safe-area-inset-bottom))!important}
+}
+@media print{.tabbar{display:none!important}}

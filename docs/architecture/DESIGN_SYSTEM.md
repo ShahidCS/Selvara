@@ -292,6 +292,16 @@ Decided by the owner from the FleetFlow reference comparison ([ui-review/REFEREN
   - Questions are in `services/help.ts`. A thread uses `.help-thread`, and support replies are tinted accent-weak with "Selvara support" in the byline.
 - **Vendor logos (R14):** `VendorTile` shows `logo` when set. `lib/logoImage.ts` redraws uploads to a 128px PNG and checks the data URL, the same way in the browser and on the server.
 
+### Reports, charts and the phone tab bar (part 5)
+- **Period (R34):** `lib/period.ts` holds one choice (7 days, 30 days or the quarter to date) shared by Reports and the Overview's trend, remembered in this browser only. Use `Segmented` labelled "Period" in the page header; put the range in the eyebrow ("Reports · 25 Oct to 23 Nov").
+  - History is never invented in production: a chart that needs stored history shows today's figure and says the trend appears once daily figures are recorded. The demonstration's history comes from `demoSeries` and `demoIssueFlow`, which are fixed and end at today's real figure.
+- **Charts (R35):**
+  - `LineChart` takes a `target` (dashed line and label).
+  - `HBarList` takes a `target`: a marker on every track, a key under the chart, and a summary saying how many rows reach it. Show at most eight rows and say how many more there are.
+  - `PairBarChart` draws two series per period (for example closed and opened). The last group is "now" at full strength; earlier groups are lighter. Counts use whole-number ticks.
+  - The visually hidden data table sits inside a hidden `div`, because a table ignores a 1px width and would widen the page on a phone.
+- **Phone tab bar (R5):** `components/shell/TabBar.tsx`, shown only below 760px as a third grid row under the content. Up to four places the role can open, then More, which opens the sidebar drawer. Counts sit on the icon and the link's name says what they count ("Issues, 6 open"). Toasts move up above the bar.
+
 ## Layout follows the space it has
 
 The sidebar takes about 280px when open, so the content of a 1024px window is narrower than a 768px phone layout expects. Page layout therefore responds to the **content's own width**, not only to the window:
