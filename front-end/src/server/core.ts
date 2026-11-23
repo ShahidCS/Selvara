@@ -18,6 +18,7 @@ import { checkRegistration, verifyAssertion } from "@/lib/webauthn";
 import { randomId, same, seal, sha256Hex, unseal } from "./crypto";
 import { adminRoutes } from "./admin";
 import { supportRoutes } from "./support";
+import { helpRoutes } from "./helpdesk";
 import { workspaceRoutes } from "./ws/routes";
 import { v1Routes } from "./ws/apikeys";
 import { admin8Routes, stripeWebhook } from "./admin8";
@@ -598,6 +599,7 @@ export const ROUTES: Record<string, H> = {
 };
 const helperEntry = (d: Deps, r: Req, p: Profile, a: Access, action: string, target: string) => entry(d, r, actorOf(p, a), action, target);
 Object.assign(ROUTES, adminRoutes({ signed, entry: helperEntry, randomId, sha256Hex }), supportRoutes({ signed, companyAdmin: admin, entry: helperEntry }));
+Object.assign(ROUTES, helpRoutes({ signed, entry: helperEntry, notify: async (d, u, t) => { await notify(d, u, t); } }));
 Object.assign(ROUTES, workspaceRoutes({ signed }), vendorPortalRoutes(), trustPublicRoutes());
 Object.assign(ROUTES, v1Routes());
 Object.assign(ROUTES, admin8Routes({ signed, entry: helperEntry }), { "POST billing/stripe/webhook": stripeWebhook });

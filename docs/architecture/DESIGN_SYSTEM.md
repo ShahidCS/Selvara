@@ -280,6 +280,18 @@ Decided by the owner from the FleetFlow reference comparison ([ui-review/REFEREN
   - Cards and table share the same actions; the view choice is a `Segmented` control.
 - **Kit:** `HBarList` takes `wrap` to put long labels above their bars.
 
+### Settings, Help centre and logos (part 4)
+- **Settings (R37):**
+  - `components/shell/SettingsMenu.tsx` wraps every module of the nav's Settings group in `.settings-layout`: a menu (`nav aria-label="Settings"`) on the left and the page on the right.
+  - The modules keep their own routes. The sidebar shows the group as one "Settings" entry that opens the first page the role can open.
+  - Below 900px of content width the menu becomes a scrolling row.
+- **Key–value cards (R38):** `KvCard` (`components/ui/KvCard.tsx`) shows label and value rows with an Edit button in the header. The caller swaps the card for the fields.
+- **Help centre (R4):**
+  - `/help` is outside the role-gated spaces, like `/auth`: the route space is `auth` and the module is `help`.
+  - Guides live in `data/helpArticles.ts`. `searchArticles` needs every word for the search box and accepts any strong match for suggestions.
+  - Questions are in `services/help.ts`. A thread uses `.help-thread`, and support replies are tinted accent-weak with "Selvara support" in the byline.
+- **Vendor logos (R14):** `VendorTile` shows `logo` when set. `lib/logoImage.ts` redraws uploads to a 128px PNG and checks the data URL, the same way in the browser and on the server.
+
 ## Layout follows the space it has
 
 The sidebar takes about 280px when open, so the content of a 1024px window is narrower than a 768px phone layout expects. Page layout therefore responds to the **content's own width**, not only to the window:

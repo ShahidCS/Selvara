@@ -3,6 +3,7 @@
  * onboarding gate needs an approver other than the requester / whoever added the vendor; Critical tier needs TWO approvers (approvals engine);
  * a tier change and a certificate waiver are approvals by someone other than the initiator (waivers carry reason + expiry + named approver).
  * Rule violations throw SodError (the UI shows its message). The real API MUST enforce all of this server-side from the session identity. */
+import { isLogoDataUrl } from "@/lib/logoImage";
 import { DATA } from "@/lib/data";
 import { getMe, wsLog } from "@/lib/audit";
 import { getApproval, requestApproval, type Approval } from "@/lib/approvals";
@@ -195,6 +196,17 @@ export function reassess(id: string, input: { score: string; outcome: string; by
     v.reassessments.push({ at: nowStamp().slice(0, 10), by: clampText(input.by, 80) || getMe().name, recordedBy: getActor().name, score: sc, outcome: out });
     return { ok: true, name: v.name as string, score: sc, outcome: out };
   }, () => post<Res<{ name: string; score: number; outcome: string }>>(`/vendors/${enc(id)}/reassessments`, input));
+}
+/** R14: set (a 128px PNG data URL from lib/logoImage.ts) or remove (null) a vendor's logo. Admin or owner; the server checks the image again. */
+export function setVendorLogo(id: string, logo: string | null) {
+  return viaApi<Res<{ name: string; logo: string | null }>>(() => {
+    gate();
+    const v = vFind(id); if (!v) return NOT_FOUND;
+    if (logo !== null && !isLogoDataUrl(logo)) return fail("The logo must be a PNG image of at most 64 KB.");
+    if (logo === null) delete v.logo; else v.logo = logo;
+    wsLog(logo === null ? "vendor.logo.removed" : "vendor.logo.changed", String(v.name), "Vendor");
+    return { ok: true, name: v.name as string, logo };
+  }, () => post<Res<{ name: string; logo: string | null }>>(`/vendors/${enc(id)}/logo`, { logo }));
 }
 /** Prototype: vendorDoTier. A tier change is an approval: it is requested here and applied when a different admin/owner approves. */
 export function changeTier(id: string, tier: string) {

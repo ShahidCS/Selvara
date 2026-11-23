@@ -7,16 +7,19 @@ import { REASON_MIN } from "@/lib/rules";
 import { bumpData, useData, useModState } from "@/lib/store";
 import * as svc from "@/services/platform";
 import { ApiSupportSessions } from "./ApiSupportSessions";
+import { SupportQuestions } from "./SupportQuestions";
 
 /* Customers & Usage in production (slice 3a): the companies on the platform, with member counts only (no member names). An elevated platform
    super admin asks to create, suspend or reactivate a company; another super admin approves under Requests, and only then does it happen. A
    new company's first admin joins with a link the platform creates once the company exists. Support access (slice 3b): read-only sessions in a
    company that gave a support grant. Billing, plans and usage are later slices. */
-const VIEWS: [string, string][] = [["companies", "Companies"], ["requests", "Requests"], ["support", "Support access"]];
+const VIEWS: [string, string][] = [["companies", "Companies"], ["requests", "Requests"], ["support", "Support access"], ["questions", "Support questions"]];
 
 export function ApiCustomers() {
   const s = useServerElevation();
   const [v, setV] = useModState<string>("customers.api.view", "companies");
+  // the support inbox email links to ?view=questions
+  useEffect(() => { const q = new URLSearchParams(window.location.search).get("view"); if (q && VIEWS.some((x) => x[0] === q)) setV(q); }, [setV]);
   const view = VIEWS.some((x) => x[0] === v) ? v : "companies";
   return (
     <Page mod="customers" sub="Companies on the platform. Changes need an elevated session and a second platform super admin's approval.">
@@ -24,7 +27,7 @@ export function ApiCustomers() {
       <div className="card" style={{ flex: "1 1 auto" }}>
         <div className="c-head"><div className="seg" role="tablist" data-tour="customers-views">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className="c-body scroll">
-          {view === "companies" ? <Companies s={s} /> : view === "support" ? <ApiSupportSessions /> : (
+          {view === "companies" ? <Companies s={s} /> : view === "support" ? <ApiSupportSessions /> : view === "questions" ? <SupportQuestions /> : (
             <RequestsTable id="platform-requests-api" load={svc.listPlatformRequests} decide={svc.decidePlatformRequest}
               note="Creating, suspending or reactivating a company needs a second platform super admin, each in an elevated session. Nobody approves their own request. A request expires after 24 hours." />
           )}
