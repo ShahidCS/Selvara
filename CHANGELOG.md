@@ -10,6 +10,9 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 - **Overview greets you** by first name, with the date above.
 - **Lists.** People are shown with their initials, and vendors with a letter tile (logos come with the Settings release). Cells can carry a second line, such as the controls an issue is linked to. Less-used filters wait under "+ Add filter" (Due on Issues, Device on People, Collected by on Evidence). A "Sorted by" control shows and changes the order. Severity in issue lists, findings tables and the risk register is shown as signal bars with the word. The Issues Table/Kanban switch is in the page header.
 - **One AI mark** (a ringed dot) is used wherever AI content or an AI action appears.
+- **Records (reference review, part 2 of 5).** Record and form pages have a round back button beside the title. Approve and decide buttons use the dark inverse style. Issue and control pages show a History card listing changes to that record, for roles that can read the audit log. Evidence attachments are shown as document cards.
+- **Forms.** Sections sit on a soft grey panel, and Cancel and Save move to the page header. The issue form shows a live summary of what will be saved. When the chosen owner already holds three or more open issues, it adds a note; saving is never blocked.
+- **Overview focus and calendar.** A focus card shows the single most urgent item, with its stage and one action: the next audit if it is within 60 days, otherwise the oldest overdue High or Critical issue. A compliance calendar shows the next six months of audits, policy reviews and vendor reassessments, with overdue items marked.
 
 ## [0.2.4] - 2026-11-22
 

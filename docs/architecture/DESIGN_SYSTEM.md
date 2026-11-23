@@ -252,6 +252,19 @@ Decided by the owner from the FleetFlow reference comparison ([ui-review/REFEREN
   - the "Sorted by" button opens a sort menu. The column-header sort still works.
 - **AI mark:** `AiMark` (`.ai-mark`, a dark dot with an `--c-ai-400` ring) is the one sign of AI content or an AI action.
 
+### Records, forms and the Overview (part 2)
+- **Back:** a record or form page shows a round back button (`.back-round`) beside the title, labelled "Back to <list>". The breadcrumb still links the list.
+- **Decide button:** an approve or decide action uses `.btn-decide` (the inverse button), so the decision stands apart from secondary actions.
+- **History:** `components/kit/RecordHistory.tsx` lists audit-log entries for one record id, newest first, on issue and control pages. In production it shows only to roles that can read the audit log.
+- **Documents:** `DocGrid` and `DocCard` (`components/ui/Docs.tsx`) show attachments as cards with a type badge taken from the file extension, used on the evidence record.
+- **Forms:**
+  - sections sit on `--surface-2` with numbered headings;
+  - `FormActions` renders its buttons in the page header through `PageActsSlot` (one copy; the header button submits the form);
+  - `.form-with-summary` adds a summary aside that follows the fields, with an advisory note (`.advisory`) that informs but never blocks saving. The issue form uses it.
+- **Overview:**
+  - `FocusCard` shows the single most urgent item: an audit within 60 days, else the oldest overdue High or Critical issue, else the next audit. It includes its stage track and one decide button.
+  - `ComplianceCalendar` shows the next six months of audits, policy reviews and vendor reassessments. Overdue markers sit at today in red with "overdue" in their name. Only modules the role can open are shown.
+
 ## Layout follows the space it has
 
 The sidebar takes about 280px when open, so the content of a 1024px window is narrower than a 768px phone layout expects. Page layout therefore responds to the **content's own width**, not only to the window:

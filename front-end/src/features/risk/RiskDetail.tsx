@@ -97,7 +97,7 @@ function VerifyBox({ r }: { r: any }) {
       {mine || hasRole(role, "admin", "owner") ? (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
           <label className="field" style={{ flex: "1 1 220px", margin: 0 }}><span className="flab">Reason (at least 10 characters)</span><input className="input" id="rk-bd-reason" maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} /></label>
-          <button className="btn btn-primary sm" disabled={!!block} title={block || undefined} onClick={() => decide("approve")}>Verify evidence</button>
+          <button className="btn btn-primary btn-decide sm" disabled={!!block} title={block || undefined} onClick={() => decide("approve")}>Verify evidence</button>
           <button className="btn btn-secondary sm" disabled={!!block} title={block || undefined} onClick={() => decide("reject")}>Reject evidence</button>
           {mine ? <button className="btn btn-ghost sm" onClick={withdraw}>Withdraw</button> : null}
         </div>
@@ -210,7 +210,7 @@ export default function RiskDetail({ id }: { id: string }) {
     wf = canApprove ? (
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end", background: "var(--surface-2)", borderRadius: 12, padding: 12 }}>
         <label className="field" style={{ flex: "1 1 220px", margin: 0 }}><span className="flab">Note (required to request changes)</span><input className="input" id="rk-rev-note" maxLength={500} value={revNote} onChange={(e) => setRevNote(e.target.value)} /></label>
-        <button className="btn btn-primary sm" disabled={!!approveBlock} title={approveBlock || undefined} onClick={approve}>Approve</button><button className="btn btn-secondary sm" onClick={reqChanges}>Request changes</button>
+        <button className="btn btn-primary btn-decide sm" disabled={!!approveBlock} title={approveBlock || undefined} onClick={approve}>Approve</button><button className="btn btn-secondary sm" onClick={reqChanges}>Request changes</button>
         {approveBlock ? <span style={{ flexBasis: "100%", fontSize: 12, color: "var(--muted)" }}>{approveBlock}</span> : null}
       </div>
     ) : <p className="field help" style={{ margin: 0 }}>Submitted for approval. Awaiting a company admin.</p>;

@@ -1,4 +1,5 @@
 import { DATA, FW_ID, testsForControl } from "@/lib/data";
+import { RecordHistory } from "@/components/kit/RecordHistory";
 import { bumpData, setModState, useApp, useData } from "@/lib/store";
 import { iAm, uiMessage } from "@/lib/grcSod";
 import { API_ON } from "@/lib/rbac";
@@ -59,7 +60,7 @@ export function ControlDetail({ id }: { id: string }) {
                     <div style={{ fontSize: 12.5, color: "var(--muted)" }}>Compensating control: {x.compensating}</div>
                     {st === "Pending" ? (
                       <div className="btngrp" style={{ marginTop: 6 }}>
-                        <button className="btn btn-primary sm" {...dis(dw)} onClick={() => openReasonModal(L, "Approve exception " + x.id, "Approval reason", "Approve", async (r) => { await svc.decideException(id, x.id, "approve", r); return "Exception approved"; }, refresh)}><Icon name="check" />Approve</button>
+                        <button className="btn btn-primary btn-decide sm" {...dis(dw)} onClick={() => openReasonModal(L, "Approve exception " + x.id, "Approval reason", "Approve", async (r) => { await svc.decideException(id, x.id, "approve", r); return "Exception approved"; }, refresh)}><Icon name="check" />Approve</button>
                         <button className="btn btn-secondary sm" {...dis(dw)} onClick={() => openReasonModal(L, "Reject exception " + x.id, "Reason", "Reject", async (r) => { await svc.decideException(id, x.id, "reject", r); return "Exception rejected"; }, refresh)}><Icon name="x" />Reject</button>
                       </div>) : null}
                     {st === "Pending" && dw ? <p className="field help" style={{ margin: "6px 0 0" }}>{dw}</p> : null}
@@ -104,6 +105,7 @@ export function ControlDetail({ id }: { id: string }) {
               )) : <p className="field help" style={{ marginTop: 0 }}>No mappings.</p>}
               <button className="btn btn-ghost sm" {...dis(mapWhy)} onClick={() => openMappingModal(L, id)}><Icon name="plus" />Add mapping</button>
             </div></div>
+            <RecordHistory id={c.id} />
           </aside>
         </div>
       </div>
