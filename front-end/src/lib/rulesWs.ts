@@ -320,5 +320,5 @@ export const INCIDENT_NOTICE_H = 48;
 
 /** Four-eyes kinds the server owns in production: the browser's engine shows them but never decides or applies them there. */
 export const SERVER_KINDS = ["control.exception", "evidence.delete", "policy.emergency", "mfa-reset-member", "offboard", "access-request", "risk.board-evidence", "risk.import", "issue.close", "report.distribution",
-  "vendor.request.critical", "vendor.gate", "vendor.tier", "vendor.waiver", "trust.publish", "trust.section-controls", "q.send",
+  "vendor.request.critical", "vendor.gate", "vendor.tier", "vendor.waiver", "trust.publish", "trust.public-page", "trust.section-controls", "q.send",
   "ai.guardrail", "ai.archive", "ai.enable", "ai.mask", "assistant.agent.enable", "assistant.agent.autonomy", "assistant.agent.recertify", "assistant.mcp.grant", "api.key", "api.webhook", "integration.connect"];
