@@ -21,12 +21,12 @@ The tenant is the controller of its own data, including its workforce, vendors, 
 | ID | Decision | Rationale |
 |---|---|---|
 | G-D-01 | **No marketing processing at launch.** No analytics or advertising cookies on the product or public Trust Center; only strictly necessary cookies. Adding marketing needs a RoPA entry, a lawful-basis record and a consent mechanism first. | Keeps the controller footprint small for a two-person company. |
-| G-D-02 | **E2 (per-subject key) scope** (answers discovery §6 condition 1): direct identifiers of natural persons in `member_profile`, `person`, `contractor`, `vendor_contact`, `trust_viewer`, `trust_account` (contact fields), `data_subject_request` (requester identity and contact), `interested_party` (contact fields), `incident` (affected-person fields, if any). Everything else personal is E1 (tenant DEK) or references a person by id. | These are the fields an erasure request most often targets and that recur in history and exports. Free text cannot be keyed per subject; per-file keys (F-D-06) cover files. |
-| G-D-03 | **Names are resolved at read time.** Tables reference people by `person` or member id; display names are not copied into other records (fixes F1-09). Report recipients are member ids, not addresses. | Erasure then reaches every reference by destroying one key. |
+| G-D-02 | **E2 (per-subject key) scope** (answers discovery §6 condition 1): `member_profile`, `person` (members, workforce and contractors), `vendor_contact`, `trust_viewer` and `trust_nda_acceptance` (signer name), `data_subject_request` (requester identity and contact), `integration_account` (IdP-synced accounts), `visitor_session` (email), `audit_log_entry.pd_enc`, `integration.config_contact_enc`, `report_schedule.external_recipients_enc`. `trust_account`, `interested_party` and `incident` hold no direct identifiers by design (2B B-E11.4, A-32, B-E15.3): people are referenced by `person` id only. Narrative free text is E1 (tenant DEK, DA-01); everything else personal is E1 or references a person by id. Classes are only E0, E1 and E2 (2F F-D-12). (rev P3) | These are the fields an erasure request most often targets and that recur in history and exports. Free text cannot be keyed per subject; per-file keys (F-D-06) cover files. |
+| G-D-03 | **Names are resolved at read time.** Tables reference people by `person` or member id; display names are not copied into other records (fixes F1-09). Internal report recipients are member ids; external recipients (four-eyes `report.distribution`, D-K21) are stored encrypted with a per-subject key and purged when the schedule is removed (2B B-E16.1). (rev P3) | Erasure then reaches every reference by destroying one key. |
 | G-D-04 | **Nightly tenant export retention** follows ADR-004: last 7 in `exports`, and 35 daily, 12 monthly and 1 yearly off-site, not every nightly export for life. The change journal (`record_history`) provides lifetime history. All destroyed or made unreadable at offboarding. | Storage limitation; the journal already meets Q-24. |
 | G-D-05 | **Home region** `R1` = Frankfurt (EU), as 2H records (H-AC-01, Vercel `fra1`); G endorses it. Off-site copies (ADR-004) go to a second EU region. | UK to EU and EU to UK flows rely on adequacy decisions *(verify current status)*; an EU region removes the transfer step for the largest regulated markets. |
 | G-D-06 | **Special-category flag per tenant**: a tenant states at onboarding whether it will store special-category data (health in particular). When set: AI features stay off unless a tenant DPIA is recorded, evidence files are labelled, the tenant is shown the DPA special-category clause, and Selvara's processor records list the tenant. | Q-04 (health customers) and A-14. |
-| G-D-07 | Selvara's own DSAR and privacy work runs in **Selvara's own tenant** of the product (M14), dogfooding the module, with controller data pulled from `cp` by a staff tool. | No team (Q-23); one process and one evidence trail. |
+| G-D-07 | Selvara's own DSAR and privacy work runs in **Selvara's own tenant** of the product (M14), dogfooding the module, with controller data read from `cp` by a staff tool in `console` (through `cp_rw`); the case record lives only in Selvara's tenant, never in `control` tables (X1-11). (rev P3) | No team (Q-23); one process and one evidence trail. |
 
 ---
 
@@ -36,19 +36,19 @@ The tenant is the controller of its own data, including its workforce, vendors, 
 
 | ID | Category | Examples (fields, not values) | Store | Capacity | Special category possible? | Encryption class |
 |---|---|---|---|---|---|---|
-| G-DC-01 | Platform identity | Supabase user id, email, display name, status | `control.identities`, `auth.users` | Controller | No | Provider at rest; email E0 in `cp` (needed for sign-in) |
+| G-DC-01 | Platform identity | Supabase user id, email, display name, status | `control.identities`, `auth.users` | Controller | No | E1 under the platform KEK (2F F-K-30, F-K-31) for email and display name; exact-match sign-in lookup by HMAC blind index `email_bidx` (F-K-32) (DA-05) (rev P3) |
 | G-DC-02 | Membership and roles | user, tenant, role id, status | `control.memberships`, `control.tenant_roles` | Controller (platform access); processor for the tenant's use | No | E0 |
-| G-DC-03 | Authentication and session security | sessions (cookie hash, device, IP), MFA factors, passkeys, recovery code hashes, sign-in records | `cp`, `auth` | Controller | No | Hashes; IP E1-equivalent in `cp` |
-| G-DC-04 | Platform audit and security logs | actor ids, IP prefix, actions, elevation reasons | `control.platform_audit_log`, SIEM | Controller | No | E1 for reasons and IP |
-| G-DC-05 | Billing | billing contact name, email, address, tax id, invoices, payments (no card data) | `control.billing_entities`, `subscriptions`, `invoices`, `payments`; payment provider | Controller | No | E0/E1 |
-| G-DC-06 | Support | questions and messages (free text), asker id | `control.support_questions`, `support_messages` | Controller | Possible in free text (warned against) | E1 |
-| G-DC-07 | Staff | platform staff identity, roles, elevations, approvals | `control.platform_staff`, `elevations`, `platform_approvals` | Controller | No | E0/E1 |
+| G-DC-03 | Authentication and session security | sessions (cookie hash, device, IP), MFA factors, passkeys, recovery code hashes, sign-in records | `cp`, `auth` | Controller | No | Hashes; IP E1 under the platform KEK plus `ip_hmac` and `ip_prefix` (2B B-E90.5) (rev P3) |
+| G-DC-04 | Platform audit and security logs | actor ids, IP prefix, actions, elevation reasons | `control.platform_audit_log`, SIEM | Controller | No | E1 under the platform KEK for IP and details; hash input uses keyed HMACs (F-K-33, 2B B-D17) (rev P3) |
+| G-DC-05 | Billing | billing contact name, email, address, tax id, invoices, payments (no card data) | `control.subscriptions` (`contact_enc`, `address_enc`), `invoices` (`rendered_snapshot_enc`), `payments`, `provider_events`; payment provider | Controller | No | E1 under the platform KEK (2F F-K-31); `control.billing_entities` holds Selvara's own selling entities, not customer data (X1-47) (rev P3) |
+| G-DC-06 | Support | questions and messages (free text), asker id | `control.support_questions`, `support_messages` | Controller | Possible in free text (warned against) | E1 under the platform KEK (rev P3) |
+| G-DC-07 | Staff | platform staff identity, roles, elevations, approvals | `control.platform_staff`, `elevations`, `platform_approvals` | Controller | No | E0 ids; E1 under the platform KEK for names, emails, reasons and sensitive approval payloads (rev P3) |
 | G-DC-08 | SSO and SCIM metadata | IdP metadata, domain, SCIM token hash | `control.sso_connections`, `scim_tokens` | Controller (security) | No | E0, hashes |
 | G-DC-09 | Tenant GRC records | controls, risks, policies, audits, findings, issues, commitments, reports | `t_<tkey>` M02 to M08, M15, M16 | Processor | Rarely (free text) | E0 titles, E1 narratives |
 | G-DC-10 | Tenant workforce and access data | person, contractor, systems, access grants and reviews, IdP-synced accounts (F1-08: name, email, MFA status, admin flag, last login) | `t_<tkey>` M12, M17 | Processor | No (by design) | E2 identifiers, E0 status fields |
 | G-DC-11 | Evidence and files | any document the tenant uploads | `tenant-files`, `file_object`, `evidence_version` | Processor | **Yes** (health customers) | Per-file key |
 | G-DC-12 | Vendor and third-party data | vendor contacts, assessments, questionnaire answers, vendor uploads | `t_<tkey>` M09, M10 | Processor | Rarely | E2 contacts, E1 answers |
-| G-DC-13 | Trust Center viewers | viewer name, email, company, NDA acceptance, access requests, chat questions | `t_<tkey>` M11 | Processor | No | E2 contact, E1 chat |
+| G-DC-13 | Trust Center viewers | viewer email, NDA signer name, company, NDA acceptance, access requests, chat questions | `t_<tkey>` M11 | Processor | No | E2 email and signer name, E1 chat and request reasons (rev P3) |
 | G-DC-14 | Tenant privacy module | the tenant's RoPA, DPIAs, DSR records (requester identity, verification evidence), retention rules, legal holds | `t_<tkey>` M14 | Processor | **Yes** (DSR content, identity documents) | E2 requester, E1 content, per-file key for documents |
 | G-DC-15 | AI governance and assistant | AI systems register, assessments, prompts and outputs, agent runs | `t_<tkey>` M13, M19; AI provider in transit | Processor | Possible | E1 |
 | G-DC-16 | Tenant audit log and journal | actor ids, actions, ciphertext of changed fields | `audit_log_entry`, `record_history` | Processor | Indirectly (ciphertext) | As source fields |
@@ -107,8 +107,8 @@ flowchart LR
   E --> T[tenant-files, ciphertext]
   T --> X[Nightly export, ciphertext]
   T --> D[Download: decrypt and stream to authorised user]
-  S -->|infected| H[Blocked, held 30 days encrypted, then deleted]
-  T -->|delete| K[Destroy file key in ks; object deleted; backups of ks roll off in 7 days]
+  S -->|infected| H[Blocked, held 7 days, then deleted]
+  T -->|delete| K[Destroy file key in ks.file_key; object deleted; no ks copy holds the key after 8 days]
 ```
 
 ### G-1.4 Cross-border transfers
@@ -203,14 +203,14 @@ Scores: likelihood (L) and severity (S) 1 to 3 before and after measures.
 | G-DR-03 | Platform staff or insider access | 2/3 | No standing access; tenant-granted read-only support sessions; passkeys; four-eyes; logging in the tenant's own log | 1/2 |
 | G-DR-04 | AI provider retains, trains on or transfers personal data | 2/2 | Off by default; four-eyes enable; provider review; PII blocker; refusal for special-category tenants without a DPIA; tenant-chosen provider | 1/2 |
 | G-DR-05 | Excessive retention ("back up every change for the client's lifetime", Q-24) | 3/2 | Retention schedule G-5; tenant retention rules and purge job; export rotation (G-D-04); E2 shredding reaches the journal | 2/1 |
-| G-DR-06 | Erasure not effective in backups | 3/2 | Per-subject and per-file keys in `ks` (7-day backups); tenant KEK destruction at offboarding; certificate with backup roll-off date | 1/2 |
+| G-DR-06 | Erasure not effective in backups | 3/2 | Per-subject and per-file keys in `ks` (destroyed keys gone from every copy, including backups and the off-site key journal, within 8 days, 2B B-K05) (rev P3); tenant KEK destruction at offboarding; certificate with backup roll-off date | 1/2 |
 | G-DR-07 | Public Trust Center over-disclosure (F1-02) | 2/2 | Per-section publishing, per-person NDA, id-based access, four-eyes to go public | 1/1 |
 | G-DR-08 | External auditor over-reach (F1-01) | 3/2 | Engagement-scoped RLS, expiry, view logging | 1/2 |
 | G-DR-09 | Employees of tenants feel monitored (access data, MFA status, last login from IdP sync) | 2/2 | Minimum fields; tenant transparency obligations named in the DPA; no behavioural analytics; purpose limitation in the DPA | 2/1 |
 | G-DR-10 | Transfers to countries without adequate protection (staff in Pakistan, providers) | 2/2 | SCCs / UK Addendum, transfer risk assessment, minimal staff access, encryption with keys in `R1` | 1/2 |
 | G-DR-11 | Data subject rights not met in time | 2/2 | M14 deadline clock (S8 job), processor assistance SLA, Selvara own process (G-7) | 1/2 |
 | G-DR-12 | Breach not notified in time | 2/3 | Alerts F-12; incident runbooks (2H); DPA notification commitment 48 h to the controller | 1/2 |
-| G-DR-13 | Data unavailable (KMS outage, BYOK revocation, `ks` loss) | 2/2 | DEK cache, `ks` standby and drills, restore drills | 1/2 |
+| G-DR-13 | Data unavailable (KMS outage, BYOK revocation, `ks` loss) | 2/2 | DEK cache, `ks` standby in the DR region and 8-day off-site key journal (DA-11), restore drills (rev P3) | 1/2 |
 | G-DR-14 | Phishing using vendor-portal and Trust Center emails | 2/2 | DMARC reject, emailed codes, links only to Selvara host | 1/2 |
 | G-DR-15 | Function creep (usage meters used to profile users) | 1/2 | Meters aggregated per tenant only (S2); no per-user analytics | 1/1 |
 
@@ -224,33 +224,37 @@ Residual risks are low to medium after measures. **Prior consultation (Art. 36) 
 
 DRAFT; periods need legal confirmation per jurisdiction. "Tenant-configurable" means the tenant's `retention_rule` (M14) within the stated bounds; legal hold (`legal_hold`) suspends deletion.
 
-| ID | Category | Retention | Trigger and mechanism | Basis note |
-|---|---|---|---|---|
-| G-RET-01 | Platform identity (G-DC-01) | While any membership is active, plus 30 days | Then pseudonymised: email and name removed, id kept so audit references stay valid | Storage limitation |
-| G-RET-02 | Trials without conversion | 30 days after trial end | Tenant crypto-shredded (F-K-10); identity per G-RET-01 | |
-| G-RET-03 | Sessions and sign-in records | 90 days | Purge job | Security |
-| G-RET-04 | Platform audit log | 7 years *(verify against certification evidence needs)* | Append-only; purge only through an anchored purge entry | Accountability, ISO 27001 evidence |
-| G-RET-05 | Staff records (elevations, approvals) | Engagement end + 7 years | Purge job | |
-| G-RET-06 | Billing and tax records | Longest of the applicable tax laws, provisionally 6 years after the tax year end; Pakistan Income Tax Ordinance 2001 record-keeping period *(verify)* | Purge job | Legal obligation |
-| G-RET-07 | Support questions and messages | 2 years after closure | Purge job | |
-| G-RET-08 | Security and application logs (observability SaaS, H-OB-01) | 30 days hot, 1 year encrypted archive, then deleted | Provider retention setting | Security |
-| G-RET-09 | Tenant business records (G-DC-09 to G-DC-15) | Tenant lifetime; tenant-configurable rules; soft delete purged after 30 days | Retention purge job (S8), skips legal hold, writes F-EV-07 | Processor instruction |
-| G-RET-10 | `record_history` | Tenant lifetime (Q-24); E2 fields shredded by subject erasure; redaction procedure for E1 free text on a valid erasure (tenant four-eyes, migrator function, anchored audit entry) | | Q-24 vs Art. 5(1)(e): tension resolved by shredding and redaction |
-| G-RET-11 | Tenant audit log | Tenant lifetime; minimum 1 year; delivered in the final export | Deleted with the tenant | |
-| G-RET-12 | Selvara's own DSAR records | 3 years after closure *(verify)* | Purge job in Selvara's tenant | |
-| G-RET-13 | Deletion certificates | 10 years after deletion *(verify)* | Kept in `cp` | Accountability |
-| G-RET-14 | Nightly tenant exports | Last 7 in `exports`; 35 daily, 12 monthly, 1 yearly off-site (ADR-004); object lock 35 days | Rotation job; crypto-shredding at offboarding (KEK destruction makes locked copies unreadable) | |
-| G-RET-15 | Supabase PITR and daily backups | Provider window (7 days on Pro *(verify)*) | Rolls off; data within is ciphertext for E1/E2/files | |
-| G-RET-16 | `ks` backups | 7 days | Rolls off; bounds erasure-in-backup to 8 days | |
-| G-RET-17 | WORM audit segments | 13 months (compliance mode); unreadable after tenant KEK destruction | Object lock expiry | ADR-013 |
-| G-RET-18 | WORM anchors (hashes only) | 10 years | Object lock | Not personal data |
-| G-RET-19 | Quarantine objects | 24 h; blocked files 30 days | Lifecycle rule | |
-| G-RET-20 | Vendor portal invites | Expire after 30 days; record purged 1 year after expiry unless linked to an assessment | Purge job | |
-| G-RET-21 | Webhook deliveries; integration sync runs | 30 days; 90 days | Purge job | |
-| G-RET-22 | Notifications | 1 year | Purge job | |
-| G-RET-23 | Tenant DSR records (M14) | Tenant-configurable, default 3 years after closure | Purge job | Tenant's accountability |
-| G-RET-24 | AI provider side | Zero retention where offered; otherwise the provider's stated period *(verify per provider)* | Provider terms | |
-| G-RET-25 | Email provider logs | Provider default *(verify)*, minimised | Provider setting | |
+Each row names the retention class of 2B §7.1 (B-RC) that implements it; the names are identical in 2B, 2B-classification and here (rev P3).
+
+| ID | Category | Retention | Trigger and mechanism | Basis note | 2B retention class |
+|---|---|---|---|---|---|
+| G-RET-01 | Platform identity (G-DC-01) | 30 days after the end of the last membership or after account deletion, whichever is first (rev P3) | Then pseudonymised: email and name removed, id kept so audit references stay valid | Storage limitation | `platform_identity` (B-RC19) |
+| G-RET-02 | Trials without conversion | 30 days after trial end | Tenant crypto-shredded (F-K-10); identity per G-RET-01 | | offboarding (2B B-DL08) |
+| G-RET-03 | Sessions and sign-in records | 90 days | Purge job | Security | `sign_in_record` (B-RC21) (rev P3) |
+| G-RET-04 | Platform audit log | 7 years *(verify against certification evidence needs)*; IP and details nulled after 1 year | Append-only; purge only through an anchored purge entry | Accountability, ISO 27001 evidence | `audit_log` (B-RC01, platform-set), column purge B-RC32 (rev P3) |
+| G-RET-05 | Staff records (elevations, approvals, support grants, break-glass) | Engagement end + 7 years | Purge job | | `staff_record` (B-RC25) (rev P3) |
+| G-RET-06 | Billing and tax records | Longest of the applicable tax laws, provisionally 6 years after the tax year end, set per billing entity; Pakistan Income Tax Ordinance 2001 record-keeping period *(verify)* | Purge job | Legal obligation | `financial` (B-RC15) (rev P3) |
+| G-RET-07 | Support questions and messages | 2 years after closure | Purge job | | `support` (B-RC26) (rev P3) |
+| G-RET-08 | Security and application logs (observability SaaS, H-OB-01) | 30 days hot, 1 year encrypted archive, then deleted | Provider retention setting | Security | outside the database (provider setting) |
+| G-RET-09 | Tenant business records (G-DC-09 to G-DC-15) | Per record class, tenant-configurable within floors; soft-deleted content purged after 30 days; tombstone kept to the end of the record's retention class (2B B-DL01) (rev P3) | Retention purge job (S8), skips legal hold, writes F-EV-07 | Processor instruction | per table: `evidence`, `risk`, `policy`, `assurance`, `issue`, `access`, `vendor`, `commitment`, `privacy_register`, `ai_governance`, `external_contact`, `tenant_lifetime` (B-RC02 to B-RC20) |
+| G-RET-10 | `record_history` | Kept with its row; purged with the row by the retention job, leaving a content-free purge marker (2B B-PG03); deleted with the tenant. E2 fields shredded by subject erasure; redaction procedure for E1 free text on a valid erasure (tenant four-eyes, migrator function, anchored audit entry) (rev P3) | | Q-24 vs Art. 5(1)(e): tension resolved by shredding, redaction and row-level retention | parent row's class (B-H09) |
+| G-RET-11 | Tenant audit log | 7 years by default, tenant-configurable down to the 5-year floor; IP, personal and detail ciphertexts nulled after 1 year; delivered in the final export and deleted with the tenant (rev P3) | Retention purge; deleted with the tenant | | `audit_log` (B-RC01), column purge B-RC32 |
+| G-RET-12 | Selvara's own DSAR records | 3 years after closure *(verify)* | Purge job in Selvara's tenant | | `privacy_case` (B-RC11) |
+| G-RET-13 | Deletion certificates | 10 years after deletion *(verify)* | Kept in `cp` | Accountability | `accountability` (B-RC24) (rev P3) |
+| G-RET-14 | Nightly tenant exports | Last 7 in `exports`; 35 daily, 12 monthly, 1 yearly off-site (ADR-004); object lock 35 days | Rotation job; crypto-shredding at offboarding (KEK destruction makes locked copies unreadable) | | outside the class scheme (ADR-004 rotation) |
+| G-RET-15 | Supabase PITR and daily backups | Provider window (7 days on Pro *(verify)*) | Rolls off; data within is ciphertext for E1/E2/files | | provider window |
+| G-RET-16 | `ks` backups, standby and key journal | Daily backups 7 days; the DR-region standby follows the live store; off-site key journal objects expire 8 days after they are written (DA-11) | A destroyed key leaves the live store and standby at once and every other copy within **8 days after destruction** (2B B-K05, ADR-003) (rev P3) | | `ks` (2B B-K01 to B-K05) |
+| G-RET-17 | WORM audit segments | 13 months (compliance mode); unreadable after tenant KEK destruction | Object lock expiry | ADR-013 | outside the class scheme (ADR-013) |
+| G-RET-18 | WORM anchors (hashes only) | 10 years | Object lock | Not personal data | `accountability` (B-RC24) (rev P3) |
+| G-RET-19 | Quarantine objects and blocked files | Quarantine objects: removed at promotion, or within 24 h if the scan never completes; blocked (infected) files: 7 days, then hard-deleted (2B B-DL07) (rev P3) | Lifecycle rule; purge job | | 2B B-DL07 |
+| G-RET-20 | Vendor portal invites | Invites expire after at most 30 days; the invite row is hard-deleted 30 days after its terminal state; the assessment it served keeps the `vendor` class (rev P3) | Purge job | | `transient` (B-RC09) |
+| G-RET-21 | Webhook deliveries; integration sync runs | 30 days; 90 days | Purge job | | `ops_short` (B-RC27); `ops_medium` (B-RC28) (rev P3) |
+| G-RET-22 | Notifications | 1 year | Purge job | | `operational` (B-RC10), capped at 12 months for notifications (rev P3) |
+| G-RET-23 | Tenant DSR records (M14) | Tenant-configurable, default 3 years after closure | Purge job | Tenant's accountability | `privacy_case` (B-RC11) |
+| G-RET-24 | AI provider side | Zero retention where offered; otherwise the provider's stated period *(verify per provider)* | Provider terms | | provider terms |
+| G-RET-25 | Email provider logs | Provider default *(verify)*, minimised | Provider setting | | provider setting |
+| G-RET-26 | Tenant member display data (`member_profile`) | 7 years after membership end *(legal to confirm, OD-10, OD-08)*; earlier on an upheld erasure | Subject-key shred (F-K-11) | Attribution of audit entries (R-23) | `platform_identity` (B-RC19) (rev P3) |
+| G-RET-27 | Sign-up and join requests (`control.join_requests`), invitations | Invitations and approved requests: 30 days after the terminal state; rejected requests: 3 months | Purge job | Storage limitation | `transient` (B-RC09); `rejected_request` (B-RC14) (rev P3) |
 
 ---
 
@@ -281,10 +285,10 @@ stateDiagram-v2
 | G-OFF-04 | Access revocation | `cp` | Memberships ended, sessions revoked, SCIM tokens and API keys revoked, SSO connection removed, webhooks disabled, Trust Center and vendor portal disabled | Counts |
 | G-OFF-05 | Database | Cell | Drop schema `t_<tkey>` and roles `t_<tkey>_rw`, `t_<tkey>_ro`; remove `selvara_router` membership | Object counts before drop; drop confirmation |
 | G-OFF-06 | Object storage | `tenant-files`, `quarantine`, `exports` | Delete prefix `<tkey>/` in each bucket | Object counts and manifest hash |
-| G-OFF-07 | Keys | `ks`, KMS | Delete all `ks` rows for the tenant; schedule KEK deletion with the minimum waiting period; BYOK: revoke Selvara's grant and request the customer to delete its key | KMS key id, deletion date, KMS log event id |
+| G-OFF-07 | Keys | `ks`, KMS | Delete all `ks` rows for the tenant (DEK versions, subject, file, blind-index and audit HMAC keys); schedule deletion of the KEK **and every multi-Region replica** with the minimum waiting period, recording each replica's waiting period (A-23; rev P3); BYOK: revoke Selvara's grant and request the customer to delete its key | KMS key id, deletion date, KMS log event id |
 | G-OFF-08 | Secrets | Secrets manager | Delete `tenants/<tkey>/*` | Count |
 | G-OFF-09 | Control plane | `cp` | Tenant record becomes a tombstone (tkey, dates, certificate id, legal name kept only in billing records under G-RET-06); routing removed; usage meters kept as aggregates for billing | Fields kept, listed |
-| G-OFF-10 | Backups | PITR, `ks` backups, WORM segments | Not edited. PITR holds ciphertext of E1/E2/files plus E0 plaintext until roll-off; `ks` backups roll off in 7 days; WORM segments become unreadable at KEK destruction | Roll-off dates computed and stated |
+| G-OFF-10 | Backups | PITR, `ks` backups, WORM segments | Not edited. PITR holds ciphertext of E1/E2/files plus E0 plaintext until roll-off; destroyed `ks` keys leave every `ks` copy (backups, standby, off-site key journal) within 8 days (2B B-K05); WORM segments become unreadable at KEK destruction (rev P3) | Roll-off dates computed and stated |
 | G-OFF-11 | Certificate | `control.deletion_certificates` | Issued when G-OFF-10 dates pass | See G-6.3 |
 
 E0 plaintext residue: titles, statuses, refs and dates remain in Supabase PITR until roll-off (7 days *(verify)*). The certificate states this, and the DPA discloses it.
@@ -299,8 +303,8 @@ E0 plaintext residue: titles, statuses, refs and dates remain in Supabase PITR u
 | Approvals | Approval id, two approver ids, timestamps |
 | Export | Export id, manifest SHA-256, delivered date |
 | Per store | Store name, action, objects counted before, objects remaining after (0), completion time |
-| Keys | KEK id and versions, deletion scheduled and completed times, KMS log event ids; BYOK status; count of `ks` keys destroyed |
-| Backups | PITR roll-off date, `ks` backup roll-off date, WORM segments retained (ciphertext, count, lock expiry) |
+| Keys | KEK id and versions, and each multi-Region replica key, deletion scheduled and completed times, KMS log event ids; BYOK status; count of `ks` keys destroyed (rev P3) |
+| Backups | PITR roll-off date (E0 plaintext residue until then), `ks` roll-off date (at most 8 days after key destruction, backups and key journal included), WORM segments retained (ciphertext, count, lock expiry) (rev P3) |
 | Retained by law | Billing records (legal name, invoices) with period; platform audit entries; anchors; this certificate |
 | Integrity | SHA-256 of the certificate body; signature by `sig/anchor` (F-K-06); platform audit entry hash and anchor id |
 | Delivery | Sent to the tenant's contract contact; copy available on request |
@@ -553,7 +557,7 @@ Mapped to ISO/IEC 27701:2019 structure *(verify; a revised edition was published
 
 | ID | Risk | Likelihood | Impact | Owner | Treatment |
 |---|---|---|---|---|---|
-| R-46 | Free-text fields (E1) and evidence content hold personal data that subject erasure cannot find, so erasure is incomplete in history and exports until rotation | Medium | Medium | R-B | Redaction procedure (G-RET-10), search assist, export rotation, DPA disclosure |
+| R-46 | Free-text fields (E1) and evidence content hold personal data that subject erasure cannot find, so erasure is incomplete in history and exports until rotation | Medium | Medium | R-B | Redaction procedure (G-RET-10), search assist, export rotation, DPA disclosure (merged into R-34, Phase 3 register) |
 | R-47 | UAE health-sector (and possibly future Pakistan) localisation rules block single-region hosting for some buyers | Medium | High | R-A | Cell per region later (R-01); flag at sales; G-RES-06 option |
 | R-48 | Staff access from Pakistan is a restricted transfer for UK/EU data and needs a defensible transfer risk assessment | High | Medium | R-B | SCCs / UK Addendum, minimal access, keys in `R1`, logging |
 | R-49 | Lifetime retention of `record_history` (Q-24) is challenged as excessive by a customer or regulator | Medium | Medium | R-A | Tenant retention rules, redaction, shredding; legal confirmation of the position |
