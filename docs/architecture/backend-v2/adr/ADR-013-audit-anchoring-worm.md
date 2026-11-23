@@ -1,0 +1,66 @@
+# ADR-013: Audit-log anchoring and WORM export target
+
+| | |
+|---|---|
+| Status | Proposed |
+| Date | 2026-11-23 |
+| Workstream | 2F |
+| Related | Spine S2 (`control.platform_audit_log`), S4 M22 (`audit_log_entry`, `audit_anchor`), S8 (anchoring job), ADR-003, `2F-security.md` F-9 |
+
+## Context
+
+- v0.2.5 keeps a SHA-256 hash chain per tenant and for the platform, verifiable by `audit_verify` (LOG-05). A hash chain detects edits of the middle of a chain, but anyone with database superuser rights can recompute and replace a whole chain or cut its tail. CONTROLS.md LOG-01 asks for "HMAC or WORM storage".
+- Supabase organisation owners and provider operators have superuser-equivalent access (F-8.2).
+- Tenants (regulated buyers) and their auditors must be able to verify their log independently.
+- The log must also honour erasure: entries hold ciphertext of personal fields (F-D-09).
+- No operations team: anchoring must be automatic and self-checking.
+
+## Options considered
+
+| Option | Description | Pros | Cons |
+|---|---|---|---|
+| O1 Chain only (status quo) | SHA-256 chain in the database | Simple | Whole-chain rewrite or truncation by a superuser undetectable |
+| O2 HMAC chain with key in KMS | Each entry MACed with a KMS-held key | Rewrite needs the key | Tenants cannot verify without the key; KMS call per entry or per batch; key compromise voids history |
+| **O3 Hourly Merkle anchoring of all chain heads, signed, timestamped (RFC 3161) and written to a compliance-mode WORM bucket in a separate account, plus daily encrypted log segments to WORM** | External, immutable witness of every chain head | Detects rewrite and truncation; tenant-verifiable with public key and proofs; independent of Supabase admins; cheap | New dependencies (WORM bucket, TSA); up to 1 h window before an entry is anchored |
+| O4 Public blockchain anchoring | Publish roots on a public ledger | Very strong public witness | Operational and reputational complexity; fees; regulated buyers may object; not needed given O3 |
+| O5 Stream every entry to an external append-only log service | Real-time copy | No window | Copies personal data to another provider; cost; still needs integrity proof |
+
+## Decision
+
+Adopt **O3**.
+
+1. **Leaves**: for each chain (each tenant and the platform), leaf = `SHA-256(anchor_id ‖ seq ‖ head_hash)`; `anchor_id` is a random per-chain identifier stored in `audit_anchor`, so the anchor object does not list tenant names or `tkey`s.
+2. **Root**: Merkle tree over all leaves (sorted by `anchor_id`), root signed with the KMS asymmetric key `sig/anchor` (F-K-06), timestamped by an RFC 3161 timestamp authority.
+3. **WORM target**: object-lock bucket in **compliance mode** in `offsite-prod` (H-AC-05; second EU region, separate account from `kms-prod`, Supabase and Vercel); anchors retained 10 years; daily per-tenant segments (that day's entries as stored, encrypted with the tenant DEK) retained 13 months. Bucket deletion and retention reduction impossible by design; versioning on.
+4. **Records**: each tenant's `audit_anchor` row holds root, leaf, proof path, object key, TSA token reference; the platform equivalent in `control.platform_audit_anchor`.
+5. **Cadence and checks**: anchoring hourly (S8 job type), verification daily (recompute chains, compare with the latest anchors, verify signatures and WORM object presence). Missing anchor for 2 h raises F-M-05; mismatch raises F-M-04.
+6. **Tenant verification**: tenant admins download a verification bundle (entries, anchors, proofs, TSA tokens, public keys with validity) and can verify offline. Public keys are published on Selvara's Trust Center.
+7. **Purges**: retention purges (2G) write an anchored "purge" entry describing the range removed, so a later gap is explained and verifiable.
+
+## Consequences
+
+| ID | Consequence |
+|---|---|
+| C13-01 | Up to 1 hour of entries is not yet externally anchored; tampering within that window by a superuser is detectable only by chain verification. |
+| C13-02 | A WORM bucket, an asymmetric KMS key and a TSA are added (A-49). |
+| C13-03 | Compliance-mode retention cannot be shortened, even by Selvara; retention values must be chosen carefully before go-live. |
+| C13-04 | Daily segments add storage proportional to log volume (small). |
+
+## Security and privacy implications
+
+- Anchors contain hashes only and no personal data; they can outlive tenant deletion.
+- Segments hold ciphertext encrypted with the tenant DEK; tenant KEK destruction at offboarding makes them unreadable while object lock keeps them until expiry (disclosed in the DPA and in the deletion certificate).
+- Hashes are computed over ciphertext (F-D-09), so subject-key shredding does not break verification and the hash does not reveal plaintext (random nonces).
+- The signing key never leaves the KMS; its compromise is detectable through KMS logs and is limited by the TSA tokens, which fix the time of each root independently.
+
+## Verification (Phase 4)
+
+| ID | Check |
+|---|---|
+| V13-01 | Modify one entry in a synthetic tenant as superuser: `audit_verify` fails at that seq; daily verification raises F-M-04. |
+| V13-02 | Recompute and replace a whole synthetic chain as superuser: head no longer matches the anchored leaf; F-M-04 fires. |
+| V13-03 | Truncate the tail after an anchor: anchored head seq is missing; F-M-04 fires. |
+| V13-04 | Attempt to delete or shorten retention of an anchor object with the security-account administrator: refused by compliance mode. |
+| V13-05 | Offline verification of a tenant bundle with only the published public key and TSA certificate succeeds; altered bundle fails. |
+| V13-06 | Anchor objects and their metadata contain no tenant names, `tkey`s or personal data. |
+| V13-07 | Stop the anchoring job: F-M-05 fires within 2 hours. |

@@ -5,18 +5,21 @@ Every significant decision gets an ADR with its context, at least two options co
 | ID | Title | Status | Phase | Mandatory for MVP |
 |---|---|---|---|---|
 | [ADR-001](adr/ADR-001-schema-per-tenant.md) | One Postgres schema per tenant on Supabase | **Accepted** (owner, 2026-11-23); C1-01 residual risk accepted | 1 | Yes |
-| ADR-002 | Isolation inside one project: a role per tenant, one routing point that fails closed, row-level security as defence in depth | Proposed | 2A / 2F | Yes |
-| ADR-003 | Envelope encryption, crypto-shredding and BYOK through a key-provider abstraction | Proposed | 2F / 2G | Yes |
-| ADR-004 | Backup and restore: per-tenant logical export plus change journal; project point-in-time restore for disaster recovery | Proposed | 2H | Yes |
-| ADR-005 | Hosting and jobs: Vercel API plus Supabase-native scheduling and queues plus one scanning container | Proposed | 2A / 2H | Yes |
-| ADR-006 | Identity: Supabase Auth, SAML/OIDC per tenant, SCIM 2.0 built in Selvara | Proposed | 2E | Yes |
-| ADR-007 | Provider abstractions: payment (merchant of record, local provider or Stripe) and AI | Proposed | 2I / 2G | Yes |
-| ADR-008 | Typed entity tables replacing `ws_records` | Proposed | 2B | Yes |
-| ADR-009 | Migration orchestration across tenant schemas | Proposed | 2B / 2H | Yes |
-| ADR-010 | Control plane: separate schema, what it holds, who can reach it | Proposed | 2A | Yes |
-| ADR-011 | Shared reference content (frameworks, controls, templates): distribution and versioning to tenant schemas | Proposed | 2B | Yes |
-| ADR-012 | Malware scanning service | Proposed | 2F | Yes |
-| ADR-013 | Audit-log anchoring and WORM export target | Proposed | 2F | Yes |
+| [ADR-002](adr/ADR-002-isolation-inside-one-project.md) | Isolation inside one project: a role per tenant, one routing point that fails closed, row-level security as defence in depth | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2A / 2F | Yes |
+| [ADR-003](adr/ADR-003-envelope-encryption-byok.md) | Envelope encryption, crypto-shredding and BYOK through a key-provider abstraction | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2F / 2G | Yes |
+| [ADR-004](adr/ADR-004-backup-and-restore.md) | Backup and restore: per-tenant logical export plus change journal; project point-in-time restore for disaster recovery | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2H | Yes |
+| [ADR-005](adr/ADR-005-hosting-and-jobs.md) | Hosting and jobs: Vercel API plus Supabase-native scheduling and queues plus one scanning container | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2A / 2H | Yes |
+| [ADR-006](adr/ADR-006-identity.md) | Identity: Supabase Auth, SAML/OIDC per tenant, SCIM 2.0 built in Selvara | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2E | Yes |
+| [ADR-007](adr/ADR-007-provider-abstractions.md) | Provider abstractions: payment (merchant of record, local provider or Stripe) and AI | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2I / 2G | Yes |
+| [ADR-008](adr/ADR-008-typed-entity-tables.md) | Typed entity tables replacing `ws_records` | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2B | Yes |
+| [ADR-009](adr/ADR-009-migration-orchestration.md) | Migration orchestration across tenant schemas | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2B / 2H | Yes |
+| [ADR-010](adr/ADR-010-control-plane-placement.md) | Control plane: separate schema, what it holds, who can reach it | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2A | Yes |
+| [ADR-011](adr/ADR-011-reference-content-versioning.md) | Shared reference content (frameworks, controls, templates): distribution and versioning to tenant schemas | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2B | Yes |
+| [ADR-012](adr/ADR-012-malware-scanning.md) | Malware scanning service | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2F | Yes |
+| [ADR-013](adr/ADR-013-audit-anchoring-worm.md) | Audit-log anchoring and WORM export target | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2F | Yes |
+| [ADR-014](adr/ADR-014-custom-roles.md) | Custom roles: tenant custom roles; platform custom roles from a fixed list of names (OD-07) | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2E | Yes |
+
+Owner decisions OD-01 to OD-11, OQ-14 and OQ-15 are recorded in [phase2/00-phase2-summary.md](phase2/00-phase2-summary.md), section 8.
 
 ## Earlier decisions (from `BACKEND_FOUNDATION.md` and `PRODUCTION_PROGRAMME.md`)
 
