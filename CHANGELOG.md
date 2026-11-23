@@ -4,6 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-11-23
+
+The reference review, parts 1 to 5. **Deploy note: this release adds migration `0011_help_questions.sql`** (Help centre questions). The server needs schema version 11 and refuses an older database, so run the migration in the project that matches `SUPABASE_URL` just before deploying (see `docs/guides/SUPABASE.md`). `SUPPORT_INBOX_EMAIL` is new and optional: set it to email Selvara support about each new question.
+
 ### Changed
 - **New app frame (reference review, part 1 of 5).** The sidebar sits on the canvas and each page is one rounded panel. The breadcrumb is a small line at the top of the panel, and page titles are larger and lighter. Cards have larger corners and no shadow.
 - **Header row.** A pill shows how many approvals are waiting for you (the same figure as My Work) and opens My Work. A Help menu holds "Take the tour of this page" and the keyboard shortcuts. The theme switch moved into the account menu. Search stays as the icon it was.
