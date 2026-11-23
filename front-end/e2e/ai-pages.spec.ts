@@ -11,7 +11,7 @@ test("assistant: an answer is an AI panel that says it needs review; agents and 
   await expect(p.getByRole("region", { name: "Assistant answer" })).toContainText("AI-assisted");
   await expect(p.getByRole("region", { name: "Assistant answer" })).toContainText("Review before you rely on this");
 
-  await p.getByRole("tab", { name: "Custom agents" }).click();
+  await p.getByRole("tab", { name: "Custom agents" }).click(); await p.getByRole("radio", { name: "Table" }).click();
   await expect(p.getByRole("table", { name: "Agents", exact: true })).toBeVisible();
   await p.getByRole("button", { name: "Create agent" }).click();
   await expect(p).toHaveURL(/\/ws\/assistant\/new$/);
@@ -20,7 +20,7 @@ test("assistant: an answer is an AI panel that says it needs review; agents and 
   await p.getByLabel(/^Agent name/).fill("Control test monitor");
   await p.getByRole("button", { name: "Create agent" }).last().click();
   await expect(p).toHaveURL(/\/ws\/assistant$/);
-  await p.getByRole("tab", { name: "Custom agents" }).click();
+  await p.getByRole("tab", { name: "Custom agents" }).click(); await p.getByRole("radio", { name: "Table" }).click();
   await expect(p.getByRole("table", { name: "Agents", exact: true })).toContainText("Control test monitor");
   await expect(p.getByRole("table", { name: "Agents", exact: true })).toContainText("Pending approval");
 

@@ -1,6 +1,7 @@
 import { HBarList, Icon, KpiStrip, KpiTile, LineChart, Page, StatusChip, activate, type Desirability } from "@/components/ui";
 import { FocusCard } from "./FocusCard";
 import { ComplianceCalendar } from "./ComplianceCalendar";
+import { PostureBrief } from "./PostureBrief";
 import { DATA } from "@/lib/data";
 import { appStore, useData } from "@/lib/store";
 import { fwReadiness } from "@/lib/frameworks";
@@ -102,6 +103,7 @@ export default function OverviewModule() {
         <KpiTile label="Vendor reviews due" value={M.vendorDue} delta={live(tile("bad", "2 overdue"))} caption="Third-party reassessments" />
       </KpiStrip>
       <FocusCard can={can} />
+      <PostureBrief can={can} />
       <div className="panels" data-tour="overview-panels" style={{ flex: "0 0 auto", gridTemplateColumns: "1.6fr 1fr 1fr", gridAutoRows: "minmax(320px,auto)" }}>
         <div className="card">
           <div className="c-head"><h3>Risk posture</h3>{can("risk") ? <div className="r"><button className="btn btn-ghost sm" onClick={() => go("/ws/risk")}>Risk register</button></div> : null}</div>

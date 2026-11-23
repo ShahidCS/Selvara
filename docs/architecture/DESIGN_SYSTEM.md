@@ -265,6 +265,21 @@ Decided by the owner from the FleetFlow reference comparison ([ui-review/REFEREN
   - `FocusCard` shows the single most urgent item: an audit within 60 days, else the oldest overdue High or Critical issue, else the next audit. It includes its stage track and one decide button.
   - `ComplianceCalendar` shows the next six months of audits, policy reviews and vendor reassessments. Overdue markers sit at today in red with "overdue" in their name. Only modules the role can open are shown.
 
+### AI features and agents (part 3)
+- **Facts first:**
+  - `lib/insights.ts` computes the posture brief, the suggested next steps and record summaries by fixed rules. The UI says "Computed from …".
+  - AI is only asked for wording: `components/kit/AiWording.tsx` ("Write with AI") and `AskPanel.tsx` ("Ask about this report") post to the Assistant (`/ws/assistant/ask`) and show the answer in `AIPanel` as a draft.
+  - The demonstration words the facts with a template and says so in the panel's meta line.
+  - Both components render nothing for roles that cannot open the AI Assistant.
+- **Record summary:** `components/kit/ExplainCard.tsx` ("What happened / Why it matters / Suggested next step") is on issue and risk records.
+- **Prefill:**
+  - `components/kit/PrefillBanner.tsx` with `usePrefilled()`. Filled fields get `.field.prefilled` (accent-weak fill and accent border) and a "From document" tag in the label until edited, so the state is never shown by tint alone.
+  - `lib/docText.ts` reads PDF, .docx and text in the browser, within its size limits; `lib/prefill.ts` holds the field rules shared with the server.
+- **Agents:**
+  - `features/assistant/AgentsOverview.tsx` provides the summary band (`KpiStrip`), the "Runs on its own" and "Asks you first" lists, and agent cards with an `AutonomyMeter` (bars plus the rung's name).
+  - Cards and table share the same actions; the view choice is a `Segmented` control.
+- **Kit:** `HBarList` takes `wrap` to put long labels above their bars.
+
 ## Layout follows the space it has
 
 The sidebar takes about 280px when open, so the content of a 1024px window is narrower than a 768px phone layout expects. Page layout therefore responds to the **content's own width**, not only to the window:

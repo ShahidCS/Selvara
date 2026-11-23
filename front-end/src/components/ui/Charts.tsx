@@ -88,12 +88,13 @@ export function BarChart({ title, data, unit = "", goodLabel = "Value", badLabel
 
 export interface HBarRow { label: string; value: number; tone?: Tone; /** Overrides the bar's end label (default is the value). */ text?: string }
 /** Ranked horizontal bars with the value written at the end (a track plus a label, so the bar is never the only carrier of the number). */
-export function HBarList({ title, rows, max, unit = "" }: { title: string; rows: HBarRow[]; max?: number; unit?: string }) {
+/** `wrap` puts each label on its own line above its bar, for long labels (the posture brief's causes). */
+export function HBarList({ title, rows, max, unit = "", wrap }: { title: string; rows: HBarRow[]; max?: number; unit?: string; wrap?: boolean }) {
   const m = max ?? Math.max(1, ...rows.map((r) => r.value));
   return (
     <ChartFigure title={title} summary={rows.length ? `${rows.length} rows, largest ${rows.reduce((a, r) => (r.value > a.value ? r : a), rows[0]).label}.` : "No data."}
       head={["Name", "Value"]} rows={rows.map((r) => [r.label, r.text ?? `${r.value}${unit}`])}>
-      <ul className="hbar" aria-hidden="true">
+      <ul className={wrap ? "hbar wrap" : "hbar"} aria-hidden="true">
         {rows.map((r) => (
           <li key={r.label} className="hbar-row">
             <span className="hbar-nm">{r.label}</span>

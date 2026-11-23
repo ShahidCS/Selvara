@@ -10,10 +10,24 @@ import { hasRole } from "@/lib/sod";
 import { SCHED_PACKS } from "@/lib/trustData";
 import * as svc from "@/features/reports/services/reports";
 import { ApprovalsPanel, attempt } from "@/components/kit/sodKit";
+import { AskPanel } from "@/components/kit/AskPanel";
+import { fwReadiness } from "@/lib/frameworks";
 import { ConfirmRemoveSchedule, RemoveScheduleForm, ScheduleForm } from "./ReportLayers";
 import { API_ON } from "@/lib/rbac";
 
 const MONTHS = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
+/** The figures behind this page, as plain sentences for "Ask about this report" (R36). */
+function reportFacts(M: ReturnType<typeof metrics>): string[] {
+  const fws = [...DATA.frameworks].map((f) => ({ name: f.name, pct: fwReadiness(f.id), audit: f.audit })).sort((a, b) => a.pct - b.pct);
+  return [
+    `Weighted compliance is ${M.compliance}% across frameworks in scope`,
+    ...fws.map((f) => `Framework ${f.name} readiness is ${f.pct}%${f.audit ? `; audit: ${f.audit}` : ""}`),
+    `${M.overdueControls} controls failing and ${M.needsEvidence} controls waiting for evidence`,
+    `${M.openIssues} open issues`, `${M.openRisks} open risks, ${M.aboveAppetite} above appetite`,
+    `${M.upcomingAudits} audits not yet complete`, `${M.vendorDue} vendor reviews overdue or in review`,
+    `${SCHED_PACKS.length} scheduled report packs and ${DATA.reports.length} stored reports`,
+  ];
+}
 
 /** Reports: readiness trend, scheduled packs, stored reports (source REND.reports, lines 3496-3525). */
 export default function ReportsModule() {
@@ -47,6 +61,8 @@ export default function ReportsModule() {
           <KpiTile label="Stored reports" value={DATA.reports.length} caption="Generate now, on demand" />
         </KpiStrip>
         <ApprovalsPanel prefix="report." title="External distribution awaiting a different admin" />
+        <div style={{ marginBottom: 14 }}><AskPanel title="Ask about this report" facts={reportFacts(M)}
+          suggestions={["Which framework is furthest behind?", "What should we fix before the next audit?", "Summarise this for the board"]} /></div>
         <div className="split" style={{ gridTemplateColumns: "1fr 1.2fr", marginBottom: 14 }}>
           <div className="card"><div className="c-head"><h3>Readiness trend</h3><span className="tag" style={{ marginLeft: "auto" }}>{M.compliance}% now</span></div>
             <div className="c-body">{API_ON ? <p className="field help" style={{ margin: 0 }}>Weighted compliance today is {M.compliance}%. The trend appears here once monthly figures have been recorded.</p>

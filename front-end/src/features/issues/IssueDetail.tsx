@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { RecordHistory } from "@/components/kit/RecordHistory";
+import { ExplainCard } from "@/components/kit/ExplainCard";
+import { explainIssue } from "@/lib/insights";
 import { Empty, Icon, Page, Stepper, StatusChip } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { bumpData, useApp, useData } from "@/lib/store";
@@ -94,6 +96,7 @@ export function IssueDetail({ id }: { id: string }) {
           </div>
 
           <aside className="rec-side">
+            <ExplainCard e={explainIssue(i)} record={{ mod: "issues", id: i.id }} />
             <div className="card"><div className="c-head"><h3>Details</h3></div><div className="c-body">
               <dl className="meta-grid"><dt>Severity</dt><dd><StatusChip s={i.sev} /></dd><dt>Owner</dt><dd>{i.owner}</dd><dt>Due</dt><dd><DueText due={i.due} />{i.dueDate ? <span style={{ color: "var(--muted)" }}> ({i.dueDate})</span> : null}</dd><dt>Status</dt><dd><StatusChip s={i.status} /></dd>
                 {delWhy && !writeWhy ? <><dt>Delete</dt><dd style={{ color: "var(--muted)" }}>{delWhy}</dd></> : null}

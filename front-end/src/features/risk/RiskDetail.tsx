@@ -2,6 +2,8 @@
  * Authority actions (submit / approve / accept) are gated by riskCanEdit / riskCanApprove exactly as in the source; the services re-check
  * the role, but the real API must enforce it and must also enforce segregation of duties (see docs/guides/checklist/risk.md). */
 import { useState } from "react";
+import { ExplainCard } from "@/components/kit/ExplainCard";
+import { explainRisk } from "@/lib/insights";
 import { Chip, Icon, StatusChip, Stepper } from "@/components/ui";
 import { useLayer } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
@@ -236,6 +238,7 @@ export default function RiskDetail({ id }: { id: string }) {
       {failing.length ? <div role="alert" style={{ background: "var(--bad-bg)", color: "var(--bad-ink)", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 600 }}>{failing.length} mapped control{failing.length > 1 ? "s are" : " is"} not passing ({failing.map((x: any) => x.cid).join(", ")}); current exposure relies on {failing.length > 1 ? "them" : "it"}.</div> : null}
       {checks.length ? <div style={{ background: "var(--warn-bg)", color: "var(--warn-ink)", borderRadius: 10, padding: "10px 14px", fontSize: 13 }}><strong>Data quality:</strong> {checks.join("; ")}.</div> : null}
       {wf ? <div>{wf}</div> : null}
+      <ExplainCard e={explainRisk(r)} record={{ mod: "risk", id: r.id }} />
       <div className="rgrid3">
         <ScoreCard id={r.id} label="Inherent (before controls)" lk={r.l} ik={r.i} fl="l" fi="i" canEdit={canEdit} onSet={setScore} />
         <ScoreCard id={r.id} label="Current (with controls)" lk={r.cl || r.l} ik={r.ci || r.i} fl="cl" fi="ci" canEdit={canEdit} onSet={setScore} />

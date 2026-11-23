@@ -53,9 +53,12 @@ const stillPending = (id?: string) => !!id && getApproval(id)?.status === "Pendi
 const APPROVERS = ["admin", "owner"];
 const by = (a: { approvals: { by: string }[] }) => a.approvals.map((x) => x.by).join(", ");
 
+/** When every agent was last paused at once (R33): an enable request made before it can no longer be approved. */
+let pausedAllAt = 0;
 registerApprovalHandler("assistant.agent.enable", {
   apply: (ap) => {
     const a = findAgent(payloadStr(ap, "id")); if (!a) throw new SodError("Agent not found.");
+    if (ap.createdAt <= pausedAllAt) throw new SodError("All agents were paused after this was requested. Request enabling the agent again.");
     a.status = "Active"; delete a.pendingApproval;
     wsLog("assistant.agent.enabled", `${a.name} (approved by ${by(ap)}; requested by ${ap.requestedBy})`, "System");
   },
@@ -147,6 +150,22 @@ export function toggleAgent(id: string) {
     const ap = requestApproval({ kind: "assistant.agent.enable", title: `Enable agent ${clampText(a.name, 80)} (${a.autonomy}, runs as ${a.runsAs})`, subject: a.id, payload: { id: a.id }, needs: 1, approverRoles: APPROVERS, forbid: [a.createdBy].filter(Boolean) });
     a.pendingApproval = ap.id; return { agent: a, pending: true };
   }, () => post<{ agent: Agent; pending: boolean } | null>(`/assistant/agents/${enc(id)}/toggle`, {}));
+}
+/** R33: pause every agent at once, with a reason (immediate: the safe direction). Enable requests made before it can no longer be approved,
+ *  so nothing restarts by itself; each agent is resumed on its own through a new enable request, approved by a different admin or owner. */
+export function pauseAllAgents(reason: string) {
+  return viaApi<{ paused: number; withdrawn: number }>(() => {
+    gate("pausing all agents");
+    const r = clampText(reason, 300); if (r.trim().length < AUTONOMY.REASON_MIN) throw new SodError(`Give a reason of at least ${AUTONOMY.REASON_MIN} characters.`);
+    let paused = 0; let withdrawn = 0;
+    for (const a of ASST.agents) {
+      if (a.status === "Active") { a.status = "Paused"; paused++; }
+      if (stillPending(a.pendingApproval)) { withdrawn++; delete a.pendingApproval; if (a.status === "Pending approval") a.status = "Paused"; }
+    }
+    pausedAllAt = Date.now();
+    wsLog("assistant.agents.paused_all", `${paused} agent${paused === 1 ? "" : "s"} paused by ${getActor().name}${withdrawn ? `, ${withdrawn} enable request${withdrawn === 1 ? "" : "s"} withdrawn` : ""} (reason: ${r})`, "System");
+    return { paused, withdrawn };
+  }, () => post<{ paused: number; withdrawn: number }>("/assistant/agents/pause-all", { reason }));
 }
 export function deleteAgent(id: string) {
   return viaApi<Agent | null>(() => { gate("deleting an agent"); const a = findAgent(id); if (!a) return null; ASST.agents = ASST.agents.filter((x) => x.id !== id); return a; }, () => post<Agent | null>(`/assistant/agents/${enc(id)}/delete`, {}));
