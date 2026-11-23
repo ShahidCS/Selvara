@@ -4,6 +4,12 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Security
+- **Trust Center shows less to people outside the company (F1-02).** A company now chooses what its Trust Center publishes, section by section, under "What visitors can see" on the Resources tab: documents, frequently asked questions, sub-processors, updates and the live control status. The choice applies to the public page and to customers and vendors in the workspace, and a hidden section is not sent to them at all. Existing companies keep every section except the live control status, which is now hidden until an admin or owner turns it on and a different admin or owner approves. Every change is audited and listed in the page history.
+- **Documents under NDA are no longer named to people they were not shared with.** Visitors see public documents and a count such as "2 documents under NDA". They request "documents under NDA" with a reason, and the admin or owner who approves chooses which documents to share (approving with none chosen is refused). Only then does the requester see those documents' names.
+- **The NDA is accepted by each person.** Accepting the NDA no longer covers everyone at the same company: each viewer accepts it for themselves before opening a document under NDA, and the access list shows each viewer's NDA state. **Existing accounts whose NDA was marked accepted are treated as not yet accepted by anyone**: each viewer accepts it once, the next time they open a document under NDA.
+- **Access no longer follows document names.** Customer accounts now refer to documents and viewers by stable references, so renaming a document never changes who can open it. Older accounts are converted when first read; a document name that no longer matches any document is removed from the account, and the removal is written to the audit log.
+
 ## [0.2.5] - 2026-11-23
 
 The reference review, parts 1 to 5. **Deploy note: this release adds migration `0011_help_questions.sql`** (Help centre questions). The server needs schema version 11 and refuses an older database, so run the migration in the project that matches `SUPABASE_URL` just before deploying (see `docs/guides/SUPABASE.md`). `SUPPORT_INBOX_EMAIL` is new and optional: set it to email Selvara support about each new question.

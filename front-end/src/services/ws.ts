@@ -10,6 +10,7 @@ import { delegations } from "@/lib/delegation";
 import { setAcks, setTasks } from "@/lib/me";
 import { ACCESS_REQUESTS, ACCESS_REVIEWS, VENDOR_REQS } from "@/lib/requests";
 import { RISK_ENT, RISK_PARTIES, RISK_SNAPSHOTS } from "@/lib/risk";
+import { sectionsOf } from "@/lib/trustSections";
 import { ANSWER_LIB, INCIDENT, KB_DOCS, SCHED_PACKS, STANDARD_TERMS, TRUST, TRUST_FAQ, TRUST_SUBPROC, TRUST_UPDATES } from "@/lib/trustData";
 import { API_ON, TITLE, allowedSpaces, modAllowed } from "@/lib/rbac";
 import { SERVER_KINDS } from "@/lib/rulesWs";
@@ -28,12 +29,16 @@ export interface WsVendorQ { id: string; vendorId: string; vendor: string; conta
   /** Sent by email and answered in the standalone vendor portal (group 8b). */
   portal?: { email: string; due: string; expiresAt: number; linkLive: boolean; version: number; clarify: string[]; history: { version: number; at: number }[];
     readiness: { unanswered: number; noEvidence: number; clar: number; ready: boolean }; items: Record<string, { answer: string; comment: string; file: { name: string } | null }> } }
-export interface WsTrustPublic { company: string; chatbot: boolean; faq: { q: string; a: string }[]; subprocessors: { name: string; purpose: string; region: string }[]; updates: { at: string; title: string }[];
-  controls: [string, string][]; account: { company: string; nda: string; access: string[] } | null; myRequests: { resource: string; status: string; at: string }[]; subscribed: boolean }
+/** The Trust Center as a member outside administration sees it (an admin's copy is the preview). A section the company does not publish is
+ *  absent (security fix F1-02); documents under NDA are only counted until granted. */
+export interface WsTrustPublic { company: string; chatbot: boolean; faq?: { q: string; a: string }[]; subprocessors?: { name: string; purpose: string; region: string }[]; updates?: { at: string; title: string }[];
+  controls?: [string, string][]; documents?: { id: string; name: string; access: string; file: boolean; open: boolean }[]; ndaCount?: number;
+  account: { company: string; nda: string; access: string[] } | null; myRequests: { resource: string; status: string; at: string }[]; subscribed: boolean }
 /** Group 5: auditors who can be given access, and the company audit log's verification and evidence packages. */
 export interface WsAuditLog { firstBad: number | null; verifiedAt: string | null; verifiedBy?: string; packages: { id: string; at: string; by: string; entries: number; sha: string }[] }
 export const g4Meta = createStore<{ contacts: { id: string; name: string }[]; vendorQs: WsVendorQ[]; /** email is set up (the vendor portal can be used) */ mail?: boolean;
-  /** The anonymous public Trust Center page (group 8b), for admins and owners. */ trustPage?: { on: boolean; ref: string; since: string; by: string; pending: string | null; mail: boolean } | null; assigned: WsVendorQ[]; trustPublic: WsTrustPublic | null; incidents: any[]; subscribers: number;
+  /** The anonymous public Trust Center page (group 8b), for admins and owners. */ trustPage?: { on: boolean; ref: string; since: string; by: string; pending: string | null; mail: boolean } | null;
+  /** The pending request to show the live control status (F1-02), for admins and owners. */ trustSectionsPending?: string | null; assigned: WsVendorQ[]; trustPublic: WsTrustPublic | null; incidents: any[]; subscribers: number;
   auditors: { id: string; name: string }[]; auditlog: WsAuditLog }>({ contacts: [], vendorQs: [], assigned: [], trustPublic: null, incidents: [], subscribers: 0, auditors: [], auditlog: { firstBad: null, verifiedAt: null, packages: [] } });
 /** My Work as the server computes it for the signed-in person. */
 export interface WsWork {
@@ -99,11 +104,13 @@ const LOADERS: Record<string, (b: any) => void> = {
     g4Meta.set({ assigned: b.assigned }); if (b.filesConfigured) wsMeta.set({ filesConfigured: true });
   },
   trust(b) {
-    DATA.trust = b.resources; const p = b.public; g4Meta.set({ trustPublic: p, subscribers: b.subscribers ?? 0, trustPage: b.publicPage ?? null });
-    fill(TRUST_FAQ, p.faq); fill(TRUST_SUBPROC, p.subprocessors); fill(TRUST_UPDATES, p.updates);
+    DATA.trust = b.resources; const p = b.public; g4Meta.set({ trustPublic: p, subscribers: b.subscribers ?? 0, trustPage: b.publicPage ?? null, trustSectionsPending: b.sectionsPending ?? null });
+    fill(TRUST_FAQ, p.faq ?? []); fill(TRUST_SUBPROC, p.subprocessors ?? []); fill(TRUST_UPDATES, p.updates ?? []);
+    // admins and owners get the company's choice; anyone else only sees which sections were sent
+    TRUST.sections = b.sections ?? sectionsOf({ faq: !!p.faq, subprocessors: !!p.subprocessors, updates: !!p.updates, documents: !!p.documents, controls: !!p.controls });
     TRUST.accounts = b.accounts ?? []; TRUST.requests = b.requests ?? []; TRUST.decisions = b.decisions ?? []; TRUST.blocked = b.blocked ?? []; TRUST.chats = b.chats ?? [];
     TRUST.chatbot = b.chatbot ?? p.chatbot; TRUST.activity = b.activity ?? []; TRUST.modeHist = b.modeHist ?? [];
-    if (b.approvals) setApprovals(["trust.publish", "trust.public-page"], b.approvals);
+    if (b.approvals) setApprovals(["trust.publish", "trust.public-page", "trust.section-controls"], b.approvals);
     if (b.filesConfigured) wsMeta.set({ filesConfigured: true });
   },
   commitments(b) {
