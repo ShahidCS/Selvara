@@ -9,6 +9,7 @@ import { approve as engineApprove, getApproval, reject as engineReject, requestA
 import { guard, reasonText, selfReason } from "@/lib/grcSod";
 import { viaApi } from "@/services/http";
 import { wsPatch, wsPost, wsUpload } from "@/services/ws";
+import { inAuditorScope } from "@/services/audits";
 import { evidenceDecideDeleteBlock, evidenceRequestDeleteBlock, evidenceReviewBlock, evidenceWriteBlock } from "@/lib/rulesWs";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -33,7 +34,8 @@ export function evInit(e: any) {
   if (!e.review) e.review = { status: "Pending review" };
   return e;
 }
-export const findEvidence = (id: string) => DATA.evidence.find((e) => e.id === id);
+/** An evidence item by id; outside an external auditor's scope it does not exist for them. */
+export const findEvidence = (id: string) => DATA.evidence.find((e) => e.id === id && inAuditorScope("evidence", e.id));
 const today = () => nowStamp().slice(0, 10);
 const need = (id: string) => { const e = findEvidence(id); if (!e) throw new SodError("Evidence not found."); return evInit(e); };
 

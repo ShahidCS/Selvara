@@ -200,7 +200,9 @@ describe("public Trust Center (anonymous visitors)", () => {
     await approve("trust.public-page");
     const page = body<{ company: string; documents: { name: string; open: boolean }[]; visitor: unknown }>(await call("GET", "trust-public/acme-eu"));
     expect(page.company).toBe("Acme Test Co"); expect(page.visitor).toBeNull();
-    expect(page.documents.map((x) => [x.name, x.open])).toEqual([["ISO certificate", true], ["SOC 2 report", false]]);
+    // F1-02: the document under NDA is counted, never named, for an anonymous visitor
+    expect(page.documents.map((x) => [x.name, x.open])).toEqual([["ISO certificate", true]]);
+    expect((page as unknown as { ndaCount: number }).ndaCount).toBe(1); expect(JSON.stringify(page)).not.toContain("SOC 2 report");
     await call("POST", "ws/trust/public-page", { enabled: false }, jordan.c); // off at once
     expect((await call("GET", "trust-public/acme-eu")).status).toBe(404);
   });
@@ -216,9 +218,10 @@ describe("public Trust Center (anonymous visitors)", () => {
     const v = await call("POST", "trust-public/acme-eu/verify", { email: "buyer@customer.example", code: otp });
     const vc = { [VCOOKIE]: v.cookies![0].match(new RegExp(`${VCOOKIE}=([^;]*)`))![1] };
     expect((await call("GET", "ws/data/trust", {}, vc)).status).toBe(401); // a visitor is never a member
-    expect(body<{ queued: boolean }>(await call("POST", "trust-public/acme-eu/requests", { resourceId: soc.id, reason: "Vendor due diligence" }, vc)).queued).toBe(true);
+    expect((await call("POST", "trust-public/acme-eu/requests", { resourceId: soc.id, reason: "Vendor due diligence" }, vc)).status).toBe(404); // F1-02: not named to them
+    expect(body<{ queued: boolean }>(await call("POST", "trust-public/acme-eu/requests", { reason: "Vendor due diligence" }, vc)).queued).toBe(true);
     const rq = (await data()).requests[0]; expect(rq.who).toBe("buyer@customer.example");
-    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, {}, casey.c)).status).toBe(200);
+    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, { resourceIds: [soc.id] }, casey.c)).status).toBe(200);
     expect(last()).toMatchObject({ to: "buyer@customer.example", subject: "Acme Test Co Trust Center: SOC 2 report" });
     expect((await call("GET", `trust-public/acme-eu/documents/${soc.id}/link`, {}, vc)).status).toBe(403); // the NDA first
     expect((await call("POST", "trust-public/acme-eu/nda", {}, vc)).status).toBe(200);
@@ -248,10 +251,10 @@ describe("public Trust Center (anonymous visitors)", () => {
     const { jordan, casey, approve, soc } = await setup();
     await call("POST", "ws/trust/public-page", { enabled: true }, jordan.c); await approve("trust.public-page");
     const visit = async (email: string) => { await call("POST", "trust-public/acme-eu/code", { email }); const v = await call("POST", "trust-public/acme-eu/verify", { email, code: /is (\d{6})/.exec(last().text)![1] }); return { [VCOOKIE]: v.cookies![0].match(new RegExp(`${VCOOKIE}=([^;]*)`))![1] }; };
-    await call("POST", "trust-public/acme-eu/requests", { resourceId: soc.id }, await visit("jordan@acme.example"));
+    expect(body<{ queued: boolean }>(await call("POST", "trust-public/acme-eu/requests", { reason: "Checking our own page" }, await visit("jordan@acme.example"))).queued).toBe(true);
     const rq = body<{ requests: { id: string }[] }>(await call("GET", "ws/data/trust", {}, jordan.c)).requests[0];
-    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, {}, jordan.c)).status).toBe(403); // their own address
-    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, {}, casey.c)).status).toBe(403); // a member's address
+    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, { resourceIds: [soc.id] }, jordan.c)).status).toBe(403); // their own address
+    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, { resourceIds: [soc.id] }, casey.c)).status).toBe(403); // a member's address
   });
   it("keys limits on the company, says when a request is not queued, and lets an unsubscribed visitor subscribe again", async () => {
     const { jordan, approve, iso } = await setup();

@@ -201,8 +201,11 @@ describe("trust center", () => {
     const pen = body<{ id: string }>(await call("POST", "ws/trust/resources", { name: "Pen test summary" }, jordan.cookie)).id;
     // a viewer member requests access with their own address
     expect((await call("GET", "ws/data/trust", {}, val.cookie)).body).not.toHaveProperty("accounts");
-    expect(body<{ queued: boolean }>(await call("POST", "ws/trust/access-requests", { resourceId: pen, reason: "Due diligence" }, val.cookie)).queued).toBe(true);
-    expect(body<{ queued: boolean }>(await call("POST", "ws/trust/access-requests", { resourceId: pen }, val.cookie)).queued).toBe(false); // duplicate, same answer
+    // F1-02: a document under NDA is never named to someone it was not granted to, so the request is for "Documents under NDA", with a reason
+    expect((await call("POST", "ws/trust/access-requests", { resourceId: pen, reason: "Due diligence" }, val.cookie)).status).toBe(404);
+    expect((await call("POST", "ws/trust/access-requests", {}, val.cookie)).status).toBe(400); // a reason is required
+    expect(body<{ queued: boolean }>(await call("POST", "ws/trust/access-requests", { reason: "Due diligence" }, val.cookie)).queued).toBe(true);
+    expect(body<{ queued: boolean }>(await call("POST", "ws/trust/access-requests", { reason: "Due diligence" }, val.cookie)).queued).toBe(false); // duplicate, same answer
     const rq = (await tdata(jordan.cookie)).requests[0];
     // block, then the person who unblocks cannot approve
     await call("POST", "ws/trust/blocked-domains", { domain: "customer.example" }, jordan.cookie);
@@ -210,7 +213,8 @@ describe("trust center", () => {
     expect((await call("POST", "ws/trust/blocked-domains/customer.example/delete", { reason: "short" }, jordan.cookie)).status).toBe(400);
     expect((await call("POST", "ws/trust/blocked-domains/customer.example/delete", { reason: "Confirmed a real customer" }, jordan.cookie)).status).toBe(200);
     expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, {}, jordan.cookie)).status).toBe(403);
-    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, {}, casey.cookie)).status).toBe(200);
+    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, {}, casey.cookie)).body).toEqual({ error: "Select at least one document under NDA to grant." });
+    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, { resourceIds: [pen] }, casey.cookie)).status).toBe(200);
     expect((await tdata(jordan.cookie)).accounts[0]).toMatchObject({ nda: "Pending", status: "Active" }); // never marked signed
     // files: none attached yet; then the viewer must accept the NDA
     expect((await call("GET", `ws/trust/resources/${pen}/link`, {}, val.cookie)).status).toBe(400);
@@ -224,7 +228,7 @@ describe("trust center", () => {
     const acc = (await tdata(owen.cookie)).accounts[0];
     expect((await call("POST", `ws/trust/accounts/${acc.id}/revoke`, {}, owen.cookie)).status).toBe(400);
     expect((await call("POST", `ws/trust/accounts/${acc.id}/revoke`, { reason: "Contract ended" }, owen.cookie)).status).toBe(200);
-    expect((await call("GET", `ws/trust/resources/${pen}/link`, {}, val.cookie)).status).toBe(403);
+    expect((await call("GET", `ws/trust/resources/${pen}/link`, {}, val.cookie)).status).toBe(404); // F1-02: no longer granted, so not found
     // the chatbot answers only from verified answers
     await call("POST", "ws/answer-library", { q: "Where is customer data hosted?", a: "In the EU." }, owen.cookie);
     const ask = async () => body<{ ans: string | null }>(await call("POST", "ws/trust/questions", { q: "Where is my data hosted?" }, val.cookie));
@@ -253,18 +257,19 @@ describe("review findings (group 4 cross-check)", () => {
     const tap = body<{ approvals: { id: string }[] }>(await call("GET", "ws/data/trust", {}, jordan.cookie)).approvals[0];
     await four(casey.cookie, tap.id, "approve");
     expect((await call("POST", `ws/trust/resources/${id}/file`, { name: "internal.pdf" }, owen.cookie, pdf)).status).toBe(200);
-    const res = body<{ resources: { id: string; access: string }[] }>(await call("GET", "ws/data/trust", {}, val.cookie)).resources.find((x) => x.id === id)!;
-    expect(res).toEqual({ id, name: "SOC 2 summary", access: "On request, NDA", status: "Active", file: { name: "internal.pdf" } }); // trimmed for visitors
+    const vd = body<{ resources: { id: string; access: string }[]; public: { ndaCount: number } }>(await call("GET", "ws/data/trust", {}, val.cookie));
+    expect(vd.resources.find((x) => x.id === id)).toBeUndefined(); // F1-02: under NDA and not granted, so not listed for a viewer, only counted
+    expect(vd.public.ndaCount).toBe(1);
     // a parent-domain unblock
     await call("POST", "ws/trust/blocked-domains", { domain: "customer.example" }, jordan.cookie);
     const valSub = await member("val2@sub.customer.example", "viewer", "Val Two");
-    await call("POST", "ws/trust/access-requests", { resourceId: id }, valSub.cookie);
+    await call("POST", "ws/trust/access-requests", { reason: "Supplier review 2026" }, valSub.cookie);
     const rq = body<{ requests: { id: string }[] }>(await call("GET", "ws/data/trust", {}, jordan.cookie)).requests[0];
     expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, {}, casey.cookie)).status).toBe(403);
     expect(log("trust.access.approve.denied")).toHaveLength(1); // recorded although refused
     await call("POST", "ws/trust/blocked-domains/customer.example/delete", { reason: "Confirmed customer" }, casey.cookie);
     expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, {}, casey.cookie)).body).toEqual({ error: "Segregation of duties: you unblocked this domain, so another admin or owner must approve its requests." });
-    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, {}, jordan.cookie)).status).toBe(200);
+    expect((await call("POST", `ws/trust/requests/${rq.id}/approve`, { resourceIds: [id] }, jordan.cookie)).status).toBe(200);
     const a1 = (await call("GET", "ws/data/trust", {}, jordan.cookie)).body as { accounts: { id: string; access: string[] }[]; modeHist: unknown[] };
     expect(a1.modeHist.length).toBeGreaterThan(0);
     await call("POST", `ws/trust/accounts/${a1.accounts[0].id}/revoke`, { reason: "Contract ended" }, jordan.cookie);

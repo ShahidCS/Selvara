@@ -13,6 +13,7 @@ import { API_ON } from "@/lib/rbac";
 import { ControlDetail } from "./ControlDetail";
 import { TestDetail } from "./TestDetail";
 import { ControlFormPage, ExceptionFormPage, TestFormPage } from "./ControlForms";
+import { scoped, scopedTests } from "@/services/audits";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Control = any;
@@ -49,6 +50,7 @@ function ControlsList() {
   const go = useGo();
   useApp((s) => s.role);
   const manageWhy = svc.whyCannotManage(), runWhy = svc.whyCannotRunTests();
+  const controls: Control[] = scoped("controls", DATA.controls), tests: Test[] = scopedTests(DATA.tests); // an external auditor: only what is shared with them
   const [view, setView] = useModState<View>("controls.view", "controls");
 
   const seg = (
@@ -60,21 +62,21 @@ function ControlsList() {
   const soa = async () => {
     try {
       downloadText("statement-of-applicability.csv", await svc.exportSoa());
-      wsLog("controls.soa.exported", DATA.controls.length + " controls", "Control");
+      wsLog("controls.soa.exported", controls.length + " controls", "Control");
       L.toast("Statement of Applicability exported");
     } catch (e) { L.toast(uiMessage(e), false); }
   };
   const matrixExport = async () => {
     try {
       downloadText("cross-framework-matrix.csv", await svc.exportMatrix());
-      wsLog("controls.matrix.exported", DATA.controls.length + " controls", "Control");
+      wsLog("controls.matrix.exported", controls.length + " controls", "Control");
       L.toast("Matrix exported");
     } catch (e) { L.toast(uiMessage(e), false); }
   };
   const syncAll = async () => {
     try {
       await svc.syncAllTests();
-      wsLog("tests.synced", DATA.tests.length + " tests", "Control");
+      wsLog("tests.synced", tests.length + " tests", "Control");
       L.toast("All tests synced (demo)"); bumpData();
     } catch (e) { L.toast(uiMessage(e), false); }
   };
@@ -106,7 +108,7 @@ function ControlsList() {
   /* Roles that cannot create see why, in text, instead of a faded create button whose reason is only a hover title. */
   const manageNote = manageWhy && view !== "matrix" ? <p className="field help" role="note" style={{ margin: 0 }}>{manageWhy}</p> : null;
   const testLabel = (r: string) => (r === "Pass" ? "Pass" : r === "Fail" ? "Fail" : "Needs evidence");
-  const testTabs = ["Pass", "Needs evidence", "Fail"].filter((x) => DATA.tests.some((t: Test) => testLabel(t.result) === x));
+  const testTabs = ["Pass", "Needs evidence", "Fail"].filter((x) => tests.some((t: Test) => testLabel(t.result) === x));
   const testCols: DTColumn<Test>[] = [
     { key: "name", header: "Test", value: (t) => t.name, locked: true, render: (t) => <><div className="strong">{t.name}</div><div style={{ fontSize: 11.5, color: "var(--muted)" }}>{t.id}</div></> },
     { key: "source", header: "Source", value: (t) => t.source, render: (t) => t.source },
@@ -123,9 +125,9 @@ function ControlsList() {
         <div className="card" style={{ flex: "1 1 auto" }}>
           <div className="c-head">{seg}</div>
           <div className="c-body flush scroll" data-tour="controls-tests" style={{ padding: 0 }} id="testsBody">
-            <DataTable<Test> id="tests" label="Tests" rows={DATA.tests} rowKey={(t) => t.id} columns={testCols} searchText={(t) => `${t.id} ${t.name} ${t.source} ${t.controls.join(" ")}`}
+            <DataTable<Test> id="tests" label="Tests" rows={tests} rowKey={(t) => t.id} columns={testCols} searchText={(t) => `${t.id} ${t.name} ${t.source} ${t.controls.join(" ")}`}
               tabs={testTabs.map((x) => ({ key: x, label: x, match: (t: Test) => testLabel(t.result) === x }))}
-              filters={[{ key: "source", label: "Source", options: Array.from(new Set<string>(DATA.tests.map((t: Test) => String(t.source)))), get: (t: Test) => t.source }]}
+              filters={[{ key: "source", label: "Source", options: Array.from(new Set<string>(tests.map((t: Test) => String(t.source)))), get: (t: Test) => t.source }]}
               onOpen={(t) => go(`/ws/controls/test/${encodeURIComponent(t.id)}`)} exportName="tests" />
           </div>
         </div>
@@ -144,7 +146,7 @@ function ControlsList() {
               <table className="tbl" style={{ minWidth: 820 }}>
                 <thead><tr><th scope="col">Control</th><th scope="col">Domain</th>{fws.map((f) => <th scope="col" key={f}>{FW_SHORT[f]}</th>)}</tr></thead>
                 <tbody>
-                  {DATA.controls.map((c) => (
+                  {controls.map((c) => (
                     <tr key={c.id}>
                       <td className="strong num">{c.id}</td><td style={{ color: "var(--muted)" }}>{c.domain}</td>
                       {fws.map((f) => {
@@ -170,9 +172,9 @@ function ControlsList() {
           {seg}
         </div>
         <div className="c-body flush scroll" data-tour="controls-table" id="ctrlBody" style={{ padding: 0 }}>
-          <DataTable<Control> id="controls" label="Controls" rows={DATA.controls} rowKey={(c) => c.id} columns={cols} searchText={(c) => `${c.id} ${c.title} ${c.owner} ${c.domain}`}
+          <DataTable<Control> id="controls" label="Controls" rows={controls} rowKey={(c) => c.id} columns={cols} searchText={(c) => `${c.id} ${c.title} ${c.owner} ${c.domain}`}
             tabs={STATUSES.filter((x) => x !== "All").map((x) => ({ key: x, label: x, match: (c: Control) => c.status === x }))}
-            filters={[{ key: "fw", label: "Framework", options: DATA.frameworks.map((f) => f.id), labels: FW_ID, get: () => "", test: (c: Control, want: string) => !!(c.map && c.map[want]) }]}
+            filters={[{ key: "fw", label: "Framework", options: scoped("frameworks", DATA.frameworks).map((f) => f.id), labels: FW_ID, get: () => "", test: (c: Control, want: string) => !!(c.map && c.map[want]) }]}
             onOpen={(c) => go(`/ws/controls/${encodeURIComponent(c.id)}`)} exportName="controls" />
         </div>
       </div>

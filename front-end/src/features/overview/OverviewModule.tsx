@@ -3,6 +3,8 @@ import { DEMO_RISE, PERIODS, demoSeries, periodRange, periodTicks, periodVs, set
 import { FocusCard } from "./FocusCard";
 import { ComplianceCalendar } from "./ComplianceCalendar";
 import { PostureBrief } from "./PostureBrief";
+import { AuditorOverview } from "./AuditorOverview";
+import { baseRole } from "@/lib/sod";
 import { DATA } from "@/lib/data";
 import { appStore, useData } from "@/lib/store";
 import { fwReadiness } from "@/lib/frameworks";
@@ -45,7 +47,13 @@ function CoverageHeatmap() {
 }
 export { CoverageHeatmap };
 
+/** An external auditor sees their engagements, never the company's posture (the server sends them no figures). */
 export default function OverviewModule() {
+  const role = useApp((s) => s.role);
+  return baseRole(role) === "auditor" ? <AuditorOverview /> : <PostureOverview />;
+}
+
+function PostureOverview() {
   useData(); const role = useApp((s) => s.role); useRoute();
   const go = useGo(); const L = useLayer();
   /* production: the detail of a module the role cannot open is never shown (the server sends its figures only) */

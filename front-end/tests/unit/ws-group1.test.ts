@@ -62,6 +62,10 @@ describe("frameworks", () => {
     const jordan = await member("jordan@acme.example", "admin", "Jordan Avery");
     const morgan = await member("morgan@acme.example", "auditor", "Morgan Blake");
     await call("POST", "ws/controls/adopt", { ids: ["IAM-1"] }, jordan.cookie);
+    expect((await call("POST", "ws/frameworks/iso27001/scope", { on: false }, morgan.cookie)).status).toBe(404); // no engagement of theirs names it yet (F1-01)
+    // an ISO 27001 engagement with live access puts the framework in the auditor's scope, read-only
+    const { id: aud } = body<{ id: string }>(await call("POST", "ws/audits", { name: "ISO 27001 surveillance", fw: "ISO 27001" }, jordan.cookie));
+    await call("POST", `ws/audits/${aud}/auditor-access`, { auditorId: morgan.id, until: new Date(clock + 30 * 86400_000).toISOString().slice(0, 10) }, jordan.cookie);
     expect((await call("POST", "ws/frameworks/iso27001/scope", { on: false }, morgan.cookie)).status).toBe(403);
     expect((await call("POST", "ws/frameworks/iso27001/scope", { on: true }, jordan.cookie)).status).toBe(204);
     expect((await call("POST", "ws/frameworks/iso27001/snooze", { on: true }, jordan.cookie)).status).toBe(204);
@@ -166,7 +170,7 @@ describe("evidence", () => {
     const morgan = await member("morgan@acme.example", "auditor", "Morgan Blake");
     const id = body<{ id: string }>(await call("POST", "ws/evidence", { name: "Access review Q3", type: "Report", note: "Synthetic" }, jordan.cookie)).id;
     expect(id).toBe("EV-209");
-    expect((await call("POST", `ws/evidence/${id}/review`, { decision: "Accepted" }, morgan.cookie)).status).toBe(403); // auditors read only
+    expect((await call("POST", `ws/evidence/${id}/review`, { decision: "Accepted" }, morgan.cookie)).status).toBe(404); // not shared with an engagement of theirs: it does not exist for the auditor (F1-01)
     expect((await call("POST", `ws/evidence/${id}/review`, { decision: "Accepted" }, jordan.cookie)).body).toEqual({ error: "Segregation of duties: the collector or a contributor cannot accept their own evidence." });
     await call("POST", `ws/evidence/${id}/versions`, { note: "Added the Q3 export" }, owen.cookie); // owen is now a contributor
     expect((await call("POST", `ws/evidence/${id}/review`, { decision: "Accepted" }, owen.cookie)).status).toBe(403);
@@ -174,7 +178,7 @@ describe("evidence", () => {
     expect((await call("POST", `ws/evidence/${id}/review`, { decision: "Rejected", note: "short" }, casey.cookie)).status).toBe(400);
     expect((await call("POST", `ws/evidence/${id}/review`, { decision: "Accepted", note: "Matches the system export" }, casey.cookie)).status).toBe(200);
     expect((await call("PATCH", `ws/evidence/${id}`, { name: "Access review Q3 (final)", type: "Report", note: "" }, jordan.cookie)).status).toBe(200);
-    expect(body<{ evidence: { review: { status: string } }[] }>(await call("GET", "ws/data/evidence", {}, morgan.cookie)).evidence[0].review.status).toBe("Pending review");
+    expect(body<{ evidence: { review: { status: string } }[] }>(await call("GET", "ws/data/evidence", {}, owen.cookie)).evidence[0].review.status).toBe("Pending review");
     expect(log("evidence.review.reset").length).toBe(1);
   });
   it("files: checked by type, size and content, stored under the company, downloadable through a short link, audited", async () => {

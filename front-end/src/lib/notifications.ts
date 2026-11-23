@@ -8,6 +8,7 @@ import { inlineApprovalsFor, inlineHome } from "./inboxApprovals";
 import { isOn, type NotifCat } from "./notifPrefs";
 import { noticesFor } from "./accountSecurity";
 import { currentAccount } from "./session";
+import { scoped } from "@/services/audits";
 
 export type NotifKind = "approval" | "alert";
 export type NotifTone = "bad" | "warn" | "info";
@@ -40,10 +41,11 @@ export function notificationsFor(role: string, space: Space): Notif[] {
       out.push({ id: `ap:${a.id}`, kind: "approval", tone: "info", icon: "check", title: a.title, detail: `${a.id}, requested by ${a.requestedBy}, ${left} h left`, path: `/ws/${inlineHome(a.kind)}`, approvalId: a.id, cat: "approvals" });
     }
     if (can("controls")) {
-      for (const c of DATA.controls.filter((x: any) => x.status === "Fail")) {
+      const controls = scoped("controls", DATA.controls); // an external auditor: only what is shared with them
+      for (const c of controls.filter((x: any) => x.status === "Fail")) {
         out.push({ id: `ctl:${c.id}`, kind: "alert", tone: "bad", icon: "controls", title: `${c.id} is failing`, detail: `${c.title}, owner ${c.owner}`, path: `/ws/controls/${encodeURIComponent(c.id)}`, cat: "controls" });
       }
-      const ne = DATA.controls.filter((x: any) => x.status === "Needs evidence").length;
+      const ne = controls.filter((x: any) => x.status === "Needs evidence").length;
       if (ne) out.push({ id: "ctl:needs-evidence", kind: "alert", tone: "warn", icon: "evidence", title: `${ne} control${ne === 1 ? "" : "s"} need evidence`, detail: "Collect or attach evidence before the next test", path: "/ws/controls", cat: "evidence" });
     }
     if (can("issues")) {
