@@ -300,3 +300,21 @@ describe("commitments", () => {
     expect((await cd()).incident.active).toBe(false); expect((await cd()).incidents).toHaveLength(1);
   });
 });
+
+describe("vendor logos (reference review R14)", () => {
+  const PNG = "data:image/png;base64," + Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(40)]).toString("base64");
+  it("accepts only a small PNG data URL, lets admins and owners set or remove it, and logs the change", async () => {
+    const { jordan, owen, ana } = await team();
+    await call("POST", "ws/vendors", { name: "Ledgerly", tier: "Low", score: "70" }, jordan.cookie);
+    const set = (logo: unknown, c = jordan.cookie) => call("POST", "ws/vendors/V-001/logo", { logo }, c);
+    for (const bad of ["data:image/svg+xml;base64,PHN2Zy8+", "data:image/png;base64," + Buffer.from("<script>alert(1)</script>").toString("base64"), "https://cdn.example.test/logo.png", 42,
+      "data:image/png;base64," + Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(70 * 1024)]).toString("base64")]) expect((await set(bad)).status).toBe(400);
+    expect((await set(PNG, ana.cookie)).status).toBe(403);
+    expect((await set(PNG, owen.cookie)).status).toBe(200);
+    expect((await vdata(jordan.cookie)).vendors[0].logo).toBe(PNG);
+    expect(log("vendor.logo.changed").at(-1)?.target).toBe("Ledgerly");
+    expect((await set(null)).status).toBe(200);
+    expect((await vdata(jordan.cookie)).vendors[0].logo).toBeUndefined();
+    expect(log("vendor.logo.removed").length).toBe(1);
+  });
+});

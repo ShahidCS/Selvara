@@ -42,8 +42,9 @@ In **each** project (staging and production separately), open SQL Editor → New
 8. [`supabase/migrations/0008_workspace_records.sql`](../../supabase/migrations/0008_workspace_records.sql) (production programme, group 1, from v0.2.0): the workspace modules' records (Frameworks, Controls and Tests, Evidence; later groups add theirs), one row per record, walled off per company by row level security, never deleted (a removed record keeps its row), read-only to platform staff. Evidence **files** are not stored in the database but in Supabase Storage (section 4d). Run it with the release that needs schema version 8.
 9. [`supabase/migrations/0009_company_audit_verify.sql`](../../supabase/migrations/0009_company_audit_verify.sql) (production programme, group 5, from v0.2.0): lets a company admin verify their own company's audit chain from the workspace Audit log. Run it with the release that needs schema version 9.
 10. [`supabase/migrations/0010_platform_records.sql`](../../supabase/migrations/0010_platform_records.sql) (production programme, group 8a, from v0.2.0): the platform's own records for the Admin Console billing ledger, exchange rates and tax, and invoice numbers. Only an elevated platform super admin (or the verified payment webhook, for payments) may write them; a company reads only its own billing rows. Schema version 10.
+11. [`supabase/migrations/0011_help_questions.sql`](../../supabase/migrations/0011_help_questions.sql) (reference review R4, from v0.2.5): questions to Selvara support from the Help centre. A company member reads only their own questions; platform staff read and answer every question in the Admin Console (Customers, Support questions). Nothing is deleted, and messages are never changed. Run it just before you deploy v0.2.5 (v0.2.5 refuses a database without it). Schema version 11.
 
-All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `10` (v0.2.0).
+All are safe to run again. **Run them in the project whose reference matches `SUPABASE_URL` in Vercel** (the reference is in the dashboard address, `supabase.com/dashboard/project/<ref>`): running them in the other project is the most common setup mistake. To check, `select max(version) from public.schema_version;` returns `11` (v0.2.5).
 
 Supabase may warn that a script contains destructive operations: the `drop ... if exists` lines only remove the script's own triggers and policies to recreate them. No data is deleted.
 
@@ -206,6 +207,8 @@ Without these, Selvara sends no email. Links are shown to the person who creates
 4. Password reset emails are sent by Supabase Auth, not by Selvara. In Supabase, Authentication, SMTP settings, enter the same provider's SMTP details so reset emails reach real users.
 
 The provider becomes a sub-processor (record it in RoPA PA-16). Messages carry a title and a link only.
+
+Optional, from v0.2.5: `SUPPORT_INBOX_EMAIL` (not a secret) is the address told when a company asks Selvara support a question in the Help centre. The email names the company, the question's reference and subject, and links to the Admin Console support inbox; the question itself is not included. Without it, staff see new questions in the inbox only. The person who asked is told by email when support answers, whenever email is set up.
 
 ## 5. First accounts (you, per project)
 

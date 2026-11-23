@@ -269,6 +269,10 @@
    "Commitments",
    "Contractual security commitments"
   ],
+  "help": [
+   "Help centre",
+   "Guides, answers and Selvara support"
+  ],
   "auth": [
    "Sign-in & Security",
    "Authentication experience, the same for every customer"

@@ -21,6 +21,14 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 - **Fill a form from a document.** The Add vendor and Add risk forms can be filled from a PDF, Word (.docx) or text file of up to 5 MB. The file is read in your browser and fields are filled from lines such as "Vendor name: Acme". Each filled field is highlighted and labelled "From document" until you edit it, and nothing is saved until you submit. In production, "Fill the rest with AI" sends only the extracted text to the Assistant, with the same checks. Scanned PDFs have no readable text, and you are told so.
 - **Custom agents page.** A summary band shows active agents, runs today, changes waiting for review, approved and rejected. Two lists show which agents run on their own and which ask first. Agents appear as cards with their status, latest run and an autonomy meter; the table is still one click away.
 - **Pause all agents.** Every agent stops at once. A reason is required and recorded in the audit log, and enable requests already waiting are withdrawn. Each agent can still be paused on its own, and each one is resumed on its own with approval from a different admin.
+- **One Settings page (reference review, part 4 of 5).** The sidebar has a single Settings entry. The settings pages share a menu on the left, in three sections: Company (Team & Rules, Billing & Invoices), Connections (Integrations, the API, the AI Assistant) and Security and audit (Security Controls, Audit Logs), plus Your account. Each page keeps its address, so old links and bookmarks still work. Each person sees only the settings their role opens. On narrow screens the menu becomes a row across the top.
+- **Read-first settings.** Review cycles, appetite and SLAs show as a card of values. Edit opens the same fields, each applying as it changes.
+- **Help centre.** Open it from the Help menu.
+  - Searchable guides cover getting started, approvals, controls and evidence, risk, third parties, audits, AI, sign-in and billing. Each guide links to the page it describes.
+  - **Ask Selvara support:** while you type, the form suggests guides that may already answer the question. Only Selvara support staff see the question, never your colleagues.
+  - **My questions:** the answers, replies and closing a question. You are told in Selvara when support answers, and by email when email is set up.
+  - Platform staff answer in the Admin Console, under Customers, Support questions. Staff can be emailed about new questions; the email carries the subject only, never the question.
+- **Vendor logos.** Add a logo on a vendor's page; it replaces the letter tile in lists. The image is redrawn as a small PNG before it is kept, and SVG is not accepted.
 
 ## [0.2.4] - 2026-11-22
 

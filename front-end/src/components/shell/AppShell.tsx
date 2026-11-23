@@ -1,3 +1,4 @@
+import { SETTINGS_KEYS, SettingsFrame } from "./SettingsMenu";
 import { ReactNode, useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/router";
 import { appStore, loadPersisted, persist, setModState, useApp, useData } from "@/lib/store";
@@ -135,7 +136,7 @@ function Frame({ children }: { children: ReactNode }) {
         ) : null}
         {!known ? (
           <div className="page"><Empty icon="alert" title="Page not found" action={<button className="btn btn-primary" onClick={() => go(home)}>Back to {homeLabel}</button>}>That route doesn&apos;t exist or has moved.</Empty></div>
-        ) : !confirmed || (s.hydrated && !allowed) ? null : children}
+        ) : !confirmed || (s.hydrated && !allowed) ? null : route.space === "ws" && SETTINGS_KEYS.includes(route.mod) ? <SettingsFrame mod={route.mod}>{children}</SettingsFrame> : children}
       </main>
       <div id="scrim-sb" onClick={() => appStore.set({ mobOpen: false })} />
       <TourHost />

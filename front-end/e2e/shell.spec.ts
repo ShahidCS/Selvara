@@ -101,8 +101,10 @@ test("the old My Workspace address opens My Work on the Policies tab, and the br
   const a = await openAs(browser, ti, "admin");
   await gotoModule(a.page, "/ws/team");
   const nav = a.page.getByRole("navigation", { name: "Company" });
-  await expect(nav.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
-  await expect(nav).toContainText("Team & Rules");
+  // R37: one Settings entry in the sidebar; the settings pages share a menu of their own
+  await expect(nav.getByRole("button", { name: "Settings", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(nav).not.toContainText("Team & Rules");
+  await expect(a.page.getByRole("navigation", { name: "Settings" }).getByRole("link", { name: "Team & Rules" })).toHaveAttribute("aria-current", "page");
   await expect(heading(a.page)).toHaveText("Team & Rules");
   await a.close();
 });
