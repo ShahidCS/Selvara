@@ -84,6 +84,15 @@ export async function auditorScope(t: WsTx): Promise<AuditorScope | null> {
   }
   return s;
 }
+/** Fields that carry a company member's user id. An auditor keeps the display names already on a shared record, never the ids. */
+const MEMBER_ID_KEYS = new Set(["ownerId", "byId", "requestedById", "requesterId", "authorId", "editorIds", "lastEditorId", "approverId", "submittedById", "approvedById",
+  "publishedById", "creatorId", "userId", "decidedById", "draftedById", "answeredById", "createdById", "auditorId", "forbid"]);
+/** A record as an auditor receives it: the same shape, with every member id emptied ("" or []), however deeply nested. */
+export function withoutMemberIds<T>(x: T): T {
+  if (Array.isArray(x)) return x.map(withoutMemberIds) as T;
+  if (!x || typeof x !== "object") return x;
+  return Object.fromEntries(Object.entries(x as Record<string, unknown>).map(([k, v]) => [k, MEMBER_ID_KEYS.has(k) ? (Array.isArray(v) ? [] : v == null ? v : "") : withoutMemberIds(v)])) as T;
+}
 /** For an auditor, a record outside their scope does not exist (404, before anything else); every other role passes. */
 export async function scopeGuard(t: WsTx, kind: keyof AuditorScope, id: string, what: string) {
   const s = await auditorScope(t); if (s && !s[kind].has(id)) missing(what);
@@ -306,7 +315,7 @@ export function auditRoutes(h: WsHelpers) {
     const s = (await t.get<RiskSnapshot>("risk-snapshot", str(r.path[4], 20))) ?? missing("Snapshot");
     if (!inWindow(a, s.data.at, t.now)) missing("Snapshot");
     await t.audit("risk.register.snapshot.downloaded", `${s.id} (SHA-256 ${s.data.sha256}) for ${a.id} by ${c.actor.name}`, "Risk");
-    return ok(s.data);
+    return ok(c.actor.role === "auditor" ? withoutMemberIds(s.data) : s.data); // the external auditor: names, never member ids
   }));
 
   /* ----- the company audit log (company admins) ----- */

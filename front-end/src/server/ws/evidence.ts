@@ -9,7 +9,7 @@ import {
 import { approvalBlock, reasonBlock } from "@/lib/rules";
 import type { Deps } from "../types";
 import { approvalsView, invalid, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
-import { auditorScope, scopeGuard } from "./audits";
+import { auditorScope, scopeGuard, withoutMemberIds } from "./audits";
 import { checkFile } from "./files";
 import { WsConflict, WsRefused, type Rec, type WsTx } from "./store";
 
@@ -55,7 +55,8 @@ export function evidenceRoutes(h: WsHelpers) {
     const scope = await auditorScope(t); const sees = (id: string) => !scope || scope.evidence.has(id); // an auditor: only what is shared with them
     // newest first, as the register shows them; file paths stay on the server
     const items = (await t.list<Evidence>("evidence")).filter((x) => sees(x.id)).map((x) => ({ ...x.data, _v: x.version, attachments: x.data.attachments.map(({ path: _p, ...a }) => (void _p, a)) })).reverse();
-    return { evidence: items, approvals: (await approvalsView(t, DEL, names)).filter((a) => sees(String(a.subject ?? ""))), filesConfigured: d.files.configured };
+    const out = { evidence: items, approvals: (await approvalsView(t, DEL, names)).filter((a) => sees(String(a.subject ?? ""))), filesConfigured: d.files.configured };
+    return scope ? withoutMemberIds(out) : out; // an external auditor: collector and reviewer names stay, member ids do not
   })));
   const create = wsRoute(h, "evidence", async (d, r, c) => {
     refuse(evidenceWriteBlock(c.actor.role)); const x = input(r.body); const me = c.actor;

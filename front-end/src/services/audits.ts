@@ -236,8 +236,11 @@ export function auditorScope(): AuditorScope | null {
 export const inAuditorScope = (kind: keyof AuditorScope, id: string): boolean => { const s = auditorScope(); return !s || s[kind].has(id); };
 /** The records of a list the signed-in person may see. */
 export function scoped<T extends { id: string }>(kind: keyof AuditorScope, list: T[]): T[] { const s = auditorScope(); return s ? list.filter((x) => s[kind].has(x.id)) : list; }
-/** Tests the signed-in person may see: for an auditor, those supporting a control in their scope. */
-export function scopedTests<T extends { controls: string[] }>(list: T[]): T[] { const s = auditorScope(); return s ? list.filter((x) => x.controls.some((c) => s.controls.has(c))) : list; }
+/** Tests the signed-in person may see: for an auditor, those supporting a control in their scope, each naming only the controls in it. */
+export function scopedTests<T extends { controls: string[] }>(list: T[]): T[] {
+  const s = auditorScope(); if (!s) return list;
+  return list.filter((x) => x.controls.some((c) => s.controls.has(c))).map((x) => ({ ...x, controls: x.controls.filter((c) => s.controls.has(c)) }));
+}
 
 /** Production: a risk register snapshot shared with this engagement's auditor, as JSON text for download. */
 export async function sharedSnapshot(id: string, sid: string): Promise<string> {

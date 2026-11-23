@@ -11,7 +11,7 @@ import {
 import { approvalBlock, reasonBlock } from "@/lib/rules";
 import type { Deps } from "../types";
 import { approvalsView, invalid, membersOf, modAllowed, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
-import { auditorScope, scopeGuard } from "./audits";
+import { auditorScope, scopeGuard, withoutMemberIds } from "./audits";
 import { actsAs, delegationsOf, sweepDelegations } from "./delegation";
 import type { Actor, Rec, WsTx } from "./store";
 
@@ -86,7 +86,9 @@ export function policyRoutes(h: WsHelpers) {
     const scope = await auditorScope(t); // an auditor: only what is shared with them
     const policies = (await t.list<Policy>("policy")).filter((x) => !scope || scope.policies.has(x.id)).map((x) => {
       const l = live(x.data); const done = l ? acks.filter((a) => a.policyId === x.id && a.ver === l.ver).length : 0;
-      return { ...(manager ? x.data : forReader(x.data)), acceptance: { required: l ? members.length : 0, done } };
+      const p = { ...(manager ? x.data : forReader(x.data)), acceptance: { required: l ? members.length : 0, done } };
+      // an external auditor: mapped controls name only those shared with them, and no member ids
+      return scope ? withoutMemberIds({ ...p, mappedControls: p.mappedControls.filter((id) => scope.controls.has(id)) }) : p;
     });
     const mine: Record<string, { at: string; ver: string }> = {};
     for (const a of acks) if (a.userId === c.actor.id) mine[a.policyId] = { at: DAY_FMT(a.at), ver: a.ver };

@@ -171,6 +171,50 @@ describe("auditor scope (F1-01)", () => {
     expect((await share(s.aud, "policies", s.p1, jordan.cookie, false)).status).toBe(400);
   });
 
+  it("an auditor gets no member list or member ids; names on shared records stay", async () => {
+    const s = await setup(); const { jordan, ana, mo } = s;
+    await call("POST", `ws/audits/${s.aud}/auditor-access`, { auditorId: mo.id, until: day(30) }, jordan.cookie);
+    await share(s.aud, "controls", "GOV-1", jordan.cookie); await share(s.aud, "evidence", s.ev1, jordan.cookie); await share(s.aud, "policies", s.p1, jordan.cookie);
+    await call("POST", "ws/controls/GOV-1/attestation", { note: "Reviewed the board minutes" }, jordan.cookie);
+    const owen = await member("owen@acme.example", "owner", "Owen Hart");
+    expect((await call("POST", `ws/evidence/${s.ev1}/review`, { decision: "Accepted" }, owen.cookie)).status).toBe(200);
+    await call("POST", "ws/frameworks/iso27001/requirements/A.5.2/na", { reason: "Not relevant to this company at all" }, jordan.cookie);
+    expect(body<unknown[]>(await call("GET", "ws/members", {}, mo.cookie))).toEqual([]);
+    expect(body<unknown[]>(await call("GET", "ws/members", {}, ana.cookie)).length).toBe(5); // other roles keep the pickers
+    const ctl = body<{ members: unknown[]; controls: { owner: string; ownerId: string; attestation: { by: string; byId: string } }[] }>(await call("GET", "ws/data/controls", {}, mo.cookie));
+    expect(ctl.members).toEqual([]);
+    expect(ctl.controls[0]).toMatchObject({ owner: "Jordan Avery", ownerId: "", attestation: { by: "Jordan Avery", byId: "" } });
+    const ev = body<{ evidence: { by: string; review: { by: string } }[] }>(await call("GET", "ws/data/evidence", {}, mo.cookie));
+    expect(ev.evidence[0]).toMatchObject({ by: "Jordan Avery", review: { by: "Owen Hart", byId: "" } });
+    for (const path of ["controls", "evidence", "policies", "frameworks", "audits"]) {
+      const text = JSON.stringify((await call("GET", `ws/data/${path}`, {}, mo.cookie)).body);
+      for (const who of [jordan.id, ana.id, owen.id, s.kim.id]) expect(text, path).not.toContain(who);
+    }
+    expect(body<{ members: unknown[] }>(await call("GET", "ws/data/controls", {}, jordan.cookie)).members.length).toBe(5); // management unchanged
+  });
+
+  it("framework mappings, test links and policy mappings name only the controls shared with the auditor", async () => {
+    const s = await setup(); const { jordan, mo } = s;
+    await call("POST", `ws/audits/${s.aud}/auditor-access`, { auditorId: mo.id, until: day(30) }, jordan.cookie);
+    await share(s.aud, "controls", "GOV-1", jordan.cookie); await share(s.aud, "policies", s.p1, jordan.cookie);
+    for (const c of ["GOV-1", "IAM-1"]) await call("POST", `ws/policies/${s.p1}/controls`, { control: c }, jordan.cookie);
+    await call("POST", "ws/frameworks/iso27001/requirements/A.5.1/map", { control: "IAM-1" }, jordan.cookie); // A.5.1 now maps GOV-1 and IAM-1
+    const all = (st: Record<string, { reqCtrl: Record<string, string[]> }>) => Object.values(st.iso27001.reqCtrl).flat();
+    type St = { state: Record<string, { reqCtrl: Record<string, string[]> }> };
+    expect(all(body<St>(await call("GET", "ws/data/frameworks", {}, jordan.cookie)).state)).toEqual(expect.arrayContaining(["GOV-1", "IAM-1"]));
+    const mine = body<St>(await call("GET", "ws/data/frameworks", {}, mo.cookie)).state;
+    expect(new Set(all(mine))).toEqual(new Set(["GOV-1"]));
+    expect(mine.iso27001.reqCtrl["A.5.1"]).toEqual(["GOV-1"]);
+    expect(body<{ policies: { mappedControls: string[] }[] }>(await call("GET", "ws/data/policies", {}, mo.cookie)).policies[0].mappedControls).toEqual(["GOV-1"]);
+    expect(body<{ policies: { id: string; mappedControls: string[] }[] }>(await call("GET", "ws/data/policies", {}, jordan.cookie)).policies.find((p) => p.id === s.p1)!.mappedControls).toEqual(["GOV-1", "IAM-1"]);
+    // a test supporting a shared and an unshared control names only the shared one
+    const t = body<{ id: string }>(await call("POST", "ws/tests", { name: "Joint check", control: "GOV-1" }, jordan.cookie)).id;
+    const rec = await ws.tx({ id: jordan.id, name: "Jordan Avery", role: "admin", tenantId: ACME, ip: "" }, clock, async (x) => { const r = (await x.get<{ controls: string[] }>("test", t))!; r.data.controls.push("IAM-1"); await x.update("test", t, r.data, r.version); return r.data; });
+    expect(rec.controls).toEqual(["GOV-1", "IAM-1"]);
+    const tests = body<{ tests: { id: string; controls: string[] }[] }>(await call("GET", "ws/data/controls", {}, mo.cookie)).tests;
+    expect(tests.find((x) => x.id === t)!.controls).toEqual(["GOV-1"]);
+  });
+
   it("the auditor's Overview carries no company-wide figures", async () => {
     const s = await setup(); const { jordan, mo } = s;
     await call("POST", "ws/risks", { title: "Synthetic risk", ownerId: jordan.id }, jordan.cookie);

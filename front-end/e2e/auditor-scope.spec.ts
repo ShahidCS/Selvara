@@ -4,10 +4,12 @@ import { gotoModule, heading, nextPush, openAs, switchTo } from "./helpers";
 /* Security fix F1-01 (demonstration): management shares a control and an evidence item on an engagement; the external auditor then sees only
    those in Controls and Evidence, their Overview lists the engagement, and an unshared control's address shows "not found". */
 const rows = (p: Page, name: string) => p.getByRole("table", { name, exact: true }).locator("tbody tr");
+const ctlBadge = (p: Page) => p.locator(".nav-item", { has: p.locator(".lbl", { hasText: /^Controls & Tests$/ }) }).locator(".cnt");
 
 test("an auditor sees only what management shared with their engagement", async ({ browser }, ti) => {
   const s = await openAs(browser, ti, "admin"); const p = s.page;
   await gotoModule(p, "/ws/audits/AUD-01");
+  await expect(ctlBadge(p)).toHaveCount(1); // management sees the company's figure
   await p.getByRole("button", { name: "Send to auditor" }).click();
   await expect(p.getByText("Auditor access granted", { exact: true }).first()).toBeVisible();
   await p.getByRole("tab", { name: "Shared with the auditor" }).click();
@@ -25,6 +27,13 @@ test("an auditor sees only what management shared with their engagement", async 
   await expect(heading(p)).toHaveText("Your engagements");
   await expect(rows(p, "Your engagements")).toHaveCount(1);
   await expect(rows(p, "Your engagements").first()).toContainText("ISO 27001 surveillance");
+  // no company-wide counts: the shared control passes, so no Controls badge and no control alerts in the bell
+  await expect(ctlBadge(p)).toHaveCount(0);
+  await p.getByRole("button", { name: /^Notifications/ }).click();
+  const drawer = p.getByRole("dialog", { name: "Notifications" });
+  await expect(drawer).toBeVisible();
+  await expect(drawer).not.toContainText(/is failing|need evidence/);
+  await p.keyboard.press("Escape");
 
   await nextPush(p, "/ws/controls");
   await expect(rows(p, "Controls")).toHaveCount(1);

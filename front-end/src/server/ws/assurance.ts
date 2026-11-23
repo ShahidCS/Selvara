@@ -11,7 +11,7 @@ import {
 import { approvalBlock, reasonBlock } from "@/lib/rules";
 import type { Deps } from "../types";
 import { LIB_CONTROLS, LIB_FRAMEWORKS, LIB_REQS } from "./catalogue";
-import { auditorScope, scopeGuard, type AuditorScope } from "./audits";
+import { auditorScope, scopeGuard, withoutMemberIds, type AuditorScope } from "./audits";
 import { approvalsView, invalid, memberRef, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
 import { WsConflict, type Actor, type Rec, type WsTx } from "./store";
 
@@ -99,12 +99,20 @@ async function controlsData(d: Deps, t: WsTx) {
   const scope = await auditorScope(t); const sees = (id: string) => !scope || scope.controls.has(id); // an auditor: only what is shared with them
   // automated tests name employees' accounts as evidence: only admins (who see them in Integrations anyway) get those names
   const tests = (await t.list<Test>("test")).map((x) => x.data).map((x) => (isAutomated(x.id) && t.actor.role !== "admin" && x.items.length ? { ...x, items: [{ item: `${x.items.length} item${x.items.length === 1 ? "" : "s"} (an admin sees them in Integrations)`, result: x.result }] } : x));
-  return { controls: (await t.list<Control>("control")).map((x) => x.data).filter((x) => sees(x.id)), tests: tests.filter((x) => !scope || x.controls.some(sees)),
+  const out = { controls: (await t.list<Control>("control")).map((x) => x.data).filter((x) => sees(x.id)),
+    tests: tests.filter((x) => !scope || x.controls.some(sees)).map((x) => (scope ? { ...x, controls: x.controls.filter(sees) } : x)), // an auditor: only shared control ids
     approvals: (await approvalsView(t, EXC, names)).filter((a) => sees(String(a.subject ?? ""))), members, library: LIB_CONTROLS };
+  // an external auditor gets no member list and no member ids; the names on the shared records stay
+  return scope ? withoutMemberIds({ ...out, members: [] }) : out;
 }
 async function frameworksData(t: WsTx) {
   const scope = await auditorScope(t); const sees = (id: string) => !scope || scope.frameworks.has(id); // an auditor: their engagements' frameworks
   const state: Record<string, FwState> = {}; for (const s of await t.list<FwState>("fw")) if (sees(s.id)) state[s.id] = s.data;
+  if (scope) for (const [id, st] of Object.entries(state)) { // an auditor: requirement mappings name only the controls shared with them, and no member ids
+    const reqCtrl: Record<string, string[]> = {};
+    for (const [req, ids] of Object.entries(st.reqCtrl ?? {})) { const keep = ids.filter((x) => scope.controls.has(x)); if (keep.length) reqCtrl[req] = keep; }
+    state[id] = withoutMemberIds({ ...st, reqCtrl });
+  }
   return { library: LIB_FRAMEWORKS.filter((f) => sees(f.id)), state, custom: (await t.list<FwCustom>("fw-custom")).filter((x) => sees(x.id)).map((x) => ({ id: x.id, ...x.data })) };
 }
 /** A test exists for an auditor only when it supports a control in their scope. */
