@@ -230,6 +230,28 @@ Components and props:
 - **Shell:** the route guard says "Your role does not open <module>." before it moves a person to their start page; the mobile drawer traps focus and has a close button; the vendor portal security panel is folded into "How this portal protects you".
 
 
+## App frame, lists and AI mark (reference review, November 2026)
+
+Decided by the owner from the FleetFlow reference comparison ([ui-review/REFERENCE-fleetflow.md](ui-review/REFERENCE-fleetflow.md)).
+- **Frame:** the sidebar sits on the canvas (`--bg`), and `#topbar` with `main#content` form one rounded panel (`--radius-xl`), inset 8px. Phones keep the full-bleed layout.
+- **Header row:**
+  - the breadcrumb is an uppercase eyebrow;
+  - page titles use the light display weight;
+  - `Page` takes an optional `eyebrow` (the Overview's date line);
+  - global actions are search, Ask AI, the bell, the approvals pill (`lib/approvalsWaiting.ts`: the server's My Work figure in production, the demo review list otherwise), Help and the account menu.
+  - The theme switch is in the account menu.
+- **Cards:** keep the white surface with a soft border, `--radius-panel` and no shadow. `.panel-soft` is the grey summary panel for focus, AI and calendar content.
+- **People and vendors (`components/ui/People.tsx`):**
+  - `Avatar` and `Person` show generated initials and never photos. The initials are drawn by CSS from `data-i`, so a cell's text stays the name.
+  - `VendorTile` shows an uploaded logo or a letter tile.
+  - The six tones are token colours with white text.
+- **Severity:** `SeverityBars` shows the word plus 1 to 4 bars. It is used in lists (issues, findings, the risk register's scores); records and cards keep chips.
+- **Tables:**
+  - `DTColumn.sub` adds a muted second line;
+  - `DTFilter.more` puts a filter under "+ Add filter" until it is added or set ("Clear filters" puts it away again);
+  - the "Sorted by" button opens a sort menu. The column-header sort still works.
+- **AI mark:** `AiMark` (`.ai-mark`, a dark dot with an `--c-ai-400` ring) is the one sign of AI content or an AI action.
+
 ## Layout follows the space it has
 
 The sidebar takes about 280px when open, so the content of a 1024px window is narrower than a 768px phone layout expects. Page layout therefore responds to the **content's own width**, not only to the window:
@@ -243,6 +265,6 @@ The sidebar takes about 280px when open, so the content of a 1024px window is na
 Each module has a short walkthrough (`src/data/tours/*`, engine `src/components/kit/Tour.tsx`): a bubble that points at one part of the page at a time with **Back**, **Next** (**Done** on the last step) and **Skip tour**. It replaces the old banner tips.
 - **Writing a tour:** 3 to 7 steps, plain second-person sentences of at most about 220 characters, in reading order: what the page is for, the summary, the main list, the main action, tabs, who approves what. Keep compliance wording exact. Point at elements with `data-tour="<module>-<part>"` hooks in the module's own markup, on an element with size (not `display: contents`). A step whose element is not on the page is left out, so steps for actions a role cannot take simply do not show. Raise `version` when people should see the tour again.
 - **When it starts:** on the module's main page, by the person's preference, which is saved on their account (`GET/PUT /api/me/tours`; this browser in the demo): **First visit only** (default), **Again after updates** (also when the tour's version goes up) or **Off**. The setting is in Sign-in & security, Guided tours, with **Show all tours again**. Finishing or skipping counts as seen. A tour never starts over a dialog, and not under browser automation unless a test opts in (`localStorage["selvara.tours.e2e"] = "1"`).
-- **Replay:** the play button in the top bar ("Take the tour of this page").
+- **Replay:** Help (the question mark in the header) › "Take the tour of this page".
 - **Following the page:** the ring and bubble re-measure their element every frame while a tour is open (`src/hooks/useAnchorWatch.ts`), so they stay on it when the page scrolls, the sidebar collapses or expands, or content loads. If a layout change (cards stacking or unstacking) takes the element out of view, the page scrolls it back; the bubble is always kept on screen. Popovers and the collapsed-rail flyouts use the same hook.
 - **Accessibility:** the bubble is a labelled non-modal dialog that takes focus on each step and returns it at the end. Escape skips, and the left and right arrow keys move between steps. The page stays usable; a ring marks the element. Below 600px wide the bubble is a bottom sheet.

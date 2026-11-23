@@ -121,3 +121,29 @@ test("a role without the issues module never reaches the register", async ({ bro
   await expect(s.page.getByRole("table", { name: "Issues", exact: true })).toHaveCount(0);
   await s.close();
 });
+
+/* Reference review R13, R15, R17: a second line under the issue title, "+ Add filter" for less-used filters, a visible sort control,
+   and severity as signal bars with the word. */
+test("issues register: Add filter brings in the Due filter; the sort control sorts; severity reads as a word", async ({ browser }, ti) => {
+  const s = await openAs(browser, ti, "admin"); const p = s.page;
+  await gotoModule(p, "/ws/issues");
+  const all = await rowsOf(p).count();
+  await expect(p.getByRole("button", { name: /^Due:/ })).toHaveCount(0);
+  await p.getByRole("button", { name: "Add filter" }).click();
+  await p.getByRole("menuitem", { name: "Due" }).click();
+  await p.getByRole("button", { name: /^Due:/ }).click();
+  await p.getByRole("listbox", { name: "Due" }).getByRole("option", { name: "Overdue", exact: true }).click();
+  const overdue = await rowsOf(p).count();
+  expect(overdue).toBeGreaterThan(0); expect(overdue).toBeLessThan(all);
+  for (let i = 0; i < overdue; i++) await expect(rowsOf(p).nth(i)).toContainText("Overdue");
+  await p.getByRole("button", { name: "Clear filters" }).first().click();
+  await expect(rowsOf(p)).toHaveCount(all);
+  await expect(p.getByRole("button", { name: /^Due:/ })).toHaveCount(0); // Clear filters also puts the added filter away
+  // sort by severity, highest first: the first row is High or Critical
+  await p.getByRole("button", { name: /^Sorted by/ }).click();
+  await p.getByRole("menuitemradio", { name: "Severity, ascending" }).click();
+  await expect(p.getByRole("button", { name: /^Sorted by Severity/ })).toBeVisible();
+  await expect(rowsOf(p).first().locator(".sev-w")).toHaveText(/Critical|High/);
+  expect(s.errors).toEqual([]);
+  await s.close();
+});

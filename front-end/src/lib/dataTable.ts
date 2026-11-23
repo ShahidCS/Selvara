@@ -14,6 +14,8 @@ export interface TableState {
   size: number;
   hidden: string[];
   selected: string[];
+  /** Filters the person added with "+ Add filter" (they are hidden until then). */
+  added?: string[];
 }
 export const ALL = "All";
 

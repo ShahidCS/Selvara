@@ -7,7 +7,7 @@ import { myMemberId } from "@/components/kit/MemberSelect";
 import { wsMeta } from "@/services/ws";
 import { API_ON } from "@/lib/rbac";
 import { K_RF, K_SEL, RF_INIT, RiskFilter, riskClearFilters, riskOpenDetail } from "./nav";
-import { ScoreChip } from "./RiskBits";
+import { ScoreBars } from "./RiskBits";
 import PendingImports from "./PendingImports";
 import RiskDetail from "./RiskDetail";
 
@@ -75,7 +75,7 @@ export default function RiskRegister() {
                   <td className="strong num" style={{ whiteSpace: "nowrap" }}>{r.id}</td>
                   <td><div className="strong">{r.title}</div><div style={{ fontSize: 11.5, color: "var(--muted)" }}>{r.cat}{r.parent ? " · " + r.parent.id : ""}{r.imported ? <> · <span style={{ color: "var(--accent-ink)", fontWeight: 600 }}>Imported</span></> : null}</div></td>
                   <td style={{ fontSize: 12 }}>{r.team}</td><td style={{ fontSize: 12 }}>{r.jur}</td>
-                  <td><ScoreChip score={sInh(r)} /></td><td><ScoreChip score={sCur(r)} /></td><td><ScoreChip score={sRes(r)} /></td>
+                  <td><ScoreBars score={sInh(r)} /></td><td><ScoreBars score={sCur(r)} /></td><td><ScoreBars score={sRes(r)} /></td>
                   <td><span className="tag">{riskPriority(r)}</span></td><td style={{ fontSize: 12 }}>{r.treat}</td><td><StatusChip s={r.status} /></td>
                 </tr>
               ))}

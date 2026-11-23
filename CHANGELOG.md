@@ -4,6 +4,13 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Changed
+- **New app frame (reference review, part 1 of 5).** The sidebar sits on the canvas and each page is one rounded panel. The breadcrumb is a small line at the top of the panel, and page titles are larger and lighter. Cards have larger corners and no shadow.
+- **Header row.** A pill shows how many approvals are waiting for you (the same figure as My Work) and opens My Work. A Help menu holds "Take the tour of this page" and the keyboard shortcuts. The theme switch moved into the account menu. Search stays as the icon it was.
+- **Overview greets you** by first name, with the date above.
+- **Lists.** People are shown with their initials, and vendors with a letter tile (logos come with the Settings release). Cells can carry a second line, such as the controls an issue is linked to. Less-used filters wait under "+ Add filter" (Due on Issues, Device on People, Collected by on Evidence). A "Sorted by" control shows and changes the order. Severity in issue lists, findings tables and the risk register is shown as signal bars with the word. The Issues Table/Kanban switch is in the page header.
+- **One AI mark** (a ringed dot) is used wherever AI content or an AI action appears.
+
 ## [0.2.4] - 2026-11-22
 
 Sidebar and production loading fixes; no migration and no new environment variable. Deploy as usual.

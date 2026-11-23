@@ -4,7 +4,7 @@ import { uiMessage } from "@/lib/grcSod";
 import { wsLog } from "@/lib/audit";
 import { downloadText } from "@/lib/format";
 import { useGo, useRoute } from "@/lib/route";
-import { DataTable, Icon, Page, StatusChip, type DTColumn } from "@/components/ui";
+import { DataTable, Icon, Page, StatusChip, type DTColumn, Person } from "@/components/ui";
 import { useLayer } from "@/components/shell/LayerProvider";
 import * as svc from "@/features/controls/services/controls";
 import { testChip } from "./controlDialogs";
@@ -100,7 +100,7 @@ function ControlsList() {
     { key: "title", header: "Title", value: (c) => c.title, render: (c) => c.title },
     { key: "domain", header: "Domain", value: (c) => c.domain, render: (c) => c.domain },
     { key: "map", header: "Mapped to", value: (c) => Object.keys(c.map || {}).map((k) => FW_SHORT[k] || k).join(" "), render: (c) => <div style={{ maxWidth: 220 }}><FwChips c={c} /></div> },
-    { key: "owner", header: "Owner", value: (c) => c.owner, render: (c) => c.owner },
+    { key: "owner", header: "Owner", value: (c) => c.owner, render: (c) => <Person name={c.owner} /> },
     { key: "status", header: "Status", value: (c) => c.status, render: (c) => <StatusChip s={c.status} /> },
   ];
   /* Roles that cannot create see why, in text, instead of a faded create button whose reason is only a hover title. */

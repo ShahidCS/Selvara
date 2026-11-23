@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Chip, Empty, Icon, Page, StatusChip, Table } from "@/components/ui";
+import { Chip, Empty, Icon, Page, StatusChip, Table , SeverityBars } from "@/components/ui";
 import { addMonths, fmtDay, parseDay } from "@/lib/grcSod";
 import { useLayer } from "@/hooks/useLayer";
 import { wsLog } from "@/lib/audit";
@@ -121,7 +121,7 @@ export function VendorDetail({ id }: { id: string }) {
                 {v.findings.length ? (
                   <Table cols={[{ t: "ID" }, { t: "Finding" }, { t: "Severity" }, { t: "Status" }, { t: "" }]}>
                     {v.findings.map((f: any, fi: number) => (
-                      <tr key={fi}><td className="strong num">{f.id}</td><td>{f.title}</td><td><StatusChip s={f.sev} /></td><td><StatusChip s={f.status} /></td>
+                      <tr key={fi}><td className="strong num">{f.id}</td><td>{f.title}</td><td><SeverityBars level={f.sev} /></td><td><StatusChip s={f.status} /></td>
                         <td className="r">{f.status !== "Closed" ? <button className="btn btn-ghost sm" disabled={!can} aria-label={`Close finding ${f.id}`} onClick={() => API_ON ? askReason(L, { title: "Close finding " + f.id, label: "How was it resolved?", confirm: "Close finding", run: async (why) => { await must(svc.closeFinding(id, fi, why)); return "Finding closed"; } })
                           : act(() => svc.closeFinding(id, fi), (r) => { wsLog("vendor.finding.closed", r.title, "Vendor"); L.toast("Finding closed"); bumpData(); })}><Icon name="check" />Close</button> : null}</td></tr>
                     ))}

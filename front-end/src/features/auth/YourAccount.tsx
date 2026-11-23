@@ -92,7 +92,7 @@ function GuidedTours() {
   return (
     <section className="card" id="tours" aria-labelledby="ya-tours"><div className="c-head"><h3 id="ya-tours">Guided tours</h3></div>
       <div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <p className="field help" style={{ margin: 0 }}>A short walkthrough of a page, in bubbles you move through with Next or skip. Choose when a page&apos;s tour starts by itself. You can always play it again with the play button in the top bar.</p>
+        <p className="field help" style={{ margin: 0 }}>A short walkthrough of a page, in bubbles you move through with Next or skip. Choose when a page&apos;s tour starts by itself. You can always play it again from Help (the question mark at the top), Take the tour of this page.</p>
         <Segmented<TourFreq> label="Start tours" value={prefs.freq} onChange={(f) => void pick(f)} options={(["first", "updates", "off"] as const).map((f) => ({ value: f, label: TOUR_FREQ_LABEL[f] }))} />
         <p className="field help" style={{ margin: 0 }}>{prefs.freq === "first" ? "Each page's tour starts the first time you open the page." : prefs.freq === "updates" ? "Each page's tour starts the first time you open the page, and again when the tour changes in a later release." : "Tours never start by themselves."}{loaded ? "" : " Your setting could not be loaded; tours will not start by themselves until it is."}</p>
         <div><button className="btn btn-secondary sm" onClick={() => void again()}><Icon name="refresh" />Show all tours again</button></div>

@@ -1,4 +1,4 @@
-import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn } from "@/components/ui";
+import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn, Person } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData } from "@/lib/store";
 import { hasRole } from "@/lib/sod";
@@ -32,7 +32,7 @@ function PoliciesList() {
     { key: "id", header: "ID", nowrap: true, value: (p) => p.id, locked: true, render: (p) => <span className="strong num">{p.id}</span> },
     { key: "name", header: "Policy", value: (p) => p.name, render: (p) => p.name },
     { key: "ver", header: "Version", value: (p) => p.ver, render: (p) => p.ver },
-    { key: "owner", header: "Owner", value: (p) => p.owner, render: (p) => p.owner },
+    { key: "owner", header: "Owner", value: (p) => p.owner, render: (p) => <Person name={p.owner} /> },
     { key: "review", header: "Next review", value: (p) => p.review, sortBy: (p) => Date.parse(p.review) || Number.MAX_SAFE_INTEGER, render: (p) => p.review },
     { key: "status", header: "Status", value: (p) => policyState(p), render: (p) => {
       const w = workVersion(p); const ex = openExceptions(p);

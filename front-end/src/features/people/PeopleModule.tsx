@@ -1,4 +1,4 @@
-import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, type DTColumn } from "@/components/ui";
+import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, type DTColumn, Avatar } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData, useModState } from "@/lib/store";
 import { canManagePeople } from "@/services/people";
@@ -30,7 +30,7 @@ function PeopleList() {
   const depts = Array.from(new Set<string>(DATA.people.map((p: Person) => String(p.dept)))).sort();
   const devices = Array.from(new Set<string>(DATA.people.map((p: Person) => String(p.device)))).sort();
   const cols: DTColumn<Person>[] = [
-    { key: "name", header: "Name", value: (p) => p.name, locked: true, render: (p) => <span className="strong">{p.name}</span> },
+    { key: "name", header: "Name", value: (p) => p.name, locked: true, render: (p) => <span className="person"><Avatar name={p.name} /><span className="strong">{p.name}</span></span> },
     { key: "role", header: "Role", value: (p) => p.role, render: (p) => p.role },
     { key: "dept", header: "Department", value: (p) => p.dept, render: (p) => p.dept },
     { key: "device", header: "Device", value: (p) => p.device, render: (p) => p.device === "Not connected" ? <span style={{ color: "var(--muted)", fontSize: 12 }}>Not connected</span> : <DeviceChip d={p.device} /> },
@@ -61,7 +61,7 @@ function PeopleList() {
         <div className="c-body flush scroll" style={{ padding: 0 }} id="pplBody">
           {view === "People" ? (
             <DataTable<Person> id="people" label="People" rows={DATA.people} rowKey={(p) => p.id} columns={cols} searchText={(p) => `${p.name} ${p.role} ${p.dept}`}
-              filters={[{ key: "dept", label: "Department", options: depts, get: (p: Person) => p.dept }, { key: "device", label: "Device", options: devices, get: (p: Person) => p.device }, { key: "mfa", label: "MFA", options: ["Enrolled", "Not enrolled"], get: (p: Person) => (p.mfa ? "Enrolled" : "Not enrolled") }]}
+              filters={[{ key: "dept", label: "Department", options: depts, get: (p: Person) => p.dept }, { key: "device", label: "Device", options: devices, get: (p: Person) => p.device, more: true }, { key: "mfa", label: "MFA", options: ["Enrolled", "Not enrolled"], get: (p: Person) => (p.mfa ? "Enrolled" : "Not enrolled") }]}
               onOpen={(p) => go(`/ws/people/${encodeURIComponent(p.id)}`)} exportName="people" />
           ) : <GrantsTable />}
         </div>

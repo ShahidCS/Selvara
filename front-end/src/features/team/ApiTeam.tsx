@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Chip, DataTable, Empty, Icon, Page, Segmented, StatusChip, type DTColumn } from "@/components/ui";
+import { Chip, DataTable, Empty, Icon, Page, Segmented, StatusChip, type DTColumn, Avatar } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { CUSTOM_BOUNDS, LOCKOUT, type LockoutPreset } from "@/lib/accountSecurity";
 import { apiMessage, LinkBox, RequestsTable, utcMin } from "@/components/kit/serverRequests";
@@ -44,7 +44,7 @@ function Members() {
   const L = useLayer();
   useEffect(() => { let on = true; svc.listMembers().then((x) => { if (on) { setRows(x); setErr(""); } }, (e) => { if (on) setErr(why(e, "Could not load the members")); }); return () => { on = false; }; }, [v]);
   const cols: DTColumn<svc.MemberRow>[] = [
-    { key: "name", header: "Member", value: (m) => m.name, locked: true, render: (m) => <span className="strong">{m.name}</span> },
+    { key: "name", header: "Member", value: (m) => m.name, locked: true, render: (m) => <span className="person"><Avatar name={m.name} /><span className="strong">{m.name}</span></span> },
     { key: "email", header: "Work email", value: (m) => m.email, render: (m) => m.email },
     { key: "role", header: "Workspace role", value: (m) => roleName(m.role), render: (m) => roleName(m.role) },
     { key: "status", header: "Status", value: (m) => m.status, render: (m) => (m.status === "Pending" ? <Chip cls="warn" icon="clock">Pending</Chip> : <StatusChip s={m.status} />) },
