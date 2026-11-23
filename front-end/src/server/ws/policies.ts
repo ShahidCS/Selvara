@@ -11,6 +11,7 @@ import {
 import { approvalBlock, reasonBlock } from "@/lib/rules";
 import type { Deps } from "../types";
 import { approvalsView, invalid, membersOf, modAllowed, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
+import { auditorScope, scopeGuard } from "./audits";
 import { actsAs, delegationsOf, sweepDelegations } from "./delegation";
 import type { Actor, Rec, WsTx } from "./store";
 
@@ -75,12 +76,15 @@ function forReader(p: Policy) {
 export function policyRoutes(h: WsHelpers) {
   const tx = <T,>(d: Deps, c: { actor: Actor }, w: (t: WsTx) => Promise<T>) => d.ws.tx(c.actor, d.now(), w);
   const save = async (t: WsTx, r: Rec<Policy>) => { syncTop(r.data); await t.update("policy", r.id, r.data, r.version); };
+  /** For an auditor, a policy outside their scope (not shared with a live engagement of theirs) does not exist: answered before any other check. */
+  const hide = async (d: Deps, c: { actor: Actor }, id: string) => { if (c.actor.role === "auditor") await tx(d, c, (t) => scopeGuard(t, "policies", id, "Policy")); };
 
   const data = wsRoute(h, "policies", async (d, _r, c) => ok(await tx(d, c, async (t) => {
     await sweepApprovals(t, EMG); await sweepDelegations(t);
     const members = await membersOf(d, c.actor); const names = new Map(members.map((m) => [m.id, m.name]));
     const acks = (await t.list<Ack>("policy-ack")).map((x) => x.data); const manager = ["admin", "owner"].includes(c.actor.role);
-    const policies = (await t.list<Policy>("policy")).map((x) => {
+    const scope = await auditorScope(t); // an auditor: only what is shared with them
+    const policies = (await t.list<Policy>("policy")).filter((x) => !scope || scope.policies.has(x.id)).map((x) => {
       const l = live(x.data); const done = l ? acks.filter((a) => a.policyId === x.id && a.ver === l.ver).length : 0;
       return { ...(manager ? x.data : forReader(x.data)), acceptance: { required: l ? members.length : 0, done } };
     });
@@ -102,7 +106,7 @@ export function policyRoutes(h: WsHelpers) {
       return ok({ id });
     });
   });
-  const edit = wsRoute(h, "policies", async (d, r, c) => tx(d, c, async (t) => {
+  const edit = wsRoute(h, "policies", async (d, r, c) => { await hide(d, c, str(r.path[2], 20)); return tx(d, c, async (t) => {
     const rec = await policy(t, str(r.path[2], 20)); const p = rec.data; const me = c.actor; let w = work(p); const fresh = !w;
     refuse(policyEditBlock(me.role, p.ownerId === me.id, p.owner, w?.status ?? null));
     const name = txt(r.body.name, 160); if (!name) invalid("Policy name is required.");
@@ -118,10 +122,13 @@ export function policyRoutes(h: WsHelpers) {
     syncTop(p); log(t, p, w.ver, fresh ? "New draft version" : "Draft edited", note);
     await save(t, rec); await t.audit(fresh ? "policy.draft.created" : "policy.draft.saved", `${p.id} v${w.ver}`, "Policy");
     return ok({ ver: w.ver, fresh });
-  }));
+  }); });
 
   const action = wsRoute(h, "policies", async (d, r, c) => {
     const id = str(r.path[2], 20); const what = r.path[3]; const me = c.actor;
+    await hide(d, c, id);
+    // an external auditor reviews policies; acknowledging them is for the company's own people
+    if (what === "acknowledge" && me.role === "auditor") refuse("Auditors do not acknowledge policies: acknowledgement is for the company's own members.");
     // people chosen in a dialog are resolved before the unit of work
     const named = what === "submit" || what === "approver" ? await adminOrOwner(d, me, { id: r.body.approverId, name: r.body.approver }, "Choose an approver with the admin or owner role.")
       : what === "owner" ? await adminOrOwner(d, me, { id: r.body.successorId, name: r.body.successor }, "Choose a successor with the admin or owner role.") : null;
@@ -225,6 +232,7 @@ export function policyRoutes(h: WsHelpers) {
   });
 
   const exceptionDecide = wsRoute(h, "policies", async (d, r, c) => {
+    await hide(d, c, str(r.path[2], 20));
     const decision = str(r.body.decision, 10); if (decision !== "approve" && decision !== "reject") invalid("Choose approve or reject.");
     const me = c.actor;
     return tx(d, c, async (t) => {

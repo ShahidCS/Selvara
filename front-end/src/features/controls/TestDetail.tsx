@@ -1,3 +1,4 @@
+import { scopedTests } from "@/services/audits";
 import { useState } from "react";
 import { DATA } from "@/lib/data";
 import { API_ON } from "@/lib/rbac";
@@ -18,7 +19,7 @@ export function TestDetail({ id }: { id: string }) {
   useData(); useApp((s) => s.role);
   const L = useLayer(); const go = useGo();
   const back = { href: "/ws/controls", label: "Tests" };
-  const t = DATA.tests.find((x) => x.id === id);
+  const t = scopedTests(DATA.tests).find((x) => x.id === id); // an auditor: only tests supporting a control in their scope
   if (!t) return <Page title="Test not found" back={back}><Empty icon="controls" title="No such test">There is no test with the ID &ldquo;{id}&rdquo;. It may have been deactivated, or the link may be wrong.</Empty></Page>;
   const runWhy = svc.whyCannotRunTests(), manageWhy = svc.whyCannotManage();
   const dis = (why: string | null) => ({ disabled: !!why, title: why || undefined });

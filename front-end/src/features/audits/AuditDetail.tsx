@@ -16,9 +16,10 @@ import * as svc from "@/services/audits";
 import { AddPbcForm, AuditReportBody, openDraftFinding, openEndAccess, openRaiseIr, openRejectFinding, openRespondIr } from "./AuditModals";
 import { hasRole } from "@/lib/sod";
 import { attempt } from "./util";
+import { SharedTab } from "./SharedTab";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const TABS: [string, string][] = [["over", "Overview"], ["pbc", "Requests (PBC)"], ["ir", "Information requests"], ["tests", "Control testing"], ["findings", "Findings"]];
+const TABS: [string, string][] = [["over", "Overview"], ["pbc", "Requests (PBC)"], ["ir", "Information requests"], ["tests", "Control testing"], ["findings", "Findings"], ["shared", "Shared with the auditor"]];
 const STAGE_TONE: Record<string, string> = { Planned: "info", Fieldwork: "warn", Reporting: "warn", Complete: "ok" };
 export const StageChip = ({ st }: { st: string }) => <Chip cls={STAGE_TONE[st] || "neutral"} icon={st === "Complete" ? "check" : "clock"}>{st}</Chip>;
 /** Management (admin/owner base roles, so admin2 too) owns the organisation's audit records. Auditors and everyone else are read-only (deny by default). The API must enforce this again. */
@@ -120,7 +121,7 @@ export function AuditDetail({ id }: { id: string }) {
                 {a.auditorAccess === "ended" && a.populationsFrozen ? <span className="field help" style={{ margin: 0, alignSelf: "center" }}>Engagement closed and locked.</span> : null}
               </div>
               {a.auditorAccess === "granted" && a.stage !== "Complete" && completeWhy ? <p className="field help" style={{ margin: "8px 0 0" }}>Cannot complete yet: {completeWhy}</p> : null}
-              <p className="field help" style={{ margin: "8px 0 0" }}>{API_ON ? "Freezing populations records when the sampled populations were fixed; evidence keeps its version history, so later changes stay visible. Ending access completes the engagement and ends the auditor's access to it; their read-only access to controls, evidence, policies and frameworks follows their role." : "Freezing populations locks the sampled records so evidence can’t change mid-audit. Ending access completes the engagement and revokes the external auditor’s read access."}</p>
+              <p className="field help" style={{ margin: "8px 0 0" }}>{API_ON ? "Freezing populations records when the sampled populations were fixed; evidence keeps its version history, so later changes stay visible. Ending access completes the engagement and ends the auditor's access to it, including its framework and the items shared with them." : "Freezing populations locks the sampled records so evidence can’t change mid-audit. Ending access completes the engagement and revokes the external auditor’s read access, including the items shared with them."}</p>
             </>
           ) : <p className="field help" style={{ margin: 0 }}>Read-only for your role. Management (admin/owner) manages auditor access, populations, stages and requests. Auditors may raise information requests and draft findings.</p>}
         </div></div>
@@ -179,6 +180,8 @@ export function AuditDetail({ id }: { id: string }) {
         ) : <Empty icon="controls" title="No tests recorded">Control testing begins once fieldwork is underway.</Empty>}
       </>
     );
+  } else if (tab === "shared") {
+    body = <SharedTab L={L} a={a} canManage={canManage} />;
   } else {
     body = (
       <>

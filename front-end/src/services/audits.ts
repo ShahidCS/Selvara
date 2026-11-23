@@ -1,9 +1,9 @@
 /* Audits API stubs. In mock mode (default) each function performs the in-memory DATA mutation the prototype did and returns the result;
  * the caller then does wsLog / toast / bumpData. In http mode it would call the (not yet existing) API, which must re-check authorization. */
-import { DATA } from "@/lib/data";
+import { DATA, FW_SHORT } from "@/lib/data";
 import { nowStamp } from "@/lib/format";
 import { wsLog } from "@/lib/audit";
-import { getActor, SodError } from "@/lib/sod";
+import { baseRole, getActor, SodError } from "@/lib/sod";
 import { guard, isoDay, reasonText, roleReason, samePerson } from "@/lib/grcSod";
 import { apiFetch, viaApi } from "./http";
 import { API_ON } from "@/lib/rbac";
@@ -186,6 +186,58 @@ export function exportReport(id: string) {
     return `AUDIT REPORT (DRAFT) — ${a.name}\nFramework: ${a.fw}\nAuditor: ${a.auditor}\nStage: ${a.stage}\nScope: ${a.scope}\n\nRequests: ${a.pbc.map((p: any) => p.id + " " + p.item + " [" + p.status + "]").join("; ")}\nTests: ${a.tests.map((t: any) => t.id + " " + t.ctrl + " " + t.result).join("; ")}\nFindings:\n${a.findings.filter((f: any) => f.status !== "Draft").map((f: any) => " - [" + f.sev + "] " + f.title + " (" + f.status + ")" + (f.issue ? " -> " + f.issue : "")).join("\n")}\n\nDraft only. Requires human review before use.`;
   }, async () => (await apiFetch<{ content: string }>(`/ws/audits/${enc(id)}/report`, { method: "POST", body: "{}" })).content);
 }
+
+/* ---------- What management shares with an engagement's auditor ---------- */
+/** The three lists an engagement shares with its auditor (server: `Audit.shared`; missing means nothing shared). */
+export const SHARE_KINDS = ["controls", "evidence", "policies"] as const;
+export type ShareKind = (typeof SHARE_KINDS)[number];
+export const SHARE_MAX = 500;
+export const sharedOf = (a: any): Record<ShareKind, string[]> => ({ controls: a?.shared?.controls ?? [], evidence: a?.shared?.evidence ?? [], policies: a?.shared?.policies ?? [] });
+/** Management adds (on) or removes one record from what the engagement's auditor may see. The server checks it again. */
+export function setShared(id: string, kind: ShareKind, itemId: string, on: boolean) {
+  return viaApi(() => {
+    const a = need(id); guard(whyCannotManage());
+    if (a.stage === "Complete") throw new SodError("This engagement is complete and locked.");
+    if (!SHARE_KINDS.includes(kind)) throw new SodError("Choose controls, evidence or policies.");
+    const sh = sharedOf(a); const has = sh[kind].includes(itemId);
+    if (on) {
+      if (has) return true;
+      if (!(DATA as any)[kind].some((x: any) => x.id === itemId)) throw new SodError("Unknown item: choose one of the company's records.");
+      if (sh[kind].length >= SHARE_MAX) throw new SodError(`At most ${SHARE_MAX} ${kind} can be shared with one engagement.`);
+      sh[kind] = [...sh[kind], itemId];
+    } else {
+      if (!has) return true;
+      sh[kind] = sh[kind].filter((x) => x !== itemId);
+    }
+    a.shared = sh;
+    wsLog(on ? "audit.shared.added" : "audit.shared.removed", `${a.id} ${a.name}: ${kind} ${itemId} by ${getActor().name}`, "Audit");
+    return true;
+  }, () => post<boolean>(`/audits/${enc(id)}/shared`, { kind, id: itemId, on }));
+}
+const isAuditor = () => baseRole(getActor().roleId) === "auditor";
+/** The signed-in auditor's engagements whose access is live (production: the server sends an auditor only those). Empty for other roles. */
+export const myEngagements = (): any[] => (isAuditor() ? DATA.audits.filter((a) => !whyCannotAuditorAct(auditInit(a))) : []);
+/** The framework an engagement names ("ISO 27001") as the id the frameworks data uses, or null. */
+const fwIdOf = (fw: string): string | null =>
+  Object.entries(FW_SHORT).find(([k, v]) => v === fw && DATA.frameworks.some((f) => f.id === k))?.[0] ?? DATA.frameworks.find((f) => f.name === fw)?.id ?? null;
+export interface AuditorScope { frameworks: Set<string>; controls: Set<string>; evidence: Set<string>; policies: Set<string> }
+/** What an external auditor may see in Frameworks, Controls, Evidence and Policies: their live engagements' frameworks and what management
+ *  shared with them. Null when nothing is limited: other roles, and production, where the server sends an auditor only this (server/ws/audits.ts). */
+export function auditorScope(): AuditorScope | null {
+  if (API_ON || !isAuditor()) return null;
+  const s: AuditorScope = { frameworks: new Set(), controls: new Set(), evidence: new Set(), policies: new Set() };
+  for (const a of myEngagements()) {
+    const fw = fwIdOf(a.fw); if (fw) s.frameworks.add(fw);
+    const sh = sharedOf(a); for (const k of SHARE_KINDS) for (const x of sh[k]) s[k].add(x);
+  }
+  return s;
+}
+/** Whether the signed-in person may see this record (always, unless they are an auditor and it is outside their scope). */
+export const inAuditorScope = (kind: keyof AuditorScope, id: string): boolean => { const s = auditorScope(); return !s || s[kind].has(id); };
+/** The records of a list the signed-in person may see. */
+export function scoped<T extends { id: string }>(kind: keyof AuditorScope, list: T[]): T[] { const s = auditorScope(); return s ? list.filter((x) => s[kind].has(x.id)) : list; }
+/** Tests the signed-in person may see: for an auditor, those supporting a control in their scope. */
+export function scopedTests<T extends { controls: string[] }>(list: T[]): T[] { const s = auditorScope(); return s ? list.filter((x) => x.controls.some((c) => s.controls.has(c))) : list; }
 
 /** Production: a risk register snapshot shared with this engagement's auditor, as JSON text for download. */
 export async function sharedSnapshot(id: string, sid: string): Promise<string> {

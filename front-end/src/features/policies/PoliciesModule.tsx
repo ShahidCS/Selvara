@@ -6,6 +6,7 @@ import { polInit, policyState, openExceptions, workVersion, exceptionState } fro
 import { useGo, useRoute } from "@/lib/route";
 import { PolicyDetail } from "./PolicyDetail";
 import { PolicyFormPage } from "./PolicyFormPage";
+import { scoped } from "@/services/audits";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Policy = any;
@@ -24,10 +25,11 @@ function PoliciesList() {
   useData();
   const go = useGo();
   const role = useApp((s) => s.role);
-  DATA.policies.forEach(polInit);
+  const policies: Policy[] = scoped("policies", DATA.policies); // an external auditor: only what is shared with them
+  policies.forEach(polInit);
   const canCreate = hasRole(role, "admin", "owner");
-  const STATES = Array.from(new Set<string>(DATA.policies.map((p: Policy) => policyState(p))));
-  const owners = Array.from(new Set(DATA.policies.map((p: Policy) => String(p.owner)))).sort();
+  const STATES = Array.from(new Set<string>(policies.map((p: Policy) => policyState(p))));
+  const owners = Array.from(new Set(policies.map((p: Policy) => String(p.owner)))).sort();
   const cols: DTColumn<Policy>[] = [
     { key: "id", header: "ID", nowrap: true, value: (p) => p.id, locked: true, render: (p) => <span className="strong num">{p.id}</span> },
     { key: "name", header: "Policy", value: (p) => p.name, render: (p) => p.name },
@@ -45,14 +47,14 @@ function PoliciesList() {
   return (
     <Page mod="policies" acts={<button className="btn btn-primary" data-tour={canCreate ? "policies-add" : undefined} disabled={!canCreate} title={canCreate ? undefined : "Read-only for your role: employees read and acknowledge, auditors read."} onClick={() => go("/ws/policies/new")}><Icon name="plus" />New policy</button>}>
       <KpiStrip label="Policy summary">
-        <KpiTile label="Policies" value={DATA.policies.length} caption="In the library" />
-        <KpiTile label="Active" value={DATA.policies.filter((p) => p.status === "Active").length} caption="Approved and in force" />
-        <KpiTile label="Review due" value={DATA.policies.filter((p) => policyState(p) === "Review due").length} delta={DATA.policies.some((p) => policyState(p) === "Review due") ? { tone: "watch", text: "Due now" } : { tone: "good", text: "Up to date" }} caption="Active, past the review date" />
-        <KpiTile label="Emergency approvals" value={DATA.policies.filter((p) => openExceptions(p).length).length} delta={DATA.policies.some((p) => openExceptions(p).length) ? { tone: "bad", text: "Needs action" } : { tone: "good", text: "None open" }} caption="Awaiting a second approver" />
+        <KpiTile label="Policies" value={policies.length} caption="In the library" />
+        <KpiTile label="Active" value={policies.filter((p) => p.status === "Active").length} caption="Approved and in force" />
+        <KpiTile label="Review due" value={policies.filter((p) => policyState(p) === "Review due").length} delta={policies.some((p) => policyState(p) === "Review due") ? { tone: "watch", text: "Due now" } : { tone: "good", text: "Up to date" }} caption="Active, past the review date" />
+        <KpiTile label="Emergency approvals" value={policies.filter((p) => openExceptions(p).length).length} delta={policies.some((p) => openExceptions(p).length) ? { tone: "bad", text: "Needs action" } : { tone: "good", text: "None open" }} caption="Awaiting a second approver" />
       </KpiStrip>
       <div className="card" data-tour="policies-table" style={{ flex: "1 1 auto" }}>
         <div className="c-body flush scroll" style={{ padding: 0 }}>
-          <DataTable<Policy> id="policies" label="Policies" rows={DATA.policies} rowKey={(p) => p.id} columns={cols} searchText={(p) => `${p.id} ${p.name} ${p.owner}`}
+          <DataTable<Policy> id="policies" label="Policies" rows={policies} rowKey={(p) => p.id} columns={cols} searchText={(p) => `${p.id} ${p.name} ${p.owner}`}
             tabs={STATES.map((s) => ({ key: s, label: s, match: (p: Policy) => policyState(p) === s }))}
             filters={[{ key: "owner", label: "Owner", options: owners, get: (p: Policy) => p.owner }]}
             onOpen={(p) => go(`/ws/policies/${encodeURIComponent(p.id)}`)} exportName="policies" />

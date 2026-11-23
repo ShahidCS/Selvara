@@ -83,7 +83,8 @@ async function overview(t: WsTx, role: string) {
 export function insightRoutes(h: WsHelpers) {
   const tx = <T,>(d: Deps, c: { actor: Actor }, w: (t: WsTx) => Promise<T>) => d.ws.tx(c.actor, d.now(), w);
   const workData = wsRoute(h, "work", async (d, _r, c) => ok(await tx(d, c, (t) => work(t, c.actor))));
-  const overviewData = wsRoute(h, "overview", async (d, _r, c) => ok(await tx(d, c, (t) => overview(t, c.actor.role))));
+  // an external auditor sees their engagements (Audits), never company-wide figures
+  const overviewData = wsRoute(h, "overview", async (d, _r, c) => ok(c.actor.role === "auditor" ? {} : await tx(d, c, (t) => overview(t, c.actor.role))));
   const vendorRequest = wsRoute(h, "work", async (d, r, c) => {
     const name = txt(r.body.name, 120); const reason = txt(r.body.reason, 500);
     if (!name || !reason) invalid("Vendor name and purpose are required.");

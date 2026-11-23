@@ -1,3 +1,4 @@
+import { inAuditorScope } from "@/services/audits";
 import { DATA, FW_ID, testsForControl } from "@/lib/data";
 import { RecordHistory } from "@/components/kit/RecordHistory";
 import { bumpData, setModState, useApp, useData } from "@/lib/store";
@@ -18,7 +19,7 @@ export function ControlDetail({ id }: { id: string }) {
   useData(); useApp((s) => s.role);
   const L = useLayer(); const go = useGo();
   const back = { href: "/ws/controls", label: "Controls" };
-  const c = DATA.controls.find((x) => x.id === id);
+  const c = DATA.controls.find((x) => x.id === id && inAuditorScope("controls", x.id)); // outside an auditor's scope it does not exist for them
   if (!c) return <Page title="Control not found" back={back}><Empty icon="controls" title="No such control">There is no control with the ID &ldquo;{id}&rdquo;. It may have been removed, or the link may be wrong.</Empty></Page>;
   svc.sweepExceptions();
   const attestWhy = svc.whyCannotAttest(c), statusWhy = svc.whyCannotSetStatus(c), mapWhy = svc.whyCannotManage(), excWhy = svc.whyCannotRequestException();

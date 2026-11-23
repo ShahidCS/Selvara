@@ -140,7 +140,8 @@ export function PolicyDetail({ id }: { id: string }) {
                   </div>
                   <div className="btngrp">
                     {manager ? btn("Remind outstanding", "bell", null, () => remind(), "btn-ghost") : null}
-                    {myAck ? <Chip cls="ok" icon="check">You acknowledged v{live.ver}{myAck.at ? ` on ${myAck.at}` : ""}</Chip>
+                    {me.base === "auditor" ? <span className="field help" style={{ margin: 0 }}>Auditors review policies; acknowledgement is for the company&apos;s own members.</span>
+                      : myAck ? <Chip cls="ok" icon="check">You acknowledged v{live.ver}{myAck.at ? ` on ${myAck.at}` : ""}</Chip>
                       : <button className="btn btn-primary sm" disabled={!!canAckWhy} title={canAckWhy || undefined} onClick={() => run(async () => { const r = await acknowledge(me.name, id); if (!r) throw new Error("x"); wsLog("policy.acknowledged", `${p.id} v${live.ver} by ${me.name}`, "Policy"); }, "Acknowledged")}><Icon name="check" />Read &amp; acknowledge</button>}
                   </div>
                 </>

@@ -11,8 +11,9 @@ import {
 import { approvalBlock, reasonBlock } from "@/lib/rules";
 import type { Deps } from "../types";
 import { LIB_CONTROLS, LIB_FRAMEWORKS, LIB_REQS } from "./catalogue";
+import { auditorScope, scopeGuard, type AuditorScope } from "./audits";
 import { approvalsView, invalid, memberRef, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
-import { WsConflict, type Rec, type WsTx } from "./store";
+import { WsConflict, type Actor, type Rec, type WsTx } from "./store";
 
 export interface Exception { id: string; requestedBy: string; requestedById: string; at: string; reason: string; compensating: string; expires: string; approvalId: string; expiryLogged?: boolean }
 export interface Control { id: string; title: string; domain: string; owner: string; ownerId: string; status: string; map: Record<string, string[]>; custom?: boolean; library?: boolean; attestation?: { by: string; byId: string; at: string; note: string }; exceptions?: Exception[] }
@@ -95,22 +96,32 @@ async function controlsData(d: Deps, t: WsTx) {
   }
   if (stale.length) await followTests(t, stale);
   const members = await membersOf(d, t.actor); const names = new Map(members.map((m) => [m.id, m.name]));
+  const scope = await auditorScope(t); const sees = (id: string) => !scope || scope.controls.has(id); // an auditor: only what is shared with them
   // automated tests name employees' accounts as evidence: only admins (who see them in Integrations anyway) get those names
   const tests = (await t.list<Test>("test")).map((x) => x.data).map((x) => (isAutomated(x.id) && t.actor.role !== "admin" && x.items.length ? { ...x, items: [{ item: `${x.items.length} item${x.items.length === 1 ? "" : "s"} (an admin sees them in Integrations)`, result: x.result }] } : x));
-  return { controls: (await t.list<Control>("control")).map((x) => x.data), tests, approvals: await approvalsView(t, EXC, names), members, library: LIB_CONTROLS };
+  return { controls: (await t.list<Control>("control")).map((x) => x.data).filter((x) => sees(x.id)), tests: tests.filter((x) => !scope || x.controls.some(sees)),
+    approvals: (await approvalsView(t, EXC, names)).filter((a) => sees(String(a.subject ?? ""))), members, library: LIB_CONTROLS };
 }
 async function frameworksData(t: WsTx) {
-  const state: Record<string, FwState> = {}; for (const s of await t.list<FwState>("fw")) state[s.id] = s.data;
-  return { library: LIB_FRAMEWORKS, state, custom: (await t.list<FwCustom>("fw-custom")).map((x) => ({ id: x.id, ...x.data })) };
+  const scope = await auditorScope(t); const sees = (id: string) => !scope || scope.frameworks.has(id); // an auditor: their engagements' frameworks
+  const state: Record<string, FwState> = {}; for (const s of await t.list<FwState>("fw")) if (sees(s.id)) state[s.id] = s.data;
+  return { library: LIB_FRAMEWORKS.filter((f) => sees(f.id)), state, custom: (await t.list<FwCustom>("fw-custom")).filter((x) => sees(x.id)).map((x) => ({ id: x.id, ...x.data })) };
 }
+/** A test exists for an auditor only when it supports a control in their scope. */
+const testInScope = (s: AuditorScope | null, x: Test) => !s || x.controls.some((id) => s.controls.has(id));
 
 export function assuranceRoutes(h: WsHelpers) {
-  const tx = <T,>(d: Deps, c: { actor: import("./store").Actor }, w: (t: WsTx) => Promise<T>) => d.ws.tx(c.actor, d.now(), w);
+  const tx = <T,>(d: Deps, c: { actor: Actor }, w: (t: WsTx) => Promise<T>) => d.ws.tx(c.actor, d.now(), w);
+  /** For an auditor, a framework or control outside their scope does not exist: answered before any other check. */
+  const hide = async (d: Deps, c: { actor: Actor }, kind: "frameworks" | "controls", id: string, what: string) => {
+    if (c.actor.role === "auditor") await tx(d, c, (t) => scopeGuard(t, kind, id, what));
+  };
 
   /* ----- frameworks ----- */
   const fwData = wsRoute(h, "frameworks", async (d, _r, c) => ok(await tx(d, c, frameworksData)));
   const fwFlag = wsRoute(h, "frameworks", async (d, r, c) => {
     const fw = str(r.path[2], 80); const what = r.path[3]; const on = r.body.on === true;
+    await hide(d, c, "frameworks", fw, "Framework");
     if (what !== "scope" && what !== "snooze") return missing("Setting");
     refuse(fwAdminBlock(c.actor.role));
     return tx(d, c, async (t) => {
@@ -140,6 +151,7 @@ export function assuranceRoutes(h: WsHelpers) {
   });
   const fwMap = wsRoute(h, "frameworks", async (d, r, c) => {
     const fw = str(r.path[2], 80); const req = str(r.path[4], 80); const ctrl = str(r.body.control, 40); const on = r.body.on !== false;
+    await hide(d, c, "frameworks", fw, "Framework");
     refuse(fwAdminBlock(c.actor.role));
     if (!ctrl) invalid("Choose a control first.");
     return tx(d, c, async (t) => {
@@ -153,6 +165,7 @@ export function assuranceRoutes(h: WsHelpers) {
   });
   const fwNa = wsRoute(h, "frameworks", async (d, r, c) => {
     const fw = str(r.path[2], 80); const req = str(r.path[4], 80); const on = r.body.on !== false; const reason = txt(r.body.reason, 500);
+    await hide(d, c, "frameworks", fw, "Framework");
     refuse(fwAdminBlock(c.actor.role));
     if (on) { const bad = fwNaBlock(reason); if (bad) invalid(bad); }
     return tx(d, c, async (t) => {
@@ -204,6 +217,7 @@ export function assuranceRoutes(h: WsHelpers) {
   });
   const ctrlAction = wsRoute(h, "controls", async (d, r, c) => {
     const id = str(r.path[2], 40); const action = r.path[3]; const me = c.actor;
+    await hide(d, c, "controls", id, "Control");
     return tx(d, c, async (t) => {
       const rec = await control(t, id); const x = rec.data; const isOwner = x.ownerId === me.id;
       if (action === "attestation") {
@@ -264,6 +278,7 @@ export function assuranceRoutes(h: WsHelpers) {
   });
   const exceptionDecide = wsRoute(h, "controls", async (d, r, c) => {
     const id = str(r.path[2], 40); const exId = str(r.path[4], 60); const decision = str(r.body.decision, 10); const me = c.actor;
+    await hide(d, c, "controls", id, "Control");
     if (!["approve", "reject", "withdraw"].includes(decision)) invalid("Choose approve, reject or withdraw.");
     return tx(d, c, async (t) => {
       const rec = await control(t, id); const x = (rec.data.exceptions ?? []).find((e) => e.id === exId) ?? missing("Exception");
@@ -303,6 +318,7 @@ export function assuranceRoutes(h: WsHelpers) {
     const id = str(r.path[2], 40); const action = r.path[3];
     return tx(d, c, async (t) => {
       const rec = (await t.get<Test>("test", id)) ?? missing("Test");
+      if (!testInScope(await auditorScope(t), rec.data)) missing("Test");
       if (action === "run") {
         refuse(runTestsBlock(c.actor.role));
         rec.data.last = stamp(t.now); await t.update("test", id, rec.data, rec.version); await t.audit("test.run", rec.data.name);
