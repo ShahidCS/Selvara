@@ -9,3 +9,6 @@
 | R-05 | The full MVP scope (all modules, DSAR, DPIA, ISO 27005, BYOK, SSO, SCIM, billing) is too large to deliver safely in one go | High | High | R-A | Ordered releases, each through the readiness gate | Open |
 | R-06 | Supabase plan limits or feature gaps (A-09) | Medium | Medium | R-B | Check in Phase 2; ADR fallbacks | Open |
 | R-07 | Free AI models keep or train on customer data | Medium | High | R-B | A recorded review per provider; off by default; personal-data check; four-eyes to enable | Open |
+| R-08 | External auditors can read the whole tenant, not only their engagement (F1-01) | High (it is the current behaviour) | High | R-B | Access limited to the engagement's scope and dates (OQ-06) | Open |
+| R-09 | The public Trust Center reveals more than intended (F1-02) | Medium | High | R-B | Publishing set per section, NDA accepted per person, access by id (OQ-07) | Open |
+| R-10 | Demo-only behaviour lost in v2, so features regress (F1-03) | Medium | Medium | R-A | Parity matrix; OQ-09 | Open |
