@@ -4,7 +4,7 @@
 |---|---|
 | Status | Draft for the design authority (Phase 2). Documents only. |
 | Date | 2026-11-23 |
-| Binding input | `00-spine.md`, ADR-001, `2A-architecture.md` |
+| Binding input | `00-spine.md` (spine v2), ADR-001, `2A-architecture.md`, design-authority rulings DA-01 to DA-15 (rev P3) |
 | ADRs owned | ADR-004 (backup and restore), ADR-005 (hosting and jobs), ADR-009 (migration orchestration) |
 | Pipeline baseline | `docs/security/PIPELINE.md`, `.github/workflows/{ci,security,deploy-staging,release}.yml` (unchanged by this design; new workflows below are **proposals** that need the owner's explicit approval, because `.github/workflows/` is protected) |
 | Price note | Every price is an assumption with a source or *(verify)*. Web fetch of vendor pages was blocked in this session; figures come from search summaries of vendor pages and must be re-checked before any commercial use. |
@@ -15,10 +15,10 @@
 
 | ID | Provider | Unit | Purpose | Region | Notes |
 |---|---|---|---|---|---|
-| H-AC-01 | Supabase | Organisation **prod** | Production `cp`, `c1`, later `c2..cN`, dedicated `d-<tkey>` | Frankfurt (eu-central-1) today (`docs/guides/SUPABASE.md`) | Two members only (R-A, R-B), MFA enforced; Pro now, Team when SOC 2 report, dashboard SSO or PrivateLink is needed *(verify plan features)* |
-| H-AC-02 | Supabase | Organisation **nonprod** | Staging `cp-stg`, `c1-stg`, `c2-stg` (two cells so cross-cell routing and relocation are tested) | Same region | Spend cap on; smallest compute |
+| H-AC-01 | Supabase | Organisation **prod** | Production `cp`, `c1`, `ks` (key store) and its DR-region standby, later `c2..cN`, dedicated `d-<tkey>` (rev P3) | Frankfurt (eu-central-1) today (`docs/guides/SUPABASE.md`) | Two members only (R-A, R-B), MFA enforced; Pro now, Team when SOC 2 report, dashboard SSO or PrivateLink is needed *(verify plan features)* |
+| H-AC-02 | Supabase | Organisation **nonprod** | Staging `cp-stg`, `c1-stg`, `c2-stg` (two cells so cross-cell routing and relocation are tested), `ks-stg` (rev P3) | Same region | Spend cap on; smallest compute |
 | H-AC-03 | Supabase CLI (local) | Docker on developer machines and CI | Dev and ephemeral CI databases | n/a | No cloud cost; synthetic seed only |
-| H-AC-04 | Vercel | One team; projects **web-staging** and **web-prod** | API, web, worker endpoints | Function region fra1 (next to the database) | Separate projects keep production secrets out of staging; Git auto-deploy stays off (`vercel.json`) |
+| H-AC-04 | Vercel | One team; projects **app-staging**, **app-prod** (web, tenant API, account API, SCIM, public endpoints, provider hooks, worker endpoints) and **console-staging**, **console-prod** (platform API and Admin Console, own hostname) | `app` and `console` (R2-03) | Function region fra1 (next to the database) | Platform-write credentials (`cp_rw`) exist only in `console-*` (2F F-D-03, R2-03); `app-*` holds only `cp_router_ro`, `cp_tenant_api`, the router logins and `ks_rw`. Separate projects keep production secrets out of staging; Git auto-deploy stays off (`vercel.json`) (rev P3) |
 | H-AC-05 | Cloud provider for KMS, scanner and off-site copies (AWS recommended as the example; any equivalent satisfying ADR-003 works, A-19) | Organisation with accounts: `mgmt` (billing, Terraform state), `kms-prod`, `kms-nonprod`, `workloads-prod` (scanner), `workloads-nonprod`, `offsite-prod` | Key plane, scanner host, off-site backup | KMS in the home region with multi-Region replica keys in the DR region *(verify)*; off-site bucket in a **different** region | `kms-*` and `offsite-*` are separate accounts so that keys never sit with the backups they protect (S7) |
 | H-AC-06 | GitHub | Repository environments `staging`, `production`, plus proposed `production-migrate`, `fleet-ops`, `infra` | Deploy, migrate, privileged fleet operations, Terraform apply | n/a | Each environment has its own secrets and required reviewers |
 | H-AC-07 | Email provider | One account, two streams (transactional, auth) | H-9 | EU data region if offered *(verify)* | |
@@ -28,13 +28,14 @@
 
 | ID | Path | Launch control | Later control | Vendor facts |
 |---|---|---|---|---|
-| H-NW-01 | Vercel to Supabase pooler | TLS with the Supabase CA pinned (`DATABASE_CA_CERT`, as `db.ts` does today), SCRAM, 64-hex passwords, two rotating router logins | Vercel **Static IPs** (about USD 100 per project per month *(source 8, verify)*) plus Supabase **network restrictions** allowing only those IPs | Network restrictions limit IP ranges for Postgres and the pooler; IPv4 and IPv6 ranges both needed if direct connections resolve to IPv6 *(source 5)* |
+| H-NW-01 | Vercel to Supabase pooler | TLS with the Supabase CA pinned (`DATABASE_CA_CERT`, as `db.ts` does today), SCRAM, 64-hex passwords, two rotating router logins | Vercel **Static IPs** (about USD 100 per project per month *(source 8, verify)*; two production projects, `app` and `console`) plus Supabase **network restrictions** allowing only those IPs; owner decision DU-34 proposes this before the first external tenant (rev P3) | Network restrictions limit IP ranges for Postgres and the pooler; IPv4 and IPv6 ranges both needed if direct connections resolve to IPv6 *(source 5)* |
 | H-NW-02 | GitHub Actions migrator and fleet-ops to Supabase | Session pooler port 5432 (IPv4) *(source 4)*; credentials only in the environment | The job adds its own egress IP as a /32 through the Management API at start and removes it at the end *(verify API support)* | |
 | H-NW-03 | Scanner (in `workloads-prod`) to Storage | Pulls one object by a signed URL; no inbound ports; egress only to Storage, the worker endpoint and signature updates | Supabase **PrivateLink** for database paths from AWS (beta, Team plan or above, same-region VPC, database ports only; Storage, Auth and API stay public *(source 5)*) | Not usable from Vercel functions |
 | H-NW-04 | Vercel to KMS | Vercel OIDC federation to a narrowly scoped IAM role per environment; no long-lived cloud keys *(verify Vercel OIDC federation)* | Key policy conditions on the federated role and source | |
 | H-NW-05 | pg_cron to worker | `pg_net` HTTPS POST with an HMAC header (secret in Supabase Vault), timestamp and nonce; the worker rejects older than 60 s | Static IP allowlist on the worker route | |
 | H-NW-06 | Data API exposure | Data API disabled or no schemas exposed on every project (A-17) | | |
 | H-NW-07 | Dashboard access | Supabase org MFA; dashboard SSO when on Team *(verify)* | | |
+| H-NW-08 | Outbound calls from `app` functions and the worker (webhooks M18, integrations M17, AI providers M19, email, payment, KMS) | Egress design (DA-15): every outbound URL is resolved by DNS before the call and refused unless every resolved address is public (no loopback, link-local, RFC 1918, unique-local, metadata or Supabase/Vercel internal ranges); the connection is pinned to the checked address; no redirects; 10 s timeout; response size cap (2C C-88). Provider hosts (AI, email, payment, KMS) are allow-listed per adapter in `control.provider_configs`; tenant webhook and integration targets are tenant-supplied but pass the same public-address check, and only `https` on port 443 is allowed | Fixed egress IPs through Vercel Secure Compute or an egress proxy in `workloads-prod` that enforces the allow-list at the network layer *(verify availability)* | Vercel functions have no fixed egress by default *(verify)* (rev P3) |
 
 Residual: until H-NW-01 "later" is in place the pooler accepts connections from any IP with valid credentials (R-15).
 
@@ -63,7 +64,7 @@ Runs as a job chain in the worker (Vercel) with state in `control.tenants` (`sta
 | H-PV-02 | Allocate | Random 16-char base32 `tkey`, uniqueness checked in `control`; tenant row `Provisioning`; cell chosen (A-PH-04) | tenant id | mark `Failed` |
 | H-PV-03 | Schema and roles | Worker calls `ops.provision_tenant(tkey, tenant_uuid)` on the cell: SECURITY DEFINER, owned by `tenant_admin` (CREATEROLE, not superuser), validates `tkey` against `^[a-z2-7]{16}$`, creates `t_<tkey>`, `t_<tkey>_rw`, `t_<tkey>_ro`, grants (own schema, `ref` SELECT), membership to `selvara_router`, tables at the current tenant version with the `tenant_id` CHECK and RLS | `tkey` | `ops.unprovision_tenant` only while status is `Provisioning` |
 | H-PV-04 | Warm pool (optional path) | Each cell keeps 5 to 10 pre-built schemas (status `Pooled`), kept current by every rollout; claiming binds `tenant_id` (CHECK constraint rewritten) and the `tkey` already assigned | pool row | return to pool |
-| H-PV-05 | Keys | Create KEK (KMS key, alias by `tkey`, tags: environment and `tkey` only), generate and wrap the first DEK, register ids and versions in `control.key_registry` (ADR-003 decides wrapped-DEK storage) | `tkey` + key purpose | schedule key deletion |
+| H-PV-05 | Keys | Create KEK (KMS key, alias by `tkey`, tags: environment and `tkey` only) and its multi-Region replica, generate and wrap the first DEK and store it in `ks.tenant_dek` (ADR-003); register ids and versions in `control.key_registry`; no key material in the tenant schema (DA-04) | `tkey` + key purpose | schedule key deletion (KEK and replica); delete the `ks` rows (rev P3) |
 | H-PV-06 | Seed | A-LC-03 through the router as `t_<tkey>_rw` | seed version | truncate seed tables |
 | H-PV-07 | Storage | Create `<tkey>/` prefix marker in `tenant-files`, `exports`; off-site prefix with object-lock retention | `tkey` | delete markers |
 | H-PV-08 | Backups | Insert nightly export schedule in `ops`; first export runs within 1 h | `tkey` | delete schedule |
@@ -79,8 +80,8 @@ Decommission drop (A-LC-08) does **not** run in Vercel: a proposed `fleet-ops.ym
 |---|---|---|---|---|
 | H-EN-01 | Dev | Synthetic seed generator (deterministic seed, `example.com` addresses, 3 tenants) | Local Supabase CLI, `NEXT_PUBLIC_API_MODE=http` against it, or the in-browser demo | Developer |
 | H-EN-02 | CI (ephemeral) | Synthetic, created per job | Local Supabase in GitHub Actions; at least 3 tenant schemas for escape tests | Pipeline |
-| H-EN-03 | Staging | Synthetic only; staging tenants older than 14 days auto-decommissioned | `nonprod` org: `cp-stg`, `c1-stg`, `c2-stg`; `web-staging`; `kms-nonprod` | R-A, R-B |
-| H-EN-04 | Production | Customer data; synthetic canary tenants (one per cell) for probes and migration canaries | `prod` org; `web-prod`; `kms-prod` | Application only; humans via break-glass |
+| H-EN-03 | Staging | Synthetic only; staging tenants older than 14 days auto-decommissioned | `nonprod` org: `cp-stg`, `c1-stg`, `c2-stg`, `ks-stg`; `app-staging`, `console-staging`; `kms-nonprod` (rev P3) | R-A, R-B |
+| H-EN-04 | Production | Customer data; synthetic canary tenants (one per cell) for probes and migration canaries | `prod` org; `app-prod`, `console-prod`; `kms-prod` (rev P3) | Application only; humans via break-glass |
 | H-EN-05 | Rule | **Production data is never copied down.** No restore of a production export into a non-production project; enforced by key policy (non-production roles cannot use `kms-prod` keys, so a copied export is unreadable) | | |
 
 ## H-6. CI/CD with security gates
@@ -94,8 +95,8 @@ Typecheck, lint, unit, build, `npm audit`, Playwright end-to-end; workflow polic
 | ID | Gate | Blocks | Where |
 |---|---|---|---|
 | H-CI-01 | Migration lint: no `SET` outside `LOCAL`, no table rewrite without an expand/contract plan, `lock_timeout` declared, no `DROP` in an expand migration, no grants to `PUBLIC`, `SECURITY DEFINER` functions pin `search_path` | merge | `ci.yml` (approval needed) |
-| H-CI-02 | Isolation and escape suite against local Supabase with 3 tenants: API-level cross-tenant attempts, `SET ROLE` to another tenant from `t_<tkey>_rw`, `search_path` injection, schema-qualified names, `ref` write attempt, `ops.emit` spoofing | merge, deploy | `ci.yml` |
-| H-CI-03 | Router lint: only `router` imports the cell pool or issues `SET ROLE`; `pg` `name` option banned | merge | ESLint |
+| H-CI-02 | Isolation and escape suite against local Supabase with 3 tenants: API-level cross-tenant attempts; R-56 controls (an injected `SET ROLE` inside a routed transaction **succeeds**, so the suite proves that no API input can reach SQL text, that handler SQL is extended-protocol only, and that the detector alerts on a direct `SET ROLE`; DA-02); `search_path` injection, schema-qualified names, `ref` write attempt, `ops.emit` spoofing | merge, deploy | `ci.yml` (rev P3) |
+| H-CI-03 | Router lint: only `router` imports the cell pool or issues `SET ROLE`, `RESET ROLE`, `set_config('role'|'search_path'|'app.*')`; no simple-query multi-statement strings anywhere (router included); no string-built SQL outside `router` and migrations; `pg` `name` option banned (2A A-RT-10) | merge | ESLint and CodeQL (rev P3) |
 | H-CI-04 | Version-window contract test: the build passes the API contract suite against tenant schemas at `N-1` and `N` | merge | `ci.yml` |
 | H-CI-05 | Catalog fingerprint for tenant version `N` generated, attested with the build | release | deploy action |
 | H-CI-06 | Terraform `plan` with policy checks (no public buckets, no wildcard IAM, KMS deletion window at its maximum) | merge of `infra/` | proposed `infra.yml` |
@@ -136,7 +137,7 @@ flowchart LR
 | H-OB-02 | Errors | Error-tracking SaaS with server-side scrubbing (deny-list plus allow-list of fields) | 90 days | Tenant tagged by `tkey` only |
 | H-OB-03 | Metrics | Supabase Prometheus-compatible metrics endpoint scraped per project *(verify)*; app metrics per cell (not per tenant, to keep cardinality bounded) | 13 months | Per-tenant numbers come from the fleet report (H-8) |
 | H-OB-04 | Traces | OpenTelemetry spans for router, DB, KMS, storage, external calls; 10% sampling, 100% on errors | 14 days | |
-| H-OB-05 | Uptime and synthetics | External probes every minute: `/api/health`, login page, a canary-tenant authenticated read per cell, public Trust Center canary, worker heartbeat (last tick under 3 min) | 13 months | |
+| H-OB-05 | Uptime and synthetics | External probes every minute: `/api/health`, login page, a canary-tenant authenticated read per cell, public Trust Center canary, worker heartbeat (last tick under 3 min); dependency probes for `cp`, `ks`, KMS and the `ks` standby lag (A-NFR-01) (rev P3) | 13 months | |
 | H-OB-06 | Security signals | Platform audit log events (elevation, break-glass, approvals, key schedule-deletion via cloud audit trail), WAF/rate-limit spikes, repeated routing failures | per 2F | Routed as S1 |
 
 Alert routing (two people, no rota of a team):
@@ -144,8 +145,8 @@ Alert routing (two people, no rota of a team):
 | ID | Severity | Examples | Route | Auto-action |
 |---|---|---|---|---|
 | H-AL-01 | S1 page | API down, cell unreachable, routing-failure spike, isolation probe failure, KMS key scheduled for deletion outside a certificate flow, break-glass used, backup export failed twice for a tenant | Push and phone to both R-A and R-B; acknowledgement within 15 min, escalates to the other after 15 min | Isolation probe failure sets all tenants of the cell to `Maintenance` (fail closed) |
-| H-AL-02 | S2 same day | Migration paused, queue lag over 15 min, p95 breach 1 h, disk 75%, pooler clients 70%, drift detected | Chat channel plus email to both | Pause rollouts |
-| H-AL-03 | S3 digest | Cost anomaly, cert expiry under 30 days, token expiry, dependency alerts, cell threshold at 80% | Daily digest | Open a tracking issue |
+| H-AL-02 | S2 same day | Migration paused, queue lag over 15 min, p95 breach 1 h, disk 75%, pooler clients 70% on any project (cell, `cp`, `ks`; A-CN-07), `cp` read p95 above 5 ms (A-NFR-07a), `ks` standby lag or key-journal write failure, drift detected (rev P3) | Chat channel plus email to both | Pause rollouts |
+| H-AL-03 | S3 digest | Cost anomaly, cert expiry under 30 days, token expiry, dependency alerts, a cell at 0.8 × `T` or any CR-1 secondary trigger at 80% (provision ahead) (rev P3) | Daily digest | Open a tracking issue |
 
 ## H-8. Fleet monitoring per tenant schema
 
@@ -153,7 +154,7 @@ Nightly job per cell, run as `fleet_observer` (statistics and catalog only, no t
 
 | ID | Measure | Query basis | Threshold / action |
 |---|---|---|---|
-| H-FL-01 | Schema size (tables, indexes, TOAST) | `pg_total_relation_size` summed by namespace | Over 10% of the cell, or over plan storage: notify; enterprise move proposal (A-PH-05) |
+| H-FL-01 | Schema size (tables, indexes, TOAST) | `pg_total_relation_size` summed by namespace | Over 10% of the cell, or over plan storage: notify; enterprise move proposal (A-PH-05). Feeds the `db_bytes` meter (2I I-4.2.10, DA-13) (rev P3) |
 | H-FL-02 | Row estimates of the top 10 tables | `pg_class.reltuples` | Trend only |
 | H-FL-03 | Slow queries per tenant | `pg_stat_statements` grouped by `userid` (tenant role), mean and p95 approximations, hourly sampling (A-CN-10) | Top 20 tenants by total time; S2 if one tenant takes over 25% of cell DB time |
 | H-FL-04 | Schema version | `control.tenant_schema_versions` vs the schema's own version row | Mismatch outside window: `Maintenance`, S1 |
@@ -161,7 +162,7 @@ Nightly job per cell, run as `fleet_observer` (statistics and catalog only, no t
 | H-FL-06 | Bloat and vacuum | `pg_stat_user_tables` dead tuples, last autovacuum | S3 |
 | H-FL-07 | Journal and audit integrity | Hash-chain verify of `audit_log_entry` sample; `record_history` gap check | S1 on break |
 | H-FL-08 | Backup freshness | Last successful export per tenant | Over 26 h: S2; over 50 h: S1 |
-| H-FL-09 | Cell totals | Schemas, `pg_class` rows, DB size, connections | Feeds the cell threshold (A-PH-03) |
+| H-FL-09 | Cell totals | Schemas (warm-pool, canary, trial and `__r`/`__old` restore schemas included), `pg_class` rows, DB size, connections, backend memory | Feeds the capacity rule CR-1 (A-PH-02, A-PH-03) (rev P3) |
 
 ## H-9. Backup, single-tenant restore and DR (S7, ADR-004)
 
@@ -169,14 +170,15 @@ Nightly job per cell, run as `fleet_observer` (statistics and catalog only, no t
 
 | ID | Layer | Scope | Frequency | Retention | Encryption | Location |
 |---|---|---|---|---|---|---|
-| H-BK-01 | Supabase PITR | Whole project (`cp`, each cell) | Continuous WAL *(verify interval)* | 7 days shared cells and `cp`; 14 or 28 days dedicated | Provider at rest | Supabase |
+| H-BK-01 | Supabase PITR | Whole project (`cp`, each cell; not `ks`) | Continuous WAL *(verify interval, VC-16)*; on before the first external tenant, trial or paid (DU-02, owner decision pending) | 7 days shared cells and `cp`; 14 or 28 days dedicated | Provider at rest | Supabase (rev P3) |
 | H-BK-02 | Supabase daily backups | Whole project | Daily | Per plan (7 days on Pro *(verify)*) | Provider | Supabase |
 | H-BK-03 | Change journal `record_history` | Every change per tenant | Every transaction | While the tenant is active | Encrypted fields stay encrypted | Tenant schema |
-| H-BK-04 | Per-tenant logical export | Tenant schema (JSONL per table, version, fingerprint) + file manifest | Nightly (staggered, round-robin) | In `exports`: last 7; off-site: 35 daily, 12 monthly, 1 per year while active | Tenant DEK (envelope) | `exports` bucket and off-site bucket with object lock (compliance mode, 35 days) |
-| H-BK-05 | Files | Encrypted objects | On upload (incremental copy by the export job) | While active; deleted on decommission | Tenant DEK | `tenant-files` and off-site |
+| H-BK-04 | Per-tenant logical export | Tenant schema (JSONL per table, version, fingerprint) + file manifest; the tenant DEK travels only wrapped by the KEK (escrow, F-K-02); no `ks` subject or file keys | Nightly, fixed slot per tenant (stable round-robin order), consecutive exports ≤ 26 h apart (rev P3) | In `exports`: last 7; off-site: 35 daily, 12 monthly, 1 per year while active | Tenant DEK (envelope) | `exports` bucket and off-site bucket with object lock (compliance mode, 35 days) |
+| H-BK-05 | Files | Encrypted objects | On upload (incremental copy by the export job) | While active; deleted on decommission | Per-file key (F-K-04), wrapped by the tenant DEK and held in `ks.file_key` (rev P3) | `tenant-files` and off-site |
 | H-BK-06 | Control plane logical export | `control` schema | Hourly | 35 days off-site | Platform key in `kms-prod` | Off-site |
+| H-BK-07 | `ks` continuity (DA-11) | `ks` project: wrapped DEKs, subject, file and blind-index keys, wrapped platform DEK | Daily provider backup (PITR off); continuous standby (read replica) in the DR region *(verify Supabase cross-region replicas, VC-14 family)*; an append-only **key journal** of every `ks` insert and every deletion (as a tombstone), wrapped material only, written to `offsite-prod` within 5 min | Daily backups 7 days; journal objects under compliance object lock, each expiring **8 days** after it is written; standby live | Wrapped material only (already wrapped by the tenant DEK or the KEK) | Supabase `ks`; DR region; `offsite-prod`. `ks` is **never** included in H-BK-04 exports, the H-BK-06 `control` export, WORM segments or any other off-site copy; only the key journal leaves `R1`. A destroyed key is unrecoverable from every copy no later than 8 days after its destruction (rev P3) |
 
-Off-site object lock and crypto-shredding: locked objects cannot be deleted before their lock expires, but they are encrypted with the tenant DEK, so KEK destruction makes them unreadable; the certificate states the lock-expiry date as the physical-deletion date.
+Off-site object lock and crypto-shredding: locked objects cannot be deleted before their lock expires, but they are encrypted with the tenant DEK, so destroying the KEK and its multi-Region replicas makes them unreadable; the certificate states the lock-expiry date as the physical-deletion date, and the `ks` roll-off date (≤ 8 days) for subject and file keys (rev P3).
 
 ### H-9.2 Single-tenant restore procedure
 
@@ -184,8 +186,8 @@ Off-site object lock and crypto-shredding: locked objects cannot be deleted befo
 |---|---|---|
 | H-RS-01 | Request and approve | Tenant admin (or platform, for incidents) requests a restore with a target time; four-eyes approval in `control.platform_approvals`; tenant informed of the write freeze |
 | H-RS-02 | Freeze | Tenant to `Maintenance` (writes 503, reads optional read-only) |
-| H-RS-03 | Choose path | **Path A** (cell intact, logical error): latest export before the target time + journal replay. **Path B** (journal also damaged or schema dropped): PITR of the cell **into a new scratch project** *(verify "restore to new project" availability)*, then logical export of `t_<tkey>` from the scratch project |
-| H-RS-04 | Build | Create `t_<tkey>__r` at the export's schema version via `ops.provision_tenant` variant; load JSONL; migrate to the current version |
+| H-RS-03 | Choose path | **Path A** (cell intact, logical error): latest export before the target time + journal replay. **Path B** (journal also damaged or schema dropped): PITR of the cell **into a new scratch project** *(verify "restore to new project" availability, VC-02)*, then logical export of `t_<tkey>` from the scratch project. If VC-02 fails, path B is withdrawn and the RPO is the last export (≤ 26 h). Neither path restores erased subjects or deleted file versions whose keys were destroyed (rev P3) |
+| H-RS-04 | Build | Create `t_<tkey>__r` (counted toward CR-1) at the export's schema version via `ops.provision_tenant` variant; load JSONL; migrate to the current version |
 | H-RS-05 | Replay | Apply `record_history` entries after the export time up to the target time (Path A), using `after` images; entries keep their original actors and request ids |
 | H-RS-06 | Verify | Row counts vs journal, `audit_log_entry` hash chain, `record_history` continuity, file manifest hashes, catalog fingerprint, isolation probe |
 | H-RS-07 | Swap | One transaction: rename live schema to `t_<tkey>__old_<ts>`, rename restored to `t_<tkey>`; grants recreated for the renamed objects; routing epoch bumped |
@@ -197,13 +199,14 @@ Off-site object lock and crypto-shredding: locked objects cannot be deleted befo
 
 | ID | Scenario | Response | RPO / RTO |
 |---|---|---|---|
-| H-DR-01 | Cell database corruption or loss | PITR restore of the cell (all its tenants) or restore to a new project and repoint `control.tenant_cells` | 5 min / 4 h |
+| H-DR-01 | Cell database corruption or loss | PITR restore of the cell (all its tenants) or restore to a new project and repoint `control.tenant_cells` | 5 min / 4 h (24 h RPO where PITR is not yet on, DU-02) (rev P3) |
 | H-DR-02 | `cp` loss | PITR of `cp`; cells untouched; API fails closed (503) until `cp` is back | 5 min / 2 h |
-| H-DR-03 | Region outage | IaC creates `cp` and cells in the DR region; `cp` from the hourly off-site export; tenants from nightly exports (priority: enterprise, then by plan); keys from KMS multi-Region replicas *(verify)* | 24 h / 72 h shared, 24 h enterprise |
-| H-DR-04 | Supabase account compromise or deletion | As H-DR-03, from off-site object-locked copies in a separate cloud account | 24 h / 72 h |
+| H-DR-03 | Region outage | IaC creates `cp` and cells in the DR region; `cp` from the hourly off-site export; tenants from nightly exports (priority: enterprise, then by plan); KEKs from KMS multi-Region replicas *(verify, VC-14)*; `ks` from its DR standby (or the last daily backup plus key-journal replay) (rev P3) | 26 h (tenants), 1 h (`cp`) / 72 h shared, 24 h enterprise (rev P3) |
+| H-DR-04 | Supabase account compromise or deletion | As H-DR-03, from off-site object-locked copies in a separate cloud account; `ks` rebuilt from the key journal replayed onto the last surviving `ks` copy *(the journal alone holds 8 days; owner acceptance under DU-36)* | 26 h (tenants), 1 h (`cp`) / 72 h (rev P3) |
 | H-DR-05 | Vercel outage | Static status page on a separate host; no failover compute at launch (accepted) | n/a / provider |
 | H-DR-06 | KMS key wrongly scheduled for deletion | Alert from the cloud audit trail (S1); cancel within the waiting period | 0 / 1 h |
 | H-DR-07 | Scanner down | Uploads stay in `quarantine` (not downloadable); queue backlog drains on recovery | 0 / 4 h |
+| H-DR-08 | `ks` loss | Promote the DR standby, or restore the last daily backup and replay the key journal (inserts and tombstones, so destroyed keys stay destroyed) (DA-11) | 5 min / 4 h (A-NFR-19) (rev P3) |
 
 Annual DR exercise: H-DR-03 tabletop plus a partial rebuild of staging in the DR region.
 
@@ -244,17 +247,17 @@ Annual DR exercise: H-DR-03 tabletop plus a partial rebuild of staging in the DR
 | H-P-15 | Email provider | 20 / 40 / 150 per month *(verify)* | *(verify)* |
 | H-P-16 | GitHub Team | USD 4 per user per month *(verify)* | *(verify)* |
 
-Usage assumptions: 25 members per tenant, 10% of members on SSO, database 0.3 GB and files 2 GB per tenant (A-18 upper bound is higher; this is the mean), 3 GB egress per tenant per month, export footprint off-site about 16 GB per tenant (A-21).
+Usage assumptions: 25 members per tenant, 10% of members on SSO, database 0.3 GB and files 2 GB per tenant (A-18 upper bound is higher; this is the mean), 3 GB egress per tenant per month for user traffic, plus about 9 GB per tenant per month of nightly export traffic (H-C-19), export footprint off-site about 16 GB per tenant (A-21) (rev P3).
 
 ### H-11.2 Monthly cost (USD, production plus staging)
 
 | ID | Line | 10 tenants | 100 tenants | 1,000 tenants |
 |---|---|---|---|---|
 | H-C-01 | Supabase plan (prod) | 25 (Pro) | 25 (Pro) | 599 (Team) |
-| H-C-02 | Compute, net of credit | `cp` Small + `c1` Small = 20 | `cp` Small + `c1` Large = 115 | `cp` Medium + 4 cells Large = 490 |
+| H-C-02 | Compute, net of credit (`cp` compute sized from 2J H12; Small at launch is provisional; cell count from CR-1) (rev P3) | `cp` Small + `c1` Small = 20 | `cp` Small + `c1` Large = 115 | `cp` Medium + 4 cells Large = 490 |
 | H-C-03 | PITR 7 days | 200 (2 projects) | 200 | 500 (5 projects) |
 | H-C-04 | Disk, storage, egress overage | 0 | about 15 | about 370 |
-| H-C-05 | SSO MAU | 0 | about 7 | about 75 |
+| H-C-05 | SSO MAU | 0 | about 3 | about 37 (rev P3) |
 | H-C-06 | Staging (`nonprod` Pro + 3 Micro, net) | 45 | 45 | 60 |
 | H-C-07 | Vercel (2 seats + usage) | 40 | 90 | 340 |
 | H-C-08 | Vercel Static IPs (H-NW-01 later) | 0 | 0 | 100 |
@@ -264,15 +267,21 @@ Usage assumptions: 25 members per tenant, 10% of members on SSO, database 0.3 GB
 | H-C-12 | Observability | 60 | 100 | 300 |
 | H-C-13 | Email | 20 | 40 | 150 |
 | H-C-14 | GitHub, DNS | 10 | 10 | 10 |
-| H-C-15 | **Total per month** | **about 474** | **about 829** | **about 4,304** |
-| H-C-16 | **Per tenant per month** | **about 47** | **about 8.3** | **about 4.3** |
+| H-C-17 | `ks` + DR standby *(verify)* (rev P3) | 30 | 30 | 120 |
+| H-C-18 | KMS multi-Region replica keys *(verify, VC-14)* (rev P3) | 10 | 100 | 1,000 |
+| H-C-19 | Export egress (nightly exports, cell to worker to buckets) *(verify, VC-22)* (rev P3) | 0 | about 80 | about 810 |
+| H-C-20a | Second Vercel project Static IPs (when H-NW-01 later applies) *(verify)* (rev P3) | 0 | 0 | 100 |
+| H-C-20b | Secrets manager, anchor bucket, TSA *(verify)* (rev P3) | 10 | 10 | 10 |
+| H-C-20c | Perf cell on demand (J-DR3) *(verify)* (rev P3) | 30 | 30 | 30 |
+| H-C-15 | **Total per month** (rev P3: includes H-C-17 to H-C-20c and the H-C-05 correction) | **about 554** | **about 1,075** | **about 6,336** |
+| H-C-16 | **Per tenant per month** (rev P3) | **about 55** | **about 10.8** | **about 6.3** |
 
 | ID | Unit | Cost | Note |
 |---|---|---|---|
-| H-C-20 | Marginal cost of one more shared tenant at scale | about USD 2.5 to 3.5 per month | KMS key 1.0, compute and PITR share about 0.7, storage and egress about 0.5, off-site about 0.2, the rest telemetry and email |
+| H-C-20 | Marginal cost of one more shared tenant at scale | about USD 4.5 to 5.5 per month (rev P3) | KMS key and replica 2.0, export egress about 0.8, compute and PITR share about 0.7, storage and egress about 0.5, off-site about 0.2, the rest telemetry and email |
 | H-C-21 | Dedicated cell (enterprise) | about USD 230 to 450 per month before support | Small to Large compute, PITR 14 days (200), disk; PrivateLink needs Team (already paid at scale) |
 | H-C-22 | Trial tenant (30 days) | about USD 1.5 | Mostly the KMS key; deleted keys stop billing once deleted *(verify billing during the waiting period)* |
-| H-C-23 | Cost lever (decision for 2F/2G) | KMS becomes about 24% of cost at 1,000 tenants | A per-cell KMS key wrapping per-tenant KEKs held in a separate short-retention key store would cut this, at the cost of moving shredding evidence from KMS to that store |
+| H-C-23 | Cost lever (decision for 2F/2G) | KMS (keys and replicas) is the largest single line at 1,000 tenants | A per-cell KMS key wrapping per-tenant KEKs held in a separate short-retention key store would cut this, at the cost of moving shredding evidence from KMS to that store. Not adopted for the MVP (DU-03): it conflicts with S7 and BYOK; revisit above 1,000 tenants through an ADR-003 amendment (rev P3) |
 
 ### H-11.3 Cost controls per environment
 
@@ -281,16 +290,17 @@ Usage assumptions: 25 members per tenant, 10% of members on SSO, database 0.3 GB
 | H-CC-01 | Dev / CI | Local Supabase only; no cloud databases per branch; Vercel preview deployments off (Git deploys disabled already) |
 | H-CC-02 | Staging | Supabase spend cap on; Micro compute; no PITR; staging tenants auto-decommissioned after 14 days; KMS keys in `kms-nonprod` scheduled for deletion with the tenant |
 | H-CC-03 | Production | Spend cap off (it would stop service) with billing alerts at 80% and 100% of the monthly budget per provider; cloud budgets with anomaly alerts; Vercel spend management alert *(verify)* |
-| H-CC-04 | Product | Trials limited (5 members, 1 GB files, 30 days, auto-decommission); plan limits on storage, API calls and users enforced on the server; AI off by default with provider costs passed through; log sampling and retention caps |
+| H-CC-04 | Product | Trials limited by the standing trial policy (2I I-4.4.3, OD-04; the limits are defined once there), including a cap on concurrent trials; plan limits on storage, database size, API calls and users enforced on the server; AI off by default with provider costs passed through; log sampling and retention caps (rev P3) |
+| H-CC-05 | Lever | Incremental nightly export (journal since the last full export) with a weekly full export cuts export egress (H-C-19) by about 80%; evaluate under ADR-004 (rev P3) |
 
 ### H-11.4 Pricing-plan implications (for 2I)
 
 | ID | Implication |
 |---|---|
-| H-PR-01 | Fixed platform cost is about USD 470 per month before the first customer; break-even needs roughly 5 to 10 paying tenants at an entry price of USD 50 to 100 per month. |
-| H-PR-02 | Entry plan floor: at least 5 times the marginal cost (H-C-20), so USD 15 to 20 per tenant per month is the lowest sensible price; per-seat pricing scales with SSO MAU and email volume. |
-| H-PR-03 | Storage overage must be priced per GB at several times provider cost, because files dominate storage and off-site copies multiply it (16 GB off-site per 2 GB of files plus exports). |
-| H-PR-04 | Enterprise with a dedicated cell needs a floor of about USD 500 per month in infrastructure alone before support and margin; longer PITR windows are a priced option. |
+| H-PR-01 | Fixed platform cost is about USD 550 per month before the first customer (rev P3; re-state after VC-08); break-even needs roughly 5 to 10 paying tenants at an entry price of USD 50 to 100 per month. |
+| H-PR-02 | Entry plan floor: at least 5 times the marginal cost (H-C-20), so USD 25 per tenant per month is the lowest sensible price (rev P3); per-seat pricing scales with SSO MAU and email volume. |
+| H-PR-03 | Storage overage must be priced per GB at several times provider cost. Off-site retention multiplies **database** exports (48 retained copies × about 0.3 GB) more than files (copied once), so database size is metered (`db_bytes`, 2I) and large tenants move to dedicated cells (rev P3). |
+| H-PR-04 | Enterprise with a dedicated cell needs a floor of about USD 500 per month in infrastructure alone before support and margin; longer PITR windows are a priced option. Plan entitlements carry `dedicated_cell`, `pitr_days`, `byok`, `sso` and `scim` so these drivers are enforceable (2I, DA-13) (rev P3). |
 | H-PR-05 | BYOK: the customer's KMS bills the customer; Selvara's KMS line falls for those tenants. |
 
 ---
@@ -303,7 +313,7 @@ Usage assumptions: 25 members per tenant, 10% of members on SSO, database 0.3 GB
 | H-DL-02 | ADR-004 Backup and restore | `p2/adr/ADR-004-backup-and-restore.md` |
 | H-DL-03 | ADR-005 Hosting and jobs | `p2/adr/ADR-005-hosting-and-jobs.md` |
 | H-DL-04 | ADR-009 Migration orchestration | `p2/adr/ADR-009-migration-orchestration.md` |
-| H-DL-05 | Proposed workflows (owner approval needed): `migrate.yml`, `fleet-ops.yml`, `infra.yml`; additions to `ci.yml` (H-CI-01..04) | Phase 5 |
+| H-DL-05 | Proposed workflows (owner approval needed): `migrate.yml`, `fleet-ops.yml`, `infra.yml`; additions to `ci.yml` (H-CI-01..04) (OD-03 covers the three new workflows; edits to `ci.yml` and `release.yml` need DU-07) (rev P3) | Phase 5 |
 
 ## Decisions required
 
@@ -312,9 +322,9 @@ Usage assumptions: 25 members per tenant, 10% of members on SSO, database 0.3 GB
 | H-DR-A | Per-tenant export + journal + PITR for DR; restore paths A and B | ADR-004 | Owner |
 | H-DR-B | Vercel API and workers, pgmq + pg_cron, one scanner container | ADR-005 | Owner |
 | H-DR-C | Orchestrated, batched, version-windowed migrations from GitHub Actions | ADR-009 | Owner |
-| H-DR-D | AWS (or equivalent) accounts for KMS, scanner and off-site backup (A-19) | ADR-003 / ADR-005 | Owner |
-| H-DR-E | PITR on from the first paying tenant (about USD 200 per month) | ADR-004 | Owner |
-| H-DR-F | Approval to add the proposed workflows to `.github/workflows/` in Phase 5 | n/a | Owner |
+| H-DR-D | AWS (or equivalent) accounts for KMS, scanner and off-site backup (A-19) | ADR-003 / ADR-005 | Owner: decided (OD-02); provider choice open as DU-04 (rev P3) |
+| H-DR-E | PITR on before the first external tenant, trial or paid (about USD 200 per month) | ADR-004 | Owner (DU-02) (rev P3) |
+| H-DR-F | Approval to add the proposed workflows to `.github/workflows/` in Phase 5 | n/a | Owner: decided in principle (OD-03); existing-workflow edits open as DU-07 (rev P3) |
 
 ## Open risks
 
@@ -322,22 +332,26 @@ Usage assumptions: 25 members per tenant, 10% of members on SSO, database 0.3 GB
 |---|---|---|---|---|
 | R-15 | Pooler reachable from any IP until Vercel Static IPs and network restrictions are in place | Medium | High | Strong rotated credentials and CA-pinned TLS now; Static IPs + allowlist at the first regulated customer or 100 tenants |
 | R-16 | Supabase Terraform provider is alpha and Queues maturity is uncertain; IaC and jobs depend on them | Medium | Medium | Pin versions; Management API scripts as fallback; ADR-005 fallback (worker polling a plain `ops.job` table) |
-| R-17 | Region loss gives a 24 h RPO; some regulated buyers will ask for less | Medium | High | Hourly `cp` export now; enterprise option for more frequent exports or a warm standby cell later |
-| R-18 | Vercel function duration limits (300 s default, up to 800 s on Pro *(source 8)*) break long exports or restores | Medium | Medium | Chunked, resumable jobs via queue continuation; large restores run in `fleet-ops` on GitHub runners |
-| R-19 | Cost per tenant at small scale (about USD 47 at 10 tenants) outruns early revenue | High | Medium | PITR only from the first paying tenant; staging on Micro; pricing floor H-PR-01 |
+| R-17 | Region loss gives a 26 h RPO per tenant (1 h for `cp`); some regulated buyers will ask for less (rev P3) | Medium | High | Hourly `cp` export now; enterprise option for more frequent exports or a warm standby cell later |
+| R-18 | Vercel function duration limits (300 s default, up to 800 s on Pro *(source 8)*) break long exports or restores (master for R-32 in the Phase 3 register) (rev P3) | Medium | Medium | Chunked, resumable jobs via queue continuation; large restores run in `fleet-ops` on GitHub runners |
+| R-19 | Cost per tenant at small scale (about USD 55 at 10 tenants after the Phase 3 cost correction) outruns early revenue | High | Medium | PITR timing (DU-02); staging and `ks` on Micro; pricing floor H-PR-01; recompute after VC-08 (R-63) (rev P3) |
+
+Phase 3: the unified register (`risks.md`) adds R-62 (`cp` load), R-63 (cost model omissions) and R-64 (trial flood) for this workstream (rev P3).
 
 ## New assumptions
 
 | ID | Assumption | Validate by |
 |---|---|---|
-| A-19 | A cloud account (AWS or equivalent) is acceptable for KMS, the scanner and off-site copies, despite Q-11 "cloud not chosen" | Owner |
+| A-19 | A cloud account (AWS or equivalent) is acceptable for KMS, the scanner and off-site copies, despite Q-11 "cloud not chosen" | Owner: **validated** (OD-02) (rev P3) |
 | A-20 | Supabase can restore a PITR point into a new project, enabling single-tenant restore path B | Supabase documentation |
 | A-21 | Off-site footprint is about 16 GB per tenant under the H-BK-04 retention scheme | Telemetry |
-| A-22 | The Management API can change network restrictions per job run | Supabase documentation |
-| A-23 | KMS multi-Region replica keys are available in the chosen DR region and are covered by the crypto-shredding procedure | Provider documentation, 2F |
-| A-24 | Two people can acknowledge an S1 page within 15 minutes around the clock, or the owner accepts a business-hours target | Owner |
+| A-22 | The Management API can change network restrictions per job run | Supabase documentation (VC-20) (rev P3) |
+| A-23 | KMS multi-Region replica keys are available in the chosen DR region and are covered by the crypto-shredding procedure (KEK destruction includes every replica) | Provider documentation (VC-14), 2F (rev P3) |
+| A-24 | Two people can acknowledge an S1 page within 15 minutes around the clock, or the owner accepts a business-hours target (then the RTO figures grow by the off-hours gap) | Owner (DU-29) (rev P3) |
 
 ## Spine deviations
+
+SD-H1 and SD-H2 are folded into spine v2 (Phase 3) and are no longer deviations (rev P3).
 
 | ID | Spine item | Deviation | Reason |
 |---|---|---|---|

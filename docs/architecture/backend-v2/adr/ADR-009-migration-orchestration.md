@@ -5,7 +5,7 @@
 | Status | Proposed |
 | Date | 2026-11-23 |
 | Owners | 2H, with 2B (schema) |
-| Related | ADR-001 C1-06; replaces D6 (manual migrations); `2H-infrastructure.md` H-6.3, H-8; `2A-architecture.md` A-D-06 |
+| Related | ADR-001 C1-06; replaces D6 (manual migrations); `2H-infrastructure.md` H-6.3, H-8; `2A-architecture.md` A-D-06, A-PH-02 (CR-1) (rev P3) |
 
 ## Context
 
@@ -37,7 +37,7 @@ Every tenant schema must carry the same structure, so each schema change runs N 
 ## Consequences
 
 - Developers must write expand/contract migrations and keep the API compatible with `N-1` for one release (contract test H-CI-04).
-- Rollout time is bounded per cell (target under 45 min, A-NFR-11) and feeds the cell threshold.
+- Rollout time is bounded per cell (target under 45 min, A-NFR-11) and is a secondary trigger of the cell capacity rule CR-1 (A-PH-03) (rev P3).
 - `SCHEMA_VERSION` single-number check in `db.ts` becomes a per-tenant window check in `router`.
 
 ## Security and privacy implications
@@ -50,7 +50,7 @@ Every tenant schema must carry the same structure, so each schema change runs N 
 
 | ID | Check |
 |---|---|
-| V-009-01 | Staging rollout across 2 cells and 300 synthetic schemas within target, with an injected failure on one schema: pause, report, resume |
+| V-009-01 | Staging rollout across 2 cells with synthetic schemas at the CR-1 threshold count (provisional 300; warm-pool and canary schemas included) within 45 min per cell, with an injected failure on one schema: pause, report, resume (rev P3) |
 | V-009-02 | Contract test: build N passes against schemas at N-1 and N |
 | V-009-03 | Manual change to a policy in one staging schema is detected by the drift report and the tenant goes to `Maintenance` |
 | V-009-04 | A migration containing a session `SET` or a `DROP` in an expand step fails lint |
