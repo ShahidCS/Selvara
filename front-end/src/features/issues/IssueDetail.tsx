@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { RecordHistory } from "@/components/kit/RecordHistory";
 import { Empty, Icon, Page, Stepper, StatusChip } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { bumpData, useApp, useData } from "@/lib/store";
@@ -48,7 +49,7 @@ export function IssueDetail({ id }: { id: string }) {
             <div style={{ fontWeight: 600 }}><Icon name="clock" /> Closure awaiting verification</div>
             <div style={{ fontSize: 12.5, color: "var(--muted)", margin: "3px 0 8px" }}>Proposed by {pend.requestedBy}: {i.closure?.note}</div>
             <div className="btngrp">
-              <button className="btn btn-primary sm" {...dis(verifyWhy)} onClick={() => openDecideClosure(L, id, "verify")}><Icon name="check" />Verify and close</button>
+              <button className="btn btn-primary btn-decide sm" {...dis(verifyWhy)} onClick={() => openDecideClosure(L, id, "verify")}><Icon name="check" />Verify and close</button>
               <button className="btn btn-secondary sm" {...dis(verifyWhy)} onClick={() => openDecideClosure(L, id, "reject")}><Icon name="x" />Reject</button>
               {iAm(pend.requestedBy) ? <button className="btn btn-ghost sm" onClick={() => attempt(L, async () => { await svc.withdrawClosure(id); L.toast("Closure withdrawn"); bumpData(); })}><Icon name="back" />Withdraw</button> : null}
             </div>
@@ -109,6 +110,7 @@ export function IssueDetail({ id }: { id: string }) {
                 <button className="btn btn-ghost sm" {...dis(writeWhy)} onClick={() => openLink(L, id, "risk")}><Icon name="risk" />Link risk</button>
               </div>
             </div></div>
+            <RecordHistory id={id} />
           </aside>
         </div>
       </div>

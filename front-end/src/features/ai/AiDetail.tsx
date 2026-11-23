@@ -136,7 +136,7 @@ export function AiDetail({ id }: { id: string }) {
               {(rev === "Draft" || rev === "Changes requested") ? <button className="btn btn-primary sm" onClick={() => act(() => svc.submitFria(id), () => { aiLog("ai.impact_assessment.submitted", a.name); bumpData(); L.toast("Impact assessment submitted for approval"); })}><Icon name="check" />Submit for approval</button> : null}
               {rev === "Submitted" ? (
                 <>
-                  <button className="btn btn-primary sm" disabled={!canApprove} onClick={() => act(() => svc.approveFria(id), () => { aiLog("ai.impact_assessment.approved", a.name); bumpData(); L.toast(API_ON ? "Impact assessment approved" : "Impact assessment approved; evidence D-07 updated"); })}><Icon name="check" />Approve</button>
+                  <button className="btn btn-primary btn-decide sm" disabled={!canApprove} onClick={() => act(() => svc.approveFria(id), () => { aiLog("ai.impact_assessment.approved", a.name); bumpData(); L.toast(API_ON ? "Impact assessment approved" : "Impact assessment approved; evidence D-07 updated"); })}><Icon name="check" />Approve</button>
                   <button className="btn btn-secondary sm" disabled={!canApprove} onClick={() => API_ON ? withReason("Return with changes", "What needs to change", "Return", (reason) => svc.returnFria(id, reason), "Returned with changes") : act(() => svc.returnFria(id), () => { aiLog("ai.impact_assessment.returned", a.name); bumpData(); L.toast("Returned with changes"); })}>Return with changes</button>
                 </>
               ) : null}

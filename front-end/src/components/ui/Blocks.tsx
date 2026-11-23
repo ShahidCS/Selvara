@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { createContext, ReactNode, useEffect, useRef, useState } from "react";
 import { Presence } from "./Presence";
 import Link from "next/link";
 import { Icon } from "./Icon";
@@ -49,18 +49,27 @@ export function Table({ cols, children, minw }: { cols: Col[]; children: ReactNo
 }
 /** Page scaffold: title/subtitle come from the module registry (TITLE) unless overridden. */
 /* Record and form pages (those with `back`) show who else has the record open. */
+/** The page header's action area, where a form's actions are placed (FormActions). */
+export const PageActsSlot = createContext<HTMLElement | null>(null);
 export function Page({ mod, title, sub, acts, back, status, eyebrow, children }: { mod?: string; title?: string; sub?: string; acts?: ReactNode; /** A small line above the title (the date on the Overview). */ eyebrow?: string; /** Record pages: a link back to the list, shown above the title. */ back?: { href: string; label: string }; /** Record pages: the status chip, shown beside the title. */ status?: ReactNode; children: ReactNode }) {
   const [t, s] = mod ? TITLE[mod] || ["", ""] : ["", ""];
   const T = title ?? t, S = sub ?? s;
+  // R29: a form's actions (Cancel, Save, Create) render here, in the header that stays in view while the form scrolls
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  const [hasFormActs, setHasFormActs] = useState(false);
+  useEffect(() => { if (!slot) return; const check = () => setHasFormActs(!!slot.querySelector(".form-acts-top")); check(); const mo = new MutationObserver(check); mo.observe(slot, { childList: true }); return () => mo.disconnect(); }, [slot]);
   return (
+    <PageActsSlot.Provider value={slot}>
     <div className="page">
       <div className="page-head">
-        <div className="pt">{eyebrow ? <div className="page-eyebrow">{eyebrow}</div> : null}{back ? <Link className="back-link" href={back.href}><Icon name="back" />{back.label}</Link> : null}{status ? <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}><h1>{T}</h1>{status}</div> : <h1>{T}</h1>}{S ? <div className="sub">{S}</div> : null}</div>
-        {acts ? <div className="acts">{acts}</div> : null}
+        {back ? <Link className="back-round" href={back.href} aria-label={`Back to ${back.label}`} title={`Back to ${back.label}`}><Icon name="back" /></Link> : null}
+        <div className="pt">{eyebrow ? <div className="page-eyebrow">{eyebrow}</div> : null}{status ? <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}><h1>{T}</h1>{status}</div> : <h1>{T}</h1>}{S ? <div className="sub">{S}</div> : null}</div>
+        <div className="acts" ref={setSlot} hidden={!acts && !hasFormActs}>{acts}</div>
       </div>
       {back ? <Presence /> : null}
       {children}
     </div>
+    </PageActsSlot.Provider>
   );
 }
 export function Empty({ icon = "search", title, children, action }: { icon?: string; title: string; children?: ReactNode; action?: ReactNode }) {

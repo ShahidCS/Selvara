@@ -1,4 +1,6 @@
 import { HBarList, Icon, KpiStrip, KpiTile, LineChart, Page, StatusChip, activate, type Desirability } from "@/components/ui";
+import { FocusCard } from "./FocusCard";
+import { ComplianceCalendar } from "./ComplianceCalendar";
 import { DATA } from "@/lib/data";
 import { appStore, useData } from "@/lib/store";
 import { fwReadiness } from "@/lib/frameworks";
@@ -99,6 +101,7 @@ export default function OverviewModule() {
         <KpiTile label="Upcoming audits" value={M.upcomingAudits} caption={API_ON ? "Not yet complete" : "Not yet complete · next in 136 days"} />
         <KpiTile label="Vendor reviews due" value={M.vendorDue} delta={live(tile("bad", "2 overdue"))} caption="Third-party reassessments" />
       </KpiStrip>
+      <FocusCard can={can} />
       <div className="panels" data-tour="overview-panels" style={{ flex: "0 0 auto", gridTemplateColumns: "1.6fr 1fr 1fr", gridAutoRows: "minmax(320px,auto)" }}>
         <div className="card">
           <div className="c-head"><h3>Risk posture</h3>{can("risk") ? <div className="r"><button className="btn btn-ghost sm" onClick={() => go("/ws/risk")}>Risk register</button></div> : null}</div>
@@ -144,6 +147,7 @@ export default function OverviewModule() {
           </div>
         </div>
       </div>
+      <ComplianceCalendar can={can} />
       <div className="card" data-tour="overview-coverage" style={{ flex: "0 0 auto" }}>
         <div className="c-head"><h3>Control coverage</h3><div className="r" style={{ fontSize: 12, color: "var(--muted)" }}>Implemented %, framework × category</div></div>
         <div className="c-body">

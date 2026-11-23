@@ -12,3 +12,4 @@ export * from "./Charts";
 export * from "./Record";
 export * from "./BrandMark";
 export * from "./People";
+export * from "./Docs";

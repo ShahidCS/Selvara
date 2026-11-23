@@ -40,7 +40,7 @@ export default function PendingImports() {
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
               <label className="field" style={{ flex: "1 1 220px", margin: 0 }}><span className="flab">Reason (at least 10 characters)</span>
                 <input className="input" maxLength={300} disabled={!!why} value={reasons[a.id] || ""} onChange={(e) => setReasons((x) => ({ ...x, [a.id]: e.target.value }))} /></label>
-              <button className="btn btn-primary sm" disabled={!!why} title={why || undefined} onClick={() => decide(a.id, "approve")}>Approve</button>
+              <button className="btn btn-primary btn-decide sm" disabled={!!why} title={why || undefined} onClick={() => decide(a.id, "approve")}>Approve</button>
               <button className="btn btn-secondary sm" disabled={!!why} title={why || undefined} onClick={() => decide(a.id, "reject")}>Reject</button>
               {mine ? <button className="btn btn-ghost sm" onClick={() => wd(a.id)}>Withdraw</button> : null}
             </div>

@@ -51,7 +51,7 @@ export function PendingApprovals({ prefix, title, run, withdraw }: {
                 <td>{a.requestedBy}</td><td className="num">{a.ticket || "-"}</td><td className="num">{fmtUtc(a.expiresAt)}</td>
                 <td className="r" style={{ whiteSpace: "nowrap" }}>
                   {mine ? <button className="btn btn-ghost sm" disabled={!el.active} title={el.active ? undefined : "Elevate to make changes"} onClick={() => doWithdraw(a)}><Icon name="x" />Withdraw</button> : <>
-                    <button className="btn btn-primary sm" aria-label={`Approve ${a.id}`} disabled={!!block} title={block || undefined} onClick={() => open(a, true)}><Icon name="check" />Approve</button>
+                    <button className="btn btn-primary btn-decide sm" aria-label={`Approve ${a.id}`} disabled={!!block} title={block || undefined} onClick={() => open(a, true)}><Icon name="check" />Approve</button>
                     <button className="btn btn-ghost sm" aria-label={`Reject ${a.id}`} disabled={!!block} title={block || undefined} onClick={() => open(a, false)}><Icon name="x" />Reject</button></>}
                 </td>
               </tr>
