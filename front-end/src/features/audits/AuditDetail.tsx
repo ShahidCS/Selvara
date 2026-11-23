@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { adminLog } from "@/lib/adminAudit";
-import { Chip, Empty, Icon, KpiStrip, KpiTile, Page, StatusChip, Table } from "@/components/ui";
+import { Chip, Empty, Icon, KpiStrip, KpiTile, Page, StatusChip, Table , SeverityBars } from "@/components/ui";
 import { useApp, useData, useModState, bumpData } from "@/lib/store";
 import { wsLog } from "@/lib/audit";
 import { downloadText } from "@/lib/format";
@@ -193,7 +193,7 @@ export function AuditDetail({ id }: { id: string }) {
               <tr key={f.id}>
                 <td className="strong num">{f.id}</td>
                 <td><div>{f.title}</div><div style={{ fontSize: 11.5, color: "var(--muted)" }}>{f.rec}</div></td>
-                <td><StatusChip s={f.sev} /></td><td><StatusChip s={f.status} />{f.status === "Draft" ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>by {f.draftedBy}</div> : null}{f.status === "Rejected" ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{f.rejectedReason}</div> : null}</td>
+                <td><SeverityBars level={f.sev} /></td><td><StatusChip s={f.status} />{f.status === "Draft" ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>by {f.draftedBy}</div> : null}{f.status === "Rejected" ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{f.rejectedReason}</div> : null}</td>
                 <td className="num">{f.issue ? <Link href={`/ws/issues/${encodeURIComponent(f.issue)}`} onClick={(e) => { e.preventDefault(); go(`/ws/issues/${encodeURIComponent(f.issue)}`); }}>{f.issue}</Link> : <span style={{ color: "var(--muted)" }}>—</span>}</td>
                 <td className="r">{f.issue || f.status === "Closed" || f.status === "Rejected" ? null : (
                   <div className="btngrp" style={{ justifyContent: "flex-end" }}>

@@ -1,5 +1,6 @@
 import { hasTour, startTour } from "@/components/kit/Tour";
-import { Icon } from "@/components/ui";
+import { AiMark, Icon } from "@/components/ui";
+import { approvalsWaiting } from "@/lib/approvalsWaiting";
 import { appStore, persist, setModState, useApp, useData, useModVersion } from "@/lib/store";
 import { API_ON, TITLE, landingPath, roleOf, allowedSpaces, modAllowed } from "@/lib/rbac";
 import { isDemoAccount } from "@/lib/session";
@@ -69,12 +70,22 @@ export function Topbar() {
         {modAllowed(roleId, "ws", "work") ? <button role="menuitem" onClick={() => { close(); go("/ws/work"); }}><Icon name="user" />My work</button> : null}
         <button role="menuitem" onClick={() => { close(); go("/auth"); }}><Icon name="access" />Sign-in &amp; security</button>
         <button role="menuitemcheckbox" aria-checked={density === "compact"} onClick={() => { const d = density === "compact" ? "comfortable" : "compact"; appStore.set({ density: d }); persist(); close(); L.toast("Density: " + (d === "compact" ? "Compact" : "Comfortable")); }}><Icon name={density === "compact" ? "check" : "blank"} />Compact density</button>
+        <button role="menuitem" aria-label={`Theme: ${THEME_NAME[theme] ?? theme}. Change theme`} onClick={() => { close(); cycleTheme(); }}><Icon name={themeIcon} />Theme: {THEME_NAME[theme] ?? theme}</button>
         <button role="menuitem" onClick={() => { close(); openShortcuts(L); }}><Icon name="grid" />Keyboard shortcuts</button>
         <div className="div" />
         <button role="menuitem" onClick={doSignOut}><Icon name="back" />Sign out</button>
       </div>
     ));
   };
+  const waiting = approvalsWaiting(roleId);
+  const showTour = route.space !== "auth" && !route.param && hasTour(route.mod);
+  /** R4: help for this page, the shortcuts and (from the Help centre release) searchable articles. */
+  const helpMenu = (ev: React.MouseEvent) => L.popover(ev, (close) => (
+    <>
+      {showTour ? <button role="menuitem" onClick={() => { close(); startTour(route.mod); }}><Icon name="play" />Take the tour of this page</button> : null}
+      <button role="menuitem" onClick={() => { close(); openShortcuts(L); }}><Icon name="grid" />Keyboard shortcuts</button>
+    </>
+  ), { label: "Help" });
   const openNotifications = () => L.openDrawer("Notifications", undefined, (close) => <NotificationsBody space={space} go={go} close={close} L={L} />);
 
   return (
@@ -103,12 +114,12 @@ export function Topbar() {
       <div role="search" aria-label="Site" style={{ display: "contents" }}>
       <button className="top-search" onClick={L.openPalette} aria-label="Jump to a module (Command or Ctrl K)" title="Jump to a module (⌘K)"><Icon name="search" /><span className="ph">Jump to module…</span><span className="kbd">⌘K</span></button>
       </div>
-      {canAsk ? <button className="icon-btn" aria-label="Ask AI (Command or Ctrl J)" title="Ask AI (⌘J)" onClick={() => { setModState("assistant.from", window.location.pathname); go("/ws/assistant"); }}><Icon name="assistant" /></button> : null}
+      {canAsk ? <button className="icon-btn ask-ai" aria-label="Ask AI (Command or Ctrl J)" title="Ask AI (⌘J)" onClick={() => { setModState("assistant.from", window.location.pathname); go("/ws/assistant"); }}><AiMark size={20} /></button> : null}
       {API_ON ? null : <button className="icon-btn nbell" aria-label={unread ? `Notifications, ${unread > 9 ? "9+" : unread} unread` : "Notifications"} title="Notifications" aria-haspopup="dialog" onClick={openNotifications}>
         <Icon name="bell" />{unread ? <span className="nbadge" aria-hidden="true">{unread > 9 ? "9+" : unread}</span> : null}
       </button>}
-      {route.space !== "auth" && !route.param && hasTour(route.mod) ? <button className="icon-btn" aria-label="Take the tour of this page" title="Take the tour of this page" onClick={() => startTour(route.mod)}><Icon name="play" /></button> : null}
-      <button className="icon-btn" aria-label={`Theme: ${THEME_NAME[theme] ?? theme}. Change theme`} title={`Theme: ${THEME_NAME[theme] ?? theme} (click for ${THEME_NAME[nextTheme]})`} onClick={cycleTheme}><Icon name={themeIcon} /></button>
+      {waiting && route.space === "ws" ? <button className="appr-pill" onClick={() => go("/ws/work?tab=tasks")} aria-label={`${waiting} approval${waiting === 1 ? "" : "s"} waiting for you`}><AiMark size={28} /><span className="appr-t">{waiting} approval{waiting === 1 ? "" : "s"} waiting</span></button> : null}
+      <button className="icon-btn" aria-label="Help" title="Help" aria-haspopup="menu" onClick={helpMenu}><Icon name="help" /></button>
       <div className="top-div" aria-hidden="true" />
       <button className="top-user" aria-haspopup="menu" aria-expanded="false" onClick={roleMenu}>
         <span className="avatar" aria-hidden="true">{me.initials}</span>

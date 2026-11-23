@@ -1,5 +1,5 @@
 /* Every module's guided tour (bubble walkthrough), by sidebar group. The shell starts a module's tour by itself according to the person's
-   preference (lib/tours.ts) and plays it again from "Take the tour" in the top bar. */
+   preference (lib/tours.ts) and plays it again from Help › "Take the tour of this page" in the header. */
 import type { Tours } from "./types";
 import { TOURS as CORE } from "./ws-core";
 import { TOURS as ASSURANCE } from "./ws-assurance";

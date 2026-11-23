@@ -49,13 +49,13 @@ export function Table({ cols, children, minw }: { cols: Col[]; children: ReactNo
 }
 /** Page scaffold: title/subtitle come from the module registry (TITLE) unless overridden. */
 /* Record and form pages (those with `back`) show who else has the record open. */
-export function Page({ mod, title, sub, acts, back, status, children }: { mod?: string; title?: string; sub?: string; acts?: ReactNode; /** Record pages: a link back to the list, shown above the title. */ back?: { href: string; label: string }; /** Record pages: the status chip, shown beside the title. */ status?: ReactNode; children: ReactNode }) {
+export function Page({ mod, title, sub, acts, back, status, eyebrow, children }: { mod?: string; title?: string; sub?: string; acts?: ReactNode; /** A small line above the title (the date on the Overview). */ eyebrow?: string; /** Record pages: a link back to the list, shown above the title. */ back?: { href: string; label: string }; /** Record pages: the status chip, shown beside the title. */ status?: ReactNode; children: ReactNode }) {
   const [t, s] = mod ? TITLE[mod] || ["", ""] : ["", ""];
   const T = title ?? t, S = sub ?? s;
   return (
     <div className="page">
       <div className="page-head">
-        <div className="pt">{back ? <Link className="back-link" href={back.href}><Icon name="back" />{back.label}</Link> : null}{status ? <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}><h1>{T}</h1>{status}</div> : <h1>{T}</h1>}{S ? <div className="sub">{S}</div> : null}</div>
+        <div className="pt">{eyebrow ? <div className="page-eyebrow">{eyebrow}</div> : null}{back ? <Link className="back-link" href={back.href}><Icon name="back" />{back.label}</Link> : null}{status ? <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}><h1>{T}</h1>{status}</div> : <h1>{T}</h1>}{S ? <div className="sub">{S}</div> : null}</div>
         {acts ? <div className="acts">{acts}</div> : null}
       </div>
       {back ? <Presence /> : null}

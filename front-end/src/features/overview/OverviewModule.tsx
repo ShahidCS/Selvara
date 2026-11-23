@@ -1,6 +1,6 @@
 import { HBarList, Icon, KpiStrip, KpiTile, LineChart, Page, StatusChip, activate, type Desirability } from "@/components/ui";
 import { DATA } from "@/lib/data";
-import { useData } from "@/lib/store";
+import { appStore, useData } from "@/lib/store";
 import { fwReadiness } from "@/lib/frameworks";
 import { metrics } from "@/lib/metrics";
 import { getMe, wsLog } from "@/lib/audit";
@@ -10,7 +10,7 @@ import { COV_CATS, COV_FW, covCell, boardPackHTML, exportedBoardPack } from "@/f
 import { downloadText } from "@/lib/format";
 import { useRoute } from "@/lib/route";
 import { useApp } from "@/lib/store";
-import { API_ON, modAllowed } from "@/lib/rbac";
+import { API_ON, modAllowed, roleOf } from "@/lib/rbac";
 
 const MONTHS = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct"];
 const tile = (tone: Desirability, text: string) => ({ tone, text });
@@ -79,8 +79,13 @@ export default function OverviewModule() {
     L.toast("Board pack downloaded — open it, then Print / Save as PDF");
   };
 
+  // R6: a personal greeting, with the date and the posture period above it
+  const now = new Date(); const hr = now.getHours();
+  const first = (roleOf(appStore.get().role).person || "").split(/\s+/)[0];
+  const greeting = `Good ${hr < 12 ? "morning" : hr < 18 ? "afternoon" : "evening"}${first ? `, ${first}` : ""}`;
+  const today = now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
   return (
-    <Page title={`Security posture · ${period}`} sub={`${M.overdueControls} controls failing and ${M.openIssues} open issues need your attention.`} acts={<>
+    <Page eyebrow={`${today} · Security posture · ${period}`} title={greeting} sub={`${M.overdueControls} controls failing and ${M.openIssues} open issues need your attention.`} acts={<>
       <button className="btn btn-secondary" data-tour="overview-boardpack" onClick={exportBoardPack}><Icon name="download" />Export board pack</button>
       {can("reports") ? <button className="btn btn-secondary" onClick={() => go("/ws/reports")}><Icon name="reports" />Reports</button> : null}
       {can("work") ? <button className="btn btn-primary" data-tour="overview-work" onClick={() => go("/ws/work")}><Icon name="work" />Open my work</button> : null}
