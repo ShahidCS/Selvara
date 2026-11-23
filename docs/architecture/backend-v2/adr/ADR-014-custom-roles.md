@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Proposed** |
+| Status | **Accepted** (owner, 2026-11-23, OD-07: custom platform role names come only from the fixed list) (rev P3) |
 | Date | 2026-11-23 |
 | Workstream | 2E (detail in `2E-iam.md` E-30..E-36, E-71..E-80) |
 | Related | ADR-006 (identity), ADR-010 (control plane); spine S2 (`control.tenant_roles`, `control.platform_roles`, `control.platform_role_permissions`), S4 M01 (`tenant_role`, `tenant_role_permission`), S5; OQ-01 |
@@ -30,14 +30,14 @@ Tenant plane:
 1. Permission catalogue `E-30` (`<area>.<action>`), with sensitive permissions marked.
 2. A custom role = name + permission set (+ `riskAcceptRank` if it includes `risk.accept`), stored in `tenant_role` / `tenant_role_permission`, mirrored by id and name in `control.tenant_roles`.
 3. Ceiling: ⊆ admin's set. Admin-reserved (never in a custom role): `members.manage`, `roles.manage`, `sso.manage`, `support_grant.manage`. External-only (`audits.engage`, `vendors.respond`) never in a custom role.
-4. A role with any sensitive permission is privileged: assignment needs four-eyes (`team.role`), stricter session limits and the tenant's passkey rule.
+4. Privileged role (one definition, DA-08): `admin`, `owner`, and any custom role holding any admin-only permission (granted by E-31 to `admin` and to no other base role). `analyst` is not privileged. Assignment of a privileged role needs in-app four-eyes (`team.role`); SCIM and JIT assign only non-privileged roles; privileged roles get stricter session limits and the tenant's passkey rule. Sensitive (S) permissions keep their own effect in point 5. (rev P3)
 5. Create, change and retire: four-eyes `tenant.role.change` (two approvals when adding a sensitive permission). Changes bump `perm_version`; sessions reload on the next request.
 6. Separation of duties stays per person in the approval engine, so a role may hold both request and approve permissions.
 7. Templates (Read-only reviewer, Privacy officer, Risk manager, Compliance manager) are offered as starting points.
 
 Platform plane:
 1. Fixed roles `management_approver`, `ciso`, `support`.
-2. Predefined names (code list): Billing Officer, Privacy Officer, Security Analyst, Support Agent, Compliance Reviewer, Internal Auditor (ISMS), Platform Operations Engineer, Release Manager, Customer Success Manager; each with a default permission set and a ceiling (E-73).
+2. Predefined names (code list only, OD-07): Billing Officer, Privacy Officer, Security Analyst, Support Agent, Compliance Reviewer, Internal Auditor (ISMS), Platform Operations Engineer, Release Manager, Customer Success Manager; each with a default permission set and a ceiling (E-73). The Billing Officer ceiling includes `approvals.decide` for D-P10, D-P11 and D-P16 only (never dual-role kinds) (rev P3).
 3. Never grantable to a custom platform role: `platform.staff.manage`, `platform.roles.manage`, `platform.keys.operate`, `platform.tenants.delete`, `platform.providers.manage`, `platform.breakglass.custodian`, votes on dual-role kinds.
 4. Creating or changing a custom platform role and assigning it: four-eyes with dual role (`management_approver` + `ciso`).
 5. "All access" for Management Approver excludes self-approval, acting without elevation, reading tenant data without a customer grant, seeing secrets, editing logs, and delegating approvals (E-72).
@@ -62,6 +62,7 @@ Platform plane:
 |---|---|
 | V-014-1 | Saving a tenant custom role containing an admin-reserved or external-only permission is refused (422). |
 | V-014-2 | A custom role change applies only after a second, different approver; adding a sensitive permission needs two approvers. |
+| V-014-7 | A custom role holding an admin-only permission is treated as privileged (four-eyes on assignment, 15-min idle, passkey rule); `analyst` and custom roles without admin-only permissions are not; SCIM cannot assign a privileged role (DA-08) (rev P3). |
 | V-014-3 | After a role change, the next request of an affected session uses the new permission set (perm_version test). |
 | V-014-4 | Creating a platform custom role with a name outside the list, or a permission outside the name's ceiling, is refused; never-grantable permissions are refused even within an approved request. |
 | V-014-5 | A Management Approver cannot vote on their own request, cannot act without elevation, and cannot open tenant routes without a support session. |

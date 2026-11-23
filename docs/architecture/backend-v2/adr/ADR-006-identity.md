@@ -27,11 +27,11 @@
 
 Option **B**.
 
-1. Supabase Auth verifies passwords, TOTP and SAML assertions; Selvara issues an opaque server session recorded in `control.sessions` (tenant, membership, role, auth method, AAL, step-up, elevation) and checks it on every request (E-10, E-20..E-23). Supabase tokens never reach the browser.
+1. Supabase Auth verifies passwords, TOTP and SAML assertions; Selvara issues an opaque server session recorded in `control.sessions` (tenant, membership, role, auth method, AAL, step-up, elevation) and checks it on every request (E-10, E-20..E-23). Sessions, memberships and tenant status are never cached; only static routing fields are cached, ≤30 s (R2-01). The tenant-facing `app` deployment resolves sessions through `cp_tenant_api` functions and holds no `cp_rw` grant (R2-03). Supabase tokens never reach the browser. (rev P3)
 2. SAML per tenant through Supabase SSO providers (SP-initiated only, signed assertions). OIDC per tenant with Selvara as relying party (code + PKCE + nonce), linking to the same Supabase user id.
 3. A connection authenticates only emails in that tenant's verified domains (DNS TXT). Enforcement modes off / domain / all, with up to two exempt break-glass admins.
-4. JIT provisioning off by default; never to a privileged role without four-eyes.
-5. SCIM 2.0 (`/scim/v2`, RFC 7643/7644) built in Selvara with per-tenant hashed tokens (four-eyes to create); deprovisioning suspends the membership and revokes sessions immediately; deletion removes the membership and, if no other membership exists, the identity.
+4. JIT provisioning off by default; never to a privileged role without four-eyes. "Privileged role" has one definition (DA-08, E-33d): `admin`, `owner`, and any custom role holding any admin-only permission; `analyst` is not privileged. (rev P3)
+5. SCIM 2.0 (`/scim/v2`, RFC 7643/7644) built in Selvara with per-tenant hashed tokens (four-eyes to create); deprovisioning suspends the membership and revokes sessions immediately; deletion removes the membership and, if no other membership exists, the identity. SCIM assigns only non-privileged roles; a privileged assignment needs in-app four-eyes (`team.role`, DA-08). SCIM cannot remove the last two Active admins, and admin or bulk deactivations are held for review (E-55). (rev P3)
 6. Identity ownership (`home_tenant_id`) limits what one tenant can do to a person who also belongs to other tenants.
 7. Passkeys mandatory for platform staff and required again at elevation start.
 
@@ -49,7 +49,7 @@ Option **B**.
 
 - Positive: immediate revocation; tenant binding cannot be influenced by the client; enforced SSO and SCIM deprovisioning close leaver gaps; passkeys at elevation.
 - Risks: own OIDC RP and SCIM code (mitigated by vetted libraries, conformance tests and pen-test scope); cross-tenant effects of a shared identity (R-36, mitigated by verified-domain binding and identity ownership); IdP MFA trust (default Selvara second factor unless the IdP asserts MFA).
-- Personal data: identities (email, name) stay in the control plane (A-05, legal review pending); SCIM attributes limited to name, email, department, manager; group names stored only as mapping keys; SAML/OIDC raw assertions are never stored (only issuer, subject, timestamp, assertion id hash for replay prevention, 24 h).
+- Personal data: identities (email, name) stay in the control plane (A-05, legal review pending); `control.identities.email` is E1 under the platform KEK with an HMAC blind index for lookup (DA-05, rev P3); SCIM attributes limited to name, email, department, manager; group names stored only as mapping keys; SAML/OIDC raw assertions are never stored (only issuer, subject, timestamp, assertion id hash for replay prevention, 24 h).
 - Logging: tokens, assertions and SCIM bearer values are redacted from logs.
 
 ## Verification (Phase 4)
@@ -57,10 +57,10 @@ Option **B**.
 | ID | Check |
 |---|---|
 | V-006-1 | Test: a session for tenant A, with any header or body naming tenant B, only ever reaches `t_<A>` (router assertion E-23). |
-| V-006-2 | Test: revoking a session (sign-out, SCIM `active=false`, membership removal) fails the next request within one request. |
+| V-006-2 | Test: revoking a session (sign-out, SCIM `active=false`, membership removal, tenant suspension) fails the next request, with the routing cache warm (no session, membership or tenant-status cache, R2-01) (rev P3). |
 | V-006-3 | SAML: unsigned assertion, wrong audience, replayed assertion id, IdP-initiated response: all refused. OIDC: wrong `nonce`, `aud`, `iss`, expired token, unverified email outside verified domains: all refused. |
 | V-006-4 | A connection asserting an email outside its verified domains is refused. |
-| V-006-5 | SCIM conformance suite (RFC 7644 behaviours used) passes; group mapping to a privileged role creates an approval, not a role. |
+| V-006-5 | SCIM conformance suite (RFC 7644 behaviours used) passes; group mapping to a privileged role (E-33d) creates an approval, not a role; mapping to `analyst` applies directly (DA-08) (rev P3). |
 | V-006-6 | Tenant switch to an SSO-enforced tenant from a password session returns `sso_required`; session id rotates on switch. |
 | V-006-7 | Platform elevation without a fresh passkey assertion is refused. |
 | V-006-8 | Documentation check closes A-40/A-41 (Supabase SAML plan and limits, MFA factors, recovery codes). |

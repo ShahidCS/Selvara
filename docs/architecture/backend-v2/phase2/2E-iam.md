@@ -17,7 +17,7 @@
 | ID | Decision |
 |---|---|
 | E-10 | **Supabase Auth is the credential verifier; Selvara owns the application session.** Supabase Auth holds password hashes, TOTP factors and SAML identities. The Selvara server calls it during sign-in only, then signs the Supabase session out (as v0.2.5 does in `core.ts finish`) and issues its own opaque session (`__Host-sv`, HttpOnly, Secure, SameSite=Strict, 256-bit random, only its SHA-256 stored in `control.sessions`). Reason: Supabase access tokens stay valid until expiry after revocation *(verify current behaviour)*, and tenant binding must live in a server record (S3). No Supabase token ever reaches the browser. |
-| E-10a | Selvara stores what Supabase Auth does not provide *(verify each against current Supabase docs, A-40)*: WebAuthn passkeys (`control.passkeys`), MFA recovery codes (`control.recovery_codes`, salted hashes), sign-in throttling state (`ops.rate_buckets`), and the OIDC relying-party state for per-tenant OIDC (E-52). |
+| E-10a | Selvara stores what Supabase Auth does not provide *(verify each against current Supabase docs, A-40)*: WebAuthn passkeys (`control.passkeys`), MFA recovery codes (`control.recovery_codes`, salted hashes), per-account and per-address sign-in throttling and blocks (`control.auth_throttle`; request-rate token buckets stay in `ops.rate_buckets`, 2C C-60), and the OIDC relying-party state for per-tenant OIDC (E-52) (rev P3). |
 
 ### 1.2 Factors
 
@@ -73,7 +73,9 @@
 
 ### 2.1 Session record
 
-`control.sessions` (spine deviation SD-E1): `id_hash`, `identity_id`, `kind (member, staff)`, `tenant_id` (null for staff), `membership_id`, `role_id`, `perm_version`, `auth_method (password_totp, passkey, saml, oidc, recovery)`, `sso_connection_id`, `aal`, `created_at`, `last_seen_at`, `idle_limit_s`, `expires_at`, `step_up_at`, `elevation_id`, `support_session_id`, `ip_hash`, `device`, `revoked_at`, `revoked_reason`.
+`control.sessions` (spine deviation SD-E1): `id_hash`, `identity_id`, `kind (member, staff)`, `tenant_id` (null for staff), `membership_id`, `role_id`, `perm_version`, `auth_method (password_totp, passkey, saml, oidc, recovery)`, `sso_connection_id`, `aal`, `created_at`, `last_seen_at`, `idle_limit_s`, `expires_at`, `step_up_at`, `elevation_id`, `support_session_id`, `ip_enc` (E1 under the platform KEK, DA-05), `ip_hmac`, `ip_prefix`, `device`, `revoked_at`, `revoked_reason` (rev P3).
+
+R2-01 (rev P3): sessions, memberships and tenant status are never cached; they are read on every request. Revoking a membership or suspending a tenant revokes the affected sessions in the same transaction, so it takes effect on the next request. Only static routing fields (cell, schema name, schema version) are cached per instance, for at most 30 s. The `app` deployment reads them through `cp_router_ro` (view `control.v_routing`) and resolves sessions through `cp_tenant_api` functions; it holds no `cp_rw` grant (R2-03, DA-06).
 
 ### 2.2 Verification before routing
 
@@ -82,7 +84,7 @@ sequenceDiagram
     participant B as Browser
     participant A as API handler
     participant R as router
-    participant CP as control plane (cp_rw)
+    participant CP as control plane (cp_router_ro + cp_tenant_api.session_resolve; rev P3)
     participant DB as cell (selvara_router)
     B->>A: request + __Host-sv
     A->>R: resolve(cookie)
@@ -92,8 +94,8 @@ sequenceDiagram
     alt any check fails
         R-->>A: 401 / 403 / 404 / 503 (fail closed)
     else all pass
-        R->>DB: BEGIN; SET LOCAL ROLE t_tkey_rw; SET LOCAL search_path; set_config(app.tenant_id, app.user_id, app.request_id)
-        R->>DB: load permissions of role (tenant_role_permission), cached by (tenant, role, perm_version)
+        R->>DB: BEGIN; SET LOCAL ROLE t_tkey_rw; SET LOCAL search_path; set_config(app.tenant_id, app.user_id, app.request_id, app.scope = member/auditor/vendor/support/trust_public; auditors also app.engagement_id) (rev P3)
+        R->>DB: load permissions of role (tenant_role_permission) in this transaction, keyed by perm_version, not cached (R2-01; rev P3)
         A->>DB: handler queries (repository applies object rule)
         DB-->>A: rows
         A-->>B: response (Cache-Control: no-store)
@@ -103,7 +105,7 @@ sequenceDiagram
 | ID | Rule |
 |---|---|
 | E-20 | The tenant comes only from `control.sessions.tenant_id`. Request headers, paths, bodies and cookies other than `__Host-sv` are never consulted for tenant selection (C-11). |
-| E-21 | The control-plane checks are one query (join of `sessions`, `identities`, `memberships`, `tenants`, `tenant_cells`, `tenant_schema_versions`). No result cache for membership or tenant status (a removed member loses access on the next request); only the role's permission set is cached, keyed by `perm_version` which any role change increments. |
+| E-21 | The control-plane checks are one call (`cp_tenant_api.session_resolve`, a join of `sessions`, `identities`, `memberships`, `tenants`, `tenant_cells`, `tenant_schema_versions`). No cache for sessions, memberships or tenant status (R2-01): a removed member loses access on the next request. Only static routing fields (cell, schema, version) may be cached, ≤30 s. The role's permission set is read inside the tenant transaction, keyed by `perm_version`, which any role change increments (rev P3). |
 | E-22 | Failure mapping: no or revoked session 401; membership not Active or tenant Suspended 403 `forbidden` (reason `membership` / `tenant_suspended`); tenant Deleting/Deleted 404; auth policy unmet (for example SSO enforced but session is password) 403 reason `sso_required`; schema version mismatch 503. |
 | E-23 | The router asserts after `SET LOCAL ROLE` that `current_setting('app.tenant_id')` equals the routing record's tenant id and that `current_user` is `t_<tkey>_rw`; any mismatch aborts the transaction and raises a `security` alert (isolation tests, ADR-001). |
 
@@ -114,7 +116,7 @@ sequenceDiagram
 | E-24 | Switch (`C-AC-08`): the target membership must be Active, the target tenant Active, and the target tenant's auth policy satisfied by how the person authenticated **in this session**. If the target enforces SSO for this identity, the switch returns `sso_required` with the SSO start URL; if it requires a passkey for the target role and the session used TOTP, step-up with a passkey is required. On success the old session id is revoked and a new one issued (E-19); step-up time, elevation and support session do not carry over. |
 | E-25 | One identity, many memberships, each with its own role. A consultant can be `admin` in tenant A and `auditor` in tenant B; permissions are evaluated only for the active tenant's membership. |
 | E-26 | Leakage controls: every API response is `Cache-Control: no-store`; the front end clears its query cache and in-memory stores on switch (full reload to the landing page, as today); notifications, approvals, My Work, search and exports are per active tenant only; `GET /session` lists the person's other memberships as tenant ref + name + role only (no counts, no records); audit entries are written to the active tenant's log only; lockout uses the strictest preset across the person's tenants (today's rule). |
-| E-27 | Display data: `control.identities` holds the global display name and email; each tenant holds `member_profile` (display name, job title as known to that tenant). A tenant never sees the person's other memberships. |
+| E-27 | Display data: `control.identities` holds the global display name and email (email E1 under the platform KEK, with an HMAC blind index for lookup, DA-05; rev P3); each tenant holds `member_profile` (display name, job title as known to that tenant). A tenant never sees the person's other memberships. |
 | E-28 | Idle limit uses the active role (a privileged role in the active tenant gives 15 min). |
 
 ---
@@ -136,7 +138,7 @@ Each permission is `<area>.<action>`. "Sensitive" (S) permissions make a role pr
 | E-30.07 | `roles.manage` | M01 | S | Custom roles (admin-reserved) |
 | E-30.08 | `sso.manage` | M01 | S | SSO, domains, SCIM tokens (admin-reserved) |
 | E-30.09 | `support_grant.manage` | M01 | S | Give/revoke support grants (admin-reserved) |
-| E-30.10 | `frameworks.read` / `frameworks.manage` | M02 | | |
+| E-30.10 | `frameworks.read` / `frameworks.manage` / `frameworks.upgrade` | M02 | S (upgrade) | `frameworks.upgrade`: request a reference-content upgrade (C-M02-09, 4E `content.upgrade`, D-K36/D-K37; DA-15) (rev P3) |
 | E-30.11 | `controls.read` / `controls.manage` / `controls.test` / `controls.attest` | M03 | | attest also needs OBJ-OWN |
 | E-30.12 | `controls.exception.request` / `controls.exception.approve` | M03 | S (approve) | |
 | E-30.13 | `evidence.read` / `evidence.write` / `evidence.review` / `evidence.delete` | M04 | S (delete) | |
@@ -177,6 +179,7 @@ Legend: ● granted; ◐ granted with an object rule (OBJ-OWN or OBJ-SELF); **S*
 | M01 | members.read | ● | ● † | — | — | — | — | — |
 | M02 | frameworks.read | ● | ● | ● † | — | — | S | — |
 | M02 | frameworks.manage | ● | ● | — | — | — | — | — |
+| M02 | frameworks.upgrade (rev P3) | ● | — | — | — | — | — | — |
 | M03 | controls.read | ● | ● | ● | — | — | S | — |
 | M03 | controls.manage | ● | ● | — | — | — | — | — |
 | M03 | controls.test | ● | ● | ● | — | — | — | — |
@@ -189,7 +192,7 @@ Legend: ● granted; ◐ granted with an object rule (OBJ-OWN or OBJ-SELF); **S*
 | M05 | policies.read_all, policies.write, policies.approve | ● | ● | — | — | — | — | — |
 | M05 | policies.emergency | ● | — | — | — | — | — | — |
 | M05 | policies.acknowledge | ● | ● | ● | ● | — | — † | — |
-| M06 | risk.read | ● | ● | ● | — | — | S (shared snapshots) | — |
+| M06 | risk.read | ● | ● | ● | — | — | S = risk snapshots shared with the auditor's live engagement only; no risk list (DA-07; C-M08-13) (rev P3) | — |
 | M06 | risk.write | ● | ● | ● | — | — | — | — |
 | M06 | risk.approve, risk.configure, risk.snapshot | ● | — | — | — | — | — | — |
 | M06 | risk.accept (rank) | ● (2) | ● (2) | ● (1) | — | — | — | — |
@@ -244,7 +247,7 @@ Changes from v0.2.5 (†), each to be confirmed under OQ-09 "no downgrade": anal
 | E-33a | A custom role is a named set of permissions from E-30, stored in `tenant_role` + `tenant_role_permission` (tenant schema) with its id and name mirrored in `control.tenant_roles`. Base roles are immutable; a custom role can be cloned from a base role. |
 | E-33b | Ceiling: permissions ⊆ admin's set. **Admin-reserved** permissions can never be in a custom role: `members.manage`, `roles.manage`, `sso.manage`, `support_grant.manage`. External-only permissions (`audits.engage`, `vendors.respond`) are never in a custom role; external roles stay base roles in this release. |
 | E-33c | `risk.accept` in a custom role carries `riskAcceptRank` 1 or 2. |
-| E-33d | A role is **privileged** if it contains any sensitive (S) permission. Assigning a privileged role is 4E `team.role`; privileged roles get the 15-min idle limit and the tenant's passkey requirement. |
+| E-33d | **Privileged role** (one definition, DA-08): `admin`, `owner`, and any custom role holding any admin-only permission (a permission that E-31 grants to `admin` and to no other base role, for example `evidence.delete`, `policies.emergency`, `risk.approve`, `people.mfa_reset`, `privacy.manage`, `dsar.handle`, `auditlog.read`, `api.manage`, `frameworks.upgrade`). `analyst` is **not** privileged. Assigning a privileged role is in-app 4E `team.role` (with STEP); SCIM and JIT may assign only non-privileged roles (E-54a, E-55); privileged roles get the 15-min idle limit and the tenant's passkey requirement. The sensitive (S) column of E-30 is used only for E-34 (two approvals when a custom role gains an S permission). (rev P3) |
 | E-33e | Separation of duties is per person, not per role (approval engine D-22), so combining request and approve permissions in one role is allowed: the engine still refuses the same person. |
 | E-34 | Creating, changing or retiring a custom role is 4E `tenant.role.change` (2 approvals when the change adds a sensitive permission). Retiring needs zero holders. Every change increments `perm_version`; sessions reload permissions on the next request. Mismatch between `control.tenant_roles` and the tenant's `tenant_role` fails closed (403). |
 | E-35 | Evaluation: `allowed = perm ∈ permissions(role) AND objectRule(record, actor)`; deny by default; unknown permission names refused at role save. Object rules are applied in the repository layer (scoped query builder per role class), not in handlers (R-30). |
@@ -256,8 +259,8 @@ Changes from v0.2.5 (†), each to be confirmed under OQ-09 "no downgrade": anal
 |---|---|
 | E-40 | SoD library (shared by engine and modules): `notRequester`, `notSubject`, `notOwner`, `notAuthorOrEditor`, `notLastEditor`, `notSubmitter`, `notCollectorOrUploader`, `notBeneficiary`, `notFirstApprover`, `notDrafter`. Person identity is the identity id, never a display name (fixes RK gap 6). |
 | E-41 | Risk acceptance authority: `risk_criteria.acceptanceLadder` maps residual bands to a required rank; the actor's rank comes from `risk.accept` on their role. |
-| E-42 | Auditor read rule (F1-01 fix): an auditor sees a record only if (1) an `audit_shared_item` row lists it (or its parent for files and versions) for an `audit` where (2) the auditor has `auditor_access` with status Live and `now` within its window. Evidence files need `includeFiles`. List endpoints filter by a join on `audit_shared_item`; single-record misses return 404. |
-| E-43 | Auditor actions: raise and close information requests, draft findings, record audit tests on shared controls, export shared items (watermarked). Never: acknowledge policies, edit records, see members' emails, see other engagements, see the audit log. Every read by an auditor is audited (`auditor.viewed`, record ref, engagement) per OQ-06. |
+| E-42 | Auditor read rule (F1-01 fix): an auditor sees a record only if (1) an `audit_shared_item` row lists it (or its parent for files and versions) for an `audit` where (2) the auditor has `auditor_access` with status Live and `now` within its window. Shared item kinds (DA-07): `control`, `evidence` (its versions and files included by default; no separate files flag), `policy`, `risk_snapshot`. Auditors have no risk list. List endpoints filter by a join on `audit_shared_item`; single-record misses return 404 (rev P3). |
+| E-43 | Auditor actions: raise and close information requests, draft findings, record audit tests on shared controls, export shared items (watermarked). Never: acknowledge policies, edit records, see the member list or any member id (display names on shared records stay, DA-07), see other engagements, see the audit log (rev P3). Every read by an auditor is audited (`auditor.viewed`, record ref, engagement) per OQ-06. |
 | E-44 | Auditor time-box: membership `expires_at` follows the latest engagement end; job D-79 suspends the membership when no engagement is Live or Scheduled; sessions revoked (E-17). Re-engagement reactivates the same membership. |
 | E-45 | Vendor (member variant): sees only assessments where `vendor_contact.person_id` = self; members list returns only people referenced on those assessments (ids and names). The anonymous portal remains the preferred channel (RK gap 12); member-vendors are kept for parity. |
 | E-46 | Viewer: Trust Center member view only; NDA accepted per person. |
@@ -281,15 +284,15 @@ Changes from v0.2.5 (†), each to be confirmed under OQ-09 "no downgrade": anal
 | E-53 | Email binding: a connection may authenticate only emails in the tenant's **verified domains**. An assertion for any other email is refused (prevents a tenant IdP from asserting a consultant's or another company's address). |
 | E-53b | MFA with SSO: tenant setting `ssoMfa` = `idp` (trust the IdP; requires an MFA indication in SAML AuthnContext or OIDC `amr`/`acr` when the IdP provides it) or `selvara` (Selvara second factor after SSO). Default `selvara` unless the connection test shows the IdP sends an MFA indication. |
 | E-54 | Enforcement `enforce` = `off`, `domain` (identities with a verified-domain email must use SSO to enter this tenant), or `all` (every member, external domains included, must come through this IdP; only for tenants that federate guests). Up to 2 named tenant admins may be exempted as break-glass (password + passkey mandatory; each use alerts all admins). Switching enforcement off is 4E `sso.policy`. |
-| E-54a | JIT provisioning: off by default. When on, a first SSO sign-in by a verified-domain email with no membership creates one with the connection's `defaultRoleId` (must be non-privileged) or the role mapped from a group; a mapping to a privileged role creates a pending `team.role` approval and the member starts as `employee`. |
+| E-54a | JIT provisioning: off by default. When on, a first SSO sign-in by a verified-domain email with no membership creates one with the connection's `defaultRoleId` (must be non-privileged, E-33d) or the role mapped from a group; a mapping to a privileged role creates a pending in-app `team.role` approval and the member starts as `employee` (DA-08) (rev P3). |
 
 ### 4.3 SCIM 2.0
 
 | ID | Rule |
 |---|---|
-| E-55 | Endpoints in `2C-api.md` C-SC-01..06 (RFC 7643/7644). Semantics: **create** links or creates the identity (email must be in a verified domain), creates the membership (`source=scim`) and `member_profile`/`person`; **`active=false`** suspends the membership, revokes sessions in this tenant and sessions authenticated through this tenant's SSO, withdraws the person's pending requests, ends delegations to and from them, blocks votes, creates reassignment tasks for owned records, flags API keys they own (7-day reassignment, then suspended); **`active=true`** restores the membership with its previous role if non-privileged, otherwise as `employee` plus a pending `team.role` approval; **DELETE** removes the membership (records keep the person id; `member_profile` retained per retention rule), and if the identity has no other membership and is not staff, the identity and its Supabase user are deleted and `control.identities` pseudonymised. Group changes follow E-54a mapping rules. SCIM never assigns `auditor` or `vendor`. |
+| E-55 | Endpoints in `2C-api.md` C-SC-01..06 (RFC 7643/7644). Semantics: **create** links or creates the identity (email must be in a verified domain), creates the membership (`source=scim`) and `member_profile`/`person`; **`active=false`** suspends the membership, revokes sessions in this tenant and sessions authenticated through this tenant's SSO, withdraws the person's pending requests, ends delegations to and from them, blocks votes, creates reassignment tasks for owned records, flags API keys they own (7-day reassignment, then suspended); **`active=true`** restores the membership with its previous role if non-privileged, otherwise as `employee` plus a pending `team.role` approval; **DELETE** removes the membership (records keep the person id; `member_profile` retained per retention rule), and if the identity has no other membership and is not staff, the identity and its Supabase user are deleted and `control.identities` pseudonymised. Group changes follow E-54a mapping rules. SCIM never assigns `auditor` or `vendor`, and assigns only non-privileged roles (E-33d); a privileged assignment needs in-app four-eyes `team.role` (DA-08). SCIM cannot suspend or remove the last two Active admins (409 `last_admins`); a deactivation of an admin, or more than 20 deactivations or role changes in 10 min, is held as `pending_review` and notifies tenant admins (2F F-M-12) (rev P3). |
 | E-56 | Identity ownership: `control.identities.home_tenant_id` is set when the identity was created by that tenant's SCIM/JIT and its email is in that tenant's verified domain. Actions affecting the global identity (MFA reset, forced password reset, identity deletion) are allowed to a tenant only for identities it owns **and** that hold no privileged membership elsewhere; otherwise they go to the platform `mfa-reset-admin` path and every tenant where the person is a member is notified. Membership-level actions (suspend, remove, role change) are always the tenant's. |
-| E-57 | SCIM tokens: `scim_<id>_<secret>` (secret 32 random bytes), only an HMAC-SHA256 (Vault-held pepper, versioned) stored in `control.scim_tokens` with tenant id, label, created by, approval id, expiry (≤ 365 days), last used time and IP hash; at most 2 active per tenant (rotation overlap); creation is 4E `scim.token`; secret shown once to the requester within 60 min of approval; revocation immediate; tokens never logged (log redaction rule on `Authorization`). |
+| E-57 | SCIM tokens: `scim_<id>_<secret>` (secret 32 random bytes), only an HMAC-SHA256 (Vault-held pepper, versioned) stored in `control.scim_tokens` with tenant id, label, created by, approval id, expiry (≤ 365 days), last used time and IP hash; optional source IP allow-list per token (rev P3); at most 2 active per tenant (rotation overlap); creation is 4E `scim.token`; secret shown once to the requester within 60 min of approval; revocation immediate; tokens never logged (log redaction rule on `Authorization`). |
 | E-58 | Conflicts: SCIM and manual edits of the same membership are last-writer-wins on role only if the role is non-privileged; privileged changes always go through approval; the SCIM response reports the current effective role. |
 
 ---
@@ -337,12 +340,13 @@ E-72 **What "all access" for Management Approver does not include** (recorded ag
 | E-72f | Delegating platform approvals | D-26 |
 | E-72g | Bypassing dual-role kinds alone | D-26 |
 | E-72h | Removing the last other super-admin-class holder or changing own roles | D-P07 subject forbidden; last-holder rule |
+| E-72i | Receiving a tenant invitation link or token (first-admin or any other): links go by email to the invitee only (DA-09) (rev P3) | 2C C-PL-05 returns no link; D-P13 for an email change |
 
 ### 6.3 Predefined platform role names
 
 | ID | Predefined name | Default permissions | Ceiling (maximum a super admin may grant) |
 |---|---|---|---|
-| E-73a | Billing Officer | tenants.read, billing.read, billing.operate, rates.operate, elevate | + billing.approve, rates.approve, plans.assign |
+| E-73a | Billing Officer | tenants.read, billing.read, billing.operate, rates.operate, elevate | + billing.approve, rates.approve, plans.assign, approvals.decide (D-P10, D-P11, D-P16 only) (rev P3) |
 | E-73b | Privacy Officer | tenants.read, privacy.manage, audit.read, help.answer, elevate | + audit.export |
 | E-73c | Security Analyst | security.read, audit.read, ops.read | + security.operate, ops.operate, audit.export, elevate |
 | E-73d | Support Agent | tenants.read, help.answer, support.session, mfa_reset.request, approvals.read | + billing.read, security.read |
@@ -362,7 +366,7 @@ E-74 Custom platform role rules: the name must come from the list above (extendi
 | E-80.02 | platform.tenants.provision / platform.tenants.lifecycle | ● | ● | — | Ops (provision request) |
 | E-80.03 | platform.tenants.delete | ● | ● | — | never |
 | E-80.04 | platform.plans.assign / platform.plans.manage | ● | ● | — | Billing, CSM (assign) |
-| E-80.05 | platform.approvals.read / platform.approvals.decide | ● | ● | read | read; decide only for kinds in their permissions, non-dual-role |
+| E-80.05 | platform.approvals.read / platform.approvals.decide | ● | ● | read | read; decide: Billing Officer only, for D-P10, D-P11 and D-P16 (never dual-role kinds) (rev P3) |
 | E-80.06 | platform.support.session | ● | ● | ● | Support Agent |
 | E-80.07 | platform.help.answer | ● | ● | ● | Support, Privacy, CSM |
 | E-80.08 | platform.billing.read / .operate / .approve | ● | ● | read | Billing |
@@ -396,7 +400,7 @@ E-74 Custom platform role rules: the name must come from the list above (extendi
 |---|---|
 | E-78 | Scope: used only when (a) both super admins are locked out of Selvara, or (b) a production incident needs direct infrastructure access (Supabase organisation owner, database `migrator`, KMS administrator) that the application cannot provide. |
 | E-78a | Custodian (R-C): sealed credentials for the Supabase organisation owner account and KMS administrator, each protected by a hardware security key kept separately from its password; the other super admin holds the second half (split knowledge). |
-| E-78b | Procedure: (1) open a break-glass record (`POST /platform/break-glass` if the app works, else a pre-printed form) with incident reference and reason; (2) automatic alert to both super admins and the security mailbox on use of the sealed accounts (provider sign-in alerts); (3) actions limited to the incident; tenant business data is not read unless the incident requires it, and any tenant data access is recorded with the tenant refs touched; (4) close the record with an action log within 24 h; (5) post-use review by the other super admin within 72 h (`/platform/break-glass/:id/review`); (6) rotate every credential used; (7) if tenant personal data was accessed, the affected tenants are informed per the DPA *(legal to confirm wording)*. |
+| E-78b | Procedure: (1) open a break-glass record (`POST /platform/break-glass` if the app works, else a pre-printed form; the record is a `control.platform_audit_log` entry, no separate table; rev P3) with incident reference and reason; (2) automatic alert to both super admins and the security mailbox on use of the sealed accounts (provider sign-in alerts); (3) actions limited to the incident; tenant business data is not read unless the incident requires it, and any tenant data access is recorded with the tenant refs touched; (4) close the record with an action log within 24 h; (5) post-use review by the other super admin within 72 h (`/platform/break-glass/:id/review`); (6) rotate every credential used; (7) if tenant personal data was accessed, the affected tenants are informed per the DPA *(legal to confirm wording)*. |
 | E-78c | Drills twice a year using a non-production project; result recorded. |
 
 ---
@@ -443,7 +447,7 @@ E-74 Custom platform role rules: the name must come from the list above (extendi
 | SD-E2 | S3 step 1 reads "the Supabase Auth session (HttpOnly cookie) is verified". This design verifies a **Selvara** session cookie bound to the Supabase user id; Supabase tokens are used only during sign-in | E-10 (revocation, tenant binding) |
 | SD-E3 | Adds column `control.identities.home_tenant_id` | E-56 |
 | SD-E4 | `viewer` stays the Trust Center read-only role per S5; a general internal read-only role is a custom-role template, not a base role | Keeps S5 and today's behaviour; the brief's "viewer (read-only)" is met by E-36 |
-| SD-E5 | Cross-workstream alignment note: 2A (SD-A1) names the session table `control.sessions` and allows a 30 s routing/session cache; 2B (SD-B01) names it `control.sessions`. This design uses `control.sessions` (matching 2B) and allows **no** cache for session revocation, membership or tenant status (E-21); only permission sets and routing metadata may be cached. Design authority to reconcile. | Immediate revocation (E-17) |
+| SD-E5 | Cross-workstream alignment note: 2A (SD-A1) names the session table `control.sessions` and allows a 30 s routing/session cache; 2B (SD-B01) names it `control.sessions`. This design uses `control.sessions` (matching 2B) and allows **no** cache for session revocation, membership or tenant status (E-21). Resolved by R2-01: `control.sessions`, no cache for sessions, memberships or tenant status; only static routing fields cached 30 s (rev P3). | Immediate revocation (E-17) |
 
 ## Sources
 

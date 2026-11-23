@@ -79,8 +79,8 @@ stateDiagram-v2
     PendingReview --> Rejected: review reject (note>=10)
     Rejected --> PendingReview: new version or edit
     Accepted --> PendingReview: edit or new version (review resets)
-    Accepted --> ExpiringSoon: job D-63 at validUntil - window (default 30 d)
-    ExpiringSoon --> Expired: job D-63 at validUntil
+    Accepted --> ExpiringSoon: job D-63 at expires_on - window (default 30 d) (rev P3)
+    ExpiringSoon --> Expired: job D-63 at expires_on
     ExpiringSoon --> PendingReview: new version uploaded
     Expired --> PendingReview: new version uploaded
     PendingReview --> DeletionPending: request delete (evidence.delete, reason>=15)
@@ -293,7 +293,7 @@ See section 4 for the clock, tasks and erasure.
 ```mermaid
 stateDiagram-v2
     [*] --> Requested: staff request (platform.tenants.provision, ELEV)
-    Requested --> Approved: 4E platform.tenant.create
+    Requested --> Approved: 4E platform.tenant.create, or automatically when kind=trial and inside the active trial policy (D-P14, OD-04)
     Requested --> Rejected: rejected or expired (24 h)
     Approved --> Provisioning: job D-78 picks it up
     Provisioning --> Active: all steps done and verified
@@ -319,12 +319,14 @@ Provisioning steps (each idempotent, recorded in `ops.provisioning_steps`, D-78a
 | P7 | Routing record active; first-admin invitation created (72 h) and emailed; subscription created | invitation exists |
 | P8 | Platform audit entry + tenant audit entry "tenant.provisioned" with step digests | chain verifies |
 
+D-11a (rev P3): Trials (OD-04) are provisioned by staff only, under the single standing trial policy approved as 4E `platform.trial.policy` (D-P14): each trial must fit the policy's limits, duration (≤30 days), region and daily cap, needs no per-tenant approval, and appears in the daily trial digest to both approvers (D-80). The first-admin invitation (P7) goes by email to the invitee only; no link or token is ever returned to staff (DA-09, C-PL-05).
+
 ### D-12 Tenant offboarding and deletion
 
 ```mermaid
 stateDiagram-v2
     [*] --> Active
-    Active --> OffboardingRequested: customer admin request or contract end (control.subscriptions)
+    Active --> OffboardingRequested: customer admin request (C-M01-20, 4E tenant.offboard) or contract end (control.subscriptions)
     OffboardingRequested --> ExportWindow: export produced (D-73 final export), customer notified
     ExportWindow --> DeletionRequested: window ends (default 30 d) or customer confirms
     DeletionRequested --> DeletionApproved: 4E platform.tenant.delete (management_approver + ciso, D-58)
@@ -340,9 +342,10 @@ stateDiagram-v2
 | ID | Rule |
 |---|---|
 | D-58 | Deletion approval needs two different people, one holding `management_approver` and one holding `ciso`; the requester counts as one of them only if they hold one of those roles. A tenant-level legal hold (`legal_hold` rows) blocks approval. |
-| D-12a | Deletion steps: (1) revoke all sessions, API keys, SCIM tokens, webhooks, support grants; (2) disable routing (503 `tenant_unavailable`); (3) drop schema `t_<tkey>` and roles; (4) delete storage prefix `<tkey>/` in `tenant-files`, `quarantine`, `exports`; (5) delete per-subject keys of the tenant; (6) schedule KEK destruction (4E `platform.key.destroy` is satisfied by D-58's approval record for this deletion only); (7) delete memberships, retain `control.identities` only for people with other memberships; (8) purge `ops` messages for the `tkey`. |
+| D-12a | Deletion steps: (1) revoke all sessions, API keys, SCIM tokens, webhooks, support grants; (2) disable routing (503 `tenant_unavailable`); (3) drop schema `t_<tkey>` and roles; (4) delete storage prefix `<tkey>/` in `tenant-files`, `quarantine`, `exports`; (5) delete every `ks` row of the tenant (DEK versions, per-subject, per-file and blind-index keys; wrapped keys live only in `ks`, never in tenant tables, DA-04) (rev P3); (6) schedule KEK destruction (4E `platform.key.destroy` is satisfied by D-58's approval record for this deletion only); (7) delete memberships, retain `control.identities` only for people with other memberships; (8) purge `ops` messages for the `tkey`. |
 | D-12b | Certificate (`control.deletion_certificates`): tenant ref, `tkey` hash, schema drop timestamp and catalog proof, storage object counts and manifest hash before and after, key ids and KMS destruction evidence reference, approvers and votes, request ids, certificate hash; anchored in `control.platform_audit_log` and the external anchor (ADR-013). |
-| D-12c | Backups: project PITR still holds the data until its window ends; the data there is unreadable once the KEK is destroyed (S7, discovery summary §6). The certificate states the PITR expiry date. |
+| D-12c | Backups: project PITR still holds the data until its window ends. E1 and E2 fields and files there are unreadable once the KEK is destroyed (S7, discovery summary §6); E0 plaintext remains readable in PITR until the window ends (ADR-004). The `ks` standby and off-site key journal roll off within 8 days (DA-11). The certificate states the PITR expiry date and the `ks` roll-off date. (rev P3) |
+| D-12d | Trial tenants past expiry + 30 days are deleted under the standing trial policy approval (D-P14) instead of a per-tenant D-P03 vote; steps D-12a and certificate D-12b apply unchanged (OD-04) (rev P3). |
 
 ### D-13 Four-eyes approval (per `approval` / `control.platform_approvals`)
 
@@ -375,7 +378,48 @@ stateDiagram-v2
     Expired --> [*]
 ```
 
-When the last live `auditor_access` of a person ends, job D-79 sets the auditor's membership to `Suspended` (control plane) and revokes their sessions in that tenant (E-44).
+When the last live `auditor_access` of a person ends, job D-79 sets the auditor's membership to `Suspended` (control plane) and revokes their sessions in that tenant (E-44). Access can be extended while Live (`…/auditor-access/:accessId/extend`, `audits.manage`, endsAt ≤ startsAt + 180 d; rev P3).
+
+### D-15 Questionnaire (per `questionnaire`) (rev P3)
+
+```mermaid
+stateDiagram-v2
+    [*] --> not_started
+    not_started --> in_progress: first answer (questionnaires.write)
+    in_progress --> sent: 4E q.send (D-K27)
+    sent --> submitted: recipient submits
+    submitted --> reopened: reopen (questionnaires.write, reason)
+    reopened --> in_progress: edit
+    submitted --> complete: complete (questionnaires.write)
+    complete --> [*]
+```
+
+### D-16 AI system review (per `ai_system`) (rev P3)
+
+```mermaid
+stateDiagram-v2
+    [*] --> registered: create (ai.manage)
+    registered --> in_review: review started
+    in_review --> approved: review complete (ai.approve, SOD ≠ registrant, owner)
+    in_review --> registered: restart (reason)
+    approved --> archived: 4E ai.archive (D-K25)
+    archived --> [*]
+```
+
+Classification: draft (C-M13-04 or the C-M13-09 proposal) → confirmed (`ai.approve`, SOD ≠ drafter, ≠ owner); a confirmed tier change that moves the guardrail tier goes through 4E `ai.guardrail` (DA-14).
+
+### D-17 Support question (per `control.support_questions`) (rev P3)
+
+```mermaid
+stateDiagram-v2
+    [*] --> open: ask (help.ask)
+    open --> answered: staff answer (platform.help.answer)
+    answered --> open: follow-up by asker
+    answered --> closed: close (asker or staff)
+    closed --> reopened: reopen
+    reopened --> answered: staff answer
+    closed --> [*]
+```
 
 ---
 
@@ -408,15 +452,15 @@ When the last live `auditor_access` of a person ends, job D-79 sets the auditor'
 
 ### 2.3 Kinds registry
 
-Tenant plane (TTL in hours; `F` = forbid set beyond the requester):
+Tenant plane (TTL in hours; `F` = forbid set beyond the requester). "Privileged role" here and in D-K01, D-K03 and D-K22 has one definition (DA-08, 2E E-33d): `admin`, `owner`, and any custom role holding any admin-only permission; `analyst` is not privileged (rev P3).
 
 | ID | Kind | Module | Initiator perm | Approver perm | Needs | F | Named | TTL | Step-up |
 |---|---|---|---|---|---|---|---|---|---|
 | D-K01 | `team.role` | M01 | members.manage | members.manage | 1 | subject person | no | 72 | yes |
 | D-K02 | `team.invite` | M01 | members.manage | members.manage | 1 | — | no | 72 | no |
-| D-K03 | `team.offboard` | M01/M12 | people.manage | members.manage | 1 | subject | no | 72 | yes |
+| D-K03 | `team.offboard` | M01/M12 | people.manage | members.manage | 1 | subject | no | 72 | yes; always used when the requester lacks `members.manage` (C-M12-04) (rev P3) |
 | D-K04 | `team.setting.loosen` (incl. trusted network) | M01 | settings.manage | settings.manage | 1 | — | no | 72 | yes |
-| D-K05 | `tenant.role.change` | M01 | roles.manage | roles.manage | 1 (2 if role gains an `*.approve` or `members.manage`) | — | no | 72 | yes |
+| D-K05 | `tenant.role.change` | M01 | roles.manage | roles.manage | 1 (2 if the change adds any sensitive permission, E-30 column S, E-34); a change that adds an admin-only permission makes the role privileged (E-33d), so later assignments need 4E `team.role` | — | no | 72 | yes (rev P3) |
 | D-K06 | `sso.activate`, `sso.policy` | M01 | sso.manage | sso.manage | 1 | — | no | 72 | yes |
 | D-K07 | `scim.token` | M01 | sso.manage | sso.manage | 1 | — | no | 24 | yes |
 | D-K08 | `team.rule` | M26 | automation.manage | automation.approve | 1 | rule creator | no | 72 | no |
@@ -447,8 +491,12 @@ Tenant plane (TTL in hours; `F` = forbid set beyond the requester):
 | D-K33 | `dsar.erasure`, `dsar.disclose` | M14 | dsar.handle | dsar.approve | 1 | handler who prepared the package | no | 72 | yes |
 | D-K34 | `privacy.dpia` | M14 | privacy.manage | dpia.approve | 1 | author, submitter | no | 336 | no |
 | D-K35 | `assistant.run` (agent change in Suggests mode) | M19 | system (agent) | assistant.approve | 1 | triggerer | no | 72 | no |
+| D-K36 | `content.upgrade` | M02 | frameworks.upgrade | frameworks.upgrade | 1 | requester | no | 72 | yes (DA-15, ADR-011 D11-6; C-M02-09) (rev P3) |
+| D-K37 | `content.upgrade.in_audit` (framework in an audit in Fieldwork or Reporting) | M02 | frameworks.upgrade | frameworks.upgrade | 2 | requester | no | 72 | yes (DA-15, 2B B-RF16) (rev P3) |
+| D-K38 | `tenant.offboard` (customer offboarding request, starts D-12) | M01 | settings.manage | settings.manage | 1 (2 when two or more admins exist) | — | no | 72 | yes (C-M01-20) (rev P3) |
+| D-K39 | `tenant.byok` (register or change a customer KEK) | M01 | settings.manage | settings.manage | 2 | — | no | 72 | yes (C-M01-22, 2F F-K-21) (rev P3) |
 
-Platform plane (all need ELEV for request and vote; TTL 24 h unless stated):
+Platform plane (all need ELEV to vote; requests need ELEV except D-P12 under the 2C §4 exception for `platform.mfa_reset.request` holders without `platform.elevate`; TTL 24 h unless stated) (rev P3):
 
 | ID | Kind | Initiator perm | Approver perm | Needs | Dual role | Notes |
 |---|---|---|---|---|---|---|
@@ -464,6 +512,10 @@ Platform plane (all need ELEV for request and vote; TTL 24 h unless stated):
 | D-P10 | `billing.credit`, `.refund`, `.markpaid`, `.void` (above threshold), `.writeoff`, `.pricing` | platform.billing.operate | platform.billing.approve | 1 | no | threshold USD 1,000 as today |
 | D-P11 | `rates.release`, `rates.override` | platform.rates.operate | platform.rates.approve | 1 | no | held value unchanged at apply |
 | D-P12 | `mfa-reset-admin` | platform.mfa_reset.request | platform.mfa_reset.approve | 1 | no | named approver; subject forbidden; also used for multi-tenant identities (E-56) |
+| D-P13 | `platform.tenant.admin-reset` (change the first-admin invitation email) | platform.tenants.lifecycle | platform.tenants.lifecycle | 1–2 | **yes** | only while the tenant has no Active admin; invitation goes by email to the invitee only (DA-09, C-PL-05) (rev P3) |
+| D-P14 | `platform.trial.policy` | platform.tenants.provision | platform.tenants.provision | 1–2 | **yes** | TTL 72 h; payload: limits, duration ≤30 d, region, daily cap; standing approval for trials (OD-04, D-11a, D-12d); daily digest to both approvers (D-80) (rev P3) |
+| D-P15 | `platform.tenant.restore` | platform.tenants.lifecycle (or tenant request through C-M01-21) | platform.tenants.lifecycle | 1–2 | **yes** | 2H H-RS-01; tenant informed of the write freeze (rev P3) |
+| D-P16 | `billing.tax_rule` | platform.billing.operate | platform.billing.approve | 1 | no | invoicing refused without an approved rule (2I R-52; C-PL-29) (rev P3) |
 
 ---
 
@@ -473,12 +525,12 @@ Common to every job: one message = one tenant (or one control-plane item); messa
 
 | ID | Job | Schedule (dispatcher) | Inputs | Idempotency | Failure handling |
 |---|---|---|---|---|---|
-| D-61 | Tenant dispatcher | pg_cron every minute on each cell | `control` routing replica: Active tenants, job calendar | Dedupe key `<job>:<tkey>:<window>` in `ops.job_dedupe` (unique) | If `cp` unreachable, uses the last routing replica ≤ 15 min old; else skips the tick (alert) |
-| D-62 | Reminders and notifications (policy acks, issue overdue, vendor assessment due/overdue, trust NDA re-acceptance, PBC due, digest emails) | hourly per tenant; email digest daily at tenant-local 08:00 | tenant records due in window | notification dedupe `(person, kind, record, day)` | Email provider failure: retry 6 times over 6 h; bell notice always written first |
-| D-63 | Evidence expiry | daily per tenant | `evidence.validUntil` | state transition guarded by current state (no-op if already moved) | per-record errors logged; job continues with the next record |
+| D-61 | Tenant dispatcher | pg_cron every minute on each cell | `cp` routing view `control.v_routing` read through `cp_router_ro` (tenant status read live, never cached; static routing fields may be cached 30 s, R2-01); job calendar | Dedupe key `<job>:<tkey>:<window>` in `ops.job_dedupe` (unique) | If `cp` is unreachable, skip the tick and alert (fail closed); workers re-check tenant status through the router before each message (S8) (rev P3) |
+| D-62 | Reminders and notifications (policy acks, issue overdue, vendor assessment due/overdue, trust NDA re-acceptance, PBC due, digest emails) | hourly per tenant; email digest daily at tenant-local 08:00 | tenant records due in window; incident notification deadlines (`incident.deadline_at`); commitment due rules (rev P3) | notification dedupe `(person, kind, record, day)` | Email provider failure: retry 6 times over 6 h; bell notice always written first |
+| D-63 | Evidence expiry | daily per tenant | `evidence.expires_on` (rev P3) | state transition guarded by current state (no-op if already moved) | per-record errors logged; job continues with the next record |
 | D-64 | Policy review due and attestation overdue/escalation; scheduled publish at `effectiveAt` | hourly per tenant | `policy`, `policy_attestation` | as D-63 | as D-63 |
 | D-65 | Risk review due, overdue, escalation; acceptance expiring/expired | daily per tenant | `risk_review`, `risk_acceptance` | as D-63 | as D-63 |
-| D-66 | Approval expiry sweep; delegation expiry; auditor access start/expiry; trust request expiry and account lapse; invitation expiry | every 5 min per tenant with pending items (the dispatcher reads a per-tenant "next due" hint) | `approval`, `delegation`, `auditor_access`, `trust_access_request`, `control.invitations` | transition only from Pending/Live | as D-63; a stuck item raises an ops alert after 3 failures |
+| D-66 | Approval expiry sweep; delegation expiry; auditor access start/expiry; trust request expiry and account lapse; invitation expiry | every 5 min per tenant with pending items (the dispatcher reads a per-tenant "next due" hint) | `approval`, `delegation`, `auditor_access`, `trust_access_request`, `control.invitations`; support grant end (`control.support_grants.ends_at`): end live support sessions (rev P3) | transition only from Pending/Live | as D-63; a stuck item raises an ops alert after 3 failures |
 | D-67 | Report generation and exports | on demand (queue) + `report_schedule` cron per tenant | schedule or request id | `report_run` row created first with the idempotency key; re-run overwrites the same file key | 3 retries; then run `Failed`, requester notified; partial files deleted |
 | D-68 | Webhook delivery | continuous (queue), retries per C-89 | `webhook_delivery` row id | delivery id sent as `Selvara-Delivery-Id`; consumers dedupe on event id | backoff per C-89; auto-disable C-90 |
 | D-69 | Integration sync (and shadow-AI signals, device posture) | per integration cadence (default 6 h), and on demand | `integration` id | `integration_sync_run` per window; upserts keyed by provider ids | provider 401/403: integration `Error`, admins notified, no retry until reconnected; 429/5xx: backoff |
@@ -492,7 +544,9 @@ Common to every job: one message = one tenant (or one control-plane item); messa
 | D-77 | Migration rollout (ADR-009) | on approval of D-P09; waves: canary tenants, then batches of N | release id | per-tenant `control.tenant_schema_versions` compare-and-set | failed tenant: stays on old version (router returns 503 for that tenant only); wave pauses on error-rate threshold |
 | D-78 | Tenant provisioning and deletion steps | on approval (queue) | tenant ref | `ops.provisioning_steps` per step; each step checks its postcondition before acting | step retries 5; then `ProvisioningFailed` / `DeletionFailed`, alert |
 | D-79 | Identity propagation: profile changes to `member_profile`; membership and role changes to tenant caches; session revocation fan-out; auditor membership suspension | on event (queue) | identity / membership id | version-stamped upsert | retry; mismatch report daily |
-| D-80 | Platform hygiene: SSO certificate expiry (warn 30 d, 7 d), domain re-verification (weekly), API key and SCIM token expiry, expired session cleanup, agent certification lapse, AI provider review expiry | daily | control plane and per-tenant hints | as D-63 | as D-63 |
+| D-80 | Platform hygiene: SSO certificate expiry (warn 30 d, 7 d), domain re-verification (weekly), API key and SCIM token expiry, expired session cleanup, agent certification lapse, AI provider review expiry; daily trial digest to both trial-policy approvers (D-P14, OD-04) (rev P3) | daily | control plane and per-tenant hints | as D-63 | as D-63 |
+
+| D-82 | Content upgrade apply and forced upgrade (ADR-011 D11-6 auto-minor, D11-7) | on approval of D-K36/D-K37, and daily for retired releases | tenant, package, release | `content_upgrade` row per (tenant, package, release) | tenants in an active audit skipped and reported (DA-15) (rev P3) |
 
 ### 3.1 Reads never write
 
@@ -510,7 +564,7 @@ D-81: Every sweep that today runs inside a GET (risk, vendors, AI, trust, access
 | D-53 | Tasks per system: `dsr_task` per `system` linked from the RoPA activities that list the data category; external systems get manual tasks with an assignee and due date; Selvara-held data gets automatic tasks (export, rectify, erase). |
 | D-54 | Erasure inside Selvara: after 4E `dsar.erasure`: (1) records on `legal_hold` or under a retention obligation are excluded and listed in the response with the reason; (2) personal fields are overwritten with a tombstone value and the row version incremented; (3) the subject's per-subject key is destroyed in the key store (S7), which makes the encrypted values in `record_history`, exports and backups unreadable; (4) files belonging only to the subject are deleted; (5) an erasure certificate (`data_subject_request.erasureCertificate`: tables, row counts, key id destroyed, KMS evidence ref, approvers, hash) is written and anchored. The audit log keeps the action with the subject reference pseudonymised. |
 | D-55 | Response: access/portability packages are produced by D-67 as an encrypted export (password sent separately), require 4E `dsar.disclose`, and are deleted from `exports` 30 days after delivery. |
-| D-56 | Selvara as controller (identities, support questions, sign-in records, billing contacts): the same state machine runs in the control plane (`control` tables in Phase 2G), handled by holders of `platform.privacy.manage`, with erasure limited by billing and security-log retention. |
+| D-56 | Selvara as controller (identities, support questions, sign-in records, billing contacts): the same state machine runs in Selvara's own tenant (M14, 2G G-D-07); a staff tool in `console` reads the subject's controller data from `cp` through `cp_rw`, and the case record lives only in Selvara's tenant (rev P3); handled by holders of `platform.privacy.manage`, with erasure limited by billing and security-log retention. |
 
 ---
 
@@ -560,7 +614,7 @@ D-60a Tenant status gate:
 
 ## 6. Deliverables
 
-- This document (`2D-workflows.md`): 14 state machines (D-01..D-14), approval engine and registry (D-20..D-35, D-K01..D-K35, D-P01..D-P12), job catalogue (D-61..D-81), DSAR detail (D-50..D-56), worker model (D-60, D-85..D-95).
+- This document (`2D-workflows.md`): 17 state machines (D-01..D-17), approval engine and registry (D-20..D-35, D-K01..D-K39, D-P01..D-P16), job catalogue (D-61..D-82) (rev P3), DSAR detail (D-50..D-56), worker model (D-60, D-85..D-95).
 
 ## 7. Decisions required
 
@@ -575,7 +629,7 @@ D-60a Tenant status gate:
 
 | ID | Risk | L | I | Treatment |
 |---|---|---|---|---|
-| R-32 | Serverless worker time limits and pg_net reliability cause missed jobs at scale | M | M | D-88 short batches; long jobs in the container; dispatcher catch-up via "next due" hints; Phase 2J load test |
+| R-32 | Serverless worker time limits and pg_net reliability cause missed jobs at scale (merged into R-18, Phase 3 register) | M | M | D-88 short batches; long jobs in the container; dispatcher catch-up via "next due" hints; Phase 2J load test |
 | R-33 | DSAR deadlines missed because the clock rules per jurisdiction are wrong or incomplete | M | H | Legal review of `ref.dsar_rules`; conservative default (shortest known period) when jurisdiction unknown |
 | R-34 | Erasure incomplete because personal data sits in an unflagged free-text field | H | H | Phase 2G PD field catalogue; free text in PD-flagged fields encrypted with per-subject keys where a subject is known; DSAR response lists residual stores |
 
