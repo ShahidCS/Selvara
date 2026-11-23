@@ -10,7 +10,7 @@ test("new agents start at suggests only; lowering is immediate; raising shows th
   await expect(p.getByRole("textbox", { name: "Autonomy" })).toHaveJSProperty("readOnly", true);
 
   await gotoModule(p, "/ws/assistant");
-  await p.getByRole("tab", { name: "Custom agents" }).click();
+  await p.getByRole("tab", { name: "Custom agents" }).click(); await p.getByRole("radio", { name: "Table" }).click();
   const table = p.getByRole("table", { name: "Agents", exact: true });
   await table.getByRole("button", { name: "Lower to suggests only: Evidence chaser" }).click();
   await expect(table.getByRole("row", { name: /Evidence chaser/ })).toContainText("Suggests only");
@@ -36,7 +36,7 @@ test("a small team turns the track record off; raising still needs approval; rej
   await expect(p.getByRole("radiogroup", { name: "AI agent track record" }).getByRole("radio", { name: "Off" })).toHaveAttribute("aria-checked", "true");
 
   await nextPush(p, "/ws/assistant"); // client navigation keeps the in-memory setting
-  await p.getByRole("tab", { name: "Custom agents" }).click();
+  await p.getByRole("tab", { name: "Custom agents" }).click(); await p.getByRole("radio", { name: "Table" }).click();
   const table = p.getByRole("table", { name: "Agents", exact: true });
   await table.getByRole("button", { name: "Raise autonomy: Questionnaire drafter" }).click();
   const dlg = p.getByRole("dialog", { name: /Raise autonomy: Questionnaire drafter/ });
@@ -52,14 +52,14 @@ test("a small team turns the track record off; raising still needs approval; rej
   await rj.getByLabel(/^Reason/).fill("Summary used last week's scores");
   await rj.getByRole("button", { name: "Confirm rejection" }).click();
   await expect(p.getByText("Risk summariser now suggests only")).toBeVisible();
-  await p.getByRole("tab", { name: "Custom agents" }).click();
+  await p.getByRole("tab", { name: "Custom agents" }).click(); await p.getByRole("radio", { name: "Table" }).click();
   await expect(table.getByRole("row", { name: /Risk summariser/ })).toContainText("Suggests only");
 });
 
 test("agents acting before the ladder show a transition deadline and can be recertified with an attestation", async ({ browser }, ti) => {
   const s = await openAs(browser, ti, "admin"); const p = s.page;
   await gotoModule(p, "/ws/assistant");
-  await p.getByRole("tab", { name: "Custom agents" }).click();
+  await p.getByRole("tab", { name: "Custom agents" }).click(); await p.getByRole("radio", { name: "Table" }).click();
   const table = p.getByRole("table", { name: "Agents", exact: true });
   await expect(table.getByRole("row", { name: /Evidence chaser/ })).toContainText(/Recertify by \d{4}-\d{2}-\d{2}/);
   await table.getByRole("button", { name: "Recertify: Evidence chaser" }).click();

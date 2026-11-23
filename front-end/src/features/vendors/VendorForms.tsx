@@ -10,6 +10,7 @@ import { DATA } from "@/lib/data";
 import { REASSESS_OUTCOMES, TIER_CADENCE, TIER_WINDOW, VENDOR_TIERS, vFind, vInitAll, vendorCanManage } from "@/features/vendors/lib/vendors";
 import * as svc from "@/features/vendors/services/vendors";
 import { Req } from "./VendorModals";
+import { PrefillBanner, usePrefilled } from "@/components/kit/PrefillBanner";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const LIST = "/ws/vendors";
@@ -37,6 +38,11 @@ export function VendorFormPage() {
   const L = useLayer(); const go = useGo();
   const [name, setName] = useState(""); const [cat, setCat] = useState(""); const [tier, setTier] = useState("Medium"); const [score, setScore] = useState("75");
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const pf = usePrefilled();
+  const fill = (v: Record<string, string>) => {
+    if (v.name !== undefined) setName(v.name); if (v.cat !== undefined) setCat(v.cat); if (v.tier !== undefined) setTier(v.tier); if (v.score !== undefined) setScore(v.score);
+    pf.mark(Object.keys(v));
+  };
   const dirty = !busy && (name !== "" || cat !== "" || tier !== "Medium" || score !== "75");
   const { allowLeave } = useUnsavedGuard(dirty, L);
   const ref = useRef<HTMLInputElement>(null); useEffect(() => { ref.current?.focus(); }, []);
@@ -47,15 +53,16 @@ export function VendorFormPage() {
   return (
     <Page title="Add vendor" sub="Then record certificates, findings and reassessments from its page." back={back}>
       <div className="scroll rec-scroll"><form className="rec-form" onSubmit={submit} noValidate>
+        <PrefillBanner form="vendor" onFill={fill} filled={pf.count} />
         <FormSection n={1} title="Vendor" note="Who the third party is and how critical it is.">
-          <div className="field"><label htmlFor="vn-name">Vendor name <Req /></label><input ref={ref} className="input" id="vn-name" maxLength={120} placeholder="e.g. Acme Cloud" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={!!err} aria-describedby={err ? "vn-err" : undefined} /></div>
+          <div className={pf.cls("name")}><label htmlFor="vn-name">Vendor name <Req />{pf.tag("name")}</label><input ref={ref} className="input" id="vn-name" maxLength={120} placeholder="e.g. Acme Cloud" value={name} onChange={(e) => { setName(e.target.value); pf.clear("name"); }} aria-invalid={!!err} aria-describedby={err ? "vn-err" : undefined} /></div>
           <div style={grid2}>
-            <div className="field"><label htmlFor="vn-cat">Category</label><input className="input" id="vn-cat" maxLength={80} placeholder="e.g. Messaging" value={cat} onChange={(e) => setCat(e.target.value)} /></div>
-            <div className="field"><label htmlFor="vn-tier">Tier</label><select className="select" id="vn-tier" value={tier} onChange={(e) => setTier(e.target.value)}>{VENDOR_TIERS.map((x) => <option key={x}>{x}</option>)}</select></div>
+            <div className={pf.cls("cat")}><label htmlFor="vn-cat">Category{pf.tag("cat")}</label><input className="input" id="vn-cat" maxLength={80} placeholder="e.g. Messaging" value={cat} onChange={(e) => { setCat(e.target.value); pf.clear("cat"); }} /></div>
+            <div className={pf.cls("tier")}><label htmlFor="vn-tier">Tier{pf.tag("tier")}</label><select className="select" id="vn-tier" value={tier} onChange={(e) => { setTier(e.target.value); pf.clear("tier"); }}>{VENDOR_TIERS.map((x) => <option key={x}>{x}</option>)}</select></div>
           </div>
         </FormSection>
         <FormSection n={2} title="Initial risk" note="You can reassess later; the tier sets the cadence.">
-          <div className="field"><label htmlFor="vn-score">Initial risk score (0-100)</label><input className="input" id="vn-score" type="number" min={0} max={100} step="any" value={score} onChange={(e) => setScore(e.target.value)} /></div>
+          <div className={pf.cls("score")}><label htmlFor="vn-score">Initial risk score (0-100){pf.tag("score")}</label><input className="input" id="vn-score" type="number" min={0} max={100} step="any" value={score} onChange={(e) => { setScore(e.target.value); pf.clear("score"); }} /></div>
         </FormSection>
         {err ? <FormMessage id="vn-err">{err}</FormMessage> : null}
         <FormActions><button type="button" className="btn btn-secondary" onClick={() => go(LIST)}>Cancel</button><button type="submit" className="btn btn-primary" disabled={busy}>Add vendor</button></FormActions>

@@ -904,6 +904,8 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .hbar-nm{color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .hbar-track{height:8px;border-radius:var(--radius-full);background:var(--surface-3);overflow:hidden} .hbar-fill{display:block;height:100%;border-radius:var(--radius-full)}
 .hbar-v{min-width:32px;text-align:end;font-weight:600;color:var(--ink)}
+.hbar.wrap .hbar-row{grid-template-columns:1fr auto;row-gap:4px}
+.hbar.wrap .hbar-nm{grid-column:1 / -1;white-space:normal}
 .donut2{position:relative;width:140px;height:140px;margin:0 auto} .donut2 svg{width:100%;height:100%}
 .donut2-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;color:var(--muted)}
 .donut2-c b{font-family:var(--font-display);font-size:26px;line-height:28px;font-weight:300;letter-spacing:-.8px;color:var(--ink)}
@@ -1085,3 +1087,54 @@ main#content{background:var(--surface);margin:0 8px 8px 0;border-radius:0 0 var(
 .cal-mark.late{background:var(--bad-ink);box-shadow:0 0 0 1px var(--bad-ink)}
 .cal-mark:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
 .cal-none{position:absolute;left:8px;top:7px}
+
+/* Custom agents page (reference review R30 to R32) */
+.agent-lists{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@container (max-width:720px){.agent-lists{grid-template-columns:minmax(0,1fr)}}
+.agent-lists h3{display:flex;align-items:center;gap:6px}
+.agent-lists h3 svg{width:16px;height:16px}
+.agent-lists .c-head{flex-wrap:wrap;gap:4px 12px}
+.agent-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.agent-list li{display:flex;flex-direction:column;gap:2px}
+.agent-cards{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.agent-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-panel);padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.agent-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.agent-top h3{margin:0;font-size:15px;line-height:1.3}
+.agent-figs{display:flex;flex-wrap:wrap;gap:18px}
+.agent-figs>div{display:flex;flex-direction:column;gap:2px}
+.agent-figs .num{font-size:20px;font-weight:300}
+.agent-latest{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:var(--radius-card);background:var(--surface-2);font-size:12.5px}
+.agent-acts{margin-top:auto;padding-top:8px;border-top:1px solid var(--line)}
+.agent-acts .btngrp{justify-content:flex-start!important}
+.auto-meter{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.auto-bars{display:inline-flex;gap:3px}
+.auto-bars span{width:22px;height:6px;border-radius:var(--radius-full);background:var(--line-2)}
+.auto-bars span.on{background:var(--accent)}
+
+/* Posture brief and AI wording (reference review R9, R22, R36) */
+.brief-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.brief-h{font-size:20px;font-weight:400;letter-spacing:-.01em;line-height:1.3;margin:4px 0 0;max-width:62ch}
+.brief-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px 24px;align-items:start}
+@container (max-width:760px){.brief-grid{grid-template-columns:minmax(0,1fr)}}
+.brief-steps{display:flex;flex-direction:column;gap:8px}
+.brief-steps ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.brief-step{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px;text-align:left;padding:10px 12px;border-radius:var(--radius-card);border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;font:inherit}
+.brief-step .cell-sub{grid-column:1}
+.brief-step svg{grid-column:2;grid-row:1 / span 2;align-self:center;width:16px;height:16px;color:var(--muted)}
+.brief-step:hover{border-color:var(--line-2)}
+.brief-step:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.ai-wording{display:flex;flex-direction:column;gap:8px;min-width:0}
+.ai-wording>.btn{align-self:flex-start}
+.ai-wording-text{margin:0;white-space:pre-wrap;line-height:1.55}
+.next-step{display:inline-flex;flex-direction:column;gap:1px;font-size:12.5px}
+.why-card dl{margin:0;display:flex;flex-direction:column;gap:10px}
+.why-card dt{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.why-card dd{margin:2px 0 0;line-height:1.5}
+
+/* Prefill from a document (reference review R27): filled fields are tinted and labelled until edited */
+.prefill{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:var(--radius-card);background:var(--accent-weak);border:1px dashed color-mix(in srgb,var(--accent) 30%,transparent)}
+.prefill-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px}
+.prefill-row>svg{width:18px;height:18px;flex:0 0 auto;color:var(--muted)}
+.prefill-acts{margin-left:auto;display:inline-flex;gap:6px;flex-wrap:wrap}
+.field.prefilled .input,.field.prefilled .select{background:var(--accent-weak);border-color:var(--accent)}
+.pf-tag{display:inline-flex;align-items:center;margin-left:8px;padding:0 6px;border-radius:var(--radius-full);font-size:11px;font-weight:500;color:var(--accent-ink);background:var(--surface-2);vertical-align:1px}

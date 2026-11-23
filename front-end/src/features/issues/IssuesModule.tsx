@@ -1,3 +1,4 @@
+import { issueNextStep } from "@/lib/insights";
 import { DataTable, Icon, KpiStrip, KpiTile, Page, Person, Segmented, SeverityBars, StatusChip, activate, type DTColumn } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData, useModState } from "@/lib/store";
@@ -45,6 +46,7 @@ function IssuesList() {
     { key: "owner", header: "Owner", value: (i) => i.owner, render: (i) => <Person name={i.owner} /> },
     { key: "due", header: "Due", value: (i) => i.due, sortBy: (i) => dueRank(i.due), render: (i) => <DueText due={i.due} /> },
     { key: "status", header: "Status", value: (i) => i.status, render: (i) => <StatusChip s={i.status} /> },
+    { key: "next", header: "Suggested next step", value: (i) => issueNextStep(i as never), render: (i) => issueNextStep(i as never) || <span style={{ color: "var(--faint)" }}>None</span> },
   ];
   const owners = Array.from(new Set(DATA.issues.map((i: Issue) => String(i.owner)))).sort();
   const live = DATA.issues.filter(isOpen);

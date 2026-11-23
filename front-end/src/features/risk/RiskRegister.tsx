@@ -1,4 +1,5 @@
 /* Risk register tab (source renderRiskReg, lines 2559-2603). */
+import { riskNextStep } from "@/lib/insights";
 import { Empty, StatusChip, Table, activate } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { Ib, Lb, RBANDS, RISK_STATUSES, riskOpen, riskPriority, riskRatingOf, sCur, sInh, sRes } from "@/lib/risk";
@@ -69,7 +70,7 @@ export default function RiskRegister() {
         </div>
         <div className="c-body flush" data-tour="risk-table" style={{ padding: 0 }}>
           {list.length ? (
-            <Table cols={[{ t: "ID" }, { t: "Risk" }, { t: "Team" }, { t: "Jurisdiction" }, { t: "Inherent" }, { t: "Current" }, { t: "Residual" }, { t: "Priority" }, { t: "Treatment" }, { t: "Status" }]} minw={980}>
+            <Table cols={[{ t: "ID" }, { t: "Risk" }, { t: "Team" }, { t: "Jurisdiction" }, { t: "Inherent" }, { t: "Current" }, { t: "Residual" }, { t: "Priority" }, { t: "Treatment" }, { t: "Status" }, { t: "Suggested next step" }]} minw={1140}>
               {list.map((r) => (
                 <tr key={r.id} className={`clickable ${sel === r.id ? "sel" : ""}`} aria-selected={sel === r.id} {...activate(() => riskOpenDetail(r.id))}>
                   <td className="strong num" style={{ whiteSpace: "nowrap" }}>{r.id}</td>
@@ -77,6 +78,7 @@ export default function RiskRegister() {
                   <td style={{ fontSize: 12 }}>{r.team}</td><td style={{ fontSize: 12 }}>{r.jur}</td>
                   <td><ScoreBars score={sInh(r)} /></td><td><ScoreBars score={sCur(r)} /></td><td><ScoreBars score={sRes(r)} /></td>
                   <td><span className="tag">{riskPriority(r)}</span></td><td style={{ fontSize: 12 }}>{r.treat}</td><td><StatusChip s={r.status} /></td>
+                  <td style={{ fontSize: 12 }}>{riskNextStep(r) || <span style={{ color: "var(--faint)" }}>None</span>}</td>
                 </tr>
               ))}
             </Table>
