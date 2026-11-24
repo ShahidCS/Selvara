@@ -94,6 +94,20 @@ scheduled scan keep watching.
 replace the CLI with a direct call to Vercel's REST deployment API (a small script with no dependency tree). The REST
 route has not been built or tested; it is an option if the baseline keeps growing.
 
+**Re-assessed 2026-11-24 (owner agreed to keep EX-04).**
+- *CLI upgrade.* The newest CLI (66.6.0) and the newest past the 7-day cooldown (65.17.0) report the same 11 High
+  findings as 65.12.1: Vercel's builders still pin `undici` 5.28.4, `zod` 3.22.4 and `@fastify/busboy` 2.x. An upgrade
+  clears nothing, so the CLI stays on 65.12.1.
+- *Replacing the CLI.* The deploy step alone is not enough, because most findings sit in what `vercel build` installs.
+  The only CLI-free build found is the Vercel adapter for Next.js. Vercel's own builder enables it only behind an
+  opt-in flag, and the standalone package is a beta. Its output differs from `vercel build`: two extra server functions
+  (`404`, `_error`), and a different routing table and API function layout. The shipped-artefact check rejects it.
+  Security headers were kept, since they come from `next.config.js`. Whether the public REST API supports prebuilt
+  output could not be confirmed. Swapping a supported tool for an experimental build and an unverified client was
+  judged riskier than the accepted, unreachable findings.
+- *Revisit* when the adapter is stable, or when Dependabot offers a CLI release that drops these pins. The `picomatch`
+  entry expires on 2026-12-18; the rest are due for review on 2027-02-09.
+
 ## EX-05 CSP `script-src 'unsafe-inline'`
 
 **What.** The Pages Router injects inline bootstrap scripts, so a strict CSP needs per-request nonces, which a fully
