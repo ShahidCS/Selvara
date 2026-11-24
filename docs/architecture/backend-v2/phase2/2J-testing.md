@@ -37,6 +37,7 @@
 | J-PERF | Performance, load and cell threshold | J-7 | Dedicated perf cell | — | Weekly trend; release gate on regressions |
 | J-AUD | Audit-event coverage (rev P4) | J-3.3 | J-S03 | Endpoint registry (2C) and the F-EV event list (2F) | PR, blocking |
 | J-KSS | KS-SNAP restore drill (rev P4) | J-6.3 | Staging `ks-stg` and off-site staging account; production quarterly | — | Quarterly + V2-R0 exit, blocking for the release that follows a failed drill |
+| J-AUTHER | Erasure and offboarding reach the Supabase `auth` schema (rev P4, P4-A3-01): after a DSAR erasure or tenant offboarding, no `auth.users`, identities, sessions, refresh tokens, MFA factors or audit entries remain for the subject; auth audit entries older than their retention class are purged | J-6.4 | Staging `cp` with Auth | — | Weekly + release, blocking |
 | J-FEX | FINAL-EXPORT round trip (rev P4) | J-6.4 | Staging cell + test KMS | — | Weekly + release, blocking |
 | J-SLA | SLA-U measurement (rev P4) | J-7.3 | Unit (calculator) + staging probes | — | PR (calculator), quarterly (probe drill) |
 | J-PAR | Parity (no downgrade) | J-8 | J-S05 + J-S03 | Inventory | Merge (subset), release (all), blocking |

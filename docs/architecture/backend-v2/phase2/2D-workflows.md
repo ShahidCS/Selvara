@@ -331,18 +331,18 @@ stateDiagram-v2
     Active --> OffboardingRequested: customer admin request (C-M01-20, 4E tenant.offboard) or contract end or non-payment after grace (control.subscriptions)
     OffboardingRequested --> ExportBuilding: D-12b final export queued (members read-only, admins keep read access)
     ExportBuilding --> ExportWindow: bundle built, completeness check passed, manifest signed, recipient emailed (30-day window starts at the first ready)
-    ExportBuilding --> ExportFailed: completeness mismatch or error after retries (alert R-B; no window starts)
+    ExportBuilding --> ExportFailed: completeness mismatch or error after retries (alert R-B, no window starts)
     ExportFailed --> ExportBuilding: retry (platform ELEV) or regeneration
-    ExportWindow --> ExportBuilding: regeneration requested (C-M01-23, at most 3 generations; window not restarted)
+    ExportWindow --> ExportBuilding: regeneration requested (C-M01-23, at most 3 generations, window not restarted)
     ExportWindow --> ReceiptConfirmed: recipient confirms receipt or declines the export (C-M01-26, STEP)
     ExportWindow --> WindowExpired: 30 days after the first ready, with notices at ready, day 23 and day 29 recorded
     ReceiptConfirmed --> DeletionRequested
     WindowExpired --> DeletionRequested
-    DeletionRequested --> DeletionApproved: 4E platform.tenant.delete (management_approver + ciso, D-58); precondition D-12b-7 holds
-    DeletionRequested --> ExportWindow: rejected (reason), e.g. legal hold or dispute; window extended until resolved
+    DeletionRequested --> DeletionApproved: 4E platform.tenant.delete (management_approver + ciso, D-58), precondition D-12b-7 holds
+    DeletionRequested --> ExportWindow: rejected (reason), e.g. legal hold or dispute, window extended until resolved
     DeletionApproved --> Deleting: job D-78
-    Deleting --> KeyDestructionPending: data removed; KMS key deletion scheduled (provider waiting period)
-    KeyDestructionPending --> Deleted: KMS confirms destruction; certificate D-12e signed and anchored
+    Deleting --> KeyDestructionPending: data removed, KMS key deletion scheduled (provider waiting period)
+    KeyDestructionPending --> Deleted: KMS confirms destruction, certificate D-12e signed and anchored
     Deleting --> DeletionFailed: step failed after retries (alert)
     DeletionFailed --> Deleting: retry (ELEV)
     Deleted --> [*]
@@ -369,7 +369,7 @@ D-12b final export FINAL-EXPORT (rev P4):
 | D-12b-6 | **Notices.** At `ready`, on day 23 and on day 29 of the window: email to the recipient and to every tenant admin, and to the contract contact of `control.subscriptions`; in-app banner. Each notice is recorded (time, channel, delivery result) on the job row. |
 | D-12b-7 | **Precondition for deletion** (checked by D-58 and by D-78 before step 1): the latest generation is `ready` and either `receipt_outcome` is set (C-M01-26: `received`, or `declined` with STEP and reason) or `window_ends_at` has passed with the three notices recorded. A legal hold or dispute extends the window. |
 | D-12b-8 | **Retention.** Bundles are deleted at supersession or by D-12a(4); the `control.tenant_export_jobs` row is kept under `accountability` (B-RC24) and copied into the certificate D-12e. |
-| D-12b-9 | **Tests (2J, case to add; follow-up for workstream J).** Round trip on a synthetic tenant with E1, E2, files and an erased subject: export, decrypt with the passphrase, re-count rows against live counts, verify every file hash and the manifest signature, check E2 values and file content are readable; negative cases: second passphrase reveal refused, reused link refused, deletion vote refused before receipt or window end, a deliberately dropped row fails the completeness check. |
+| D-12b-9 | **Tests (2J J-FEX-01 to J-FEX-10).** Round trip on a synthetic tenant with E1, E2, files and an erased subject: export, decrypt with the passphrase, re-count rows against live counts, verify every file hash and the manifest signature, check E2 values and file content are readable; negative cases: second passphrase reveal refused, reused link refused, deletion vote refused before receipt or window end, a deliberately dropped row fails the completeness check (the last two negative cases are a follow-up for workstream J if J-FEX does not already cover them). |
 
 ### D-13 Four-eyes approval (per `approval` / `control.platform_approvals`)
 
@@ -576,7 +576,7 @@ Common to every job: one message = one tenant (or one control-plane item); messa
 
 | D-82 | Content upgrade apply and forced upgrade (ADR-011 D11-6 auto-minor, D11-7) | on approval of D-K36/D-K37, and daily for retired releases | tenant, package, release | `content_upgrade` row per (tenant, package, release) | tenants in an active audit skipped and reported (DA-15) (rev P3) |
 
-D-70a (rev P4, closes P4-A2-26): **No job or handler reads file bytes unless `file_object.scan_state = clean`.** This covers every server-side parse of an upload (risk import C-M06-18, questionnaire import C-M10-02, KB documents C-M10-07, contract import and AI analysis C-M15-02 and C-M15-04, vendor answers C-M09-13, DSAR responses) as well as downloads and D-12b. It is enforced in `storagebroker`: its read function takes a `file_object` id, re-reads `scan_state` in the caller's tenant transaction and refuses anything but `clean` (error class `permanent`, audit entry `file.read.refused`); there is no read-by-path function. A handler that receives a `pending` file returns 409 `invalid_state` (`file_not_scanned`) and the client retries after the scan. Test: a J-SEC case (to add; follow-up for workstream J) calls each parser with a `pending`, `infected` and `failed` file and expects refusal.
+D-70a (rev P4, closes P4-A2-26): **No job or handler reads file bytes unless `file_object.scan_state = clean`.** This covers every server-side parse of an upload (risk import C-M06-18, questionnaire import C-M10-02, KB documents C-M10-07, contract import and AI analysis C-M15-02 and C-M15-04, vendor answers C-M09-13, DSAR responses) as well as downloads and D-12b. It is enforced in `storagebroker`: its read function takes a `file_object` id, re-reads `scan_state` in the caller's tenant transaction and refuses anything but `clean` (error class `permanent`, audit entry `file.read.refused`); there is no read-by-path function. A handler that receives a `pending` file returns 409 `invalid_state` (`file_not_scanned`) and the client retries after the scan. Test: J-SEC-33 calls each parser with a `pending`, `infected` and `failed` file and expects refusal.
 
 ### 3.1 Reads never write
 

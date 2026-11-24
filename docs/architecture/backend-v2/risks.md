@@ -75,6 +75,7 @@
 | R-63 | Cost model omits lines, so plans are priced below cost | P3-X3-08 | M | M | R-A | Recompute before pricing (VC-08) | Open (rev P3) |
 | R-64 | Trial flood fills cell capacity and KMS key count | P3-X3-10 | M | M | R-A | Concurrent-trial cap in the trial policy | Open (rev P3) |
 | R-65 | A uniform contractual SLA (OQ-23) is committed above what the underlying Supabase and Vercel plans guarantee, creating penalty exposure | Medium | Medium | R-A | Set the SLA at or below the combined vendor SLAs once VC-13 is verified; service credits only; exclusions for scheduled maintenance and vendor-wide outages | Open |
+| R-49a | Certification readiness: the ISMS documents and evidence of G-14 are not ready when a customer or tender requires ISO 27001 (Q-17), because two people carry all rows (rev P4, P4-A3-12) | High | Medium | R-A | G-14 plan with priority rows by V2-R6; progress reviewed at each gate; outsourced internal auditor before certification |
 
 
 ## Residual acceptance pending (P3-X2-35)
