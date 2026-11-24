@@ -86,7 +86,7 @@ All design-authority (DA) items from section 2 are done. **The recommendation st
 
 | Re-assessment finding | Status |
 |---|---|
-| RA2-01 (Critical): R-A and R-B held by one person | **Design changed per the owner's instruction OD-16.** [ADR-021](../adr/ADR-021-flexible-platform-roles.md) lets one person hold several platform roles while every four-eyes action still needs two different people, with R-DEP as the mandatory second person and compensating controls. A-08 is superseded by A-08b; new risk R-66. **Closes on owner acceptance of ADR-021 and R-66, and on recording the R-DEP delegation in `SOD_MATRIX.md`.** |
+| RA2-01 (Critical): R-A and R-B held by one person | **Design changed per the owner's instruction OD-16.** [ADR-021](../adr/ADR-021-flexible-platform-roles.md) lets one person hold several platform roles while every four-eyes action still needs two different people, with R-DEP as the mandatory second person and compensating controls. A-08 is superseded by A-08b; new risk R-66. **Closed (2026-11-24):** ADR-021 and R-66 accepted (OD-18); deputy delegation recorded in `docs/security/SOD_MATRIX.md` §16. |
 | RA2-02 (High): signed before Go | Open (owner). The signatures stay in place; they are not valid gate approval until the re-assessment recommends Go. |
 | RA2-03 (High): signature provenance | Open (owner). Each signatory should confirm in their own pull request review or approval. |
 | RA2-04 (Medium): compliance acceptance not specific | Open (owner, deferred with the section 4 owner actions, OD-17). |
