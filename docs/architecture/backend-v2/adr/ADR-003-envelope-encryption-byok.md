@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | **Accepted** (owner, 2026-11-24, OD-19). |
 | Date | 2026-11-23; revised 2026-11-24 (rev P4: KS-SNAP, ISO-HARD, PITR on `ks`; rev P5: KS-SNAP keep-newest rule RA-01, deputy approver R-DEP in the `ks` restore) |
 | Workstreams | 2F (owner), 2G |
 | Related | ADR-001 (C1-02, C1-08), ADR-002 (decision 9, ISO-HARD), ADR-004 (backups), ADR-010 (control plane), ADR-013 (WORM), spine S7, `2F-security.md` F-7 (F-7.5 KS-SNAP), F-4.5 (ISO-HARD), `2G-privacy.md` G-6; P4-A1-07, P4-A1-01, P4-A1-04 (rev P4) |
@@ -62,6 +62,11 @@ Adopt **O3**.
 - A compromised `app` function can still decrypt any tenant's data through KMS by requesting a session for that tenant (C1-01 class risk, accepted and re-confirmed by the owner on 2026-11-24, OD-15). ISO-HARD (decision 9 and decision 3) bounds the injection and routing-bug cases: an escape inside one tenant's request cannot obtain another tenant's keys. Detection: KMS anomaly alerts (F-M-06) and the tenant-mismatch detector (F-M-19). (rev P4)
 - KS-SNAP copies wrapped key material to a second provider organisation. Its contents are wrapped twice (by the tenant DEK and KEK inside, by `kek/ks-snap` outside), the writer cannot decrypt, and decryption needs two people covering R-A and R-B (R-DEP may stand in for one of them, rev P5). It extends the 8-day destruction bound only under the keep-newest hold after a declared `ks` loss, for objects written before that loss, and the certificate records it (rev P4, rev P5).
 - Provider operators of Supabase see ciphertext for E1/E2 and files; keys sit with a different provider account.
+
+## Vendor-fact results (owner, 2026-11-24, OD-14) (rev P5b)
+
+- **VC-14 confirmed (AWS KMS):** multi-Region replica keys exist; key policies are per replica; replicas of imported key material must have the same material imported. BYOK tenants with imported material therefore need a replica import step in the DR region.
+- **VC-21 confirmed on AWS, not on Supabase:** cross-account grants can be constrained by encryption context (symmetric keys only, not asymmetric or HMAC); key and IAM policies can use `kms:EncryptionContext` and `kms:CallerAccount`. Supabase documents no customer-managed key support, so BYOK is application-level envelope encryption, which is this ADR's design. Other condition types (time, source IP) are not verified.
 
 ## Verification (Phase 4)
 

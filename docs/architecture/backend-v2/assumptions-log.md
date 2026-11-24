@@ -30,10 +30,10 @@
 | A-17 | Data API can be disabled or expose no schemas | 2A | VC-03 | Open | HI |
 | A-18 | Typical tenant under 1 GB database and 20 GB files in year one | 2A | Telemetry | Open | |
 | A-19 | External cloud account acceptable for KMS, scanner and off-site copies | 2H | Owner | **Validated** (OD-02) (rev P3) | |
-| A-20 | PITR into a new project is possible (restore path B) | 2H | VC-02 | Open | HI |
+| A-20 | PITR into a new project is possible (restore path B) | 2H | VC-02 | **Validated with caveats** (VC-02, owner 2026-11-24): paid plans, Beta, project-wide; single-tenant restore extracts one schema from the copy, with restore hygiene (ADR-004 V-004-17) (rev P5b) | HI |
 | A-21 | Off-site footprint about 16 GB per tenant | 2H | Telemetry | Open | |
 | A-22 | Management API can change network restrictions per job run | 2H | VC-20 (new) | Open | |
-| A-23 | KMS multi-Region replica keys available and covered by shredding | 2H | VC-14 (new); F-K-10 | Open; KEK destruction now covers every replica (P3-X3-25) (rev P3); fallback chosen in advance: second KEK per tenant in the DR region (2H H-VF-02), owner ratification pending (H-DR-G) (rev P5) | HI |
+| A-23 | KMS multi-Region replica keys available and covered by shredding | 2H | VC-14 (new); F-K-10 | **Validated** (VC-14, owner 2026-11-24, AWS KMS): multi-Region replicas available, USD 1 a month each; key policy per replica; H-DR-G stays a fallback (OD-20) (rev P5b) | HI |
 | A-24 | Two people acknowledge an S1 page within 15 min, 24/7 (or business hours accepted) | 2H | Owner (DU-29) | **Closed** by owner decision OQ-22 (24/7 for S1, business hours otherwise; DU-29 closed). Operability with two people still depends on the deputy approver R-DEP (P4-A3-19, owner action) and the paging drill before the first external tenant (2H H-9.3) (rev P5) | HI |
 | A-25 | 28 frameworks; 3 authored new; reference by id and title without a licence | 2B | OQ-15, OD-09 | **Closed** (OQ-15: 25 frameworks; licensing part moves to OD-09 / DU-25) (rev P3) | |
 | A-26 | Per-schema owners, forced RLS, FKs to `ref`, `migrator` in thousands of roles all fine | 2B | J-PERF spike | Open | HI |
@@ -58,10 +58,10 @@
 | A-45 | Vercel OIDC federation to the cloud for both projects | 2F | VC-10 | Open | HI |
 | A-46 | Data API exposes no schema; GraphQL off; pgaudit and log drains on plan | 2F | VC-03, VC-09 | Open | HI |
 | A-47 | Storage objects not in database backups | 2F | VC-04 | Open | HI |
-| A-48 | KMS cross-account grants with encryption-context conditions; session tags in key-policy conditions (ISO-HARD, F-ISO-40) | 2F | VC-21, VC-23, VC-24 (rev P5) | Open; ISO-HARD now also depends on it (rev P5) | HI |
-| A-49 | Compliance-mode object lock and RFC 3161 TSA available in `R1` | 2F | VC-22 (new) | Open | |
+| A-48 | KMS cross-account grants with encryption-context conditions; session tags in key-policy conditions (ISO-HARD, F-ISO-40) | 2F | VC-21, VC-23, VC-24 (rev P5) | Partly validated (VC-21, owner 2026-11-24): cross-account grants with encryption-context constraints confirmed on AWS (symmetric keys); session tags (VC-23) and the log join (VC-24) still open (rev P5b) | HI |
+| A-49 | Compliance-mode object lock and RFC 3161 TSA available in `R1` | 2F | VC-22 (new) | Open: VC-22 not confirmed (owner 2026-11-24): object lock compliance mode exists, `R1` availability unchecked; no AWS-native RFC 3161 TSA, so two external TSAs (ADR-013) (rev P5b) | |
 | A-50 | Field encryption keeps latency within the 2J budget | 2F | J-PERF | Open | |
-| A-51 | PITR and daily-backup windows can be set and evidenced per project | 2G | VC-19 (new) | Open | HI (certificate residual window) |
+| A-51 | PITR and daily-backup windows can be set and evidenced per project | 2G | VC-19 (new) | **Validated** (VC-19, owner 2026-11-24): daily 7/14/30 days by plan; PITR replaces daily backups with 7/14/28 days; project deletion removes backups (rev P5b) | HI (certificate residual window) |
 | A-52 | Selvara is a processor (not joint controller), including AI | 2G | Counsel | Open | HI |
 | A-53 | Pseudonymising `control.identities` while keeping ids in logs meets erasure | 2G | Counsel (DU-26) | Open | |
 | A-54 | A MoR takes the controller role for the sale | 2G | Counsel | Open (only if MoR chosen) | |
@@ -104,6 +104,22 @@
 ## Vendor facts to verify (OD-14) (rev P5)
 
 OD-14 makes the owner verify every vendor fact against the vendor's own documentation before the Phase 5 gate; the design session cannot reach the vendor sites. **VC-01 to VC-22** are in [P3-X3 §2.7](phase3/P3-X3-nfr-registers.md) (read-only evidence: fact, dependent items, fallback). The rows below continue that list with every Phase 4 "(verify)" item that readiness evidence §3 found missing from it, plus the Auth deletion behaviour asked for by the offboarding alignment (VC-27). Record each result here (and in P3-X3 when it is next revised): "Confirmed", "Fails: fallback applied" or "Partly: …", with the source and date. Where a fact fails, the fallback applies without a new design decision unless the row says otherwise.
+
+### Results recorded (owner, 2026-11-24) (rev P5b)
+
+The owner checked the seven gate-priority facts against vendor documentation. Results, with the design effect; the detail is in ADR-003, ADR-004, ADR-013 and ADR-020.
+
+| VC | Result | Effect |
+|---|---|---|
+| VC-02 | **Confirmed with caveats:** restore into a new project from physical backups or PITR (exact time); paid plans; Beta (a blog says Public Alpha); database-only copy needing manual reconfiguration; `pg_cron` and `pg_net` jobs run as soon as it completes; custom role passwords not in backups; Storage objects not in database backups; project-wide | Path B kept with restore hygiene (ADR-004 V-004-17); single-tenant restore extracts one schema; risk R-67 (Beta status) |
+| VC-13 | **Partly confirmed:** Supabase 99.9% on Enterprise only (SLAs only for Enterprise customers); Vercel 99.99% on Enterprise only, credits 10% (99.1 to 99.98%), 25% (95 to 99%), 50% (below 95%); "Pro has no SLA" for Vercel is from a third party (confirm with Vercel); Supabase credit schedule not opened (a third-party figure of 10 to 30%, capped at 20% of annual fees, is unverified). Composite of both Enterprise SLAs about 99.89% | No contractual vendor backing on Pro or Team. SLA set to 99.0%, configurable, by OD-23 (ADR-020); R-65 updated |
+| VC-14 | **Confirmed (AWS KMS):** multi-Region replicas in the same partition, managed independently; USD 1 a month per primary and per replica plus requests; default 10 replicas per primary (third-party source); imported material must be imported into each replica; not in a custom key store; key policy not synchronised | Replicas are the primary design; H-DR-G a fallback (OD-20); per-replica key policy in IaC (V-004-19) |
+| VC-16 | **Half confirmed:** WAL archived every 2 minutes by default (sooner under load, not when idle), so the PITR RPO is about 2 minutes; without PITR up to a day. No published restore duration | RPO about 2 minutes with PITR; RTO measured by a timed test restore at the V2-R0 gate (V-004-18) |
+| VC-19 | **Confirmed:** daily backups 7 days (Pro), 14 (Team), up to 30 (Enterprise); PITR replaces daily backups, 7, 14 or 28 days; project deletion removes its backups, including in S3 | Certificate cites the provider window; the 7-day PITR window fits the 8-day bound |
+| VC-21 | **Confirmed on AWS, not on Supabase:** cross-account grants constrained by encryption context (not for asymmetric or HMAC keys); `kms:EncryptionContext` and `kms:CallerAccount` in policies; other condition types not checked. No documented customer-managed key support inside Supabase | BYOK stays application-level envelope encryption (ADR-003), which needs no Supabase feature |
+| VC-22 | **Not confirmed:** S3 Object Lock compliance mode exists (Batch Operations can apply it); availability in `R1` unchecked; no AWS-native RFC 3161 TSA | Check the AWS regional table; anchor with two external TSAs (ADR-013) |
+
+**Still to verify:** VC-01, VC-03 to VC-12, VC-15, VC-17, VC-18, VC-20 and VC-23 to VC-34, plus the open parts of VC-13 (Vercel Pro, Supabase credits) and VC-22 (`R1`). Tracking date: 31 December 2026 (P5-roadmap-calendar §3).
 
 Gate priority (readiness evidence §3): VC-02, VC-13, VC-14, VC-16, VC-19, VC-21, VC-22, then VC-23 to VC-29, then the rest.
 

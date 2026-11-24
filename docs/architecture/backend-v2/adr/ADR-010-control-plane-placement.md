@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | **Accepted** (owner, 2026-11-24, OD-19). |
 | Date | 2026-11-23 |
 | Owners | 2A |
 | Related | Spine v2 S1, S2; ADR-001, ADR-002, ADR-006; `2A-architecture.md` A-3, A-7; R2-01, R2-03, DA-05, DA-06, DA-12 (rev P3) |

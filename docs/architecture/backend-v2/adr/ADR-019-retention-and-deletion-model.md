@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Proposed** (rev P5, 2026-11-24). Records the model designed in 2B and 2G. Every retention period is a **DRAFT** pending counsel (DU-20, DU-21, OD-08). Owner acceptance pending, together with DU-37. |
+| Status | **Accepted** (owner, 2026-11-24, OD-19). Written rev P5 (2026-11-24). Records the model designed in 2B and 2G. Every retention period is a **DRAFT** pending counsel (DU-20, DU-21, OD-08). |
 | Date | 2026-11-24 |
 | Workstream | 2G (schedule G-5, offboarding G-6), 2B (retention classes B-RC, deletion B-DL), 2D (purge jobs, D-12 to D-12e), 2F (keys F-7), 2H (backups) |
 | Related | Q-24; ADR-001 C1-03 and C1-08, ADR-003 (crypto-shredding), ADR-004 (backups, exports, KS-SNAP); OQ-24, OQ-25; DU-20, DU-21; A-10, A-51; risks R-25, R-34, R-49; findings P4-A3-06 (8), P4-A1-10, P4-A3-03, P4-A3-04, P4-A3-10; RA-01 |

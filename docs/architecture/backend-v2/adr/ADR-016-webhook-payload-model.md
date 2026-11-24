@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Proposed** (rev P5, 2026-11-24). Records decision C-70 of 2C, recommended in DU-18. Owner acceptance pending, together with DU-37. |
+| Status | **Accepted** (owner, 2026-11-24, OD-19). Written rev P5 (2026-11-24). Records decision C-70 of 2C, recommended in DU-18. |
 | Date | 2026-11-24 |
 | Workstream | 2C (owner of the detail); 2D (delivery job D-68), 2I (metering), 2F (egress, secrets), 2J (verification) |
 | Related | DU-18, DU-17, 2C C-DR2; risk R-31; ADR-007 D7-6 (inbound billing webhooks, a different flow); finding P4-A3-06 (2) |

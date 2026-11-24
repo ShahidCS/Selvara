@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Proposed**. Amended (rev P5, 2026-11-24) to record owner decision OD-01 as the launch billing route (D7-8, C7-1) |
+| Status | **Accepted** (owner, 2026-11-24, OD-19). Amended (rev P5, 2026-11-24) to record owner decision OD-01 as the launch billing route (D7-8, C7-1) |
 | Workstream | 2I (owner of this ADR); 2G (AI data handling), 2F (secret store, egress), 2E (four-eyes kinds), 2J (verification) |
 | Related | ADR-003 (keys and the secret store), ADR-005 (hosting), ADR-010 (control plane); risks R-04, R-07, R-50 to R-54; assumptions A-12, A-55 to A-58 |
 | Detail | [2I-billing.md](../phase2/2I-billing.md), sections I-2, I-3 and I-10 |

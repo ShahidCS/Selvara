@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Proposed** (rev P5, 2026-11-24). Records owner decision OD-04 (standing policy instead of per-trial approval) and the policy values of OQ-21 (DU-30). Owner acceptance of the ADR pending, together with DU-37. |
+| Status | **Accepted** (owner, 2026-11-24, OD-19). Written rev P5 (2026-11-24). Records owner decision OD-04 (standing policy instead of per-trial approval) and the policy values of OQ-21 (DU-30). |
 | Date | 2026-11-24 |
 | Workstream | 2D (workflow D-11a, kind D-P14), 2I (limits I-4.4.3), 2H (provisioning H-PV, cost H-C-22), 2E (permissions) |
 | Related | OD-04, OQ-21, DU-30; ADR-015 (approval engine), ADR-017 (CR-1); `docs/security/SOD_MATRIX.md`; risk R-64; finding P4-A3-06 (4), P4-A3-16 |

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | **Accepted** (owner, 2026-11-24, OD-19). |
 | Date | 2026-11-23; revised 2026-11-24 (rev P4) |
 | Owners | 2A (architecture), with 2F (security) |
 | Related | ADR-001 (accepted; C1-01 residual risk accepted, re-confirmed 2026-11-24 with ISO-HARD, OD-15), ADR-003, ADR-010, spine v2 S3, `2A-architecture.md` A-5, A-6, A-RT-10, `2F-security.md` F-4.5; R2-06, R-56, DA-02 (rev P3); P4-A1-01, P4-A1-02, P4-A1-17, P4-A3-18 (rev P4) |
