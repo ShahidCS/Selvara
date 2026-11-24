@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Chip, Icon, Segmented, Table } from "@/components/ui";
+import { Chip, Icon, Segmented, Table, Empty } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { CUSTOM_BOUNDS, LOCKOUT, acct, ruleFor, type LockoutPreset } from "@/lib/accountSecurity";
 import { sodMessage } from "@/lib/approvalFlow";
@@ -55,7 +55,7 @@ export function SignInProtection({ manage }: { manage: boolean }) {
             </tr>
           ))}
         </Table>
-      ) : <p className="field help" style={{ margin: "0 0 8px" }}>No trusted networks.</p>}
+      ) : <Empty compact icon="access" title="No trusted networks" />}
       {manage ? (
         <form onSubmit={add} noValidate style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, alignItems: "end", marginTop: 8 }}>
           <div className="field" style={{ margin: 0 }}><label htmlFor="tn-net">Address or /24 network</label><input className="input num" id="tn-net" placeholder="203.0.113.0/24" maxLength={18} value={net} onChange={(e) => setNet(e.target.value)} aria-invalid={!!err} aria-describedby={err ? "tn-err" : undefined} /></div>

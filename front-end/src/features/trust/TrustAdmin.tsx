@@ -1,4 +1,4 @@
-import { AIPanel, Chip, Icon, Page, StatusChip, Switch, Table } from "@/components/ui";
+import { AIPanel, Chip, Icon, Page, StatusChip, Switch, Table, Empty } from "@/components/ui";
 import { fmtDay, parseDay } from "@/lib/grcSod";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
@@ -129,7 +129,7 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
                   </tr>
                 ))}
               </Table>
-            ) : <p className="field help" style={{ margin: 0 }}>No decisions recorded yet.</p>}
+            ) : <Empty compact icon="check" title="No decisions recorded yet" />}
           </section>
           <section><div className="sectitle" style={SEC}>Blocked domains</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
@@ -174,7 +174,7 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
             <div style={{ fontWeight: 500, marginBottom: 6 }}>{c.q}</div>
             <AIPanel source="Trust Center chatbot" label={"Chatbot answer to: " + c.q}><p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--ink-2)" }}>{c.a}</p></AIPanel>
           </div>
-        )) : <p className="field help">No conversations yet.</p>}
+        )) : <Empty compact icon="message" title="No conversations yet" />}
       </div>
     );
   }

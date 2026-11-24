@@ -104,7 +104,7 @@ export function PolicyDetail({ id }: { id: string }) {
                     return (
                       <>
                         {avail.length ? <div className="btngrp">{avail.map((x) => btn(x.label, x.icon, null, x.run, x === next || x.cls === "btn-danger" ? x.cls : "btn-secondary"))}</div>
-                          : <p className="field help" style={{ margin: 0 }}>No workflow action is open to you at this stage.</p>}
+                          : <Empty compact icon="policies" title="No workflow action is open to you at this stage" />}
                         {blocked.length ? <>
                           <div className="eyebrow" style={{ margin: "12px 0 6px" }}>Not available now</div>
                           <div className="btngrp">{blocked.map((x) => btn(x.label, x.icon, x.why, x.run, "btn-ghost"))}</div>

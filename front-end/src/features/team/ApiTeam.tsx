@@ -133,7 +133,7 @@ function Invitations() {
       <p className="field help" id="iv-err" role="alert" style={{ color: "var(--bad-ink)", display: ferr ? "block" : "none" }}>{ferr}</p>
       {err ? <p role="alert" style={{ color: "var(--bad-ink)" }}>{err}</p> : null}
       {rows ? (rows.length ? <DataTable<svc.InvitationItem> id="team-invitations-api" label="Invitations" rows={rows} rowKey={(i) => i.id} columns={cols} searchText={(i) => `${i.email} ${roleName(i.role)} ${i.status}`} exportName="invitations" />
-        : <p style={{ color: "var(--muted)" }}>No invitations yet.</p>) : err ? null : <p style={{ color: "var(--muted)" }}>Loading invitations…</p>}
+        : <Empty compact icon="team" title="No invitations yet" />) : err ? null : <p style={{ color: "var(--muted)" }}>Loading invitations…</p>}
     </>
   );
 }

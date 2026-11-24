@@ -1,4 +1,4 @@
-import { Chip } from "@/components/ui";
+import { Chip, Empty } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { getMe, wsLog } from "@/lib/audit";
 import { bumpData, useData } from "@/lib/store";
@@ -21,7 +21,7 @@ export default function PublishedPolicies() {
     <section id="library" className="card" aria-labelledby="me-pub-h">
       <div className="c-head"><h3 id="me-pub-h">Published policies</h3><span className="sub r">Read only · approved versions</span></div>
       <div className="c-body">
-        {pubs.length === 0 ? <p className="sub" style={{ margin: 0 }}>No policies are published yet.</p> : (
+        {pubs.length === 0 ? <Empty compact icon="policies" title="No policies are published yet" /> : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
             {pubs.map((p: { id: string; name: string; ver: string; owner: string }) => {
               const a = ackOf(user, p.id);

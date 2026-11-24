@@ -1,4 +1,4 @@
-import { HBarList, Icon, KpiStrip, KpiTile, LineChart, Page, Segmented, StatusChip, activate, type Desirability } from "@/components/ui";
+import { HBarList, Icon, KpiStrip, KpiTile, LineChart, Page, Segmented, StatusChip, activate, type Desirability, Empty } from "@/components/ui";
 import { DEMO_RISE, PERIODS, demoSeries, periodRange, periodTicks, periodVs, setPeriod, usePeriod } from "@/lib/period";
 import { FocusCard } from "./FocusCard";
 import { ComplianceCalendar } from "./ComplianceCalendar";
@@ -137,7 +137,7 @@ function PostureOverview() {
           <div className="c-body scroll flush" style={{ padding: "6px 14px" }}>
             <div className="sectitle" style={{ marginTop: 8 }}>Overdue</div>
             <div className="feed">
-              {!attn.length && !hiddenOverdue.length ? <p className="field help" style={{ margin: "4px 0 8px" }}>Nothing is overdue.</p> : null}
+              {!attn.length && !hiddenOverdue.length ? <Empty compact icon="check" title="Nothing is overdue" /> : null}
               {hiddenOverdue.map((t) => <p key={t} className="field help" style={{ margin: "4px 0 8px" }}>{t}</p>)}
               {attn.map((a) => (
                 <div key={a.path + a.id} className="feed-item clickable" {...activate(() => go(a.path))}>
@@ -149,7 +149,7 @@ function PostureOverview() {
             </div>
             <div className="sectitle">Audits in motion</div>
             <div className="feed">
-              {!audits.length ? <p className="field help" style={{ margin: "4px 0 8px" }}>No audits in progress.</p> : null}
+              {!audits.length ? <Empty compact icon="audits" title="No audits in progress" /> : null}
               {!can("audits") && audits.length ? <p className="field help" style={{ margin: "4px 0 8px" }}>{audits.length} audit{audits.length === 1 ? "" : "s"} in progress. Your role does not open Audits.</p> : null}
               {(!can("audits") ? [] : audits).map((a) => (
                 <div key={a.id || a.name} className="feed-item clickable" {...activate(() => go(a.id ? `/ws/audits/${encodeURIComponent(a.id)}` : "/ws/audits"))}>

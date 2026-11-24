@@ -1,6 +1,7 @@
 import { SETTINGS_KEYS, SettingsFrame } from "./SettingsMenu";
 import { ReactNode, useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/router";
+import { installTabKeys } from "@/lib/tabKeys";
 import { appStore, loadPersisted, persist, setModState, useApp, useData } from "@/lib/store";
 import { restoreSession } from "@/lib/session";
 import { loadWorkspace, wsMeta } from "@/services/ws";
@@ -33,6 +34,7 @@ function Frame({ children }: { children: ReactNode }) {
   // production: nothing acts on the role this browser remembered (it may be an older role, or another account's) until the server has confirmed
   // the session and sent the real role and company: no redirect, no data request, no page
   const [confirmed, setConfirmed] = useState(API_MODE !== "http");
+  useEffect(() => installTabKeys(), []); // arrow keys on every tab bar
   useEffect(() => { loadPersisted(ROLES.map((r) => r.id)); if (API_MODE === "http") void confirmSession().then(setConfirmed); else restoreSession(); }, []);
   useEffect(() => {
     if (API_MODE === "http") return;

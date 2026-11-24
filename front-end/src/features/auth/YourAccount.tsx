@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Chip, Icon, Segmented } from "@/components/ui";
+import { Chip, Icon, Segmented, Empty } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { getWelcome, hasRecentAuth, REAUTH_MS, SESSION_MS } from "@/lib/accountSecurity";
 import { LENGTH_COPY } from "@/lib/credentials";
@@ -98,7 +98,7 @@ export function YourAccount() {
             <ul style={{ listStyle: "none", margin: 0, padding: 0 }} aria-label="Security activity">
               {view.notices.map((n) => <li key={n.id} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--line)", fontSize: 13 }}><span aria-hidden="true" style={{ color: "var(--warn-ink)" }}><Icon name="access" /></span><span style={{ flex: 1 }}>{n.text}</span><span className="num sub" style={{ fontSize: 12, whiteSpace: "nowrap" }}>{utc(n.at)}</span></li>)}
             </ul>
-          ) : <p className="field help" style={{ margin: 0 }}>Nothing to report.</p>}
+          ) : <Empty compact icon="check" title="Nothing to report" />}
         </div>
       </section>
     </div>
@@ -192,7 +192,7 @@ function Passkeys({ view }: { view: auth.AccountView }) {
               </li>
             ))}
           </ul>
-        ) : <p style={{ margin: 0 }}>No passkey yet: you add one at your next sign-in.</p>}
+        ) : <Empty compact icon="shieldcheck" title="No passkey yet">You add one at your next sign-in.</Empty>}
         <div><button className="btn btn-secondary sm" onClick={add}>Add a passkey</button></div>
       </div>
     </section>

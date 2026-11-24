@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Chip, Icon, Table } from "@/components/ui";
+import { Chip, Icon, Table, Empty } from "@/components/ui";
 import { ELEVATE_TEXT, type ElevationState } from "@/components/kit/admin/ServerElevation";
 import { apiMessage, utcMin } from "@/components/kit/serverRequests";
 import { LayerFoot } from "@/components/shell/LayerProvider";
@@ -23,7 +23,7 @@ export function ApiBlocks({ s }: { s: ElevationState }) {
       <div className="c-head"><h3 id="ipb-h">Blocked sign-in addresses</h3><div className="r"><span className="tag">{rows ? `${rows.length} blocked` : "…"}</span></div></div>
       <div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <p className="field help" style={{ margin: 0 }}>{IP_POLICY.THRESHOLD} failed sign-ins from one address within {IP_POLICY.WINDOW_MS / 60_000} minutes, across any accounts, block it. Each repeat lasts longer: {LEVEL_LABEL.join(", ")}.</p>
-        {err ? <p role="alert" style={{ margin: 0, color: "var(--bad-ink)" }}>{err}</p> : !rows ? <p style={{ margin: 0, color: "var(--muted)" }}>Loading…</p> : !rows.length ? <p className="field help" style={{ margin: 0 }}>No address is blocked.</p> : (
+        {err ? <p role="alert" style={{ margin: 0, color: "var(--bad-ink)" }}>{err}</p> : !rows ? <p style={{ margin: 0, color: "var(--muted)" }}>Loading…</p> : !rows.length ? <Empty compact icon="shieldcheck" title="No address is blocked" /> : (
           <div style={{ margin: "0 -16px" }}>
             <Table cols={[{ t: "Address" }, { t: "Level" }, { t: "Blocked until" }, { t: "Blocks" }, { t: "" }]}>
               {rows.map((r) => (

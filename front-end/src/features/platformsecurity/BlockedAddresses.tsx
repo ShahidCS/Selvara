@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Chip, Icon, Table } from "@/components/ui";
+import { Chip, Icon, Table, Empty } from "@/components/ui";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { useLayer } from "@/hooks/useLayer";
 import { useGate } from "@/components/kit/admin/ElevateGate";
@@ -23,7 +23,7 @@ export function BlockedAddresses() {
         <p className="field help" style={{ margin: 0 }}>
           {IP_POLICY.THRESHOLD} failed sign-ins from one address within {IP_POLICY.WINDOW_MS / 60_000} minutes, across any accounts, block it. Each repeat within {IP_POLICY.RESET_MS / 86_400_000} days lasts longer: {LEVEL_LABEL.join(", ")}, and 24-hour blocks repeat while failures continue. No block is permanent. Every block ends on its own; only an elevated platform super admin can lift one early.
         </p>
-        {list.length === 0 ? <p className="field help" style={{ margin: 0 }}>No address is blocked.</p> : (
+        {list.length === 0 ? <Empty compact icon="shieldcheck" title="No address is blocked" /> : (
           <div style={{ margin: "0 -16px" }}>
             <Table cols={[{ t: "Address" }, { t: "Level" }, { t: "Blocked until" }, { t: "Blocks" }, { t: "" }]}>
               {list.map((r) => (

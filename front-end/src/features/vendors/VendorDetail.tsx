@@ -137,10 +137,10 @@ export function VendorDetail({ id }: { id: string }) {
             <div className="card">{head("Continuous monitoring")}<div className="c-body">
               {v.monitoring.length ? v.monitoring.map((a: any, i: number) => (
                 <div key={i} className="feed-item"><span className="dot" style={{ marginTop: 5, background: a.level === "Review" ? "var(--warn-ink)" : "var(--accent)" }} /><div className="fi"><div className="ft">{a.signal}</div><div className="fm">{a.at}</div></div>{a.level === "Review" ? <Chip cls="warn" icon="alert">Review</Chip> : <Chip cls="neutral" icon="dot">Info</Chip>}</div>
-              )) : <p className="field help" style={{ margin: 0 }}>No monitoring signals. Continuous monitoring is enabled for Critical-tier vendors.</p>}
+              )) : <Empty compact icon="vendors" title="No monitoring signals">Continuous monitoring is enabled for Critical-tier vendors.</Empty>}
             </div></div>
             <div className="card">{head("Discovered applications")}<div className="c-body flush" style={{ padding: 0 }}>
-              {!v.apps.length ? <p className="field help" style={{ margin: 0, padding: 14 }}>No applications discovered yet. Discovery arrives with the integrations.</p> : null}
+              {!v.apps.length ? <Empty compact icon="vendors" title="No applications discovered yet">Discovery arrives with the integrations.</Empty> : null}
               <Table cols={[{ t: "App" }, { t: "Users" }, { t: "Status" }]}>
                 {v.apps.map((a: any, i: number) => <tr key={i}><td className="strong">{a.name}</td><td className="num">{a.users}</td><td>{a.sanctioned ? <Chip cls="ok" icon="check">Sanctioned</Chip> : <Chip cls="warn" icon="alert">Shadow IT</Chip>}</td></tr>)}
               </Table>

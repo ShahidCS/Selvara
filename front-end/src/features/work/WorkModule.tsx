@@ -1,6 +1,6 @@
 import { useEffect, type KeyboardEvent, type ReactNode } from "react";
 import { useRouter } from "next/router";
-import { Icon, KpiStrip, KpiTile, Page, Table, StatusChip, activate , SeverityBars } from "@/components/ui";
+import { Icon, KpiStrip, KpiTile, Page, Table, StatusChip, activate , SeverityBars, Empty } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData, useModState } from "@/lib/store";
 import { useGo } from "@/lib/route";
@@ -182,7 +182,7 @@ function WorkLive() {
           <div className="c-head"><h3>Reviews &amp; approvals</h3></div>
           <div className="c-body scroll flush" style={{ padding: "6px 14px" }}>
             <div className="feed">
-              {!w?.reviews.length ? <p className="field help" style={{ margin: "8px 0" }}>No decisions are waiting for you.</p> : null}
+              {!w?.reviews.length ? <Empty compact icon="check" title="No decisions are waiting for you" /> : null}
               {(w?.reviews ?? []).map((r, n) => (
                 <div key={r.t + n} className="feed-item clickable" {...activate(() => go(r.path))}>
                   <div className="fi"><div className="ft">{r.t}</div><div className="fm" style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginTop: 4 }}><StatusChip s={r.sev} /><span>{r.m}</span></div></div>

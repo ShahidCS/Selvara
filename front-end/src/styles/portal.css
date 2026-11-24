@@ -6,7 +6,7 @@
    2. legacy names (--bg, --surface, --ink, --muted, --accent, ...): what existing components and ~600 inline styles reference. They are aliases of
       layer 1, so a module restyles by token without being edited;
    3. the brand channel is --c-brand-* only: a tenant re-skin overrides those six variables and nothing else. */
-:root{
+:root{--fs-help:13px;
   /* Typography: Geist (SIL OFL 1.1, self-hosted from /public/fonts). Arabic falls back to the system Arabic face. */
   --font: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Noto Sans Arabic", Roboto, Arial, sans-serif;
   --font-display: var(--font);
@@ -338,7 +338,7 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 textarea.input{height:auto;padding:9px 11px;resize:vertical;min-height:72px}
 .field{display:flex;flex-direction:column;gap:5px}
 .field label{font-size:12.5px;font-weight:500;color:var(--ink-2)}
-.field .help,.field.help{font-size:12.5px;color:var(--muted);line-height:1.5}
+.field .help,.field.help{font-size:var(--fs-help);color:var(--muted);line-height:1.5}
 /* `field help` on one element is a help paragraph, not a form field: plain text flow, so inline bold and links stay inline */
 .field.help{display:block}
 .field.err .input,.field.err .select{border-color:var(--bad-ink)}
@@ -387,7 +387,7 @@ textarea.input{height:auto;padding:9px 11px;resize:vertical;min-height:72px}
 .page-head h1{font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:1.2}
 .page-head .sub{color:var(--muted);font-size:13px;margin-top:3px}
 .page-head .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.panels{flex:0 0 auto;min-height:0;display:grid;gap:14px;align-items:start} /* cards keep the height of what they hold (owner review, 2026-11-24) */
+.panels{flex:0 0 auto;min-height:0;display:grid;gap:14px} /* the grid no longer fills the window; cards side by side share the height of the tallest in their row (owner review, 2026-11-24) */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
 .card>.c-head{flex:0 0 auto;display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
 .card>.c-head h3{font-size:14px;font-weight:600;letter-spacing:-.01em}
@@ -564,7 +564,7 @@ button.tag:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
 
 /* ---- frameworks module ---- */
 .flab{font-size:12.5px;font-weight:500;color:var(--ink-2)}
-.banner{border-radius:10px;padding:10px 14px;font-size:12.5px;line-height:1.5}
+.banner{border-radius:10px;padding:10px 14px;font-size:var(--fs-help);line-height:1.5}
 .banner.warn{background:var(--warn-bg);color:var(--warn-ink)}
 .banner.info{background:var(--info-bg);color:var(--info-ink)}
 /* production: records of a module could not be loaded (shell, above the page) */
@@ -1245,3 +1245,7 @@ form:not(.rec-form):not([style*="gap"])>.field+*,form:not(.rec-form):not([style*
 /* A form's text runs the full width of its card; only its inputs, selects, option buttons and button rows keep a readable width. */
 .fields-cap .input,.fields-cap .select,.fields-cap textarea,.fields-cap .btngrp{max-width:640px}
 .fields-cap .seg{width:fit-content;max-width:100%}
+/* Hand-built tab bars (.seg with role="tablist") behave like .tabs: one line that scrolls sideways on a phone instead of wrapping. */
+.seg[role="tablist"]{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+.seg[role="tablist"]::-webkit-scrollbar{display:none}
+.seg[role="tablist"] button{white-space:nowrap;flex:0 0 auto}

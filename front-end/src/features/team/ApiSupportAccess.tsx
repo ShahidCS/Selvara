@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Chip, DataTable, Icon, Segmented, StatusChip, type DTColumn } from "@/components/ui";
+import { Chip, DataTable, Icon, Segmented, StatusChip, type DTColumn, Empty } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { apiMessage, utcMin } from "@/components/kit/serverRequests";
 import { REASON_MIN, SUPPORT_GRANT_HOURS } from "@/lib/rules";
@@ -64,10 +64,10 @@ export function ApiSupportAccess() {
       )}
       <div className="sectitle">Grants</div>
       {data.grants.length ? <DataTable<svc.SupportGrant> id="team-support-grants" label="Support grants" rows={data.grants} rowKey={(g) => g.id} columns={cols} searchText={(g) => `${g.reason} ${g.grantedBy} ${g.status}`} exportName="support-grants" />
-        : <p style={{ color: "var(--muted)" }}>No support access given yet.</p>}
+        : <Empty compact icon="access" title="No support access given yet" />}
       <div className="sectitle">Support activity in your workspace</div>
       {data.log.length ? <DataTable<svc.SupportLogLine> id="team-support-log" label="Support activity" rows={data.log} rowKey={(x) => `${x.at}-${x.action}-${x.target}`} columns={logCols} searchText={(x) => `${x.actor} ${x.action} ${x.target}`} exportName="support-activity" />
-        : <p style={{ color: "var(--muted)" }}>No support activity.</p>}
+        : <Empty compact icon="access" title="No support activity" />}
     </>
   );
 }
