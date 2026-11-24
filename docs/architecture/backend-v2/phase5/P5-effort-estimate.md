@@ -16,7 +16,7 @@
 | P5-E-02 | Throughput of AI-assisted engineering on this design is **unmeasured** (A-K1). The ranges are wide for that reason. "Likely" assumes an endpoint with its validation, rule, audit entry, contract test and authorization cases takes 0.15 to 0.3 pw, and infrastructure items are estimated one by one. | V2-R0 is the calibration point: after it, K-M05 re-plans using measured effort (actual ÷ likely = calibration factor applied to V2-R1 to V2-R6). |
 | P5-E-03 | **Low** = everything works first time and vendor facts verify (OD-14). **Likely** = normal rework and one failed vendor fact handled by its H-9.4 fallback. **High** = several fallbacks apply, the isolation or KS-SNAP drills need repeated fixes, and the pen test returns material findings. | The ranges are not statistical confidence intervals. |
 | P5-E-04 | Reviewer hours are for the contracted technical reviewer (K-M06, OD-12): about 4 h per pw of security-sensitive code (V2-R0), 3 h per pw for identity (V2-R1) and cutover (V2-R6), and 2 h per pw elsewhere. | Rate per hour is an owner field. |
-| P5-E-05 | Approver hours are for R-A, R-B and the deputy approver R-D together: gate reviews, drills, four-eyes actions, parity sign-off, DPIA and ISMS work. | These people are unpaid by the project only if the owner says so; otherwise apply a rate. |
+| P5-E-05 | Approver hours are for R-A, R-B and the deputy approver R-DEP together: gate reviews, drills, four-eyes actions, parity sign-off, DPIA and ISMS work. | These people are unpaid by the project only if the owner says so; otherwise apply a rate. |
 | P5-E-06 | Reference content (25 frameworks, OD-09 paraphrases) is written with AI assistance and reviewed by R-B; legal review of the paraphrase position is DU-25 (counsel). | Content effort sits in V2-R2. |
 | P5-E-07 | No live data (Q-01), so there is no data migration effort; cutover is a configuration switch (2K V2-R6). | V2-R6 is small in engineering, large in external review. |
 
@@ -54,7 +54,7 @@
 
 ### 2.3 Totals
 
-| Release | Engineering pw (low / likely / high) | Technical reviewer hours (low / likely / high) | Approver hours R-A, R-B, R-D (low / likely / high) |
+| Release | Engineering pw (low / likely / high) | Technical reviewer hours (low / likely / high) | Approver hours R-A, R-B, R-DEP (low / likely / high) |
 |---|---|---|---|
 | V2-R0 | 22 / 35.5 / 58 | 88 / 142 / 232 | 40 / 60 / 90 |
 | V2-R1 | 16 / 24.5 / 38 | 48 / 74 / 114 | 25 / 40 / 60 |
@@ -75,7 +75,7 @@ Calendar guide (not dates): with one engineer-equivalent full time, the likely f
 | External penetration test, including one retest | V2-R6 | 15,000 | 25,000 | 45,000 | Web app, API, multi-tenant isolation scope; A-K2 |
 | Legal reviews (OD-08; DU-20 to DU-27: retention, DPA, paraphrase position, transfers; Pakistan, UK, EU, UAE as sold) | Before V2-R4 exit and before selling in each market | 15,000 | 35,000 | 70,000 | Gate item 11; market-by-market |
 | Contracted technical reviewer (K-M06) | Every release | hours in §2.3 × rate | | | Rate is an owner field |
-| Deputy approver R-D retainer and on-call | From the first external tenant (P4-A3-19) | owner field | | | Includes drills (2H H-KS-12) |
+| Deputy approver R-DEP retainer and on-call | From the first external tenant (P4-A3-19) | owner field | | | Includes drills (2H H-KS-12) |
 | Outsourced internal auditor (ISO 27001 clause 9.2) | Pre-certification | 5,000 | 10,000 | 18,000 | G-14.1 Cl. 9 |
 | ISO 27001 certification audit (stage 1 and 2; 27701 extension optional) | Pre-certification, after launch | 12,000 | 25,000 | 45,000 | Not in the minimum sellable subset |
 | DPO and Art. 27 representatives, if required (DU-22, DU-23) | From the first EU or UK customer, per year | 3,000 | 8,000 | 15,000 | Only if counsel says they are needed |
@@ -133,7 +133,7 @@ The MSS saves about 15% of the likely engineering effort, not more, because V2-R
 | Scope choice: full V2-R0 to V2-R6, or the MSS first | `<owner to fill>` | R-A | |
 | Engineer-equivalents (staffing) | `<owner to fill>` | R-A | |
 | Technical reviewer hourly rate | `<owner to fill>` | R-A | |
-| Deputy approver R-D retainer | `<owner to fill>` | R-A | |
+| Deputy approver R-DEP retainer | `<owner to fill>` | R-A | |
 | Target date V2-R0 | `<owner to fill>` | R-A | |
 | Target date V2-R1 | `<owner to fill>` | R-A | |
 | Target date V2-R2 | `<owner to fill>` | R-A | |
