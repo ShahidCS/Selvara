@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Proposed** (rev P5). Raised by the owner's instruction of 2026-11-24: "For company super admin, make it flexible as at this stage not every role can be filled." Accepted once the owner accepts this ADR. |
+| Status | **Accepted by the owner on 2026-11-24** (OD-18). Originally proposed (rev P5). Raised by the owner's instruction of 2026-11-24: "For company super admin, make it flexible as at this stage not every role can be filled." Accepted once the owner accepts this ADR. |
 | Closes | RA2-01 (Critical) by design, on acceptance. Amends discovery §4, A-08, 2D D-22/D-26/D-58, 2E E-71/E-72, 2F F-K-48, 2H H-KS-12 and ADR-014. |
 | Scope | Selvara's own platform roles: `management_approver` (R-A), `ciso` (R-B), `support` and custom platform roles (ADR-014). Tenant roles are out of scope. |
 

@@ -193,3 +193,21 @@ Enforced in `src/features/team/services/governance.ts`.
 ## 15. Presence (draft)
 Record and form pages show who else has the record open ("Also here"), and warn when two people are editing the same record ("the last save wins"). Names only, never content; nothing is stored. Demonstration build: between tabs of one browser (BroadcastChannel). Production: a Supabase Realtime Presence channel per record, joinable only by people the database allows to read that record. Presence is information, not a lock. Open for review: whether editing should take a lock instead.
 
+## 16. Platform roles, combined-role mode and the deputy approver (back-end v2, ADR-021)
+
+Accepted by the owner on 2026-11-24. It applies to Selvara's platform operations now and is built into back-end v2 (2D D-26a, 2E E-71e and E-72j, 2F F-K-49, 2H H-KS-13). The names of the people holding each role are recorded in the Phase 5 sign-off table (`docs/architecture/backend-v2/phase5/00-readiness-gate.md`, section 3) and are not repeated here.
+
+| Rule | Detail |
+|---|---|
+| Roles are assignments | One person may hold several platform roles: Management Approver (R-A), CISO (R-B), support and custom platform roles. Holding R-A and R-B together is **combined-role mode**. It is on now, because the same person holds both roles. |
+| Two different people, always | Every four-eyes action needs two **different** people. The approval engine counts people, not roles: a person holding R-A and R-B counts once, never twice. No self-approval, and no second vote. |
+| Deputy approver (R-DEP): delegation record | **Delegator:** the R-A and R-B holder. **Delegate:** the contracted deputy approver. **Scope:** acts for R-A **or** R-B (never both in one action) in platform four-eyes actions, dual-role kinds, deletion approvals (D-58), key-store restore, release of a keep-newest hold, and break-glass. **Not delegated:** tenant workspace access (only through a customer support grant), changing their own roles, approving their own requests. **Start:** 2026-11-24. **Review:** at every release gate, and when combined-role mode ends. **Ends:** on written revocation, or when a second person holds R-A or R-B. |
+| Deputy mandatory in combined-role mode | With no active deputy, platform four-eyes actions wait. Nothing proceeds on one approval. |
+| Key-store recovery | `ks` restore and hold release need the combined holder **and** the deputy (2F F-K-48, F-K-49; 2H H-KS-12, H-KS-13). |
+| Compensating controls | Approvals in combined-role mode are flagged `combined_mode = true`. Every super-admin elevation alerts the deputy. Break-glass needs the deputy and is reviewed afterwards by the internal auditor (R-D). |
+| Monthly independent review | The technical reviewer, or the outsourced internal auditor (R-D), reviews the platform audit log, elevations and approvals each month and records a signed review. A missed review alerts the owner. |
+| Changing the mode or role holders | Four-eyes kind `platform.roles.change` (the combined holder and the deputy). |
+| Technical reviewer | Contracted, independent of the code author and of the approvers (2K K-M06, OD-12). Signs the technical part of every release gate. **Not** an approver of platform four-eyes actions. |
+| Exit | Combined-role mode ends when a second person holds R-A or R-B. It is reviewed at every release gate. Recommendation: end it before cutover (V2-R6). |
+| Accepted risk | R-66 (concentration of authority in one person), accepted by the owner on 2026-11-24 with these controls. |
+

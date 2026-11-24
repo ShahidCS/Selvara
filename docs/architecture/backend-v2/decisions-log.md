@@ -17,7 +17,7 @@ Every significant decision gets an ADR with its context, at least two options co
 | [ADR-011](adr/ADR-011-reference-content-versioning.md) | Shared reference content (frameworks, controls, templates): distribution and versioning to tenant schemas | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2B | Yes |
 | [ADR-012](adr/ADR-012-malware-scanning.md) | Malware scanning service | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2F | Yes |
 | [ADR-013](adr/ADR-013-audit-anchoring-worm.md) | Audit-log anchoring and WORM export target | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2F | Yes |
-| [ADR-021](adr/ADR-021-flexible-platform-roles.md) | Flexible platform roles: one person may hold several super-admin roles; four-eyes by distinct people with R-DEP as second person (owner instruction 2026-11-24) | Proposed (rev P5) | P5 | Yes |
+| [ADR-021](adr/ADR-021-flexible-platform-roles.md) | Flexible platform roles: one person may hold several super-admin roles; four-eyes by distinct people with R-DEP as second person (owner instruction 2026-11-24) | **Accepted** (OD-18, 2026-11-24) | P5 | Yes |
 | [ADR-014](adr/ADR-014-custom-roles.md) | Custom roles: tenant custom roles and platform custom roles from predefined names (OD-07) | **Accepted** (owner, 2026-11-23, OD-07), as the ADR file states; index corrected (rev P5, P4-A3-07) | 2E | Yes |
 | [ADR-015](adr/ADR-015-approval-engine.md) | One approval engine with a kind registry and two stores (tenant and control plane) | Proposed (rev P5); records DU-19 and 2D D-20 to D-29 | 2D | Yes |
 | [ADR-016](adr/ADR-016-webhook-payload-model.md) | Thin webhook payloads, delivered from a transactional outbox | Proposed (rev P5); records DU-18 and 2C C-70 | 2C | Yes (M18) |
@@ -54,6 +54,7 @@ These are marked "Owner" in 2H or raised by the readiness assessment, and are no
 | ID | Instruction | Recorded as |
 |---|---|---|
 | OD-16 | "For company super admin, make it flexible as at this stage not every role can be filled." | [ADR-021](adr/ADR-021-flexible-platform-roles.md) (Proposed; closes RA2-01 on acceptance), A-08b, R-66 |
+| OD-18 | ADR-021 and risk R-66 are accepted; the deputy delegation is recorded in `docs/security/SOD_MATRIX.md` §16 (2026-11-24). | RA2-01 (Critical), A-08b |
 | OD-17 | Owner actions in the gate (recording vendor-fact results, budget and dates, ADR acceptance and the other section 4 items) are deferred: "skip point 3 for now and we will work on it later". | The gate stays No-Go until they are done |
 
 ## Earlier decisions (from `BACKEND_FOUNDATION.md` and `PRODUCTION_PROGRAMME.md`)
