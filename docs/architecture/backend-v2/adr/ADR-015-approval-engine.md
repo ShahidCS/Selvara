@@ -35,7 +35,7 @@ Option **C**.
 4. **Platform votes** need `platform.approvals.decide`, the kind's approver permission and a live elevation. Dual-role kinds need one `management_approver` and one `ciso` among the requester (if eligible) and the voters. Platform votes are never delegated (D-26).
 5. **Non-human principals** (jobs, agents, API keys, SCIM clients, automation rules) may request registered kinds but never vote (D-29).
 6. **Expiry** is applied only by job D-66; reads compute an effective status (D-28).
-7. **Deputy approver (R-H, rev P5; P4-A3-19).** When the owner appoints a deputy (owner action), the deputy is a separate staff identity, not a delegation of someone else's vote. For the period recorded in the appointment, the deputy may hold the `management_approver` or the `ciso` capacity for dual-role kinds and for `ks` recovery, and casts votes in their own name. The engine counts a deputy for **one** capacity per approval only, never for both, and never in an approval where the person they stand in for has already voted or is the requester. The SOD_MATRIX change is an owner action (the file is protected).
+7. **Deputy approver (R-DEP, rev P5; P4-A3-19).** When the owner appoints a deputy (owner action), the deputy is a separate staff identity, not a delegation of someone else's vote. For the period recorded in the appointment, the deputy may hold the `management_approver` or the `ciso` capacity for dual-role kinds and for `ks` recovery, and casts votes in their own name. The engine counts a deputy for **one** capacity per approval only, never for both, and never in an approval where the person they stand in for has already voted or is the requester. The SOD_MATRIX change is an owner action (the file is protected).
 
 ## Consequences
 
