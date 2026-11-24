@@ -4,6 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Changed
+- Staging moves to a `staging` branch: pushing a commit that is already on `main` to it deploys two Vercel previews, **Staging demo** (demonstration build, for demos) and **Staging live** (production build on the staging Supabase project, off until `STAGING_LIVE_ENABLED=true`). A commit that is not on `main` deploys nothing. A merge to `main` runs the gates only. Production is unchanged (signed tags).
+- Docs: README and CONTROLS no longer say most modules are browser-only; EX-04 records the 2026-11-24 re-assessment of the Vercel CLI advisories.
+
 ## [0.3.1] - 2026-11-24
 
 The first release of these changes. Tag `v0.3.0` was pushed before the version bump was merged; it points at a commit still versioned 0.2.5, so the release workflow refused it and nothing was deployed. Tags are immutable, so the release is 0.3.1.

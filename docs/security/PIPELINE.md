@@ -6,7 +6,7 @@ How Selvara's front-end is tested, scanned, built, attested and deployed, and wh
 
 ## Design in one paragraph
 
-Every change reaches production only through GitHub Actions. Pull requests run quality and security gates. A merge to `main` re-runs them and deploys to **staging**. A **signed version tag** on `main` re-runs them again and deploys to **production** after an approval in a protected environment. The site is built once in CI, packaged as a deterministic archive, given an SBOM, a build-provenance attestation and a signature, and the deployed bytes are extracted from that exact archive. Vercel's own Git deploys are switched off, so there is no second, unguarded path.
+Every change reaches production only through GitHub Actions. Pull requests run quality and security gates. A merge to `main` re-runs them. Moving the `staging` branch to a `main` commit re-runs them and deploys two **staging** previews (demo and live). A **signed version tag** on `main` re-runs them again and deploys to **production** after an approval in a protected environment. The site is built once in CI, packaged as a deterministic archive, given an SBOM, a build-provenance attestation and a signature, and the deployed bytes are extracted from that exact archive. Vercel's own Git deploys are switched off, so there is no second, unguarded path.
 
 ```mermaid
 flowchart LR
@@ -16,7 +16,10 @@ flowchart LR
   CI --> RS
   RS -->|squash merge| MAIN[main]
   MAIN --> CI2[CI + Security again]
-  CI2 --> STG[Build, SBOM, attest, sign, deploy to staging, header smoke test]
+  MAIN -->|fast-forward a main commit| STB[staging branch]
+  STB --> ON{{Commit is on main}}
+  ON --> CI4[CI + Security again]
+  CI4 --> STG[Build, SBOM, attest, deploy demo and live previews, header smoke test]
   TAG[Signed tag vX.Y.Z on main] --> VT[Verify tag]
   VT --> CI3[CI + Security again]
   CI3 --> APPROVE{{Production approval + wait timer}}
@@ -30,7 +33,7 @@ flowchart LR
 |---|---|---|
 | `.github/workflows/ci.yml` | pull request; reused by staging and release | Typecheck, lint, unit tests, build, `npm audit`, Playwright end-to-end suite. Installs with `--ignore-scripts`. |
 | `.github/workflows/security.yml` | pull request, weekly, reused by staging and release | Workflow policy, CodeQL, Gitleaks, dependency review, licence policy, OSV, Trivy, ZAP baseline. |
-| `.github/workflows/deploy-staging.yml` | push to `main` | CI + Security, then deploys to the `staging` environment. |
+| `.github/workflows/deploy-staging.yml` | push to `main` or `staging` | CI + Security. On `staging` only, after checking the commit is already on `main`: deploys two Vercel preview deployments to the `staging` environment, **Staging demo** (demonstration build) and **Staging live** (production build on the staging database, when `STAGING_LIVE_ENABLED` is `true`). |
 | `.github/workflows/release.yml` | push of a `vX.Y.Z` tag | Verifies the signed tag, CI + Security, deploys to `production` after approval, publishes a GitHub Release. |
 | `.github/actions/deploy/action.yml` | used only by the two above (a local composite action) | Build, package, SBOM, attestations, signature, deploy the attested archive, smoke test. |
 
@@ -71,10 +74,12 @@ Policy: **High and Critical findings block; Medium and below are reported.**
    | `staging` and `production` | `VERCEL_TOKEN` | secret | A separate token per environment, team-scoped, with an expiry. |
    | both | `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | variable | From `.vercel/project.json` after `vercel link`. |
    | both (optional) | `VERCEL_AUTOMATION_BYPASS_SECRET` | secret | Lets the smoke test reach a deployment protected by Vercel Authentication. |
-   | `staging` (optional) | `STAGING_ALIAS` | variable | A stable staging hostname, for example `staging.example.com`. |
-   | repository (Settings > Variables) | `DEPLOY_ENABLED` | variable | Set to `true` once the rows above exist. Until then pushes to `main` run CI and the security gates but skip the staging deployment. |
+   | `staging` (optional) | `STAGING_DEMO_ALIAS` | variable | A stable hostname for the demo preview, for example `demo.example.com`. |
+   | `staging` (optional) | `STAGING_ALIAS` | variable | A stable hostname for the live preview, for example `staging.example.com`. |
+   | `staging` (optional) | `STAGING_LIVE_ENABLED` | variable | `true` once the staging Supabase project and the Vercel **Preview** variables exist ([SUPABASE.md](../guides/SUPABASE.md) section 4i). Until then only the demo preview deploys. |
+   | repository (Settings > Variables) | `DEPLOY_ENABLED` | variable | Set to `true` once the rows above exist. Until then pushes run CI and the security gates but skip the staging deployments. |
    | either (optional) | `ATTESTATIONS_ENABLED` | variable | Set to `false` to switch off provenance attestations (needed if your GitHub plan does not support them for private repositories). |
-   | either (optional) | `API_MODE` | variable | `http` builds the production app on live company data through `/api`; unset or `mock` builds the demonstration. Any other value fails the deploy. Public: it ends up in the browser code as `NEXT_PUBLIC_API_MODE`. Vercel's own variables of that name have no effect, because the build runs here. |
+   | `production` (optional) | `API_MODE` | variable | `http` builds the production app on live company data through `/api`; unset or `mock` builds the demonstration. Any other value fails the deploy. Staging does not read it: its demo preview is always the demonstration and its live preview always `http`. Public: it ends up in the browser code as `NEXT_PUBLIC_API_MODE`. Vercel's own variables of that name have no effect, because the build runs here. |
    | either (optional) | `COSIGN_ENABLED` | variable | **Off by default.** Set to `true` to add a keyless Sigstore signature, which publishes the repository name and workflow identity to the public Sigstore log. |
 
 4. **Set up commit signing** (see [Commit signing](#commit-signing)).
@@ -140,7 +145,9 @@ Do these once, in this order. Create tokens yourself and paste them only into Gi
 | 5 | **GitHub** > Settings > Environments > `production` | Same three entries, with the **production** token. |
 | 6 | **GitHub** > Settings > Secrets and variables > Actions > **Variables** tab > New repository variable | `DEPLOY_ENABLED` = `true`. Until this exists, merges to `main` run CI and the security gates but skip the staging deployment. |
 | 7 (optional) | **Vercel** > Project > Settings > Deployment Protection > *Protection Bypass for Automation* | Generate the secret, then add it as environment secret `VERCEL_AUTOMATION_BYPASS_SECRET` in both GitHub environments. Needed only if the deployment is behind Vercel Authentication, otherwise the smoke test receives a 401 and fails on purpose. |
-| 8 (optional) | **GitHub** > Environments > `staging` > Variables | `STAGING_ALIAS` = a stable hostname such as `staging.example.com` (it must already be assigned to the Vercel project). |
+| 8 (optional) | **GitHub** > Environments > `staging` > Variables | `STAGING_DEMO_ALIAS` and `STAGING_ALIAS` = stable hostnames such as `demo.example.com` and `staging.example.com` (each must already be assigned to the Vercel project as a domain). |
+| 9 | **GitHub** > Environments > `staging` > Deployment branches and tags | Add the branch `staging` (keep `main`). If the environment is limited to `main`, the staging deploy jobs are refused. |
+| 10 | **GitHub** > Settings > Rules > Rulesets > New branch ruleset | Name `staging-protection`, target branch `staging`, rules: *Restrict deletions*, *Block force pushes*, *Require signed commits*. Staging then only ever moves forward. |
 
 Where is each value read? `DEPLOY_ENABLED` in `deploy-staging.yml`; the secrets and variables are read by the deploy job in `deploy-staging.yml` / `release.yml` (which declares the environment) and handed to `.github/actions/deploy`. The first step of the action, *Check deploy credentials are present*, prints `true`/`false` for each (never a value) and fails at once if `VERCEL_TOKEN` is missing.
 
@@ -241,7 +248,27 @@ The full register, with owners, compensating controls, expiry dates and exit cri
 **Not yet proven:**
 - **The production release path:** `verify-tag.sh` against a real signed tag, the `release.yml` workflow, the `production` environment, and the `publish` job that creates the GitHub Release. Cut a first release from a signed tag and read the run before relying on it.
 - **Build provenance and SBOM attestations, and cosign signing:** both are off (EX-09, EX-06), so `gh attestation verify` does not apply yet.
-- **The staging alias** (`STAGING_ALIAS`), which is unused so far.
+- **The staging aliases** (`STAGING_DEMO_ALIAS`, `STAGING_ALIAS`) and the **live staging preview**, which are unused so far.
 - **Rulesets, branch protection and the production approval step:** GitHub refuses them on this plan (EX-08), so none of their effects are proven.
 - **Commit-signing enforcement,** which depends on those rulesets.
 - **Merging Dependabot pull requests and the weekly scheduled security run.** Dependabot is running (it has opened pull requests for the application's development dependencies), but none has been reviewed or merged through this pipeline yet; the major-version bumps (TypeScript, Tailwind, ESLint) each need their own review.
+
+## Staging branch and previews
+
+`staging` is a pointer, not a place to commit: it is moved forward to a commit that is already on `main`, and every move deploys that exact commit as two Vercel **preview** deployments (never production).
+
+| Preview | Build | Data | Use |
+|---|---|---|---|
+| **Staging demo** | demonstration (`API_MODE` mock) | synthetic, in the browser; demo personas | demos to customers and colleagues |
+| **Staging live** | production build (`API_MODE` http) | the **staging** Supabase project, synthetic data only | testing a release on the real server before it is tagged |
+
+Move staging to the latest `main` (or to any earlier `main` commit to demo that version):
+
+```bash
+git fetch origin main && git push origin origin/main:staging
+```
+
+The first push creates the branch. A push of a commit that is not on `main` deploys nothing: the job *Staging commit is on main* fails. The release to production is unchanged: a signed tag on `main`.
+
+**For demos**, Vercel usually protects preview deployments with Vercel Authentication, so a visitor without access to the Vercel team sees a Vercel sign-in page. Check Project > Settings > Deployment Protection. To show the demo preview to outsiders, use a Vercel *shareable link* for that deployment, or a protection exception for the `STAGING_DEMO_ALIAS` domain where your Vercel plan offers it. Keep the live preview protected. The demo build has no real data, but it is still a deployment of the full app.
+
