@@ -323,17 +323,26 @@ D-11a (rev P3): Trials (OD-04) are provisioned by staff only, under the single s
 
 ### D-12 Tenant offboarding and deletion
 
+(rev P4, closes P4-A3-08: the export handed to the customer is the customer-readable final export FINAL-EXPORT of D-12b, not the nightly backup export D-73, which is encrypted with the tenant DEK, holds no `ks` subject or file keys and is unreadable to the customer.)
+
 ```mermaid
 stateDiagram-v2
     [*] --> Active
-    Active --> OffboardingRequested: customer admin request (C-M01-20, 4E tenant.offboard) or contract end (control.subscriptions)
-    OffboardingRequested --> ExportWindow: export produced (D-73 final export), customer notified
-    ExportWindow --> DeletionRequested: window ends (default 30 d) or customer confirms
-    DeletionRequested --> DeletionApproved: 4E platform.tenant.delete (management_approver + ciso, D-58)
-    DeletionRequested --> ExportWindow: rejected (reason) - e.g. legal hold or dispute
+    Active --> OffboardingRequested: customer admin request (C-M01-20, 4E tenant.offboard) or contract end or non-payment after grace (control.subscriptions)
+    OffboardingRequested --> ExportBuilding: D-12b final export queued (members read-only, admins keep read access)
+    ExportBuilding --> ExportWindow: bundle built, completeness check passed, manifest signed, recipient emailed (30-day window starts at the first ready)
+    ExportBuilding --> ExportFailed: completeness mismatch or error after retries (alert R-B, no window starts)
+    ExportFailed --> ExportBuilding: retry (platform ELEV) or regeneration
+    ExportWindow --> ExportBuilding: regeneration requested (C-M01-23, at most 3 generations, window not restarted)
+    ExportWindow --> ReceiptConfirmed: recipient confirms receipt or declines the export (C-M01-26, STEP)
+    ExportWindow --> WindowExpired: 30 days after the first ready, with notices at ready, day 23 and day 29 recorded
+    ReceiptConfirmed --> DeletionRequested
+    WindowExpired --> DeletionRequested
+    DeletionRequested --> DeletionApproved: 4E platform.tenant.delete (management_approver + ciso, D-58), precondition D-12b-7 holds
+    DeletionRequested --> ExportWindow: rejected (reason), e.g. legal hold or dispute, window extended until resolved
     DeletionApproved --> Deleting: job D-78
-    Deleting --> KeyDestructionPending: data removed; KMS key deletion scheduled (provider waiting period)
-    KeyDestructionPending --> Deleted: KMS confirms destruction; certificate signed and anchored
+    Deleting --> KeyDestructionPending: data removed, KMS key deletion scheduled (provider waiting period)
+    KeyDestructionPending --> Deleted: KMS confirms destruction, certificate D-12e signed and anchored
     Deleting --> DeletionFailed: step failed after retries (alert)
     DeletionFailed --> Deleting: retry (ELEV)
     Deleted --> [*]
@@ -341,11 +350,26 @@ stateDiagram-v2
 
 | ID | Rule |
 |---|---|
-| D-58 | Deletion approval needs two different people, one holding `management_approver` and one holding `ciso`; the requester counts as one of them only if they hold one of those roles. A tenant-level legal hold (`legal_hold` rows) blocks approval. |
-| D-12a | Deletion steps: (1) revoke all sessions, API keys, SCIM tokens, webhooks, support grants; (2) disable routing (503 `tenant_unavailable`); (3) drop schema `t_<tkey>` and roles; (4) delete storage prefix `<tkey>/` in `tenant-files`, `quarantine`, `exports`; (5) delete every `ks` row of the tenant (DEK versions, per-subject, per-file and blind-index keys; wrapped keys live only in `ks`, never in tenant tables, DA-04) (rev P3); (6) schedule KEK destruction (4E `platform.key.destroy` is satisfied by D-58's approval record for this deletion only); (7) delete memberships, retain `control.identities` only for people with other memberships; (8) purge `ops` messages for the `tkey`. |
-| D-12b | Certificate (`control.deletion_certificates`): tenant ref, `tkey` hash, schema drop timestamp and catalog proof, storage object counts and manifest hash before and after, key ids and KMS destruction evidence reference, approvers and votes, request ids, certificate hash; anchored in `control.platform_audit_log` and the external anchor (ADR-013). |
+| D-58 | Deletion approval needs two different people, one holding `management_approver` and one holding `ciso`; the requester counts as one of them only if they hold one of those roles. A tenant-level legal hold (`legal_hold` rows) blocks approval. The engine also refuses the final vote (422 `rule_refused`, reason `OFF-EXPORT-PENDING`) unless the final-export precondition D-12b-7 holds; no platform role can waive it (rev P4). |
+| D-12a | Deletion steps: (1) revoke all sessions, API keys, SCIM tokens, webhooks, support grants; (2) disable routing (503 `tenant_unavailable`); (3) drop schema `t_<tkey>` and roles; (4) delete storage prefix `<tkey>/` in `tenant-files`, `quarantine`, `exports` (the final-export bundles under `exports/<tkey>/final/` included; `control.tenant_export_jobs` rows move to `purged`) (rev P4); (5) delete every `ks` row of the tenant (DEK versions, per-subject, per-file and blind-index keys; wrapped keys live only in `ks`, never in tenant tables, DA-04) (rev P3); (6) schedule KEK destruction (4E `platform.key.destroy` is satisfied by D-58's approval record for this deletion only); (7) delete memberships; for each identity with no other membership, `control.identities` is pseudonymised and the Supabase Auth user deleted through the Auth admin API 30 days later (G-RET-01, `platform_identity`), and job D-80a removes its `auth.audit_log_entries` and `auth.mfa_challenges`; remove the tenant's Supabase Auth SSO providers (`auth.sso_providers`, `sso_domains`, `saml_providers`) through the Supabase management API (2B-classification §3.1) (rev P4); (8) purge `ops` messages for the `tkey`. |
+| D-12b | **Final export FINAL-EXPORT (job, rev P4; closes P4-A3-08).** Distinct from the nightly backup export D-73. Rules D-12b-1 to D-12b-9 below. |
+| D-12e | Certificate (`control.deletion_certificates`): tenant ref, `tkey` hash, schema drop timestamp and catalog proof, storage object counts and manifest hash before and after, key ids and KMS destruction evidence reference, approvers and votes, request ids, the final-export record (`control.tenant_export_jobs` id and generation, manifest SHA-256, per-table counts, receipt outcome and time, or window-expiry date and notice times), certificate hash; anchored in `control.platform_audit_log` and the external anchor (ADR-013). (Was D-12b before rev P4; renumbered so that D-12b is the final export.) (rev P4) |
 | D-12c | Backups: project PITR still holds the data until its window ends. E1 and E2 fields and files there are unreadable once the KEK is destroyed (S7, discovery summary §6); E0 plaintext remains readable in PITR until the window ends (ADR-004). The `ks` standby and off-site key journal roll off within 8 days (DA-11). The certificate states the PITR expiry date and the `ks` roll-off date. (rev P3) |
-| D-12d | Trial tenants past expiry + 30 days are deleted under the standing trial policy approval (D-P14) instead of a per-tenant D-P03 vote; steps D-12a and certificate D-12b apply unchanged (OD-04) (rev P3). |
+| D-12d | Trial tenants past expiry + 30 days are deleted under the standing trial policy approval (D-P14) instead of a per-tenant D-P03 vote; steps D-12a and certificate D-12e apply unchanged (OD-04) (rev P3). A trial tenant also gets the final export D-12b: the window starts at trial expiry and the deletion at expiry + 30 days is the window end (rev P4). |
+
+D-12b final export FINAL-EXPORT (rev P4):
+
+| ID | Rule |
+|---|---|
+| D-12b-1 | **Trigger and generations.** Entering `OffboardingRequested` enqueues generation 1 on queue `q_final_export`. While the window is open the recipient may request a regeneration (C-M01-23), at most 3 generations per offboarding; a new generation supersedes the previous one (its object deleted, `passphrase_enc` nulled, link and download tokens revoked). The window does not restart; `window_ends_at` is extended only so that it is never earlier than the newest link's expiry. State lives in `control.tenant_export_jobs` (2B B-E90.39). |
+| D-12b-2 | **Runs in the tenant context.** The worker uses `router.withTenantJob(tkey, 'final_export')` (D-60) in the long-running worker of ADR-005 (bundles exceed function limits, D-88). The whole read runs in one `REPEATABLE READ` read-only transaction, so every table and file list comes from one snapshot. Members are read-only during offboarding, so the snapshot equals the live state at export time. The job unwraps the tenant DEK, subject keys and file keys through `ks` under ISO-HARD (KMS encryption context = the routed `tkey`). |
+| D-12b-3 | **Bundle format** (a ZIP, documented in `README.md` inside it): `tables/<table>.json`, one file per tenant table, every E1 and E2 column decrypted, ids kept, `_bidx`/`_hmac` columns and wrapped-key references left out; `schema/<table>.schema.json` (JSON Schema per table) and `schema/dictionary.md` (column meanings, enumerations, schema version); `csv/<register>.csv` for the main registers (controls, statement of applicability, evidence list, policies, risks, issues, findings, vendors, assets, RoPA, DSARs, commitments, people and access); `files/<file_id>/<version>/<original name, sanitised>` with every non-purged file version with scan state clean, decrypted; `audit/` the tenant audit log with its ADR-013 verification bundle; `manifest.json` (tenant ref, generation, schema version, generated-at, row count per table, file count, SHA-256 of every file in the bundle, the list of excluded items with reason such as `infected`, `scan_failed` or `erased-subject field`); `manifest.sig`, a signature over `manifest.json` with the platform signing key `sig/export` in KMS, and the public key with verification steps. `record_history` is included decrypted; fields of erased subjects stay unreadable and are written as `null` with marker `erased`. |
+| D-12b-4 | **Encryption and delivery.** The ZIP is streamed into an age file (scrypt passphrase recipient, which uses ChaCha20-Poly1305; or AES-256-GCM with an Argon2id-derived key if age is not used *(choice fixed at implementation, both are open formats with free tools)*) and written through `storagebroker` to `exports/<tkey>/final/<generation>.age`. Plaintext never reaches Storage, logs or `ops`. The passphrase is 128 bits from the CSPRNG, shown as 8 groups of 4 base32 characters; it is held only as `passphrase_enc` (E1, platform KEK) until the recipient reveals it **once** in the app after step-up (C-M01-24); it is never emailed, logged or shown to staff. The download link goes **by email** to the recipient: single use, valid 7 days, and it opens the app, where a signed-in recipient obtains a download token (C-M01-25). The two channels (email link, in-app passphrase) are independent. |
+| D-12b-5 | **Completeness check** (before `ready`): for each table, rows written to the bundle = `count(*)` in the same snapshot; files written = non-purged clean `file_object` versions; the SHA-256 of each decrypted file = `file_object.sha256`; the bundle re-read from Storage decrypts and its manifest hash matches. Any mismatch: generation `failed`, retried 3 times with backoff, then `ExportFailed` and R-B paged (D-90 classes); the window does not start and deletion cannot proceed. |
+| D-12b-6 | **Notices.** At `ready`, on day 23 and on day 29 of the window: email to the recipient and to every tenant admin, and to the contract contact of `control.subscriptions`; in-app banner. Each notice is recorded (time, channel, delivery result) on the job row. |
+| D-12b-7 | **Precondition for deletion** (checked by D-58 and by D-78 before step 1): the latest generation is `ready` and either `receipt_outcome` is set (C-M01-26: `received`, or `declined` with STEP and reason) or `window_ends_at` has passed with the three notices recorded. A legal hold or dispute extends the window. |
+| D-12b-8 | **Retention.** Bundles are deleted at supersession or by D-12a(4); the `control.tenant_export_jobs` row is kept under `accountability` (B-RC24) and copied into the certificate D-12e. |
+| D-12b-9 | **Tests (2J J-FEX-01 to J-FEX-10).** Round trip on a synthetic tenant with E1, E2, files and an erased subject: export, decrypt with the passphrase, re-count rows against live counts, verify every file hash and the manifest signature, check E2 values and file content are readable; negative cases: second passphrase reveal refused, reused link refused, deletion vote refused before receipt or window end, a deliberately dropped row fails the completeness check (the last two negative cases are a follow-up for workstream J if J-FEX does not already cover them). |
 
 ### D-13 Four-eyes approval (per `approval` / `control.platform_approvals`)
 
@@ -495,6 +519,8 @@ Tenant plane (TTL in hours; `F` = forbid set beyond the requester). "Privileged 
 | D-K37 | `content.upgrade.in_audit` (framework in an audit in Fieldwork or Reporting) | M02 | frameworks.upgrade | frameworks.upgrade | 2 | requester | no | 72 | yes (DA-15, 2B B-RF16) (rev P3) |
 | D-K38 | `tenant.offboard` (customer offboarding request, starts D-12) | M01 | settings.manage | settings.manage | 1 (2 when two or more admins exist) | — | no | 72 | yes (C-M01-20) (rev P3) |
 | D-K39 | `tenant.byok` (register or change a customer KEK) | M01 | settings.manage | settings.manage | 2 | — | no | 72 | yes (C-M01-22, 2F F-K-21) (rev P3) |
+| D-K40 | `audit.access.long` (auditor access whose window, on grant or extension, exceeds 90 days in total) | M08 | audits.manage | audits.manage | 1 | requester | no | 72 | no; tenant admins notified (C-M08-04) (rev P4, P4-A2-23) |
+| D-K41 | `audit.share.late` (sharing an item with an engagement after its population freeze, including by linking evidence to a PBC request) | M08 | audits.manage | audits.manage | 1 | requester | no | 72 | no (C-M08-05, C-M08-08) (rev P4, P4-A2-23) |
 
 Platform plane (all need ELEV to vote; requests need ELEV except D-P12 under the 2C §4 exception for `platform.mfa_reset.request` holders without `platform.elevate`; TTL 24 h unless stated) (rev P3):
 
@@ -537,16 +563,20 @@ Common to every job: one message = one tenant (or one control-plane item); messa
 | D-70 | Malware scanning | on upload (queue) | `file_object` id in `quarantine` | scan result stored with file hash; re-scan of same hash reuses result ≤ 24 h | scanner down: file stays `Pending` (never served); after 24 h `ScanFailed` and uploader notified; infected: delete object, mark `Infected`, audit, notify |
 | D-71 | Retention purge (records past retention and not on hold; `webhook_delivery`, notifications, sign-in records, `ops` data) and storage purge | daily per tenant (off-peak) | `retention_rule`, `legal_hold` | purge by batches of 500 with a high-water mark; re-run safe | stops at the first error per table; no purge while the tenant has a schema-version mismatch |
 | D-72 | Audit-log anchoring | hourly per tenant with new entries; platform log hourly | `audit_log_entry` head hash | `audit_anchor` unique per (tenant, hour) | anchor target down: retry; gap > 24 h alerts R-B |
-| D-73 | Backup export (nightly logical export per tenant, encrypted with the tenant DEK) | nightly, spread across the night by `tkey` hash | schema + files manifest | export object key `<tkey>/<date>`; overwrite safe | 3 retries; a missed night alerts; two missed nights is an incident |
+| D-73 | Backup export (nightly logical export per tenant, encrypted with the tenant DEK; for restore only, never handed to the customer as the offboarding export, which is D-12b) (rev P4) | nightly, spread across the night by `tkey` hash | schema + files manifest | export object key `<tkey>/<date>`; overwrite safe | 3 retries; a missed night alerts; two missed nights is an incident |
 | D-74 | Usage metering | events emitted on write; aggregation every 15 min | usage events in `ops.usage_events` (counts only) | event id unique; aggregates upserted per (tenant, meter, period) into `control.usage_meters` | at-least-once; duplicates removed by event id |
 | D-75 | Automation rules | per rule trigger: on event (outbox) or schedule | `automation_rule` id | `automation_run` per (rule, trigger event or window) | rule paused automatically after 3 consecutive failures; owner notified |
 | D-76 | DSAR deadline clock | hourly per tenant with open DSARs | `data_subject_request` | notifications deduped per (request, threshold) | as D-63; a breach of the deadline is an incident flag on the request |
 | D-77 | Migration rollout (ADR-009) | on approval of D-P09; waves: canary tenants, then batches of N | release id | per-tenant `control.tenant_schema_versions` compare-and-set | failed tenant: stays on old version (router returns 503 for that tenant only); wave pauses on error-rate threshold |
 | D-78 | Tenant provisioning and deletion steps | on approval (queue) | tenant ref | `ops.provisioning_steps` per step; each step checks its postcondition before acting | step retries 5; then `ProvisioningFailed` / `DeletionFailed`, alert |
-| D-79 | Identity propagation: profile changes to `member_profile`; membership and role changes to tenant caches; session revocation fan-out; auditor membership suspension | on event (queue) | identity / membership id | version-stamped upsert | retry; mismatch report daily |
+| D-79 | Identity propagation: profile changes to `member_profile`; membership and role changes to tenant caches; session revocation fan-out; auditor membership suspension; at the end of `platform_identity` or on upheld erasure, pseudonymise `control.identities` and delete the Supabase Auth user through the Auth admin API (rev P4) | on event (queue) | identity / membership id | version-stamped upsert; Auth delete is idempotent (a missing user is success) | retry; mismatch report daily; an Auth delete that fails 5 times is dead-lettered and pages R-B (rev P4) |
+| D-12b | Final export FINAL-EXPORT (offboarding) (rev P4) | on entering `OffboardingRequested`, and on regeneration (C-M01-23) | `control.tenant_export_jobs` id, generation | job row per (tenant, generation); a rerun of a `building` generation restarts from scratch and overwrites the same object key | 3 retries; then `ExportFailed`, R-B paged; rules D-12b-1 to D-12b-9 |
+| D-80a | `auth` purge job (rev P4, P4-A3-01) | daily on `cp` | `auth` tables of 2B-classification §3.1 | deletes by age or by subject id; re-run safe | per-table error alerts R-B; a failed run on two consecutive days is an incident. Deletes `auth.audit_log_entries` and `auth.mfa_challenges` older than 90 days, `auth.sessions`, `refresh_tokens`, `mfa_amr_claims` 30 days after expiry, `flow_state`, `saml_relay_states`, `one_time_tokens` and unused Auth tokens older than 24 h; on an identity erasure or deletion, the subject's rows at once; runs the B-C29 minimisation probe weekly; one `control.platform_audit_log` entry per table per run (counts only) |
 | D-80 | Platform hygiene: SSO certificate expiry (warn 30 d, 7 d), domain re-verification (weekly), API key and SCIM token expiry, expired session cleanup, agent certification lapse, AI provider review expiry; daily trial digest to both trial-policy approvers (D-P14, OD-04) (rev P3) | daily | control plane and per-tenant hints | as D-63 | as D-63 |
 
 | D-82 | Content upgrade apply and forced upgrade (ADR-011 D11-6 auto-minor, D11-7) | on approval of D-K36/D-K37, and daily for retired releases | tenant, package, release | `content_upgrade` row per (tenant, package, release) | tenants in an active audit skipped and reported (DA-15) (rev P3) |
+
+D-70a (rev P4, closes P4-A2-26): **No job or handler reads file bytes unless `file_object.scan_state = clean`.** This covers every server-side parse of an upload (risk import C-M06-18, questionnaire import C-M10-02, KB documents C-M10-07, contract import and AI analysis C-M15-02 and C-M15-04, vendor answers C-M09-13, DSAR responses) as well as downloads and D-12b. It is enforced in `storagebroker`: its read function takes a `file_object` id, re-reads `scan_state` in the caller's tenant transaction and refuses anything but `clean` (error class `permanent`, audit entry `file.read.refused`); there is no read-by-path function. A handler that receives a `pending` file returns 409 `invalid_state` (`file_not_scanned`) and the client retries after the scan. Test: J-SEC-33 calls each parser with a `pending`, `infected` and `failed` file and expects refusal.
 
 ### 3.1 Reads never write
 
@@ -564,7 +594,7 @@ D-81: Every sweep that today runs inside a GET (risk, vendors, AI, trust, access
 | D-53 | Tasks per system: `dsr_task` per `system` linked from the RoPA activities that list the data category; external systems get manual tasks with an assignee and due date; Selvara-held data gets automatic tasks (export, rectify, erase). |
 | D-54 | Erasure inside Selvara: after 4E `dsar.erasure`: (1) records on `legal_hold` or under a retention obligation are excluded and listed in the response with the reason; (2) personal fields are overwritten with a tombstone value and the row version incremented; (3) the subject's per-subject key is destroyed in the key store (S7), which makes the encrypted values in `record_history`, exports and backups unreadable; (4) files belonging only to the subject are deleted; (5) an erasure certificate (`data_subject_request.erasureCertificate`: tables, row counts, key id destroyed, KMS evidence ref, approvers, hash) is written and anchored. The audit log keeps the action with the subject reference pseudonymised. |
 | D-55 | Response: access/portability packages are produced by D-67 as an encrypted export (password sent separately), require 4E `dsar.disclose`, and are deleted from `exports` 30 days after delivery. |
-| D-56 | Selvara as controller (identities, support questions, sign-in records, billing contacts): the same state machine runs in Selvara's own tenant (M14, 2G G-D-07); a staff tool in `console` reads the subject's controller data from `cp` through `cp_rw`, and the case record lives only in Selvara's tenant (rev P3); handled by holders of `platform.privacy.manage`, with erasure limited by billing and security-log retention. |
+| D-56 | Selvara as controller (identities, support questions, sign-in records, billing contacts, and the Supabase `auth` schema: `auth.users`, `identities`, `sessions`, `mfa_*`, `audit_log_entries`) (rev P4): the same state machine runs in Selvara's own tenant (M14, 2G G-D-07); a staff tool in `console` reads the subject's controller data from `cp` through `cp_rw`, and the case record lives only in Selvara's tenant (rev P3); handled by holders of `platform.privacy.manage`, with erasure limited by billing and security-log retention. Erasure deletes the Auth user through the Auth admin API and the subject's `auth` rows through D-80a (rev P4). |
 
 ---
 
@@ -585,7 +615,7 @@ D-60a Tenant status gate:
 |---|---|
 | Active | all |
 | Suspended | D-62 (only to admins: suspension notices), D-66, D-71, D-72, D-73, D-76 (statutory clocks continue), D-79 |
-| OffboardingRequested / ExportWindow | as Suspended + D-67 (final export only) |
+| Offboarding (`OffboardingRequested` to `DeletionRequested`) | as Suspended + D-12b (final export) (rev P4) |
 | Deleting | D-78 only |
 | Provisioning | D-78 only |
 
@@ -593,7 +623,7 @@ D-60a Tenant status gate:
 
 | ID | Rule |
 |---|---|
-| D-85 | Queues: one pgmq queue per job type in `ops` (`q_reminders`, `q_expiry`, `q_reports`, `q_webhooks`, `q_sync`, `q_scan`, `q_purge`, `q_anchor`, `q_backup`, `q_metering`, `q_automation`, `q_dsar`, `q_migrate`, `q_provision`, `q_identity`). |
+| D-85 | Queues: one pgmq queue per job type in `ops` (`q_reminders`, `q_expiry`, `q_reports`, `q_webhooks`, `q_sync`, `q_scan`, `q_purge`, `q_anchor`, `q_backup`, `q_metering`, `q_automation`, `q_dsar`, `q_migrate`, `q_provision`, `q_identity`, `q_final_export` (rev P4)). |
 | D-86 | The dispatcher (D-61) enqueues per-tenant messages in a shuffled order each tick, so no tenant is always first. |
 | D-87 | Per-tenant concurrency: before running, the worker takes a lease in `ops.tenant_slots (tkey, job_class, holder, expires_at)` with at most 1 concurrent job per tenant for heavy classes (reports, exports, backup, purge, migration) and 2 for light classes. No free slot: the message's visibility timeout is extended by 15 to 30 s (jitter) and the worker moves on to the next tenant's message. |
 | D-88 | Worker invocation: pg_cron calls the worker endpoint (C-10) through `pg_net` every minute per queue *(verify pg_net availability, A-09)*; each invocation processes messages for ≤ 50 s (below the serverless time limit), reading batches of 20 and interleaving tenants round-robin by `tkey`. Heavy jobs (backup, scan) run in the scanning container or a long-running worker *(ADR-005)*. |
@@ -614,7 +644,7 @@ D-60a Tenant status gate:
 
 ## 6. Deliverables
 
-- This document (`2D-workflows.md`): 17 state machines (D-01..D-17), approval engine and registry (D-20..D-35, D-K01..D-K39, D-P01..D-P16), job catalogue (D-61..D-82) (rev P3), DSAR detail (D-50..D-56), worker model (D-60, D-85..D-95).
+- This document (`2D-workflows.md`): 17 state machines (D-01..D-17), approval engine and registry (D-20..D-35, D-K01..D-K41 (rev P4), D-P01..D-P16), job catalogue (D-61..D-82, plus D-12b final export and D-80a `auth` purge, rev P4) (rev P3), DSAR detail (D-50..D-56), worker model (D-60, D-85..D-95).
 
 ## 7. Decisions required
 

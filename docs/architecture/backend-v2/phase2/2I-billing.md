@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Phase 2 design, for the owner's review |
+| Status | Phase 2 design, for the owner's review; revised 2026-11-24 for Phase 4 findings (rev P4) |
 | Workstream | I (Billing and commercial) |
 | ADR owned | [ADR-007](../adr/ADR-007-provider-abstractions.md) (payment, tax, invoice numbering and AI provider abstractions) |
 | Risk and assumption block | R-50 to R-54, A-55 to A-59 (block shared with 2J, which uses R-55 to R-59 and A-60 to A-64) |
@@ -182,16 +182,30 @@ flowchart LR
 |---|---|
 | I-4.4.1 | A company admin requests a plan change (one open request at a time, kept). Upgrades apply immediately with proration *(proration rule to confirm with finance; MoR providers prorate themselves)*. Downgrades apply at the next period. Both are recorded in `control.plan_change_requests` (a spine extension that replaces `billing-plan-request` and `billing-plan-answer`). |
 | I-4.4.2 | A downgrade that would put state over the new limits is accepted, but the tenant is told before confirming exactly what will be over the limit. From the effective date, creation is blocked for that key only. Nothing is deleted or deactivated by the platform. |
-| I-4.4.3 | **Trial limits (defined here once; 2H and 2F refer to this row).** Trials are provisioned only by staff under the **standing trial policy** approved four-eyes under OD-04 (`control.trial_policies`; daily digest to both approvers): seats 5, `storage_bytes` 1 GB, `trial_days` 30, region `R1`, AI off, no BYOK, SSO, SCIM or dedicated cell, a daily provisioning cap, and at most 10% of the CR-1 threshold of a cell in concurrent trials (trial schemas count toward CR-1, 2J J-7.2). Feature flags follow the trialled plan within those caps. At trial end without a payment route the subscription becomes `restricted` (I-5); 14 days later the tenant is proposed for decommissioning under the deletion procedure (four-eyes, certificate), and deletion completes no later than 30 days after trial end (2G G-RET-02). A trial tenant has its own schema from day one (Q-08). (rev P3) |
+| I-4.4.3 | **Trial limits (defined here once; 2H and 2F refer to this row).** Trials are provisioned only by staff under the **standing trial policy** approved four-eyes under OD-04 (`control.trial_policies`; daily digest to both approvers): seats 5, `storage_bytes` 500 MB, `trial_days` 14 (OQ-21, rev P4), region `R1`, AI off, no BYOK, SSO, SCIM or dedicated cell, a daily provisioning cap, and at most 10% of the CR-1 threshold of a cell in concurrent trials (trial schemas count toward CR-1, 2J J-7.2). Feature flags follow the trialled plan within those caps. At trial end without a payment route the subscription becomes `restricted` (I-5); 14 days later the tenant is proposed for decommissioning under the deletion procedure (four-eyes, certificate), and deletion completes no later than 30 days after trial end (2G G-RET-02). A trial tenant has its own schema from day one (Q-08). (rev P3) |
 | I-4.4.4 | Self-serve upgrades through the MoR or Stripe hosted checkout are allowed when the active payment config has `recurring` capability. Otherwise the request goes to the platform (existing accept or decline flow, single elevated super admin, kept). |
 
 ### I-4.5 Cost coverage (rev P3)
 
 | ID | Rule |
 |---|---|
-| I-4.5.1 | Plan prices are set against the **corrected** 2H cost model (P3-X3-08, DA-13): it adds the `ks` project and its DR standby, KMS multi-Region replica keys, nightly export egress, the second Vercel project (`console`), the secrets manager, WORM anchors and timestamp service, and the perf cell. Planning figures per tenant per month: about USD 55 at 10 tenants, 10.8 at 100 and 6.4 at 1,000 (were 47, 8.3 and 4.3); marginal cost of one more shared tenant about USD 4.5 to 5.5 *(verify prices, VC-08; OD-11 is restated after verification)*. |
+| I-4.5.1 | Plan prices are set against the **corrected** 2H cost model (P3-X3-08, DA-13): it adds the `ks` project and its DR standby, KMS multi-Region replica keys, nightly export egress, the second Vercel project (`console`), the secrets manager, WORM anchors and timestamp service, and the perf cell. Planning figures per tenant per month: about USD 86 at 10 tenants, 13.8 at 100 and 6.4 at 1,000 (rev P4: adds PITR on `ks`, Static IPs from launch and KS-SNAP, 2H H-C-15; were 55, 10.8 and 6.4 in Phase 3, and 47, 8.3 and 4.3 before); marginal cost of one more shared tenant about USD 4.5 to 5.5 *(verify prices, VC-08; OD-11 is restated after verification)*. Prices also carry the SLA-U credit budget (2% of revenue, I-4.6) and, once the owner quantifies them, the fixed overheads of 2H H-C-27. |
 | I-4.5.2 | Every cost driver that grows with one tenant's use is an entitlement key: seats, storage, API calls, AI tokens (I-4.2.1 to I-4.2.8), database size (`db_bytes`, I-4.2.10), BYOK (`byok`, I-4.2.11, one more KMS key and replica), SSO and SCIM (I-4.2.12, SSO MAU), dedicated cell and PITR window (I-4.2.13). A plan that grants one of them is priced to cover it (risk R-63 in the Phase 3 register). |
 | I-4.5.3 | Capacity rule CR-1 (2J J-7.2, DA-10) sets how many tenants a shared cell holds (provisional 300, then floor_100(0.6 × K)); the shared-cell share of compute in the cost model uses that value. Trial, canary, warm-pool and restore schemas count toward CR-1. |
+
+### I-4.6 Service level in plan terms (SLA-U) (rev P4)
+
+The owner decided one uniform SLA for every plan (OQ-23). This section states it in plan and invoice terms; the technical definition is 2A A-NFR-01 and the measurement method is 2J J-SLA. The wording below is a **DRAFT** for the terms of service, pending legal review (OD-08).
+
+| ID | Rule |
+|---|---|
+| I-4.6.1 | **Commitment.** Every paid plan, shared or dedicated, carries the same SLA: 99.5% monthly availability of the tenant API and web app *(verify that this does not exceed the serial composite of the Supabase and Vercel commitments, VC-13; if it does, the published figure is lowered to the vendor-backed figure before any contract)*. The SLA is not an entitlement key and cannot be overridden per subscription; a negotiated higher figure needs a new owner decision. Trials (`trialing`) carry no SLA. |
+| I-4.6.2 | **Measured availability.** `(eligible minutes − down minutes) / eligible minutes` for the calendar month in UTC, where eligible minutes exclude the excluded events (I-4.6.4); a minute is down when two of three external probe locations fail the login page or the authenticated canary read for the tenant's cell (2J J-SLA). The monthly figure per cell is stored in `control` with its evidence, kept with billing records (6 years, OQ-25). |
+| I-4.6.3 | **Service credits (the sole remedy).** Below 99.5% and at or above 99.0%: 10% of that month's subscription fee. Below 99.0%: 25%. The fee base is the recurring plan fee for the month, excluding usage overage, taxes and one-off charges. Credits are never paid as cash, cannot exceed 25% of the monthly fee, and are lost if the subscription ends before they are applied. |
+| I-4.6.4 | **Exclusions.** Scheduled maintenance announced at least 72 h ahead (in-app and by email to tenant admins); vendor-wide region outages of Supabase, Vercel or the KMS provider, including region loss (RPO/RTO are objectives, not contractual: 2A A-NFR-21); issues caused by the customer (its users, integrations, IdP, BYOK key disabled, exceeded limits); suspension or restriction under I-5; and the Trust Center public pages. |
+| I-4.6.5 | **Claim and issue.** A tenant admin claims within 30 days of month end from the billing page; the platform also proposes a credit automatically when the monthly report shows a breach. The credit is issued as a credit note against the next invoice (I-7.3), ledger type `credit` with reason `sla_credit`, under the existing four-eyes kind `billing.credit` (the requester never approves). In MoR mode the credit is applied through the provider's credit or discount mechanism and mirrored. |
+| I-4.6.6 | **Cost.** Credits are budgeted at 2% of revenue (2H H-C-26) and priced into every plan. Any plan upgrade needed to back the SLA (2H H-C-25, contingent on VC-13) is costed there. Region-wide outages are excluded, so the SLA needs no warm DR standby. |
+| I-4.6.7 | **Communication.** The plan catalogue, order form and terms of service show the same figure, credits and exclusions for every plan. RPO and RTO are published as objectives, separately from the SLA, and only after the matching drills have run in production (2H H-9.4). |
 
 ## I-5. Dunning, suspension and the tenant lifecycle
 
@@ -348,6 +362,7 @@ All entries are *(verify)* with a qualified adviser. They are the questions Phas
 | I-DR5 | Drop the `screenings` and `idv` meters | Owner (parity sign-off) | — |
 | I-DR6 | External roles (auditor, vendor, viewer) do not consume paid seats | Owner (commercial) | — |
 | I-DR7 | The secret store for provider secrets is chosen by 2F under ADR-003 | 2F | ADR-003 |
+| I-DR8 | SLA-U in plan terms (I-4.6): 99.5% monthly *(verify, VC-13)*, credits 10% and 25%, exclusions, 2% revenue budget; terms-of-service wording to legal review | Owner (decided in principle, OQ-23), legal (OD-08) | 2A A-DR-05 (rev P4) |
 
 ## I-16. Open risks
 
@@ -361,6 +376,7 @@ All entries are *(verify)* with a qualified adviser. They are the questions Phas
 | R-54 | Provider secret misuse or misconfiguration (live key in test, stolen webhook secret, a malicious config change) leads to refund fraud or diverted payouts | Low | High | R-B | Secret references only; fingerprints; four-eyes on activate, change and live; mode check on webhooks; refunds only to the original payment method through the provider | Open |
 | R-64 | Trial flood fills cell capacity (CR-1) and the KMS key count (proposed in the Phase 3 register) (rev P3) | Medium | Medium | R-A | Concurrent-trial cap and daily cap in the trial policy (I-4.4.3); trials provisioned only by staff (OD-04) | Open |
 | R-07 | (existing) Free AI models train on customer data | Medium | High | R-B | I-10.2 and I-10.3: review required; free tiers that train are rejected by rule | Open |
+| R-65 | SLA-U committed above what Supabase and Vercel back, creating credit exposure (master in `risks.md`) (rev P4) | Medium | Medium | R-A | I-4.6: figure at or below the vendor-backed level (VC-13), credits only with a 25% cap, region loss and vendor-wide outages excluded, credits budgeted at 2% of revenue (2H H-C-26) | Open until VC-13 is verified |
 
 ## I-17. New assumptions
 

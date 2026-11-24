@@ -54,7 +54,7 @@ Rules:
 | C-23 | Delete is `POST /:id/delete` (soft delete, reason where the rule requires it). No hard delete through the API. Records under `legal_hold` answer 422 `legal_hold`. |
 | C-24 | Action endpoints are `POST /:id/<verb>`; they carry `version` (the record version the actor saw, replaces today's `seen`) and `reason` where a rule asks for one. |
 | C-25 | Child collections are addressed by id, never by array index (fixes `/actions/:n`, `/tasks/:n`, `/accounts/:index`). |
-| C-26 | Files: upload is two-step: `POST /api/v1/files/uploads` (declares name, size, type, parent) returns a signed upload URL into `quarantine`; the client confirms with `POST /files/uploads/:id/complete` (sha256, C-M23-04); the worker finalises after a signed scanner verdict (2F F-10.1). Downloads: `POST /files/:fileId/download-token` (C-M23-03, or the module route that wraps it) returns a Selvara download token for `files.<domain>/d/<token>`, bound to user, tenant, file version and purpose, valid 5 min, single use for exports (2F F-U-06); never a Supabase Storage signed URL. Every token issue is audited. (rev P3) |
+| C-26 | Files: upload is two-step: `POST /api/v1/files/uploads` (declares name, size, type, parent) returns a signed upload URL into `quarantine`; the client confirms with `POST /files/uploads/:id/complete` (sha256, C-M23-04); the worker finalises after a signed scanner verdict (2F F-10.1). No handler or job reads file bytes unless `scan_state = clean`; `storagebroker` enforces it (2D D-70a; rev P4). Downloads: `POST /files/:fileId/download-token` (C-M23-03, or the module route that wraps it) returns a Selvara download token for `files.<domain>/d/<token>`, bound to user, tenant, file version and purpose, valid 5 min, single use for exports (2F F-U-06); never a Supabase Storage signed URL. Every token issue is audited. (rev P3) |
 | C-27 | A list response never includes a field the caller could not read in the single-record response (no "figures-only copies" leaking through lists). Aggregates (overview, KPIs) are computed server-side from records the caller may read, or from aggregate-only permissions explicitly listed in E-30. |
 
 ### 1.4 Pagination, filtering, sorting
@@ -105,11 +105,11 @@ Rules:
 - C-60: Token-bucket counters live in `ops.rate_buckets` (unlogged table, keyed by a hash of the key; no business data). On database unavailability the limiter fails closed for writes and open for reads of the caller's own session (to allow sign-out).
 - C-61: Plan limits (users, frameworks in scope, storage bytes, API calls) are checked server-side against `control.plan_entitlements` at the write that would exceed them (422 `plan_limit`). Usage events go to `control.usage_meters` through the metering job (D-74).
 - C-62: Statement timeout per tenant transaction: 5 s browser, 30 s exports (run as jobs).
-- C-63: Every state-changing request writes an `audit_log_entry` in its own transaction with `outcome` allowed; every 403, 404-by-scope, 409 or 422 refusal of a state change writes an entry with `outcome` refused and `refusal_code`; every read listed in 2F F-EV-03 (marked "audited (F-EV-03)" below) writes an entry with `outcome` allowed (rev P3).
+- C-63: Every state-changing request writes an `audit_log_entry` in its own transaction with `outcome` allowed; every 403, 404-by-scope, 409 or 422 refusal of a state change writes an entry with `outcome` refused and `refusal_code`; every read listed in 2F F-EV-03 (marked "audited (F-EV-03)" below) writes an entry with `outcome` allowed (rev P3). (rev P4, P4-A2-08, aligned with 2F F-EV-11 and F-M-22) Every refused authorisation decision on a read is logged too: a 403, or a 404 caused by object scope (C-43), on any `GET` or list request writes a security event with `outcome` refused, `refusal_code`, principal, route and request id. To bound volume the first 10 refusals per principal, route and minute are written one by one and the rest are rolled up into one event with a count. Refused reads go to the platform security log, and to the tenant's log when the request was routed to a tenant; they never run in the refused request's transaction. Repeated refusals by one auditor, vendor or API-key principal above the threshold raise 2F F-M-22 (step-up or key suspension per 2E E-66). Closes 2F-asvs-l2 AG-26 for 7.2.2.
 
 ### 1.8 Authorisation notation used in section 2
 
-Every endpoint names a permission (`perm`, from the catalogue in `2E-iam.md` section E-30) **and** an object rule. Object rules:
+Every endpoint names a permission (`perm`, from the catalogue in `2E-iam.md` section E-30) **and** an object rule. **Where a row names no object rule, the rule is OBJ-T**, and no other default exists: auditor and vendor callers never reach a row that names only OBJ-T (they get 404, C-43). The machine-readable endpoint registry that drives J-AUTHZ-01 stores an explicit object rule on every row (OBJ-T written out), so a missing rule fails CI (rev P4, P4-A2-20). Object rules:
 
 | ID | Object rule | Meaning |
 |---|---|---|
@@ -167,8 +167,12 @@ Shapes: **Member** `id (person id), displayName, email, roleId, roleName, status
 | C-M01-17 | `GET /settings/support-grants`; `POST /settings/support-grants`; `POST /settings/support-grants/:id/revoke` | reason 10..300, hours ≤8, scope[] (`members`, `settings`, `auditlog`, optional module read scopes chosen by the customer) | SupportGrant | `support_grant.manage` (admin); revoke immediate; grant written to tenant audit log and `control.support_grants`; scope never includes files, DSAR data or secrets (E-75) (rev P3) |
 | C-M01-18 | `GET /settings/support-activity` | | support session views [{sessionId, staffRole, at, part}] | `support_grant.manage` |
 | C-M01-19 | `POST /settings/members/:id/unlock` | reason ≥10 | Member | `members.manage`; not self; audited (rev P3) |
-| C-M01-20 | `POST /settings/offboarding`; `GET /settings/offboarding` | reason ≥15, exportDecision | approval / offboarding state and export window | `settings.manage` + STEP (admin); starts D-12 through 4E:`tenant.offboard` (D-K38, approver `settings.manage`; 2 approvals when two admins exist); GET `settings.read` (rev P3) |
+| C-M01-20 | `POST /settings/offboarding`; `GET /settings/offboarding` | reason ≥15, `exportRecipientId` (a tenant admin; default the requester) (rev P4) | approval / offboarding state, final-export state (generation, state, `windowEndsAt`, `linkExpiresAt`, receipt; never the passphrase or a token) and notices | `settings.manage` + STEP (admin); starts D-12 through 4E:`tenant.offboard` (D-K38, approver `settings.manage`; 2 approvals when two admins exist); entering `OffboardingRequested` starts the final export D-12b; GET `settings.read` (rev P4) |
 | C-M01-21 | `POST /settings/restore-requests`; `GET /settings/restore-requests` | targetTime, reason ≥15 | restore request | `settings.manage` + STEP; creates platform 4E:`platform.tenant.restore` (D-P15, dual role) per 2H H-RS-01; tenant informed of the write freeze (rev P3) |
+| C-M01-23 | `POST /settings/offboarding/final-export` (request or regenerate the final export, FINAL-EXPORT) (rev P4) | reason ≥10 | export job {generation, state} | `settings.manage` + STEP + OBJ-SELF (caller is the export recipient of `control.tenant_export_jobs`); tenant status offboarding with the window open (else 409 `invalid_state`); at most 3 generations (422 `rule_refused`, `OFF-EXPORT-LIMIT`); supersedes the previous bundle, passphrase and link (D-12b-1); audited; served through a `cp_tenant_api` function that derives the tenant from the session (C-05 pattern) |
+| C-M01-24 | `POST /settings/offboarding/final-export/passphrase` (reveal once) (rev P4) | generation | {passphrase} returned once, `Cache-Control: no-store` | `settings.manage` + **STEP** (≤5 min) + OBJ-SELF (recipient only); generation `ready`; the function returns `passphrase_enc` decrypted and nulls it in the same transaction, so a second call is 409 `invalid_state` (`passphrase_already_revealed`), and the recipient must request a new generation (C-M01-23) if it is lost; never available to staff, support sessions, API keys or other admins; audited (`export.passphrase.revealed`, no secret in the entry). C-M01-24 to C-M01-26 use the same `cp_tenant_api` pattern as C-M01-23 |
+| C-M01-25 | `GET /settings/offboarding/final-export/link/:linkToken` (from the email); `POST /settings/offboarding/final-export/download-token` (rev P4) | linkToken / generation | app page / download token for `files.<domain>/d/<token>` | signed-in session, `settings.manage` + OBJ-SELF (recipient); link token single use (hash match in `control.tenant_export_jobs`), valid 7 days, consumed when the first download token is issued, removed from the URL at once by redirect and redacted in logs; download token single use, bound to user, tenant, generation and purpose `final_export`, valid 5 min, HTTP range requests allowed on that token for 60 min to resume a large file; a new link is sent only by regeneration; every issue and completed download audited and shown in the notices; never a Supabase signed URL (C-26) |
+| C-M01-26 | `POST /settings/offboarding/final-export/receipt` (rev P4) | outcome (`received` or `declined`), reason ≥15 when declined | export job | `settings.manage` + STEP + OBJ-SELF (recipient); generation `ready`; `received` allowed only after at least one completed download; `declined` allowed without download and recorded as the customer's instruction; moves D-12 to `ReceiptConfirmed` and satisfies D-12b-7; all tenant admins and the contract contact notified; audited |
 | C-M01-22 | `GET /settings/keys/byok`; `POST /settings/keys/byok` | provider, keyRef | BYOK registration state (key reference, test result, state; never key material) | `settings.manage` + STEP; tenant 4E:`tenant.byok` (D-K39, 2 approvals); Selvara performs the test wrap and re-wrap (2F F-K-21); destruction of the Selvara KEK after 30 days is platform 4E:`platform.key.destroy` (D-P04) (rev P3) |
 
 ### 2.3 M02 Frameworks
@@ -272,7 +276,7 @@ Shapes: **Risk** `STD, title, scenario, method (event, asset), category, team, j
 | C-M06-15 | `GET/POST /risk/parties`; `POST /risk/parties/:id/links`; `.../links/:rid/delete`; `/risk/parties/:id/delete` | | InterestedParty | `risk.read` / `risk.write` |
 | C-M06-16 | `GET /risk/reviews` [due, overdue]; `POST /risk/reviews/:id/complete` | outcome, note | RiskReview | `risk.read` / `risk.write` + OBJ-OWN or `risk.approve` |
 | C-M06-17 | `POST /risk/snapshots`; `GET /risk/snapshots`; `POST /risk/snapshots/:id/link` | kind | RiskSnapshot / download token | create `risk.snapshot`; list and download `risk.read` (not auditor); auditor: C-M08-13 only, OBJ-AUD on the snapshot; link audited (F-EV-03) (rev P3) |
-| C-M06-18 | `POST /risk/imports` (upload fileId or rows ≤5,000) ; `GET /risk/imports/:id` ; `POST /risk/imports/:id/withdraw` | mapping, rows | RiskImport | `risk.write`; updates of existing → 4E:`risk.import` |
+| C-M06-18 | `POST /risk/imports` (upload fileId or rows ≤5,000) ; `GET /risk/imports/:id` ; `POST /risk/imports/:id/withdraw` | mapping, rows | RiskImport | `risk.write`; updates of existing → 4E:`risk.import`; a `fileId` whose scan state is not clean is 409 `invalid_state` (`file_not_scanned`), and the parser reads bytes only through `storagebroker` (D-70a) (rev P4) |
 
 ### 2.8 M07 Issues (corrective actions)
 
@@ -299,13 +303,13 @@ Shapes: **Audit** `STD, name, frameworkId, scope, leadId, stage (Planning, Field
 | C-M08-01 | `GET /audits` [stage] | | Audit[] | `audits.read` (all) or role auditor: OBJ-AUD on the audit itself (assigned, live) |
 | C-M08-02 | `GET /audits/:id` | | Audit + access state | as above |
 | C-M08-03 | `POST /audits`; `PATCH /audits/:id` | name, frameworkId, scope, dates | Audit | `audits.manage` |
-| C-M08-04 | `POST /audits/:id/auditor-access`; `POST /audits/:id/auditor-access/:accessId/end` | personId (role auditor), startsAt, endsAt ≤180 d / reason | AuditorAccess | `audits.manage`; ending is immediate; also `POST /audits/:id/auditor-access/:accessId/extend` (endsAt ≤ startsAt + 180 d, `audits.manage`) (rev P3) |
-| C-M08-05 | `GET /audits/:id/shared-items`; `POST /audits/:id/shared-items` ; `POST /audits/:id/shared-items/:sid/revoke` | items[{itemType, itemId}] (≤500) | AuditSharedItem[] | list: `audits.manage` or OBJ-AUD; share/revoke `audits.manage`; item kinds per DA-07 (sharing evidence includes its files); revoke refused (422 `rule_refused`, reason `AUD-FROZEN`) when the row is frozen (rev P3) |
+| C-M08-04 | `POST /audits/:id/auditor-access`; `POST /audits/:id/auditor-access/:accessId/end` | personId (role auditor), startsAt, endsAt ≤180 d / reason | AuditorAccess | `audits.manage`; ending is immediate; also `POST /audits/:id/auditor-access/:accessId/extend` (endsAt ≤ startsAt + 180 d, `audits.manage`) (rev P3). A grant or extension whose total window exceeds 90 days → 4E:`audit.access.long` (D-K40). Every grant and extension notifies all tenant admins (bell and email: auditor display name, audit, window) (rev P4, P4-A2-23) |
+| C-M08-05 | `GET /audits/:id/shared-items`; `POST /audits/:id/shared-items` ; `POST /audits/:id/shared-items/:sid/revoke` | items[{itemType, itemId}] (≤500) | AuditSharedItem[] | list: `audits.manage` or OBJ-AUD; share/revoke `audits.manage`; item kinds per DA-07 (sharing evidence includes its files); revoke refused (422 `rule_refused`, reason `AUD-FROZEN`) when the row is frozen (rev P3). A share after the population freeze → 4E:`audit.share.late` (D-K41). The first share to an engagement notifies all tenant admins (rev P4, P4-A2-23) |
 | C-M08-06 | `POST /audits/:id/populations/freeze` | | Audit (shared set becomes immutable; later shares need reason) | `audits.manage` |
 | C-M08-07 | `POST /audits/:id/advance`; `POST /audits/:id/complete` | reason ≥10 when open items | Audit | `audits.manage`; complete refused with Drafted findings or open IRs; ends all auditor access |
-| C-M08-08 | `GET/POST /audits/:id/pbc`; `POST /audits/:id/pbc/:pid/status`; `POST /audits/:id/pbc/:pid/evidence` | item, ownerId / status / evidenceId | PbcRequest | read `audits.read` or OBJ-AUD; write `audits.manage`; linking evidence auto-shares it |
-| C-M08-09 | `GET/POST /audits/:id/information-requests`; `POST .../:rid/respond`; `POST .../:rid/close` | text ≥5 / response / — | InformationRequest | raise, close: `audits.engage` + OBJ-AUD; respond `audits.manage` |
-| C-M08-10 | `GET/POST /audits/:id/tests`; `PATCH /audits/:id/tests/:tid` | controlId (must be shared), result, note | AuditTest | `audits.engage` + OBJ-AUD (auditor records), `audits.read` |
+| C-M08-08 | `GET/POST /audits/:id/pbc`; `POST /audits/:id/pbc/:pid/status`; `POST /audits/:id/pbc/:pid/evidence` | item, ownerId / status / evidenceId | PbcRequest | read `audits.read` or OBJ-AUD; write `audits.manage`; linking evidence auto-shares it, under the same rules as C-M08-05 (first-share notice; after the freeze the link waits for 4E:`audit.share.late`) (rev P4) |
+| C-M08-09 | `GET/POST /audits/:id/information-requests`; `POST .../:rid/respond`; `POST .../:rid/close` | text ≥5 / response / — | InformationRequest | read (GET): `audits.read` + OBJ-T for members, or `audits.engage` + OBJ-AUD for the auditor; raise (POST), close: `audits.engage` + OBJ-AUD; respond: `audits.manage` + OBJ-T (rev P4, P4-A2-20) |
+| C-M08-10 | `GET/POST /audits/:id/tests`; `PATCH /audits/:id/tests/:tid` | controlId (must be shared), result, note | AuditTest | read (GET): `audits.read` + OBJ-T, or `audits.engage` + OBJ-AUD; write (POST, PATCH): `audits.engage` + OBJ-AUD only (the auditor records tests); `audits.read` alone never writes (rev P4, P4-A2-20) |
 | C-M08-11 | `GET/POST /audits/:id/findings`; `POST .../:fid/accept`; `POST .../:fid/decline` | title ≥10, severity / issue fields / reason ≥10 | Finding (+ Issue) | draft: `audits.engage` + OBJ-AUD; accept/decline: `audits.manage` |
 | C-M08-12 | `POST /audits/:id/report` | | export job | `audits.manage` or `audits.engage` + OBJ-AUD |
 | C-M08-13 | `GET /audits/:id/snapshots/:sid/link` | | download token (C-26) | OBJ-AUD (snapshot shared) or `audits.read`; audited (F-EV-03) (rev P3) |
@@ -343,12 +347,12 @@ Shapes: **QuestionnaireTemplate** `STD, name, version, questions[]`; **TemplateQ
 | ID | Endpoint | Request | Response | Authorisation |
 |---|---|---|---|---|
 | C-M10-01 | `GET /questionnaires` [status, direction]; `GET /questionnaires/:id` | | Questionnaire[] | `questionnaires.read` |
-| C-M10-02 | `POST /questionnaires` (import: fileId or questions[]) | name, dueAt, questions | Questionnaire | `questionnaires.write` |
+| C-M10-02 | `POST /questionnaires` (import: fileId or questions[]) | name, dueAt, questions | Questionnaire | `questionnaires.write`; `fileId` must be clean (D-70a, 409 `file_not_scanned`) (rev P4) |
 | C-M10-03 | `GET /questionnaires/:id/responses`; `PATCH /questionnaires/:id/responses/:rid` | answer, libraryAnswerId | QuestionResponse | `questionnaires.write` |
 | C-M10-04 | `POST /questionnaires/:id/autofill` | | suggestions from verified library (and AI if on) | `questionnaires.write`; AI only if `ai_tenant_settings.enabled` |
 | C-M10-05 | `POST /questionnaires/:id/send` | reason | approval | `questionnaires.write`; all answered; 4E:`q.send` |
 | C-M10-06 | `GET/POST /questionnaires/answers`; `PATCH /questionnaires/answers/:id`; `POST /questionnaires/answers/:id/verify` | question, answer | AnswerLibraryEntry | read `questionnaires.read`; write `questionnaires.write`; verify `answers.verify`, SOD ≠ author, any editor |
-| C-M10-07 | `GET/POST /questionnaires/kb-docs`; `POST /questionnaires/kb-docs/:id/link`; `/kb-docs/:id/delete` | fileId, name | KbDocument | `questionnaires.read` / `questionnaires.write` |
+| C-M10-07 | `GET/POST /questionnaires/kb-docs`; `POST /questionnaires/kb-docs/:id/link`; `/kb-docs/:id/delete` | fileId, name | KbDocument | `questionnaires.read` / `questionnaires.write`; indexing reads the file only when clean (D-70a) (rev P4) |
 | C-M10-08 | `GET/POST/PATCH /questionnaires/templates` | | QuestionnaireTemplate | `questionnaires.write` (templates used by M09) |
 
 ### 2.12 M11 Trust Center (tenant side)
@@ -427,9 +431,9 @@ Shapes: **Contract** `STD, counterparty, kind, fileId, effectiveAt, endsAt, owne
 | ID | Endpoint | Request | Response | Authorisation |
 |---|---|---|---|---|
 | C-M15-01 | `GET /commitments`; `GET /commitments/contracts` | | Commitment[], Contract[] | `commitments.read` |
-| C-M15-02 | `POST /commitments/contracts` (import fileId) ; `POST /commitments` | | Contract / Commitment | `commitments.manage` |
+| C-M15-02 | `POST /commitments/contracts` (import fileId) ; `POST /commitments` | | Contract / Commitment | `commitments.manage`; the import parses the file only when clean (D-70a, 409 `file_not_scanned`) (rev P4) |
 | C-M15-03 | `POST /commitments/:id/review` | note ≥10 | Commitment | `commitments.manage`; SOD ≠ importer |
-| C-M15-04 | `POST /commitments/analysis` | contractId | job id; result clauses[] | `commitments.manage`; AI only if enabled |
+| C-M15-04 | `POST /commitments/analysis` | contractId | job id; result clauses[] | `commitments.manage`; AI only if enabled; the contract file must be clean (D-70a) (rev P4) |
 | C-M15-05 | `GET /commitments/incidents`; `POST /commitments/incidents`; `POST /commitments/incidents/:id/close`; `POST /commitments/incidents/:id/links` | summary / outcome ≥10 / issueId | Incident | `commitments.manage`; several concurrent incidents allowed |
 
 ### 2.17 M16 Reports
@@ -515,10 +519,29 @@ Shapes: **Approval** `id, ref, kind, module, subject {type, id, ref}, requesterI
 
 | ID | Endpoint | Request | Response | Authorisation |
 |---|---|---|---|---|
-| C-M23-01 | `POST /files/uploads` | parentType, parentId, name, size, mime, sha256 | {fileId, uploadUrl (quarantine), expiresAt} | write permission on the parent; size ≤ tenant limit ≤ platform ceiling; type allow-list |
+| C-M23-01 | `POST /files/uploads` | parentType, parentId, name, size, mime, sha256 | {fileId, uploadUrl (quarantine), expiresAt} | the permission and object rule of the parent type in table C-M23-P below (deny by default: a parent type not in the table is 400 `invalid_field`); `parentId` must exist in the tenant and pass the object rule, else 404; size ≤ the parent type's limit ≤ tenant limit ≤ platform ceiling; type allow-list per parent type (rev P4, P4-A2-18) |
 | C-M23-02 | `GET /files/:id` | | file_object metadata incl. scanState | read permission on parent; OBJ-AUD (parent evidence shared) for auditor; OBJ-VEN for vendor. Used by upload progress and file panels (§8) (rev P3) |
 | C-M23-03 | `POST /files/:id/download-token` | purpose | download token for `files.<domain>/d/<token>` (5 min; single use for exports; 2F F-U-06) | read permission on parent; OBJ-AUD (parent evidence shared) for auditor; OBJ-VEN for vendor; scanState Clean; audited (F-EV-03). Module link routes (C-M04-07, C-M09-12, C-M16-03, …) call it (rev P3) |
 | C-M23-04 | `POST /files/uploads/:id/complete` | sha256 | file_object (scanState Pending) | uploader only (OBJ-SELF); the worker finalises after the signed scanner verdict (2F F-10.1) (rev P3) |
+
+C-M23-P Upload parent types (rev P4, closes P4-A2-18). J-AUTHZ generates one case per row and per role (allowed and refused), including OBJ-VEN and OBJ-OWN refusals.
+
+| parentType | Parent record | Permission | Object rule | Extra rule | Per-file limit (proposed) |
+|---|---|---|---|---|---|
+| `evidence_version` | evidence (new version) | `evidence.write`; API key `write:evidence` | OBJ-T; OBJ-KEY | evidence not `deletionPending`, not on legal hold | tenant upload limit |
+| `vendor_certificate` | vendor | `vendors.manage` | OBJ-T | vendor not Offboarded | tenant upload limit |
+| `vendor_logo` | vendor | `vendors.manage` | OBJ-T | image types only | 2 MB |
+| `vendor_answer` | vendor assessment question (member-vendor path, C-M09-13) | `vendors.respond` | OBJ-VEN | assessment in a state that accepts answers | tenant upload limit |
+| `vendor_portal_answer` | vendor assessment question (visitor path, C-PU-09) | vendor visitor session | own assessment only | 60 uploads/h | tenant upload limit |
+| `trust_document`, `trust_nda` | Trust Center document or NDA | `trust.manage` | OBJ-T | new file resets Public to OnRequest (C-M11-02) | tenant upload limit |
+| `kb_document` | questionnaire knowledge base | `questionnaires.write` | OBJ-T | | tenant upload limit |
+| `questionnaire_import` | new questionnaire | `questionnaires.write` | OBJ-T | parsed only when clean (D-70a) | 10 MB |
+| `risk_import` | new risk import | `risk.write` | OBJ-T | parsed only when clean (D-70a) | 10 MB |
+| `contract` | contract | `commitments.manage` | OBJ-T | parsed and analysed only when clean (D-70a) | tenant upload limit |
+| `dsar_identity`, `dsar_response` | data subject request | `dsar.handle` | OBJ-T | identity evidence is never shared with auditors | tenant upload limit |
+| `brand_logo` | tenant settings | `settings.manage` | OBJ-T | image types only | 2 MB |
+
+Auditors, viewers and API keys without the listed scope never upload (404 or 403 `scope_missing`). A file uploaded for one parent can be linked only to that parent (the `file_object.owner_table`/`owner_id` allow-list trigger, 2B B-E23.1).
 
 ### 2.25 M24 Help (control plane, tenant caller) and M25 Billing (tenant view)
 
@@ -582,7 +605,7 @@ Exceptions to "all writes need ELEV" (rev P3): no ELEV, but each needs the named
 | C-PL-01 | `GET /platform/tenants` [status, plan, cell]; `GET /platform/tenants/:tenantRef` | | {ref, customerRef, name, status, plan, cell, createdAt, memberCount, adminCount, openInvitations} (no member names) | `platform.tenants.read` (rev P3) |
 | C-PL-02 | `POST /platform/tenants` | customerRef, name, kind (trial, paid), region/cell, planId, billingEntityId, firstAdminEmail, modules[], reason ≥15 | approval or tenant | `platform.tenants.provision` + ELEV; 4E:`platform.tenant.create`, or no per-tenant approval when kind = trial and the request is inside the active trial policy (D-P14, OD-04) (rev P3) |
 | C-PL-03 | `POST /platform/tenants/:ref/suspend` / `reactivate` | reason ≥10 | approval | `platform.tenants.lifecycle` + ELEV; 4E kinds |
-| C-PL-04 | `POST /platform/tenants/:ref/deletion` ; `GET /platform/tenants/:ref/deletion` | reason, contract ref, exportDecision | approval; deletion status + certificate | `platform.tenants.delete` + ELEV; 4E:`platform.tenant.delete` (management_approver + ciso, D-58) |
+| C-PL-04 | `POST /platform/tenants/:ref/deletion` ; `GET /platform/tenants/:ref/deletion` | reason, contract ref (rev P4: `exportDecision` removed; the export is always produced, D-12b) | approval; deletion status, final-export status (state, counts, manifest hash, receipt or window expiry, notices; never the passphrase, link or bundle) + certificate | `platform.tenants.delete` + ELEV; 4E:`platform.tenant.delete` (management_approver + ciso, D-58); the final vote is refused (422 `OFF-EXPORT-PENDING`) until D-12b-7 holds; staff can retry a failed export generation through C-PL-24 but cannot reveal, download or confirm it (rev P4) |
 | C-PL-05 | `POST /platform/tenants/:ref/admin-invitation/resend` | firstAdminEmail? (change only through 4E), reason ≥15 | 202 (no link, no token) | `platform.tenants.provision` + ELEV; re-sends the first-admin invitation **by email to the invitee only**; never returns a link or token to staff (DA-09); allowed only while the tenant has no Active admin; changing the email → 4E:`platform.tenant.admin-reset` (D-P13, dual role) (rev P3) |
 | C-PL-06 | `PATCH /platform/tenants/:ref/entitlements` | planId, modules[], limits{} (uploadMaxBytes ≤ platform ceiling) | approval or tenant | plan assignment within the plan's limits: `platform.plans.assign` + ELEV; ceiling or limit changes: `platform.plans.manage` + ELEV, 4E:`platform.limits` (D-P05); downgrade below usage refused (rev P3) |
 | C-PL-07 | `GET /platform/tenants/:ref/usage` | period | meters | `platform.tenants.read` |
@@ -882,7 +905,7 @@ Path prefix `/api/v1` omitted. "Gap" column: **NE** = screen with no endpoint by
 | C-AC-15 profile, C-AC-16 data requests | GDPR controller duties | Yes (account page) |
 | C-SC-* SCIM, C-M18-06/07 API, C-09 / C-PL-28 provider hooks, C-10 worker | machine clients | No |
 | C-M02-08, C-M02-09 reference-content upgrade | ADR-011 D11-6, DA-15 | **Yes**: upgrade preview and request in Frameworks (rev P3) |
-| C-M01-20 offboarding, C-M01-21 restore requests, C-M01-22 BYOK | D-12, 2H H-RS-01, 2F F-K-21 | **Yes**: new Settings pages (owner to confirm self-service, X2 open item 8) (rev P3) |
+| C-M01-20 offboarding, C-M01-23 to C-M01-26 final export (rev P4), C-M01-21 restore requests, C-M01-22 BYOK | D-12, 2H H-RS-01, 2F F-K-21 | **Yes**: new Settings pages (owner to confirm self-service, X2 open item 8) (rev P3) |
 | C-M14-14 DSAR reject | D-10 | Yes: Privacy module screens (rev P3) |
 | C-PL-27 trial policy, C-PL-29 tax rules | OD-04, 2I R-52 | **Yes**: new Admin Console pages (rev P3) |
 

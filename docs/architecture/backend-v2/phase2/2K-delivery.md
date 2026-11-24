@@ -14,6 +14,8 @@
 | K-M02 | **Built behind the existing API.** v2 replaces the store and the server modules module by module, behind `/api/v1`. The v0.2.x front end keeps working against v0.2.x until cutover. | "Nothing breaks" (owner). No live data (Q-01) removes migration risk. |
 | K-M03 | **People.** The two named people (R-A Management Approver, R-B CISO) approve every gate. AI-assisted engineering writes the code. An external penetration tester and an outsourced internal auditor are bought in. | Q-23; organisation policy requires human technical, security and management review before deployment. |
 | K-M04 | **Feature parity is a release criterion.** Each release names the Phase 1 screens it brings to v2. None is dropped without the owner's sign-off. Signed off so far: OD-05 drops the demo card form, S-AD-04, S-ST-42 and S-RK-32 (labelled "Dropped by owner (OD-05)" in the parity ledger); OD-05 keeps S-AS-02 and fixes S-RK-23; OD-06 approves the E-DR3 role changes. The parity ledger is a gate with owner sign-off (DU-10). (rev P3) | OQ-09 |
+| K-M06 | **Technical reviewer (rev P4, owner decision OD-12).** A contracted fractional senior engineer reviews the code of every release: design conformance, security-sensitive code (router, keys, authorisation), tests and migrations. Their sign-off is the "technical approver" in K-D09. They are independent of the code author (AI-assisted engineering) and of the two approvers. Closes P4-A3-18. |
+| K-M07 | **Budget and stop criteria (rev P4, owner decision OD-13).** Before V2-R0 starts, the owner records a budget ceiling (people, vendors, external review, pen test) and a target date per release. A re-plan after V2-R0 is mandatory, using the measured effort. Stop or re-plan triggers: (a) V2-R0 takes more than 2× its target; (b) the isolation suite F-IT or the KS-SNAP restore drill cannot be made green within the release; (c) projected spend exceeds 80% of the ceiling before V2-R3; (d) a Critical finding stays open for more than 30 days. A trigger leads to an owner decision: continue with a revised plan, reduce scope (V2-R4 and R5 can move after launch), or stop. Closes P4-A3-17 once the owner has recorded the figures. |
 
 ## K-2. Release plan
 
@@ -63,7 +65,7 @@ Sizes are relative (S, M, L). No calendar is committed: the owner gave no team o
 | K-D06 | Migrations run through the orchestrator (canary, then batches) in staging, with a rollback rehearsed. |
 | K-D07 | The parity screens named for the release pass, or each removal is signed off by the owner. |
 | K-D08 | Docs updated: CHANGELOG, CONTROLS.md, SOD_MATRIX.md, and an ADR for any new significant decision. |
-| K-D09 | Human sign-off: technical, security and management approvers (organisation policy). The production gate needs a manual approval. |
+| K-D09 | Human sign-off: technical (the contracted reviewer, K-M06), security (R-B CISO) and management (R-A Management Approver) approvers (organisation policy). (rev P4) The production gate needs a manual approval. |
 
 ## K-5. Deliverables, decisions required, open risks
 

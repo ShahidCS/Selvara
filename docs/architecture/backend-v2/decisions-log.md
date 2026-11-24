@@ -21,6 +21,15 @@ Every significant decision gets an ADR with its context, at least two options co
 
 Owner decisions OD-01 to OD-11, OQ-14 and OQ-15 are recorded in [phase2/00-phase2-summary.md](phase2/00-phase2-summary.md), section 8. The ADR statuses stay Proposed until the formal change after the Phase 3 revisions (DU-37). The binding design spine is [phase2/00-spine.md](phase2/00-spine.md) (spine v2). (rev P3)
 
+## Owner decisions after Phase 4 (2026-11-24) (rev P4)
+
+| ID | Decision | Closes |
+|---|---|---|
+| OD-12 | Contract a fractional senior engineer as the technical code reviewer at every release gate (2K K-M06). | P4-A3-18, once appointed |
+| OD-13 | The owner sets a budget ceiling and per-release target dates before V2-R0, with a mandatory re-plan after V2-R0 and the stop triggers in 2K K-M07. | P4-A3-17, once the figures are recorded |
+| OD-14 | The owner verifies the vendor facts (VC list) against the vendors' own documentation before the Phase 5 gate. The design session cannot reach the vendor sites. | P4-A1-08, together with the DR fallbacks in 2H and ADR-004 |
+| OD-15 | The C1-01 / R-02 isolation acceptance is re-confirmed, with added hardening ISO-HARD (2F, ADR-002). | P4-A1-01 (accepted residual) |
+
 ## Earlier decisions (from `BACKEND_FOUNDATION.md` and `PRODUCTION_PROGRAMME.md`)
 
 | ID | Decision | Status in v2 |
