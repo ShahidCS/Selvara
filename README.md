@@ -67,7 +67,7 @@ It is designed with **regulated sectors in mind** (banks and financial instituti
 
 ## Screenshots
 
-All screenshots are from the demonstration build of v0.3.1 (24 Nov 2026) and use synthetic data.
+All screenshots use synthetic data (v0.3.1, 24 Nov 2026). The workspace screens are from the demonstration build. The sign-in, account security and company admin screens are from the **production build** (`API_MODE=http`: real server API, no demo accounts), run with synthetic people.
 
 ### Workspace
 
@@ -77,19 +77,20 @@ All screenshots are from the demonstration build of v0.3.1 (24 Nov 2026) and use
 | ![Audits](docs/screenshots/04-audit-engagement.png) **Audits:** engagements by stage, open findings and outstanding evidence requests | ![Trust Center](docs/screenshots/05-trust-center.png) **Trust Center:** what visitors can see, resources on request or public, access requests |
 | ![Policies](docs/screenshots/06-policies.png) **Policies:** library and review workflow with versions, owners and review dates | ![AI governance](docs/screenshots/15-ai-governance.png) **AI governance:** model inventory with EU AI Act classification, guardrails and impact assessments |
 | ![Settings and integrations](docs/screenshots/11-settings-integrations.png) **Settings:** one place for company settings, connections, security and your account | ![Help centre](docs/screenshots/12-help-centre.png) **Help centre:** searchable guides, and questions to Selvara support |
+| ![Vendor portal](docs/screenshots/09-vendor-portal.png) **External vendor assessment portal:** standalone, verified entry with email, code and a second factor | ![Dark theme](docs/screenshots/08-overview-dark.png) **Dark theme** (light, dark and auto are supported) |
 
-### Sign-in and account security
-
-| | |
-|---|---|
-| ![Authenticator set-up](docs/screenshots/10-authenticator-setup.png) **Authenticator set-up:** scan the QR code or enter the key manually; the QR is drawn in the browser | ![Vendor portal](docs/screenshots/09-vendor-portal.png) **External vendor assessment portal:** standalone, verified entry with email, code and a second factor |
-
-### Admin Console (platform operators)
+### Sign-in and account security (production build)
 
 | | |
 |---|---|
-| ![MFA resets](docs/screenshots/07-admin-mfa-four-eyes.png) **Four-eyes MFA resets:** read-only until the approver has an elevated session; the requester can never approve | ![Exchange rates](docs/screenshots/13-exchange-rates.png) **Exchange Rates & Tax:** live rates per currency with *Last updated*, held changes need a decision |
-| ![Platform security](docs/screenshots/14-platform-security.png) **Platform Security:** blocked sign-in addresses, address reputation and the password baseline, each rule marked in place or planned | ![Dark theme](docs/screenshots/08-overview-dark.png) **Dark theme** (light, dark and auto are supported) |
+| ![Sign in](docs/screenshots/16-sign-in.png) **Sign in:** work email and password, generic errors, request to join; no demo accounts in production | ![Authenticator set-up](docs/screenshots/10-authenticator-setup.png) **First sign-in:** add an authenticator app by scanning the QR code or entering the key; the QR is drawn in the browser |
+| ![Your account](docs/screenshots/17-your-account.png) **Your account:** sign-in history, two authenticator apps (replace or remove), recovery codes, active sessions and password | |
+
+### Company admin (production build)
+
+| | |
+|---|---|
+| ![Team and Rules](docs/screenshots/18-team-rules.png) **Team & Rules:** members and roles, requests to join with approve or reject, invitations by email, sign-in protection | ![Approvals waiting](docs/screenshots/19-team-approvals.png) **Approvals waiting:** granting admin or owner needs a second admin; nobody approves their own request or one about themselves |
 
 ## Key features
 
