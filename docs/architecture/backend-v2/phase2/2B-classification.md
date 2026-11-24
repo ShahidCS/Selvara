@@ -7,6 +7,7 @@
 | Companion of | [2B-data-model.md](2B-data-model.md) (table ids B-E.., retention classes B-RC.., encryption decision B-D18, search rule B-D21) |
 | Related | ADR-003 (keys, workstream F/G), ADR-008, ADR-011, 2F F-D-12 (encryption classes), 2G G-5 (retention schedule) |
 | Phase 3 | Encryption codes are now only **E0, E1, E2** (2F F-D-12; design-authority ruling DA-01); 2B's former codes (No, T, S, F, H, R, CP) are retired. Narrative free text moved to E1 (DA-01). Control-plane fields are E1 under the platform KEK (DA-05). Wrapped keys live only in `ks` (DA-04). Auditor-shared kinds follow DA-07. Retention class names are the B-RC names, used unchanged by 2G G-5. Rows changed in Phase 3 end with "(rev P3)". |
+| Phase 4 | Closes P4-A3-01 (the Supabase `auth` schema of `cp` is classified in §3.1 with class, encryption class, lawful basis, retention class and deletion method), P4-A3-08 (`control.tenant_export_jobs` for the final export FINAL-EXPORT), P4-A3-04 (E0 personal fields of a subject nulled on erasure and at the end of retention; `member_display` split from `platform_identity`) and P4-A3-03 (billing anchor). Rows changed in Phase 4 end with "(rev P4)". |
 
 ## 1. Scheme
 
@@ -45,8 +46,9 @@ Precedence: SC > PD > C > I > P. "C (may hold PD)" marks free text that is class
 | B-C24 | The retention class (RC) is the row's default from 2B-data-model unless the field row says otherwise (column-level purge, B-RC30 to B-RC35). (rev P3) |
 | B-C25 | Free text that accepts user input (descriptions, notes, reasons, comments, rationales, answers, bodies, scope text, encrypted JSON documents) is **E1**. Titles and names used for search and sorting stay **E0**. Full-text search in SQL covers E0 columns only; filtering on E1 text is decrypt-and-filter within the tenant's own request over bounded pages, with no plaintext index (2B B-D21, 2F F-D-12). Direct identifiers of natural persons are **E2**. The input form still runs the PII detector (`lib/pii.ts` today) and warns. (rev P3, DA-01) |
 | B-C26 | Nothing classed PD or SC may appear in: `ops` messages, `audit_log_entry.detail` (E0), `notification.title/body`, application logs, error messages, webhook payloads, AI prompts with masking on (workstream F/G check every store, discovery §6 condition 3). Reasons and before/after summaries of an audit entry go to `details_enc` (E1). (rev P3) |
-| B-C27 | The registry of this file is machine-readable in the repository (one entry per column: class, encryption class, retention class); CI fails on a column with no entry (B-V11), on an encryption code other than E0, E1 or E2, or on a retention class not defined in 2B §7.1 (B-RC01 to B-RC28, B-RC30 to B-RC35). (rev P3) |
+| B-C27 | The registry of this file is machine-readable in the repository (one entry per column: class, encryption class, retention class); CI fails on a column with no entry (B-V11), on an encryption code other than E0, E1 or E2, or on a retention class not defined in 2B §7.1 (B-RC01 to B-RC38). The registry covers the Supabase-managed `auth` schema of `cp` (§3.1) as well as Selvara's own schemas: CI reads `auth` columns from the catalog and fails on one with no entry, so a Supabase upgrade that adds a personal-data column is caught (P4-A3-01). (rev P4) |
 | B-C28 | Wrapped key material is never stored in a tenant schema, `ref`, `ops` or `control`; only key ids and versions (DA-04, B-P24). (rev P3) |
+| B-C29 | **Data minimisation in Supabase Auth (P4-A3-01).** Selvara writes nothing into `auth.users.raw_user_meta_data` or `raw_app_meta_data` and adds no custom JWT claims: the only identifier Selvara relies on is the Auth user id. Display name, tenant, role and membership data live only in `control` (E1 where personal). SAML attribute mapping is limited to the email (the NameID) so `auth.identities.identity_data` holds no further claims *(verify that Supabase SAML attribute mapping can be restricted this way, A-41)*; phone sign-in and phone MFA are disabled, so `auth.users.phone` stays null. A CI check on staging and a weekly production probe count `auth.users` rows whose metadata holds keys other than those Supabase writes itself (`provider`, `providers`, `sub`, `email`, `email_verified`, `phone_verified` *(verify the exact list)*) and alert on any. Fallback if Supabase writes further claims that cannot be switched off: the probe lists them, they are classed here as PD E0 under `platform_identity`, and they leave with the user at deletion (§3.1). (rev P4) |
 
 ## 2. Tenant schema, per entity
 
@@ -61,10 +63,10 @@ Column: **Field** → **Class** · **Enc** · **RC** (blank = row default) · no
 | `trusted_network` (offboarding) | `cidr` | C | E0 | | office network ranges; not personal unless a single home address (warning in UI) |
 | | `label_enc` | C (may hold PD) | E1 | | (rev P3) |
 | `tenant_role`, `tenant_role_permission` (offboarding) | `name`, `description`, `permission_code`, `scope` | I | E0 | | |
-| `member_profile` (membership end) | `display_name_enc` | PD | E2 | `platform_identity` | |
-| | `email_enc` | PD | E2 | `platform_identity` | |
-| | `email_bidx` | PD | E0 (hash) | | |
-| | `job_title`, `department` | PD | E0 | | low sensitivity, used for filters |
+| `member_profile` (membership end) | `display_name_enc` | PD | E2 | `member_display` (B-RC29) | kept for audit attribution as "Former member" until the class ends or an upheld erasure (rev P4) |
+| | `email_enc` | PD | E2 | column purge B-RC38: 30 days after membership end | not needed for attribution once the membership has ended (rev P4) |
+| | `email_bidx` | PD | E0 (hash) | column purge B-RC38 | (rev P4) |
+| | `job_title`, `department` | PD | E0 | column purge B-RC38: 30 days after membership end; nulled at once on erasure (B-DL06) | low sensitivity, used for filters while the membership is live; a "Former member" row holds no E0 personal field (P4-A3-04) (rev P4) |
 | | `subject_key_id` | I | E0 | | id of the key in `ks.subject_key`; key shredded at the end of `platform_identity` or on upheld erasure (rev P3) |
 | `ref_counter` | all | I | E0 | | |
 
@@ -236,7 +238,7 @@ Column: **Field** → **Class** · **Enc** · **RC** (blank = row default) · no
 | Entity (anchor) | Field | Class | Enc | RC | Note |
 |---|---|---|---|---|---|
 | `person` (left) | `display_name_enc`, `email_enc` | PD | E2 | | members, workforce and contractors |
-| | `job_title`, `department`, `manager_person_id`, `start_on`, `end_on`, `employment_status` | PD | E0 | | employment data; HR-adjacent, minimised (no salary, no reasons for leaving) |
+| | `job_title`, `department`, `manager_person_id`, `start_on`, `end_on`, `employment_status` | PD | E0 | | employment data; HR-adjacent, minimised (no salary, no reasons for leaving). On upheld erasure, and when the row's `access` class ends, `job_title`, `department`, `manager_person_id`, `start_on` and `end_on` are nulled and `employment_status` is set to `left` (B-DL06), so the pseudonymous row cannot re-identify the person (P4-A3-04) (rev P4) |
 | | `device_posture_enc` | PD | E1 | | device posture summary from integrations, fed by D-69 (X1-24) (rev P3) |
 | `contractor` | `company_name`, `contract_end_on` | PD | E0 | | the contractor's identity is in `person` (E2) |
 | `system` | `name`, `is_privileged`, `data_classification` | C | E0 | | |
@@ -302,7 +304,7 @@ Column: **Field** → **Class** · **Enc** · **RC** (blank = row default) · no
 | | `last_error_enc`, `disconnected_reason_enc` | C | E1 | | providers' error text, sanitised of tokens (rev P3) |
 | `integration_sync_run` | counts, `error` | I | E0 | `ops_medium` (B-RC28) | (rev P3) |
 | `integration_account` (disconnect) | `display_name_enc`, `email_enc` | PD | E2 | | employee data from identity providers (F1-08) |
-| | `mfa_enabled`, `is_admin`, `last_login_at`, `status` | PD | E0 | | |
+| | `mfa_enabled`, `is_admin`, `last_login_at`, `status` | PD | E0 | | the whole row is hard-deleted on upheld erasure of the matched person (B-DL06) and on disconnect (P4-A3-04) (rev P4) |
 | `api_key` | `prefix`, `key_id`, `scopes`, `ip_allowlist`, `pepper_version` | C | E0 | | (rev P3) |
 | | `key_hmac` | C | E0 (hash) | | |
 | `webhook` | `url` | C | E0 | | |
@@ -351,10 +353,10 @@ In `control`, **E1 means the platform DEK (F-K-31) wrapped by the platform KEK (
 |---|---|---|---|---|---|
 | `control.tenants` | `name`, `customer_ref`, `region`, `status` | C | E0 | `financial` after closure | `tkey` is I and random (S1) |
 | | `route_mac` | I | E0 (hash) | | routing integrity (X2-28) (rev P3) |
-| `control.identities` | `email_enc`, `display_name_enc` | PD | E1 | `platform_identity` | platform KEK (DA-05) (rev P3) |
+| `control.identities` | `email_enc`, `display_name_enc` | PD | E1 | `platform_identity` | platform KEK (DA-05) (rev P3). The same email is also held in plaintext by Supabase Auth in `auth.users` and `auth.identities` (E0, §3.1); erasure and offboarding reach both stores (rev P4) |
 | | `email_bidx` | PD | E0 (hash) | | HMAC blind index for sign-in lookup (F-K-32) (rev P3) |
 | | `home_tenant_id`, `tour_prefs` | I | E0 | | (rev P3) |
-| `control.memberships` | all (incl. `source`, `expires_at`, `external`) | PD | E0 | `platform_identity` | (rev P3) |
+| `control.memberships` | all (incl. `source`, `expires_at`, `external`) | PD | E0 | `platform_identity` (B-RC19): an ended membership row is hard-deleted 30 days after `ended_at`; attribution after that comes from the tenant's `member_profile` (`member_display`) and the audit logs (P4-A3-04) | (rev P4) |
 | `control.invitations` | `email_enc` | PD | E1 | `transient` | (rev P3) |
 | | `token_hash` | I | E0 (hash) | | |
 | `control.join_requests` | `email_enc`, `display_name_enc` | PD | E1 | `rejected_request` if rejected, else `transient` after decision | (rev P3) |
@@ -364,7 +366,7 @@ In `control`, **E1 means the platform DEK (F-K-31) wrapped by the platform KEK (
 | `control.account_notices` | `body_enc` | PD | E1 | `sign_in_record` | (rev P3) |
 | `control.recovery_codes`, `control.passkeys` | hashes, public keys | C | E0 (hash); E0 | `account_credential` (B-RC22) | (rev P3) |
 | `control.subscriptions` | `contact_enc`, `address_enc` | PD | E1 | `financial` | billing contact (F1-07: no card data ever) (rev P3) |
-| `control.invoices`, `invoice_lines`, `ledger_entries`, `credit_notes`, `payments` (2I) | amounts, tax, provider refs | C | E0 | `financial` | |
+| `control.invoices`, `invoice_lines`, `ledger_entries`, `credit_notes`, `payments` (2I) | amounts, tax, provider refs | C | E0 | `financial` | anchor: the record's creation date (invoice and credit-note issue date, ledger or payment entry date), OQ-25 (rev P4) |
 | `control.invoices` | `rendered_snapshot_enc` (buyer name, address, tax ids) | PD (sole traders) | E1 | `financial` | 2I I-6.3.2 (rev P3) |
 | `control.provider_events` | `payload_enc` | PD (billing contact) | E1 | `financial` | (rev P3) |
 | `control.billing_entities`, `price_lists`, `invoice_series`, `plan_change_requests`, `fx_rates`, `tax_rules`, `entitlement_overrides` | all | C | E0 | `financial` | Selvara's own commercial data (rev P3) |
@@ -396,16 +398,57 @@ In `control`, **E1 means the platform DEK (F-K-31) wrapped by the platform KEK (
 | `control.idempotency_records` | `request_sha256` | I | E0 (hash) | `transient` (24 h) | (rev P3) |
 | | `response_body_enc` | as the response | E1 | `transient` (24 h) | control-plane routes only (rev P3) |
 | `control.deletion_certificates` | all | C | E0 | `accountability` (B-RC24) | evidence of erasure; holds no deleted content (rev P3) |
+| `control.tenant_export_jobs` (FINAL-EXPORT, 2D D-12b) | `tenant_id`, `state`, `generation`, `requested_by`, `recipient_identity_id`, `manifest_sha256`, `manifest_signature`, `table_counts` (per-table row counts), `file_count`, `bundle_bytes`, `schema_version`, `generated_at`, `window_ends_at`, `link_expires_at`, `downloaded_at`, `receipt_outcome`, `receipt_confirmed_by`, `receipt_confirmed_at` | PD (pseudonymous ids) | E0 | `accountability` (B-RC24) | evidence that the return obligation was met before deletion; holds no tenant content and no key (rev P4) |
+| | `passphrase_enc` | C (secret) | E1 | nulled at reveal, at supersession by a new generation, or at window end, whichever is first | one-time bundle passphrase held only until the recipient reveals it once (2C C-M01-23); never logged, never returned twice (rev P4) |
+| | `link_token_hash`, `download_token_hash` | I | E0 (hash) | nulled at use or expiry | single-use email link (7 days) and download token (rev P4) |
 | `control.ref_content_releases` | all | I | E0 | `platform_lifetime` | (rev P3) |
 | `ref.*` | all | P or I | E0 | not subject to retention (no PD, B-RF12) | (rev P3) |
 | `ops.*` | job ids, `tkey`, counters | I | E0 | `transient` or `operational` (2B B-O01 to B-O06) | no PD, no free text (B-P04) (rev P3) |
 | `ks.*` | wrapped keys, key ids | I | wrapped key material (outside the E-classes) | deleted per 2B B-K01 to B-K04 | 2F F-D-05, ADR-003; `ks` is not part of any tenant or control export (rev P3) |
 
+### 3.1 Supabase Auth schema `auth` in `cp` (rev P4, closes P4-A3-01)
+
+Supabase Auth runs only in `cp` (2A A-D-02) and is the credential verifier during sign-in only (2E E-10); Selvara's own session is `control.sessions`. The `auth` schema is **Supabase-managed**: Selvara cannot add field-level encryption to it. Every field below is therefore **E0 at the application layer**, protected only by the provider's storage encryption at rest (Supabase disk encryption *(verify scope and key ownership; owner verifies vendor facts before the gate)*). This is stated in the RoPA (2G G-2.1), the DPA security annex (G-DPA-06) and the DPIA (G-DR-16). The table names and columns follow the Supabase Auth schema as documented *(verify against the deployed Auth version; the B-C27 catalog check catches any column not listed)*.
+
+Lawful basis references 2G G-2.1: **RC-01** = G-RC-01 account and identity management (Art. 6(1)(b) for the contracting customer's account holder; Art. 6(1)(f) for the customer's staff users); **RC-02** = G-RC-02 security logging and abuse prevention (Art. 6(1)(f); 6(1)(c) where a law requires security records *(verify)*); **RC-07** = G-RC-07 trials (Art. 6(1)(b) / 6(1)(f)). All DRAFT pending counsel.
+
+Deletion methods: **ADM** = Auth admin API user delete (`auth.admin.deleteUser`, hard delete, not soft delete *(verify that a hard delete cascades to `identities`, `sessions`, `refresh_tokens`, `mfa_factors`, `mfa_challenges`, `mfa_amr_claims` and `one_time_tokens`; fallback: the purge job deletes the dependent rows by `user_id` in the same run and verifies zero remain)*), run by the identity worker (2D D-79) from `console`-owned code through a service credential held in the secrets manager, never by the `app` deployment. **APJ** = the `auth` purge job (2D D-80a): a `SECURITY DEFINER` function owned by a dedicated `auth_purger` role that may delete only the listed `auth` tables, batch ≤1,000 rows, writes one `control.platform_audit_log` entry per table per run (counts only). Fallback if Supabase does not allow a custom role to delete in `auth` *(verify)*: the job runs with the `cp` service role from the same `console`-owned worker, under the same function body and audit entry.
+
+| Table | Field | Class | Enc | RC | Lawful basis | Deletion method | Note |
+|---|---|---|---|---|---|---|---|
+| `auth.users` | `id` | PD (pseudonymous) | E0 | `platform_identity` (B-RC19) | RC-01 | ADM | the only identifier Selvara relies on (B-C29); kept as the pseudonymous id in `control.identities` and audit logs after the Auth row is deleted |
+| | `email`, `email_confirmed_at`, `email_change`, `email_change_*` | PD | E0 (plaintext at rest, provider disk encryption only) | `platform_identity` | RC-01 | ADM | duplicates `control.identities.email_enc` (E1); the plaintext copy here is why 2G G-DC-01 no longer claims E1 for every store |
+| | `phone`, `phone_confirmed_at`, `phone_change*` | PD | E0 | `platform_identity` | RC-01 | ADM | always null: phone sign-in and phone MFA disabled (B-C29); the probe alerts on a non-null value |
+| | `encrypted_password` | C (credential) | E0 (hash; bcrypt by Supabase *(verify)*) | `platform_identity` | RC-01 | ADM | a one-way hash, not encryption, despite the column name |
+| | `last_sign_in_at`, `created_at`, `updated_at`, `confirmed_at`, `invited_at`, `banned_until` | PD | E0 | `platform_identity` | RC-01; RC-02 for `banned_until` | ADM | |
+| | `confirmation_token`, `recovery_token`, `reauthentication_token`, `email_change_token_*` | C (secret) | E0 (stored as issued by Supabase *(verify whether hashed)*) | `auth_transient` (B-RC37) | RC-01 | cleared by Supabase on use *(verify)*; APJ clears any value older than 24 h; ADM | Selvara issues its own invitation and reset codes (2E), so these should stay empty; the probe alerts on a value older than 24 h |
+| | `raw_app_meta_data`, `raw_user_meta_data` | PD | E0 | `platform_identity` | RC-01 | ADM | minimised by B-C29: provider keys written by Supabase only; no display name, tenant, role or custom claim |
+| | `is_sso_user`, `is_anonymous`, `aal`-related flags | I | E0 | `platform_identity` | RC-01 | ADM | anonymous sign-in disabled |
+| `auth.identities` | `provider`, `provider_id`, `user_id`, `last_sign_in_at`, timestamps | PD | E0 | `platform_identity` (while the account exists) | RC-01 | ADM (cascade) | one row per sign-in method (email, SAML connection) |
+| | `identity_data` (email, `sub`, SAML NameID and any mapped attribute) | PD | E0 | `platform_identity` | RC-01 | ADM (cascade) | attribute mapping limited to the email (B-C29); any extra IdP claim is a minimisation defect caught by the probe |
+| `auth.sessions` | `user_id`, `created_at`, `updated_at`, `refreshed_at`, `not_after`, `aal`, `factor_id` | PD | E0 | `auth_session` (B-RC36): until expiry or sign-out + 30 days at most | RC-02 | Supabase sign-out on every sign-in finish (2E E-10) removes the session *(verify)*; APJ deletes any row 30 days after `not_after` or creation, whichever is first; ADM (cascade) | Selvara's own session is `control.sessions` (`sign_in_record`) |
+| | `ip`, `user_agent` | PD | E0 | `auth_session` | RC-02 | as above | IP in plaintext, unlike `control.sessions.ip_enc` (E1); kept short for that reason |
+| `auth.refresh_tokens` | `token`, `session_id`, `user_id`, `revoked`, `parent`, timestamps | C (secret) and PD | E0 | `auth_session` | RC-02 | revoked at sign-out; APJ deletes revoked or expired rows after 30 days at most; ADM (cascade) | |
+| `auth.mfa_factors` | `user_id`, `factor_type`, `status`, `friendly_name`, `last_challenged_at`, timestamps | PD | E0 | `account_credential` (B-RC22): until the factor is removed or the identity is deleted | RC-01 | factor removal through the Auth API (C-AC-11); ADM (cascade) | `friendly_name` is set to a fixed non-personal value by Selvara |
+| | `secret` (TOTP seed) | C (credential secret) | E0 at the application layer (Supabase-managed *(verify whether Supabase encrypts it)*) | `account_credential` | RC-01 | as above | the most sensitive Auth field; R-B tracks it in G-DR-16 |
+| `auth.mfa_challenges` | `factor_id`, `created_at`, `verified_at`, `otp_code` (if present) | PD | E0 | `sign_in_record` (B-RC21): 90 days | RC-02 | APJ; ADM (cascade) | |
+| | `ip_address` | PD | E0 | `sign_in_record`: 90 days | RC-02 | APJ | plaintext IP |
+| `auth.mfa_amr_claims` | `session_id`, `authentication_method`, timestamps | PD | E0 | `auth_session` | RC-02 | with the session (cascade); APJ | |
+| `auth.flow_state` | `user_id`, `auth_code`, `code_challenge`, `provider_type`, `provider_access_token`, `provider_refresh_token`, `authentication_method`, timestamps | C (secret) and PD | E0 | `auth_transient` (B-RC37): 24 h | RC-01 | APJ deletes rows older than 24 h; ADM (cascade) | OIDC is Selvara's own RP (2E E-10a), so provider tokens should never be present; the probe alerts on a non-null provider token |
+| `auth.saml_relay_states` | `sso_provider_id`, `request_id`, `for_email`, `redirect_to`, `flow_state_id`, timestamps | PD (`for_email`) | E0 | `auth_transient`: 24 h | RC-01 | APJ | |
+| `auth.one_time_tokens` | `user_id`, `token_type`, `token_hash`, `relates_to` (email or phone) | PD; C (hash) | E0; E0 (hash) | `auth_transient`: until used or expired, 24 h at most | RC-01 | APJ; ADM (cascade) | |
+| `auth.audit_log_entries` | `payload` (actor id, actor username or email, action, log type, traits) | PD | E0 | `sign_in_record` (B-RC21): **90 days** (shorter if the owner sets it; never longer) | RC-02 | APJ deletes entries older than 90 days; on erasure the job also deletes the subject's entries by actor id and email at once, because the security record Selvara keeps is `control.platform_audit_log` (E1 IP) | Supabase's own audit trail; Selvara's security evidence does not depend on it. Fallback if the table cannot be pruned *(verify)*: disable Auth audit logging if the platform allows it, else record the residual retention in the RoPA and DPA |
+| | `ip_address` | PD | E0 | `sign_in_record`: 90 days | RC-02 | APJ | plaintext IP |
+| `auth.sso_providers`, `auth.sso_domains`, `auth.saml_providers` | IdP entity id, metadata XML or URL, attribute mapping, domains | C | E0 | `tenant_lifetime` (B-RC16) | RC-01 | removed through the Supabase management API when the SSO connection is removed or the tenant is offboarded (2D D-12a(7), 2G G-OFF-04) | no personal data unless an IdP certificate names a person (rare; C handling) |
+| `auth.instances`, `auth.schema_migrations` and other Supabase internals | all | I | E0 | not subject to retention (no PD) | — | — | |
+
+Erasure and offboarding route (G-SAR-06, G-OFF-04, 2D D-12a(7)): when the person's last membership ends, or on account deletion or an upheld erasure, the identity worker (D-79) calls ADM for the Auth user **at the same time** as `control.identities` is pseudonymised (G-RET-01), and APJ removes the subject's `auth.audit_log_entries` and `mfa_challenges` in the same run. A J test proves that an erased or offboarded identity leaves no `auth.*` row with a readable email or IP after the window (2J case to add; a follow-up for workstream J).
+
 ## 4. Coverage check
 
 | ID | Check | Result |
 |---|---|---|
-| B-C30 | Every table in 2B-data-model §6 (tenant, `control`, `ks`, `ops`, `ref`) appears in §2 or §3 above, or is covered by B-C20/B-C21 alone (`ref_counter`, link tables) | Done by hand for this draft; B-V11 automates it (rev P3) |
+| B-C30 | Every table in 2B-data-model §6 (tenant, `control`, `ks`, `ops`, `ref`) appears in §2 or §3 above, or is covered by B-C20/B-C21 alone (`ref_counter`, link tables) | Done by hand for this draft; B-V11 automates it (rev P3). The Supabase `auth` schema of `cp` is now covered (§3.1) and the generated registry includes it (B-C27) (rev P4) |
 | B-C31 | Every [PD] field in the Phase 1 inventory maps to an E2 or E1 column, a one-way value (B-C14), or a pseudonymous id (B-C21) | Owner names, emails, viewer lists, NDA signer names, requester emails, contractor names, IdP accounts, external report recipients, IPs, MFA-reset details: mapped (rev P3) |
 | B-C32 | No secret is stored in a readable form | API keys (E0 hash), webhook and integration secrets (E0 ref), tokens and codes (E0 hash), recovery codes (E0 hash), key material (only wrapped, only in `ks`) (rev P3) |
-| B-C33 | Every retention class used here is defined in 2B §7.1 and is the name 2G G-5 uses | `audit_log`, `evidence`, `risk`, `policy`, `assurance`, `issue`, `access`, `security_telemetry`, `transient`, `operational`, `privacy_case`, `privacy_register`, `external_contact`, `rejected_request`, `financial`, `tenant_lifetime`, `vendor`, `commitment`, `platform_identity`, `ai_governance`, `sign_in_record`, `account_credential`, `platform_lifetime`, `accountability`, `staff_record`, `support`, `ops_short`, `ops_medium` (rev P3) |
+| B-C33 | Every retention class used here is defined in 2B §7.1 and is the name 2G G-5 uses | `audit_log`, `evidence`, `risk`, `policy`, `assurance`, `issue`, `access`, `security_telemetry`, `transient`, `operational`, `privacy_case`, `privacy_register`, `external_contact`, `rejected_request`, `financial`, `tenant_lifetime`, `vendor`, `commitment`, `platform_identity`, `ai_governance`, `sign_in_record`, `account_credential`, `platform_lifetime`, `accountability`, `staff_record`, `support`, `ops_short`, `ops_medium` (rev P3); `member_display`, `auth_session`, `auth_transient` (rev P4) |
