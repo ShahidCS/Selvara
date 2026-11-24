@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Chip, DataTable, Empty, Icon, Page, Segmented, StatusChip, type DTColumn, Avatar } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { CUSTOM_BOUNDS, LOCKOUT, type LockoutPreset } from "@/lib/accountSecurity";
-import { apiMessage, LinkBox, RequestsTable, utcMin } from "@/components/kit/serverRequests";
+import { apiMessage, notSentText, RequestsTable, utcMin } from "@/components/kit/serverRequests";
 import { ASSIGNABLE_ROLES, isPrivilegedRole, ROLE_LABEL } from "@/lib/rules";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import * as svc from "@/services/team";
@@ -100,13 +100,13 @@ function Invitations() {
       const r = await svc.invite(email, role); bumpData(); const to = email.trim().toLowerCase(); setEmail("");
       if (r.pending) L.toast(`Request sent: a second admin approves inviting ${to} as ${roleName(role)} (Requests)`);
       else if (r.emailed) L.toast(`Invitation emailed to ${to}`);
-      else if (r.link) L.openModal(`Invitation for ${to}`, () => <LinkBox link={r.link!} email={to} expiresAt={r.expiresAt!} mail={r.mail} />);
+      else L.toast(notSentText(to, r.mail), false);
     } catch (x) { setFerr(why(x, "Could not create the invitation")); }
     setBusy(false);
   };
   const newLink = async (i: svc.InvitationItem) => {
-    try { const r = await svc.inviteLink(i.id); bumpData(); if (r.emailed || !r.link) L.toast(`A new invitation was emailed to ${i.email}`); else L.openModal(`Invitation for ${i.email}`, () => <LinkBox link={r.link!} email={i.email} expiresAt={r.expiresAt} mail={r.mail} />); }
-    catch (x) { L.toast(why(x, "Could not create a link"), false); }
+    try { const r = await svc.inviteLink(i.id); bumpData(); if (r.emailed) L.toast(`A new invitation was emailed to ${i.email}`); else L.toast(notSentText(i.email, r.mail), false); }
+    catch (x) { L.toast(why(x, "Could not send the invitation"), false); }
   };
   const revoke = async (i: svc.InvitationItem) => { try { await svc.revokeInvite(i.id); bumpData(); L.toast(`Invitation for ${i.email} revoked`); } catch (x) { L.toast(why(x, "Could not revoke the invitation"), false); } };
   const chip = (s: svc.InvitationItem["status"]) => (s === "Pending" ? <Chip cls="warn" icon="clock">Pending</Chip> : <StatusChip s={s} />);
@@ -118,7 +118,7 @@ function Invitations() {
     { key: "exp", header: "Expires", value: (i) => i.expiresAt, render: (i) => <span className="num">{utcMin(i.expiresAt)}</span> },
     { key: "act", header: "Actions", hideHeader: true, render: (i) => (i.status === "Pending" ? (
       <div className="btngrp" style={{ justifyContent: "flex-end" }}>
-        <button className="btn btn-ghost sm" aria-label={`${i.linkAt ? "New link" : "Create link"}: ${i.email}`} onClick={() => newLink(i)}><Icon name="refresh" />{i.linkAt ? "New link" : "Create link"}</button>
+        <button className="btn btn-ghost sm" aria-label={`${i.linkAt ? "Send again" : "Send invitation"}: ${i.email}`} onClick={() => newLink(i)}><Icon name="refresh" />{i.linkAt ? "Send again" : "Send invitation"}</button>
         <button className="btn btn-ghost sm" aria-label={`Revoke: ${i.email}`} onClick={() => revoke(i)}><Icon name="x" />Revoke</button>
       </div>) : null) },
   ];

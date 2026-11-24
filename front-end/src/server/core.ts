@@ -23,6 +23,7 @@ import { workspaceRoutes } from "./ws/routes";
 import { v1Routes } from "./ws/apikeys";
 import { admin8Routes, stripeWebhook } from "./admin8";
 import { logFailure } from "./errors";
+import { guardBody, ResponseLeak } from "./responseGuard";
 import type { Company, Lockout, Log, Outcome } from "./directory";
 import type { Deps, Profile, SessionRow } from "./types";
 
@@ -500,7 +501,8 @@ const inviteLink = (d: Deps, token: string) => `${d.site.origin}/login#invite=${
 async function inviteOut(d: Deps, r: Req, c: { p: Profile; company: Company }, email: string, role: string, token: string, expiresAt: number) {
   const link = inviteLink(d, token);
   const m = await sendMail(d, email, { t: "invite", company: c.company.name, role, link, expires: new Date(expiresAt).toISOString().slice(0, 16).replace("T", " ") + " UTC" }, { tenantId: c.company.id, actor: c.p.person, ip: r.ip });
-  return m.sent ? { emailed: true, email, expiresAt } : { emailed: false, mail: m.reason, link, expiresAt };
+  // The link goes only by email (owner decision 2026-11-24; design ruling DA-09): it is never returned to the inviter's browser.
+  return m.sent ? { emailed: true, email, expiresAt } : { emailed: false, mail: m.reason, expiresAt };
 }
 const outcome = (o: Outcome): Res => ("error" in o ? err(o.code, o.error) : ok({ status: o.status }));
 const logFor = (d: Deps, r: Req, c: Ctx): Log => (action, target) => entry(d, r, actorOf(c.p, c.a), action, target);
@@ -631,5 +633,16 @@ export async function handle(d: Deps, r: Req): Promise<Res> {
     if (!raw && !hook && r.raw) return err(415, "Send JSON.");
   }
   // The person sees a generic message; the function log gets the route pattern, the failing step and Supabase's code (errors.ts), never values.
-  try { return await h(d, r); } catch (e) { logFailure(key, e, r.headers["x-vercel-id"]); return err(500, "Something went wrong. Please try again."); }
+  let out: Res;
+  try { out = await h(d, r); } catch (e) { logFailure(key, e, r.headers["x-vercel-id"]); return err(500, "Something went wrong. Please try again."); }
+  // The last check before a body leaves the server (responseGuard.ts): credential fields and secret-looking values are removed.
+  if (out.body !== undefined) {
+    const g = guardBody(key, out.body);
+    if (g.hits.length) {
+      if (process.env.NODE_ENV === "test") throw new ResponseLeak(g.hits);
+      logFailure(key, new ResponseLeak(g.hits.map((x) => ({ ...x }))), r.headers["x-vercel-id"]);
+      out = { ...out, body: g.body };
+    }
+  }
+  return out;
 }

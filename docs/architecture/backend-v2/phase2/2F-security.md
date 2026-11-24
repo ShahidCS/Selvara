@@ -311,9 +311,9 @@ Every threat or abuse case with residual M. Acceptance is recorded here and copi
 | F-AB-12 | M: SCIM token abuse | R-B | Accepted 2026-11-23 by the owner (OQ-16; approver R-A Management Approver; evidence: `open-questions.md` OQ-16) (rev P4) | Phase 5 readiness gate, then yearly |
 | F-T-075 | M: `app` code execution unwraps any tenant's keys | R-B | Inside C1-01 / R-02, re-confirmed by the owner on 2026-11-24 with ISO-HARD (OD-15) (rev P4) | Phase 5 readiness gate (against pen-test results), then yearly |
 | F-T-045 | M: `storagebroker` credential theft exposes `quarantine` plaintext | R-B | Inside C1-01 / R-02, re-confirmed 2026-11-24 (OD-15) (rev P4) | Phase 5 readiness gate, then yearly |
-| F-T-122 | M: SIEM or drain outage blinds detectors | R-B | New in Phase 4: put to the owner at the Phase 5 gate (rev P4) | Phase 5 readiness gate, then yearly |
-| F-T-130 | M: Compromised dependency | R-B | New in Phase 4: put to the owner at the Phase 5 gate (rev P4) | Phase 5 readiness gate, then yearly |
-| F-AB-16 | M: External report distribution | R-B | Not covered by OQ-16 (missing from the Phase 3 register): put to the owner at the Phase 5 gate (rev P4) | Phase 5 readiness gate, then yearly |
+| F-T-122 | M: SIEM or drain outage blinds detectors | R-B | **Accepted by the owner** (OD-25, 2026-11-24) | Phase 5 readiness gate, then yearly |
+| F-T-130 | M: Compromised dependency | R-B | **Accepted by the owner** (OD-25, 2026-11-24) | Phase 5 readiness gate, then yearly |
+| F-AB-16 | M: External report distribution | R-B | **Accepted by the owner** (OD-25, 2026-11-24) | Phase 5 readiness gate, then yearly |
 
 ---
 

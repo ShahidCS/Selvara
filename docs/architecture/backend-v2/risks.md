@@ -93,8 +93,8 @@ These threats and abuse cases in 2F carry a residual rating of M with a named ow
 | F-AB-02 (R-56) | R-B | Accepted by owner OQ-16 (2026-11-23); inside C1-01 / R-02, re-confirmed by owner OD-15 (2026-11-24) with ISO-HARD (rev P4) | Phase 5 gate, then yearly |
 | F-AB-05, F-AB-09, F-AB-10, F-AB-11, F-AB-12 | Per 2F F-2.13 | Accepted by owner OQ-16 (2026-11-23) (rev P4) | Phase 5 gate, then yearly |
 | F-T-075, F-T-045 | R-B | Inside C1-01 / R-02, re-confirmed by owner OD-15 (2026-11-24) with ISO-HARD (rev P4) | Phase 5 gate (against pen-test results), then yearly |
-| F-AB-16 (external report distribution) | R-B | Not covered by OQ-16 (missing from the Phase 3 list): pending owner acceptance (rev P4) | Phase 5 gate, then yearly |
-| F-T-122, F-T-130 (new in Phase 4) | Per 2F F-2.13 | Pending owner acceptance (rev P4) | Phase 5 gate, then yearly |
+| F-AB-16 (external report distribution) | R-B | **Accepted by the owner** (OD-25, 2026-11-24) | Phase 5 gate, then yearly |
+| F-T-122, F-T-130 (new in Phase 4) | Per 2F F-2.13 | **Accepted by the owner** (OD-25, 2026-11-24) | Phase 5 gate, then yearly |
 
 ## Not adopted
 

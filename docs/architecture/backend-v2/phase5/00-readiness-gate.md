@@ -121,3 +121,5 @@ The owner recorded OD-19 to OD-24 and seven vendor-fact results (decisions-log, 
 | G6 Sign-off table | Prepared | Signatures need confirmation after a Go |
 
 **The recommendation stays No-Go.** The shortest remaining path: (1) clarify the budget; (2) verify the remaining vendor facts; (3) decide the open mandatory DU items, most of which are "accept" recommendations; (4) either accept the legal assumptions explicitly as DRAFT with stated limits, or get counsel's view (G3 cannot be met while they are simply deferred); (5) signatories confirm in their own pull request approvals. Then the independent assessment is re-run.
+
+**Update (OD-25, 2026-11-24):** Batch A accepted: DU-03 to DU-05, DU-07 to DU-17 and DU-31 to DU-34 closed; F-AB-16, F-T-122 and F-T-130 accepted. Mandatory decisions still open: DU-06 (observability and email vendors); DU-01 and DU-28 are settled by measurement at V2-R0; DU-20 to DU-27 are legal (OD-24).

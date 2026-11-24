@@ -216,6 +216,8 @@ describe("API keys, the company API and webhooks on the server", () => {
     expect(k.full).toMatch(/^sel_acme-eu_k\d+_[A-Za-z0-9_-]{43}$/);
     expect(JSON.stringify([...ws.rows.values()])).not.toContain(k.full.slice(-20)); // only the HMAC is stored
     expect(JSON.stringify(store.auditLog)).not.toContain(k.full.slice(-20));
+    const stored = [...ws.rows.values()].map((x) => (x as { data?: { hash?: string } }).data?.hash).find((h) => typeof h === "string" && h.length > 20)!;
+    expect(stored).toBeTruthy(); expect(JSON.stringify(body(await call("GET", "ws/data/api", {}, t.jordan.cookie)))).not.toContain(stored); // the fingerprint stays on the server
     await call("POST", "ws/issues", { title: "Patch the edge proxy", ownerId: t.owen.id }, t.jordan.cookie);
     const got = await v1("GET", "v1/issues", k.full);
     expect(got.status).toBe(200); expect(body<{ data: { title: string }[] }>(got).data[0].title).toBe("Patch the edge proxy");

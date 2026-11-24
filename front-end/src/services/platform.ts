@@ -16,8 +16,8 @@ export const listCompanies = () => apiFetch<PlatformCompany[]>("/admin/companies
 /** A request another platform super admin approves; the company and its first admin's invitation exist only then. */
 export const requestCompany = (ref: string, name: string, adminEmail: string) => post<{ pending: true; id: string }>("/admin/companies", { ref, name, adminEmail });
 export const requestStatus = (ref: string, action: "suspend" | "reactivate", reason: string) => post<{ pending: true; id: string }>(`/admin/companies/${encodeURIComponent(ref)}/${action}`, { reason });
-/** The first admin's invitation link, shown once (only its hash is stored); a new one replaces the old. */
-export const adminLink = (ref: string) => post<{ emailed?: boolean; mail?: string; link?: string; email: string; expiresAt: number }>(`/admin/companies/${encodeURIComponent(ref)}/admin-link`, {});
+/** Emails the first admin's invitation link (only its hash is stored; a new one replaces the old). The link never comes back to the browser. */
+export const adminLink = (ref: string) => post<{ emailed?: boolean; mail?: string; email: string; expiresAt: number }>(`/admin/companies/${encodeURIComponent(ref)}/admin-link`, {});
 
 export const listPlatformRequests = () => apiFetch<ApprovalItem[]>("/admin/approvals");
 export const decidePlatformRequest = (id: string, decision: "approve" | "reject" | "withdraw", reason = "") => post<{ status: string }>(`/admin/approvals/${encodeURIComponent(id)}/${decision}`, { reason });
