@@ -30,6 +30,7 @@ Tailwind 4 utilities for the same tokens are declared in `front-end/src/styles/g
 | Warning text | `#a86200` on `#fff6e5` (4.43:1) | `--c-warning-800` `#8a5000` (6.06:1) | blueprint section 9 asks for the darker shade at small sizes |
 | Focus ring | `0 0 0 3px #2e5cff3d` | solid 2px `#2e5cff` outline (dark: `#8aa4ff`), halo available via `.focus-ring` | the 24% halo alone fails the 3:1 non-text contrast rule |
 | Duration | 150 to 260ms | `--dur` 150ms | matches the blueprint |
+| QR code (`components/kit/QrCode.tsx`) | tokens | fixed `#000000` modules on a `#ffffff` quiet zone in both themes | authenticator apps need dark modules on a light background to scan; an inverted QR code fails in many apps |
 
 Contrast of every legacy text and surface pair was computed for both themes: all text pairs are at least 4.5:1, the primary button is white on `#6c3bff` at 5.66:1.
 
@@ -230,6 +231,78 @@ Components and props:
 - **Shell:** the route guard says "Your role does not open <module>." before it moves a person to their start page; the mobile drawer traps focus and has a close button; the vendor portal security panel is folded into "How this portal protects you".
 
 
+## App frame, lists and AI mark (reference review, November 2026)
+
+Decided by the owner from the FleetFlow reference comparison ([ui-review/REFERENCE-fleetflow.md](ui-review/REFERENCE-fleetflow.md)).
+- **Frame:** the sidebar sits on the canvas (`--bg`), and `#topbar` with `main#content` form one rounded panel (`--radius-xl`), inset 8px. Phones keep the full-bleed layout.
+- **Header row:**
+  - the breadcrumb is an uppercase eyebrow;
+  - page titles use the light display weight;
+  - `Page` takes an optional `eyebrow` (the Overview's date line);
+  - global actions are search, Ask AI, the bell, the approvals pill (`lib/approvalsWaiting.ts`: the server's My Work figure in production, the demo review list otherwise), Help and the account menu.
+  - The theme switch is in the account menu.
+- **Cards:** keep the white surface with a soft border, `--radius-panel` and no shadow. `.panel-soft` is the grey summary panel for focus, AI and calendar content.
+- **People and vendors (`components/ui/People.tsx`):**
+  - `Avatar` and `Person` show generated initials and never photos. The initials are drawn by CSS from `data-i`, so a cell's text stays the name.
+  - `VendorTile` shows an uploaded logo or a letter tile.
+  - The six tones are token colours with white text.
+- **Severity:** `SeverityBars` shows the word plus 1 to 4 bars. It is used in lists (issues, findings, the risk register's scores); records and cards keep chips.
+- **Tables:**
+  - `DTColumn.sub` adds a muted second line;
+  - `DTFilter.more` puts a filter under "+ Add filter" until it is added or set ("Clear filters" puts it away again);
+  - the "Sorted by" button opens a sort menu. The column-header sort still works.
+- **AI mark:** `AiMark` (`.ai-mark`, a dark dot with an `--c-ai-400` ring) is the one sign of AI content or an AI action.
+
+### Records, forms and the Overview (part 2)
+- **Back:** a record or form page shows a round back button (`.back-round`) beside the title, labelled "Back to <list>". The breadcrumb still links the list.
+- **Decide button:** an approve or decide action uses `.btn-decide` (the inverse button), so the decision stands apart from secondary actions.
+- **History:** `components/kit/RecordHistory.tsx` lists audit-log entries for one record id, newest first, on issue and control pages. In production it shows only to roles that can read the audit log.
+- **Documents:** `DocGrid` and `DocCard` (`components/ui/Docs.tsx`) show attachments as cards with a type badge taken from the file extension, used on the evidence record.
+- **Forms:**
+  - sections sit on `--surface-2` with numbered headings;
+  - `FormActions` renders its buttons in the page header through `PageActsSlot` (one copy; the header button submits the form);
+  - `.form-with-summary` adds a summary aside that follows the fields, with an advisory note (`.advisory`) that informs but never blocks saving. The issue form uses it.
+- **Overview:**
+  - `FocusCard` shows the single most urgent item: an audit within 60 days, else the oldest overdue High or Critical issue, else the next audit. It includes its stage track and one decide button.
+  - `ComplianceCalendar` shows the next six months of audits, policy reviews and vendor reassessments. Overdue markers sit at today in red with "overdue" in their name. Only modules the role can open are shown.
+
+### AI features and agents (part 3)
+- **Facts first:**
+  - `lib/insights.ts` computes the posture brief, the suggested next steps and record summaries by fixed rules. The UI says "Computed from …".
+  - AI is only asked for wording: `components/kit/AiWording.tsx` ("Write with AI") and `AskPanel.tsx` ("Ask about this report") post to the Assistant (`/ws/assistant/ask`) and show the answer in `AIPanel` as a draft.
+  - The demonstration words the facts with a template and says so in the panel's meta line.
+  - Both components render nothing for roles that cannot open the AI Assistant.
+- **Record summary:** `components/kit/ExplainCard.tsx` ("What happened / Why it matters / Suggested next step") is on issue and risk records.
+- **Prefill:**
+  - `components/kit/PrefillBanner.tsx` with `usePrefilled()`. Filled fields get `.field.prefilled` (accent-weak fill and accent border) and a "From document" tag in the label until edited, so the state is never shown by tint alone.
+  - `lib/docText.ts` reads PDF, .docx and text in the browser, within its size limits; `lib/prefill.ts` holds the field rules shared with the server.
+- **Agents:**
+  - `features/assistant/AgentsOverview.tsx` provides the summary band (`KpiStrip`), the "Runs on its own" and "Asks you first" lists, and agent cards with an `AutonomyMeter` (bars plus the rung's name).
+  - Cards and table share the same actions; the view choice is a `Segmented` control.
+- **Kit:** `HBarList` takes `wrap` to put long labels above their bars.
+
+### Settings, Help centre and logos (part 4)
+- **Settings (R37):**
+  - `components/shell/SettingsMenu.tsx` wraps every module of the nav's Settings group in `.settings-layout`: a menu (`nav aria-label="Settings"`) on the left and the page on the right.
+  - The modules keep their own routes. The sidebar shows the group as one "Settings" entry that opens the first page the role can open.
+  - Below 900px of content width the menu becomes a scrolling row.
+- **Key–value cards (R38):** `KvCard` (`components/ui/KvCard.tsx`) shows label and value rows with an Edit button in the header. The caller swaps the card for the fields.
+- **Help centre (R4):**
+  - `/help` is outside the role-gated spaces, like `/auth`: the route space is `auth` and the module is `help`.
+  - Guides live in `data/helpArticles.ts`. `searchArticles` needs every word for the search box and accepts any strong match for suggestions.
+  - Questions are in `services/help.ts`. A thread uses `.help-thread`, and support replies are tinted accent-weak with "Selvara support" in the byline.
+- **Vendor logos (R14):** `VendorTile` shows `logo` when set. `lib/logoImage.ts` redraws uploads to a 128px PNG and checks the data URL, the same way in the browser and on the server.
+
+### Reports, charts and the phone tab bar (part 5)
+- **Period (R34):** `lib/period.ts` holds one choice (7 days, 30 days or the quarter to date) shared by Reports and the Overview's trend, remembered in this browser only. Use `Segmented` labelled "Period" in the page header; put the range in the eyebrow ("Reports · 25 Oct to 23 Nov").
+  - History is never invented in production: a chart that needs stored history shows today's figure and says the trend appears once daily figures are recorded. The demonstration's history comes from `demoSeries` and `demoIssueFlow`, which are fixed and end at today's real figure.
+- **Charts (R35):**
+  - `LineChart` takes a `target` (dashed line and label).
+  - `HBarList` takes a `target`: a marker on every track, a key under the chart, and a summary saying how many rows reach it. Show at most eight rows and say how many more there are.
+  - `PairBarChart` draws two series per period (for example closed and opened). The last group is "now" at full strength; earlier groups are lighter. Counts use whole-number ticks.
+  - The visually hidden data table sits inside a hidden `div`, because a table ignores a 1px width and would widen the page on a phone.
+- **Phone tab bar (R5):** `components/shell/TabBar.tsx`, shown only below 760px as a third grid row under the content. Up to four places the role can open, then More, which opens the sidebar drawer. Counts sit on the icon and the link's name says what they count ("Issues, 6 open"). Toasts move up above the bar.
+
 ## Layout follows the space it has
 
 The sidebar takes about 280px when open, so the content of a 1024px window is narrower than a 768px phone layout expects. Page layout therefore responds to the **content's own width**, not only to the window:
@@ -238,11 +311,22 @@ The sidebar takes about 280px when open, so the content of a 1024px window is na
 - Card heads (`.c-head`), segmented controls (`.seg`) and KPI figures wrap rather than overflow. A long KPI figure (more than 6 characters, such as `$16,750.00`) shrinks with its tile; short ones keep the full size.
 - Anything drawn at a fixed position next to an element (tour, popover, rail flyout) follows the element with `useAnchorWatch`, never a one-off measurement.
 
+### Owner layout review (November 2026)
+Rules that changed after the owner's screen-by-screen review (before/after evidence in the PR):
+- **Cards keep the height of their content.** `.panels` no longer stretches to the bottom of the window, and module cards no longer carry `flex: 1 1 auto`; a long register grows and the page scrolls. Cards side by side in one row share the tallest card's height. Only the chat assistant keeps a full-height panel.
+- **Running text fills its container and is justified** (`.field.help`, page subtitles, card text, banners), with hyphenation; it stays left-aligned under 600px. Form text runs the full card width; the class `.fields-cap` keeps only inputs, selects and button rows at a readable width (640px).
+- **One helper text size**, `--fs-help` (13px), for help text and banners.
+- **Plain forms space their fields** (12px between a field and what follows) unless the form lays itself out (`.rec-form`, or a `gap` of its own).
+- **One empty state.** `Empty` has a `compact` form (icon, title, one line) for empty lists inside a card; no plain "No …" sentences.
+- **Tables** drop a column that is empty in every row (`emptyWhen`), and a name cell does not repeat a value that has its own column.
+- **Tab bars** stay on one line and scroll sideways on a phone; arrow keys, Home and End move between tabs on every tab bar (`lib/tabKeys.ts`, installed by the shell).
+- **Guided tours** place the bubble beside a large area, never over the fields it describes.
+
 ## Guided tours
 
 Each module has a short walkthrough (`src/data/tours/*`, engine `src/components/kit/Tour.tsx`): a bubble that points at one part of the page at a time with **Back**, **Next** (**Done** on the last step) and **Skip tour**. It replaces the old banner tips.
 - **Writing a tour:** 3 to 7 steps, plain second-person sentences of at most about 220 characters, in reading order: what the page is for, the summary, the main list, the main action, tabs, who approves what. Keep compliance wording exact. Point at elements with `data-tour="<module>-<part>"` hooks in the module's own markup, on an element with size (not `display: contents`). A step whose element is not on the page is left out, so steps for actions a role cannot take simply do not show. Raise `version` when people should see the tour again.
 - **When it starts:** on the module's main page, by the person's preference, which is saved on their account (`GET/PUT /api/me/tours`; this browser in the demo): **First visit only** (default), **Again after updates** (also when the tour's version goes up) or **Off**. The setting is in Sign-in & security, Guided tours, with **Show all tours again**. Finishing or skipping counts as seen. A tour never starts over a dialog, and not under browser automation unless a test opts in (`localStorage["selvara.tours.e2e"] = "1"`).
-- **Replay:** the play button in the top bar ("Take the tour of this page").
+- **Replay:** Help (the question mark in the header) › "Take the tour of this page".
 - **Following the page:** the ring and bubble re-measure their element every frame while a tour is open (`src/hooks/useAnchorWatch.ts`), so they stay on it when the page scrolls, the sidebar collapses or expands, or content loads. If a layout change (cards stacking or unstacking) takes the element out of view, the page scrolls it back; the bubble is always kept on screen. Popovers and the collapsed-rail flyouts use the same hook.
 - **Accessibility:** the bubble is a labelled non-modal dialog that takes focus on each step and returns it at the end. Escape skips, and the left and right arrow keys move between steps. The page stays usable; a ring marks the element. Below 600px wide the bubble is a bottom sheet.

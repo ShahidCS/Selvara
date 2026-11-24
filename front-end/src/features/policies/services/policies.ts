@@ -13,6 +13,7 @@ import {
 } from "@/lib/grcSod";
 import { viaApi } from "@/services/http";
 import { wsPatch, wsPost } from "@/services/ws";
+import { inAuditorScope } from "@/services/audits";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /** Production: the same change on the server (under /api/ws), then the workspace reloads. */
@@ -33,7 +34,8 @@ export const REVIEW_CYCLES = [6, 12, 24];
 export const EMERGENCY_DAYS = 5;
 const WORKING: VersionStatus[] = ["Draft", "In review", "Approved"];
 
-export const findPolicy = (id: string) => DATA.policies.find((p) => p.id === id);
+/** A policy by id; outside an external auditor's scope it does not exist for them. */
+export const findPolicy = (id: string) => DATA.policies.find((p) => p.id === id && inAuditorScope("policies", p.id));
 export const liveVersion = (p: any): PolicyVersion | undefined => (p.versions || []).find((v: PolicyVersion) => v.status === "Published");
 export const workVersion = (p: any): PolicyVersion | undefined => (p.versions || []).find((v: PolicyVersion) => WORKING.includes(v.status));
 const cleanVer = (v: unknown) => { const m = /^(\d+)\.(\d+)/.exec(String(v ?? "")); return m ? `${m[1]}.${m[2]}` : "0.1"; };

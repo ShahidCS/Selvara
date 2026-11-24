@@ -34,7 +34,7 @@ function InlineDecision({ id, title, L }: { id: string; title: string; L: LayerA
   return (
     <div className="nt-act">
       <div className="btngrp">
-        <button className="btn btn-primary sm" aria-label={`Approve: ${title}`} aria-expanded={mode === "approve"} onClick={() => { setMode("approve"); setErr(""); }}><Icon name="check" />Approve</button>
+        <button className="btn btn-primary btn-decide sm" aria-label={`Approve: ${title}`} aria-expanded={mode === "approve"} onClick={() => { setMode("approve"); setErr(""); }}><Icon name="check" />Approve</button>
         <button className="btn btn-ghost sm" aria-label={`Reject: ${title}`} aria-expanded={mode === "reject"} onClick={() => { setMode("reject"); setErr(""); }}><Icon name="x" />Reject</button>
       </div>
       {mode ? (

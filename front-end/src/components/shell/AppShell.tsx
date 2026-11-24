@@ -1,5 +1,7 @@
+import { SETTINGS_KEYS, SettingsFrame } from "./SettingsMenu";
 import { ReactNode, useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/router";
+import { installTabKeys } from "@/lib/tabKeys";
 import { appStore, loadPersisted, persist, setModState, useApp, useData } from "@/lib/store";
 import { restoreSession } from "@/lib/session";
 import { loadWorkspace, wsMeta } from "@/services/ws";
@@ -13,6 +15,7 @@ import { ROLES, TITLE, allowedSpaces, landingPath, modAllowed } from "@/lib/rbac
 import { parseRoute, useGo } from "@/lib/route";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
+import { TabBar } from "./TabBar";
 import { LayerProvider, useLayer } from "./LayerProvider";
 import { Empty, Icon } from "@/components/ui";
 import { openShortcuts } from "./Shortcuts";
@@ -31,6 +34,7 @@ function Frame({ children }: { children: ReactNode }) {
   // production: nothing acts on the role this browser remembered (it may be an older role, or another account's) until the server has confirmed
   // the session and sent the real role and company: no redirect, no data request, no page
   const [confirmed, setConfirmed] = useState(API_MODE !== "http");
+  useEffect(() => installTabKeys(), []); // arrow keys on every tab bar
   useEffect(() => { loadPersisted(ROLES.map((r) => r.id)); if (API_MODE === "http") void confirmSession().then(setConfirmed); else restoreSession(); }, []);
   useEffect(() => {
     if (API_MODE === "http") return;
@@ -135,8 +139,9 @@ function Frame({ children }: { children: ReactNode }) {
         ) : null}
         {!known ? (
           <div className="page"><Empty icon="alert" title="Page not found" action={<button className="btn btn-primary" onClick={() => go(home)}>Back to {homeLabel}</button>}>That route doesn&apos;t exist or has moved.</Empty></div>
-        ) : !confirmed || (s.hydrated && !allowed) ? null : children}
+        ) : !confirmed || (s.hydrated && !allowed) ? null : route.space === "ws" && SETTINGS_KEYS.includes(route.mod) ? <SettingsFrame mod={route.mod}>{children}</SettingsFrame> : children}
       </main>
+      <TabBar />
       <div id="scrim-sb" onClick={() => appStore.set({ mobOpen: false })} />
       <TourHost />
     </div>

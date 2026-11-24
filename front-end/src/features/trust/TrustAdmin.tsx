@@ -1,4 +1,4 @@
-import { AIPanel, Chip, Icon, Page, StatusChip, Switch, Table } from "@/components/ui";
+import { AIPanel, Chip, Icon, Page, StatusChip, Switch, Table, Empty } from "@/components/ui";
 import { fmtDay, parseDay } from "@/lib/grcSod";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
@@ -10,7 +10,9 @@ import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { TRUST } from "@/lib/trustData";
 import * as svc from "@/features/trust/services/trust";
 import { ApprovalsPanel, WhyNot, attempt } from "@/components/kit/sodKit";
-import { BlockDomainForm, DenyForm, PublishForm } from "./TrustModals";
+import { ApproveForm, BlockDomainForm, DenyForm, PublishForm } from "./TrustModals";
+import { TRUST_SECTIONS, type TrustSection } from "@/lib/trustSections";
+import { approvals } from "@/lib/approvals";
 import { useSyncExternalStore } from "react";
 import { g4Meta } from "@/services/ws";
 import { useLayer } from "@/hooks/useLayer";
@@ -29,12 +31,8 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
   const canAct = hasRole(useApp((s) => s.role), "admin", "owner");
   const noRole = canAct ? null : "Only admin or owner can do this.";
 
-  const approve = (id: string) => attempt(L, async () => {
-    const r = await svc.approveRequest(id);
-    if (!r) return;
-    wsLog("trust.access.approved", r.who + " → " + r.resource, "Policy");
-    L.toast("Access approved for " + r.who); bumpData();
-  });
+  /** The approver chooses which documents under NDA to share (none chosen is refused, here and on the server). */
+  const approve = (id: string) => { if (TRUST.requests.some((x) => x.id === id)) L.openModal("Approve access request", <ApproveForm id={id} L={L} />); };
   const deny = (id: string) => { if (TRUST.requests.some((x) => x.id === id)) L.openModal("Deny access request", <DenyForm id={id} L={L} />); };
   const revoke = (i: number) => API_ON ? askReason(L, { title: "Revoke Trust Center access", label: "Reason", confirm: "Revoke access", danger: true, intro: `${TRUST.accounts[i]?.company}'s viewers lose access to private documents at once.`,
     run: async (why) => { await svc.revokeAccount(i, why); return `${TRUST.accounts[i]?.company ?? "Account"} access revoked`; } }) : attempt(L, async () => {
@@ -61,6 +59,7 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
     body = (
       <>
       <ApprovalsPanel prefix="trust." title="Publishing approvals (four-eyes)" />
+      <SectionsCard canAct={canAct} noRole={noRole} preview={setPublic} />
       <div className="panels" data-tour="trust-resources" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gridAutoRows: "min-content", alignContent: "start" }}>
         {DATA.trust.map((t, i) => (
           <div className="card" key={i}><div className="c-body">
@@ -103,12 +102,15 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
           ) : <div className="empty" style={{ padding: 22 }}><div className="ei"><Icon name="check" /></div><h4>No requests waiting</h4></div>}
         </section>
         <section><div className="sectitle" style={SEC}>Customer trust accounts &amp; viewers with access</div>
-          <Table cols={[{ t: "Account" }, { t: "NDA" }, { t: "Viewers" }, { t: "Access to" }, { t: "Status" }, { t: "" }]}>
+          <p className="field help" style={{ margin: "0 0 8px" }}>Each viewer accepts the NDA for themselves; one person&rsquo;s acceptance never covers a colleague.</p>
+          <Table cols={[{ t: "Account" }, { t: "Viewers and their NDA" }, { t: "Access to" }, { t: "Status" }, { t: "" }]}>
             {TRUST.accounts.map((a, i) => (
               <tr key={i}>
                 <td className="strong">{a.company}<div style={{ fontSize: 11.5, color: "var(--muted)" }}>{a.domain}</div></td>
-                <td style={{ fontSize: 12 }}>{a.nda === "Pending" ? <Chip cls="warn" icon="clock">Pending</Chip> : <Chip cls="ok" icon="check">{a.nda}</Chip>}</td>
-                <td style={{ fontSize: 12 }}>{a.viewers.length ? a.viewers.map((v, j) => <span key={j}>{j ? <br /> : null}{v}</span>) : <span style={{ color: "var(--muted)" }}>None yet</span>}</td>
+                <td style={{ fontSize: 12 }}>{a.viewers.length ? (a.people ?? a.viewers.map((email) => ({ email, nda: "Pending" }))).map((v, j) => (
+                  <div key={j} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", padding: "2px 0" }}>{v.email}
+                    {v.nda.startsWith("Accepted") ? <Chip cls="ok" icon="check">NDA {v.nda.toLowerCase()}</Chip> : <Chip cls="warn" icon="clock">NDA pending</Chip>}</div>
+                )) : <span style={{ color: "var(--muted)" }}>None yet</span>}</td>
                 <td style={{ fontSize: 12 }}>{Array.isArray(a.access) ? a.access.join(", ") || "—" : a.access}</td><td><StatusChip s={a.status} /></td>
                 <td className="r">{a.status === "Active" ? <button className="btn btn-ghost sm" disabled={!canAct} title={noRole || undefined} onClick={() => revoke(i)}>Revoke</button> : null}</td>
               </tr>
@@ -127,7 +129,7 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
                   </tr>
                 ))}
               </Table>
-            ) : <p className="field help" style={{ margin: 0 }}>No decisions recorded yet.</p>}
+            ) : <Empty compact icon="check" title="No decisions recorded yet" />}
           </section>
           <section><div className="sectitle" style={SEC}>Blocked domains</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
@@ -172,7 +174,7 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
             <div style={{ fontWeight: 500, marginBottom: 6 }}>{c.q}</div>
             <AIPanel source="Trust Center chatbot" label={"Chatbot answer to: " + c.q}><p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--ink-2)" }}>{c.a}</p></AIPanel>
           </div>
-        )) : <p className="field help">No conversations yet.</p>}
+        )) : <Empty compact icon="message" title="No conversations yet" />}
       </div>
     );
   }
@@ -204,12 +206,39 @@ function PublicPageCard({ canAct, noRole }: { canAct: boolean; noRole?: string |
       <div className="c-body" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 320px" }}>
           <div style={{ fontWeight: 600 }}>Public page for visitors without an account</div>
-          <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{pg.on ? <>On since {pg.since} (approved by {pg.by}): <a href={url} target="_blank" rel="noopener noreferrer">{url}</a></> : pg.pending ? "Turning it on is waiting for a second admin or owner (Approvals)." : "Off. When on, anyone can see your published documents, verified answers, approved sub-processors and control status."}
+          <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{pg.on ? <>On since {pg.since} (approved by {pg.by}): <a href={url} target="_blank" rel="noopener noreferrer">{url}</a></> : pg.pending ? "Turning it on is waiting for a second admin or owner (Approvals)." : "Off. When on, anyone can see the sections you publish (What visitors can see, on the Resources tab)."}
             {" The address uses your company code, which is also what people type to ask to join your workspace; a join request always needs an admin's approval."}
             {!pg.mail ? " Email is not set up for the platform, so visitors cannot verify an address to request documents or subscribe." : " Visitors confirm a work email with a code before they request a document, accept the NDA or subscribe."}</div>
         </div>
         <button className={`btn ${pg.on ? "btn-secondary" : "btn-primary"} sm`} disabled={!canAct || (!pg.on && !!pg.pending)} title={noRole || undefined} onClick={toggle}>{pg.on ? "Turn off" : "Ask to turn on"}</button>
       </div>
     </div>
+  );
+}
+
+/** What visitors can see (security fix F1-02): the company publishes each section of its Trust Center or not, for the anonymous page and
+ *  for customers and vendors in the workspace. Showing the live control status needs a different admin or owner; anything else, and
+ *  hiding it, applies at once. The server enforces it and leaves a hidden section out of what it sends. */
+function SectionsCard({ canAct, noRole, preview }: { canAct: boolean; noRole?: string | null; preview: () => void }) {
+  const L = useLayer(); useData(); useSyncExternalStore(approvals.subscribe, approvals.get, approvals.get);
+  const prodPending = useSyncExternalStore(g4Meta.subscribe, () => g4Meta.get().trustSectionsPending ?? null, () => null);
+  const pending = API_ON ? prodPending : svc.sectionsPendingDemo();
+  const flip = (k: TrustSection, on: boolean) => attempt(L, async () => {
+    const r = await svc.setSection(k, on); const label = TRUST_SECTIONS.find((x) => x.key === k)!.label;
+    if (r.pending) { wsLog("trust.section.requested", `${label} → shown`, "Policy"); L.toast("Showing the live control status needs approval from a different admin or owner"); bumpData(); return; }
+    wsLog("trust.section.changed", `${label} → ${on ? "shown" : "hidden"}`, "Policy"); L.toast(`${label} ${on ? "shown to" : "hidden from"} visitors`); bumpData();
+  });
+  return (
+    <section className="card" aria-labelledby="trust-sections-h" style={{ marginBottom: 12 }}>
+      <div className="c-head"><h3 id="trust-sections-h">What visitors can see</h3></div>
+      <div className="c-body" title={noRole || undefined}>
+        <p className="field help" style={{ margin: "0 0 8px" }}>Applies to the public page and to customers and vendors in the workspace. A hidden section is not sent to them at all. Documents under NDA are never named to anyone they were not shared with.</p>
+        {TRUST_SECTIONS.map((s) => {
+          const waiting = s.key === "controls" && !TRUST.sections.controls && !!pending;
+          return <Switch key={s.key} id={`trust-sec-${s.key}`} label={s.label} hint={waiting ? "Waiting for a different admin or owner to approve (Publishing approvals)." : s.hint} checked={!!TRUST.sections[s.key]} disabled={!canAct || waiting} onChange={(on) => flip(s.key, on)} />;
+        })}
+        <button className="btn btn-ghost sm" style={{ marginTop: 6 }} onClick={preview}><Icon name="eye" />See the result in the preview</button>
+      </div>
+    </section>
   );
 }

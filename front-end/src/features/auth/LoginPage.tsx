@@ -9,6 +9,7 @@ import { ChallengeRequired, DEMO_DOMAIN, DEMO_ENABLED, DEMO_RESET_NOTE, RESET_SE
 import { loadPersisted, useApp } from "@/lib/store";
 import * as auth from "@/services/authApi";
 import { createPasskey, getAssertion, passkeysSupported } from "@/lib/webauthn";
+import { AuthenticatorSetup } from "./AuthenticatorSetup";
 
 const full = { width: "100%" } as const;
 const msg = (e: unknown, fallback: string) => (e instanceof Error && e.message ? e.message : fallback);
@@ -80,7 +81,7 @@ function SignInForm({ onJoin, onForgot, onHold }: { onJoin: () => void; onForgot
   const runCheck = async () => { setCheck("running"); await attempt(await auth.solveSignInChallenge()); };
   const restart = () => { setStep(null); setCodes(null); setErr(""); onHold(false); };
   if (codes) return <RecoveryCodes codes={codes} done={() => { setCodes(null); onHold(false); }} />;
-  if (step) return <SecondStep step={step} onHold={onHold} onCodes={setCodes} onRestart={restart} />;
+  if (step) return <SecondStep step={step} onHold={onHold} onCodes={setCodes} onRestart={restart} onNext={setStep} />;
   if (check) return (
     <>
       <h1 className="auth-h" style={{ fontSize: 20 }}>Quick check</h1>
@@ -107,13 +108,13 @@ function SignInForm({ onJoin, onForgot, onHold }: { onJoin: () => void; onForgot
 }
 
 /** The second step: the authenticator code (or a recovery code), adding an authenticator at the first sign-in, or the demo code. */
-function SecondStep({ step, onHold, onCodes, onRestart }: { step: SignInStep; onHold: (v: boolean) => void; onCodes: (c: string[]) => void; onRestart: () => void }) {
-  if (step.step === "passkey") return <PasskeyStep step={step} onRestart={onRestart} />;
+function SecondStep({ step, onHold, onCodes, onRestart, onNext }: { step: SignInStep; onHold: (v: boolean) => void; onCodes: (c: string[]) => void; onRestart: () => void; onNext: (s: SignInStep) => void }) {
+  if (step.step === "passkey") return <PasskeyStep step={step} onRestart={onRestart} onNext={onNext} />;
   return <CodeStep step={step} onHold={onHold} onCodes={onCodes} onRestart={onRestart} />;
 }
 
 /** Platform super admins: a passkey on this device or a security key. The first sign-in adds one. The on-screen code is a demonstration-build fallback only. */
-function PasskeyStep({ step, onRestart }: { step: Extract<SignInStep, { step: "passkey" }>; onRestart: () => void }) {
+function PasskeyStep({ step, onRestart, onNext }: { step: Extract<SignInStep, { step: "passkey" }>; onRestart: () => void; onNext: (s: SignInStep) => void }) {
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false); const [useCode, setUseCode] = useState(false); const [code, setCode] = useState("");
   const btn = useRef<HTMLButtonElement>(null); const codeRef = useRef<HTMLInputElement>(null);
   useEffect(() => { (useCode ? codeRef.current : btn.current)?.focus(); }, [useCode]);
@@ -121,8 +122,9 @@ function PasskeyStep({ step, onRestart }: { step: Extract<SignInStep, { step: "p
   const go = async () => {
     if (busy) return; setBusy(true); setErr("");
     try {
-      if (step.register) await auth.completePasskey(step.ticket, { register: await createPasskey({ email: step.email, name: step.name, challenge: step.challenge, rpId: step.rpId, exclude: [] }) });
-      else await auth.completePasskey(step.ticket, { assertion: await getAssertion({ challenge: step.challenge, rpId: step.rpId, allow: step.allow }) });
+      const r = step.register ? await auth.completePasskey(step.ticket, { register: await createPasskey({ email: step.email, name: step.name, challenge: step.challenge, rpId: step.rpId, exclude: [] }) })
+        : await auth.completePasskey(step.ticket, { assertion: await getAssertion({ challenge: step.challenge, rpId: step.rpId, allow: step.allow }) });
+      if ("step" in r) { setBusy(false); onNext(r); return; } // an authenticator app was added too: its code comes next
     } catch (x) { const m = x instanceof DOMException ? "The passkey request was cancelled or timed out. Try again." : msg(x, "Could not verify the passkey."); setErr(m); if (/Start again|expired/.test(m)) setTimeout(onRestart, 1500); }
     setBusy(false);
   };
@@ -168,10 +170,8 @@ function CodeStep({ step, onHold, onCodes, onRestart }: { step: Exclude<SignInSt
       <h1 className="auth-h" style={{ fontSize: 20 }}>{title}</h1>
       {step.step === "enroll" ? (
         <>
-          <p className="sub" style={{ margin: "0 0 10px" }}>Your account needs a second step at every sign-in. Add Selvara to an authenticator app (such as Microsoft Authenticator, Google Authenticator or 1Password), then enter the 6-digit code it shows.</p>
-          <div className="field"><span style={{ fontSize: 12, color: "var(--muted)" }} id="en-key-l">Setup key</span>
-            <p className="num" aria-labelledby="en-key-l" style={{ margin: "4px 0 0", fontWeight: 600, letterSpacing: ".06em", wordBreak: "break-all" }}>{step.secret.match(/.{1,4}/g)?.join(" ")}</p></div>
-          <p style={{ margin: "0 0 12px", fontSize: 13 }}><a href={step.uri}>Open in an authenticator app on this device</a></p>
+          <p className="sub" style={{ margin: "0 0 10px" }}>Your account needs a second step at every sign-in. Add Selvara to an authenticator app by scanning the QR code or entering the key, then type the 6-digit code it shows.</p>
+          <div style={{ margin: "0 0 12px" }}><AuthenticatorSetup secret={step.secret} uri={step.uri} /></div>
         </>
       ) : step.method === "demo" ? (
         <div className="banner warn" style={{ margin: "0 0 12px", fontSize: 13 }}><b>Demo account.</b> Demo accounts have no authenticator, so the code is shown here: <span className="num" style={{ fontWeight: 600 }}>{step.demoCode}</span>. Real accounts use an authenticator app.</div>

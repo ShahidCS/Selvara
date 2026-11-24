@@ -2,7 +2,9 @@
  * Authority actions (submit / approve / accept) are gated by riskCanEdit / riskCanApprove exactly as in the source; the services re-check
  * the role, but the real API must enforce it and must also enforce segregation of duties (see docs/guides/checklist/risk.md). */
 import { useState } from "react";
-import { Chip, Icon, StatusChip, Stepper } from "@/components/ui";
+import { ExplainCard } from "@/components/kit/ExplainCard";
+import { explainRisk } from "@/lib/insights";
+import { Chip, Icon, StatusChip, Stepper, Empty } from "@/components/ui";
 import { useLayer } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
@@ -97,7 +99,7 @@ function VerifyBox({ r }: { r: any }) {
       {mine || hasRole(role, "admin", "owner") ? (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
           <label className="field" style={{ flex: "1 1 220px", margin: 0 }}><span className="flab">Reason (at least 10 characters)</span><input className="input" id="rk-bd-reason" maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} /></label>
-          <button className="btn btn-primary sm" disabled={!!block} title={block || undefined} onClick={() => decide("approve")}>Verify evidence</button>
+          <button className="btn btn-primary btn-decide sm" disabled={!!block} title={block || undefined} onClick={() => decide("approve")}>Verify evidence</button>
           <button className="btn btn-secondary sm" disabled={!!block} title={block || undefined} onClick={() => decide("reject")}>Reject evidence</button>
           {mine ? <button className="btn btn-ghost sm" onClick={withdraw}>Withdraw</button> : null}
         </div>
@@ -210,7 +212,7 @@ export default function RiskDetail({ id }: { id: string }) {
     wf = canApprove ? (
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end", background: "var(--surface-2)", borderRadius: 12, padding: 12 }}>
         <label className="field" style={{ flex: "1 1 220px", margin: 0 }}><span className="flab">Note (required to request changes)</span><input className="input" id="rk-rev-note" maxLength={500} value={revNote} onChange={(e) => setRevNote(e.target.value)} /></label>
-        <button className="btn btn-primary sm" disabled={!!approveBlock} title={approveBlock || undefined} onClick={approve}>Approve</button><button className="btn btn-secondary sm" onClick={reqChanges}>Request changes</button>
+        <button className="btn btn-primary btn-decide sm" disabled={!!approveBlock} title={approveBlock || undefined} onClick={approve}>Approve</button><button className="btn btn-secondary sm" onClick={reqChanges}>Request changes</button>
         {approveBlock ? <span style={{ flexBasis: "100%", fontSize: 12, color: "var(--muted)" }}>{approveBlock}</span> : null}
       </div>
     ) : <p className="field help" style={{ margin: 0 }}>Submitted for approval. Awaiting a company admin.</p>;
@@ -236,6 +238,7 @@ export default function RiskDetail({ id }: { id: string }) {
       {failing.length ? <div role="alert" style={{ background: "var(--bad-bg)", color: "var(--bad-ink)", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 600 }}>{failing.length} mapped control{failing.length > 1 ? "s are" : " is"} not passing ({failing.map((x: any) => x.cid).join(", ")}); current exposure relies on {failing.length > 1 ? "them" : "it"}.</div> : null}
       {checks.length ? <div style={{ background: "var(--warn-bg)", color: "var(--warn-ink)", borderRadius: 10, padding: "10px 14px", fontSize: 13 }}><strong>Data quality:</strong> {checks.join("; ")}.</div> : null}
       {wf ? <div>{wf}</div> : null}
+      <ExplainCard e={explainRisk(r)} record={{ mod: "risk", id: r.id }} />
       <div className="rgrid3">
         <ScoreCard id={r.id} label="Inherent (before controls)" lk={r.l} ik={r.i} fl="l" fi="i" canEdit={canEdit} onSet={setScore} />
         <ScoreCard id={r.id} label="Current (with controls)" lk={r.cl || r.l} ik={r.ci || r.i} fl="cl" fi="ci" canEdit={canEdit} onSet={setScore} />
@@ -269,7 +272,7 @@ export default function RiskDetail({ id }: { id: string }) {
               <span style={{ flex: 1, minWidth: 0, ...(a.done || a.cancelled ? { textDecoration: "line-through", color: "var(--muted)" } : {}) }}>{a.text}<span style={{ display: "block", fontSize: 12, color: "var(--muted)" }}>{a.owner || "Unassigned"}{a.due ? " · due " + a.due : ""}{a.cancelled ? " · cancelled: " + a.cancelReason : ""}</span></span>
               {canEdit && !a.done && !a.cancelled ? <button type="button" className="btn btn-ghost sm" aria-label={`Cancel action ${a.text}`} onClick={(e) => { e.preventDefault(); cancelAct(ai, a.text); }}>Cancel</button> : null}
             </label>
-          )) : <p className="field help" style={{ margin: 0 }}>No treatment actions yet.</p>}
+          )) : <Empty compact icon="risk" title="No treatment actions yet" />}
           {allDone || (acts.length > 0 && openActs.length === 0) ? <div style={{ fontSize: 12, color: "var(--ok-ink)", fontWeight: 600 }}>All actions complete — exposure at residual.</div> : null}
           {canEdit ? <button className="btn btn-ghost sm" style={{ alignSelf: "flex-start" }} onClick={addAction}><Icon name="plus" />Add action</button> : null}
         </div>
@@ -287,7 +290,7 @@ export default function RiskDetail({ id }: { id: string }) {
         <div style={{ ...box, gap: 4 }}><h3 style={{ margin: "0 0 4px", fontSize: 15 }}>Interested parties</h3>
           {parties.length ? parties.map((p) => (
             <div key={p.party} style={{ fontSize: 13, padding: "5px 0", borderTop: "1px solid var(--line)" }}><strong>{p.party}</strong> <span style={{ color: "var(--muted)" }}>({p.loc})</span><div style={{ fontSize: 12, color: "var(--ink-2)" }}>{p.req}</div></div>
-          )) : <p className="field help" style={{ margin: 0 }}>No interested party linked. Link on the Interested parties tab.</p>}
+          )) : <Empty compact icon="risk" title="No interested party linked">Link on the Interested parties tab.</Empty>}
           <h3 style={{ margin: "10px 0 4px", fontSize: 15 }}>History</h3>
           {(r.history || []).slice().reverse().map((h: any, k: number) => (
             <div key={k} style={{ fontSize: 12, color: "var(--ink-2)", padding: "4px 0", borderTop: "1px solid var(--line)" }}>{h.ts} · {h.by} · {h.a}</div>

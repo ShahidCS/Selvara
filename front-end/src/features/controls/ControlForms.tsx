@@ -1,3 +1,4 @@
+import { inAuditorScope } from "@/services/audits";
 import { MemberSelect, myMemberId, useMembers } from "@/components/kit/MemberSelect";
 import { API_ON } from "@/lib/rbac";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -108,7 +109,7 @@ export function TestFormPage() {
 export function ExceptionFormPage({ id }: { id: string }) {
   useData(); useApp((s) => s.role);
   const L = useLayer(); const go = useGo();
-  const c = DATA.controls.find((x) => x.id === id);
+  const c = DATA.controls.find((x) => x.id === id && inAuditorScope("controls", x.id));
   const exp0 = isoDay(addMonths(new Date(), 3));
   const [reason, setReason] = useState(""); const [comp, setComp] = useState(""); const [exp, setExp] = useState(exp0);
   const [err, setErr] = useState(""); const [errAt, setErrAt] = useState<"reason" | "comp" | null>(null); const [busy, setBusy] = useState(false);

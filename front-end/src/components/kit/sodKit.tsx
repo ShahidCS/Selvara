@@ -77,7 +77,7 @@ export function ApprovalsPanel({ prefix, title = "Pending approvals" }: { prefix
               {isPending ? (
                 <div className="btngrp" style={{ flexWrap: "nowrap", whiteSpace: "nowrap" }}>
                   {mine ? <button className="btn btn-ghost sm" onClick={() => open(a, "withdraw")}>Withdraw</button> : null}
-                  <button className="btn btn-secondary sm" disabled={!!why} title={why || undefined} aria-label={`Approve: ${a.title}`} onClick={() => open(a, "approve")}><Icon name="check" />Approve</button>
+                  <button className="btn btn-decide sm" disabled={!!why} title={why || undefined} aria-label={`Approve: ${a.title}`} onClick={() => open(a, "approve")}><Icon name="check" />Approve</button>
                   <button className="btn btn-ghost sm" disabled={!!why} title={why || undefined} aria-label={`Reject: ${a.title}`} onClick={() => open(a, "reject")}>Reject</button>
                 </div>
               ) : null}

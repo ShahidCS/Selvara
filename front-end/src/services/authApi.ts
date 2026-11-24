@@ -4,7 +4,7 @@
    docs/security/CONTROLS.md ("Authentication API contract"). Demo accounts do not exist in production. */
 import * as local from "@/lib/session";
 import { ChallengeRequired, SIGNIN_FAILED, type SignInResult, type SignInStep } from "@/lib/session";
-import { acct, activeSessions, issueChallenge, noticesFor, solveChallenge } from "@/lib/accountSecurity";
+import { acct, activeSessions, issueChallenge, MFA, noticesFor, solveChallenge } from "@/lib/accountSecurity";
 import { appStore as store } from "@/lib/store";
 import { createPasskey } from "@/lib/webauthn";
 import { THROTTLED_MSG } from "@/lib/credentials";
@@ -41,10 +41,13 @@ export async function completeSignIn(ticket: string, code: string, opts: { recov
   });
 }
 /** Passkey step (super admins). Production: POST /auth/sign-in/passkey; the server holds the challenge and the public keys. */
-export async function completePasskey(ticket: string, p: Parameters<typeof local.completePasskey>[1]): Promise<SignInResult> {
+/** After the passkey, a super admin who also added an authenticator app gets the code step (`step: "mfa"`) instead of a session. */
+export type PasskeyOutcome = SignInResult | Extract<SignInStep, { step: "mfa" }>;
+export async function completePasskey(ticket: string, p: Parameters<typeof local.completePasskey>[1]): Promise<PasskeyOutcome> {
   return mode(() => local.completePasskey(ticket, p), async () => {
-    const r = await call(() => post<SignInResult & { who: string | null; company?: Company | null }>("/auth/sign-in/passkey", { ticket, ...p }));
-    local.applyServerSession(r.roleId, r.who, r.company ?? null); return r;
+    const r = await call(() => post<PasskeyOutcome & { who?: string | null; company?: Company | null }>("/auth/sign-in/passkey", { ticket, ...p }));
+    if ("step" in r) return r;
+    local.applyServerSession(r.roleId, r.who ?? null, r.company ?? null); return r;
   });
 }
 export const requestToJoin = (input: local.JoinInput) => mode(() => local.requestToJoin(input), () => call(() => post<void>("/auth/join-requests", input)));
@@ -82,6 +85,9 @@ export interface AccountView {
   mfa: { enrolledAt: number; codesLeft: number } | null;
   passkeys: { id: string; label: string; createdAt: number }[];
   passkeyRequired: boolean;
+  /** Authenticator apps (at most `authenticatorsMax`). The set-up key is never part of this view. */
+  authenticators: { id: string; label: string; addedAt: number }[];
+  authenticatorsMax: number;
 }
 export function accountView(): Promise<AccountView | null> {
   return mode(() => {
@@ -91,8 +97,9 @@ export function accountView(): Promise<AccountView | null> {
       email: me.email, person: me.person, demo: local.isDemoAccount(me.email), thisSignIn: a.last[me.email] || null,
       sessions: activeSessions(me.email).map((x) => ({ id: x.id, device: x.device, ip: x.ip, startedAt: x.startedAt, current: x.id === a.current, expiresAt: x.expiresAt })),
       notices: noticesFor(me.email).slice(0, 20).map((n) => ({ id: n.id, at: n.at, text: n.text })),
-      mfa: f ? { enrolledAt: f.enrolledAt, codesLeft: f.codes.filter((c) => !c.used).length } : null,
+      mfa: local.appsOf(f).length ? { enrolledAt: f!.enrolledAt, codesLeft: f!.codes.filter((c) => !c.used).length } : null,
       passkeys: (a.passkeys[me.email] || []).map((k) => ({ id: k.id, label: k.label, createdAt: k.createdAt })), passkeyRequired: local.needsPasskey(store.get().role),
+      authenticators: local.appsOf(f).map((x) => ({ id: x.id, label: x.label, addedAt: x.addedAt })), authenticatorsMax: MFA.MAX_APPS,
     };
   }, () => call(() => apiFetch<AccountView>("/me/security")));
 }
@@ -104,3 +111,13 @@ export async function addPasskey(): Promise<void> {
   });
 }
 export const removePasskey = (id: string) => mode(() => local.removePasskey(id), () => call(() => apiFetch<void>(`/me/passkeys/${encodeURIComponent(id)}`, { method: "DELETE" })));
+
+/* Authenticator apps from Your account. Production: POST /me/authenticators, /me/authenticators/verify, /me/authenticators/:id/remove. Each change
+   needs the password again and a code from an app already in use (or, for a lost app, a recovery code). The set-up key comes back once. */
+export interface AppSetup { secret: string; uri: string; label: string }
+export const startAddAuthenticator = (o: { password: string; code: string; recovery?: boolean; label?: string; replaces?: string }) =>
+  mode(() => local.startAddAuthenticator(o), () => post<AppSetup>("/me/authenticators", o));
+export const confirmAddAuthenticator = (code: string) =>
+  mode(() => local.confirmAddAuthenticator(code), () => post<{ recoveryCodes?: string[] }>("/me/authenticators/verify", { code }));
+export const removeAuthenticator = (id: string, password: string, code: string) =>
+  mode(() => local.removeAuthenticator(id, password, code), () => post<void>(`/me/authenticators/${encodeURIComponent(id)}/remove`, { password, code }));

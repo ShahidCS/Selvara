@@ -25,7 +25,7 @@ project does not use (no `next/image`). They are not modified, are dynamically l
 sharp or libvips file or reference appears in what is shipped. Licence and source: https://github.com/lovell/sharp and
 https://github.com/libvips/libvips.
 
-## Production dependencies (84)
+## Production dependencies (85)
 
 | Package | Version | Licence | Optional |
 |---|---|---|---|
@@ -112,4 +112,5 @@ https://github.com/libvips/libvips.
 | tslib | 2.8.1 | 0BSD |  |
 | tslib | 2.8.1 | 0BSD |  |
 | tslib | 2.9.1 | 0BSD |  |
+| uqr | 0.1.3 | MIT |  |
 | xtend | 4.0.2 | MIT |  |

@@ -28,11 +28,13 @@ export const TOURS: Tours = {
     ],
   },
   reports: {
-    version: 1,
+    version: 2,
     title: "Reports and schedules",
     steps: [
       { target: "main#content h1", title: "Reports and schedules", body: "Generate draft packs from your current records and schedule them to go out regularly." },
-      { target: "main#content .kpi-strip", title: "Reporting summary", body: "Weighted compliance, how many packs are scheduled (and how many go outside the company) and how many reports you can generate." },
+      { target: "main#content .kpi-strip", title: "Figures for the period", body: "Weighted compliance against the 80% target, open issues, failing controls, and how many packs are scheduled and reports you can generate." },
+      { target: 'main#content [role="radiogroup"][aria-label="Period"]', title: "Choose the period", body: "7 days, 30 days or the quarter to date. The figures and trends follow it, and the Overview's trend uses the same choice." },
+      { target: '[data-tour="reports-charts"]', title: "Charts", body: "Compliance against the target, issues closed and opened, the frameworks furthest from target, and open issues by severity. Hover or tab to a point for its value." },
       { target: '[data-tour="reports-stored"]', title: "Generate a report", body: "Generate now builds a draft pack from your current records. Review it before you share it. The calendar button schedules that report." },
       { target: '[data-tour="reports-new"]', title: "Schedule a pack", body: "A schedule to people in your company saves at once. A schedule to anyone outside it starts only after a different admin approves it." },
       { target: '[data-tour="reports-schedules"]', title: "Scheduled packs", body: "Each pack shows its recipients and next run. Removing or replacing a schedule that sends outside the company needs a reason." },

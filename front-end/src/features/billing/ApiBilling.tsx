@@ -56,7 +56,7 @@ export function ApiBilling({ param }: { param?: string | null }) {
           <KpiTile label="Card payments" value={b.payments ? (b.payments.mode === "live" ? "Live" : "Test mode") : "Off"} caption={b.payments ? "Through the payment provider" : "Bank transfer only"} />
         </KpiStrip>
       ) : null}
-      <div className="card" data-tour="billing-table" style={{ flex: "1 1 auto", marginTop: 12 }}>
+      <div className="card" data-tour="billing-table" style={{ marginTop: 12 }}>
         <div className="c-head"><div className="seg" role="tablist" aria-label="Billing views" data-tour="billing-views">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setView(x[0])}>{x[1]}</button>)}</div></div>
         <div className="c-body scroll">
           {err ? <p role="alert" style={{ color: "var(--bad-ink)" }}>{err}</p> : !b ? <p style={{ color: "var(--muted)" }}>Loading…</p>
@@ -96,7 +96,7 @@ function AccountDetail({ b, acc, lock }: { b: api.Billing; acc: api.Account; loc
   const [tab, setTab] = useModState<string>("billing.api.dt", "Invoices");
   const inv = b.invoices.filter((i) => i.tenantId === acc.tenantId); const ids = new Set(inv.map((i) => i.id));
   return (
-    <div className="card" style={{ flex: "1 1 auto" }}>
+    <div className="card">
       <div className="c-head" style={{ gap: 10 }}>
         <div><h3>{acc.company}</h3><div className="sub">{acc.ref}, {acc.plan}, {acc.cycle.toLowerCase()}</div></div>
         <div className="r" style={{ display: "flex", gap: 8, alignItems: "center" }}><StatusChip s={acc.pastDue ? "Past due" : acc.status} />
@@ -208,7 +208,7 @@ function PlanDecide({ id, accept, close }: { id: string; accept: boolean; close:
 function Prices({ b, lock }: { b: api.Billing; lock?: string }) {
   const L = useLayer();
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 720 }}>
+    <div className="fields-cap" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <p className="field help" style={{ margin: 0 }}>Monthly prices in US dollars; an invoice converts them with the rate in force on its issue day and adds the tax of the account&apos;s country. Version {b.prices.version}{b.prices.at ? `, changed ${utcMin(b.prices.at)} (${b.prices.by})` : " (reference catalogue)"}.</p>
       <div className="tbl-wrap"><table className="tbl"><thead><tr><th scope="col">Plan</th><th scope="col" className="r">Per month</th><th scope="col" className="r">Seats</th></tr></thead>
         <tbody>{Object.entries(b.prices.plans).map(([k, p]) => <tr key={k}><td className="strong">{k}</td><td className="r num">{minorMoney(p.monthly, "USD")}</td><td className="r num">{p.seats}</td></tr>)}</tbody></table></div>

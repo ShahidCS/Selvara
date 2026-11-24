@@ -1,4 +1,4 @@
-import { Chip, DataTable, Icon, Page, StatusChip, Table, type DTColumn } from "@/components/ui";
+import { Chip, DataTable, Icon, Page, StatusChip, Table, type DTColumn, Avatar } from "@/components/ui";
 import { RulesTab } from "./RulesTab";
 import { RetentionTab } from "./RetentionTab";
 import { JoinRequests } from "./JoinRequests";
@@ -48,7 +48,7 @@ function TeamTabs() {
     intro: "They no longer approve procurement requests. You can add them again later.",
     run: async () => { const a = await svc.removeApprover(i); if (a === null) throw new Error("Approver not found"); return "Approver removed"; } });
   const memberCols: DTColumn<Member>[] = [
-    { key: "name", header: "Member", value: (p) => p.name, locked: true, render: (p) => <span className="strong">{p.name}</span> },
+    { key: "name", header: "Member", value: (p) => p.name, locked: true, render: (p) => <span className="person"><Avatar name={p.name} /><span className="strong">{p.name}</span></span> },
     { key: "title", header: "Job title", value: (p) => p.role, render: (p) => p.role },
     { key: "role", header: "Workspace role", value: (p) => memberRole(p), render: (p) => memberRole(p) },
     { key: "mfa", header: "MFA", value: (p) => (p.mfa ? "Enrolled" : "No MFA"), render: (p) => (p.mfa ? <Chip cls="ok" icon="check">Enrolled</Chip> : <Chip cls="neutral" icon="dot">No MFA</Chip>) },
@@ -60,7 +60,7 @@ function TeamTabs() {
   const spaces: [string, string][] = [["ws", "Company"], ["admin", "Admin Console"]];
   return (
     <Page mod="team" acts={view === "members" && manage ? <button className="btn btn-primary" data-tour="team-invite" onClick={() => go("/ws/team/invite")}><Icon name="plus" />Invite member</button> : undefined}>
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card">
         <div className="c-head" style={{ padding: "0 8px" }}><div className="tabs" role="tablist" aria-label="Team and rules" data-tour="team-views">{VIEWS.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className={`c-body ${flush ? "flush" : ""} scroll`} style={flush ? { padding: 0 } : undefined} id="teamBody" data-tour="team-body">
           {view === "members" ? (
@@ -91,7 +91,7 @@ function TeamTabs() {
               onOpen={(p) => openPerson(p.id)} exportName="members" />
             </>
           ) : view === "rules" ? <><PendingApprovals kinds={["team-rule"]} title="Pending approvals (rules)" subjectLabel="Rule" /><RulesTab manage={manage} /></> : view === "retention" ? <><PendingApprovals kinds={["team-retention", "team-hold"]} title="Pending approvals (retention and holds)" subjectLabel="Records" /><RetentionTab manage={manage} /></> : view === "settings" ? <SettingsTab manage={manage} /> : view === "gates" ? (
-            <div style={{ maxWidth: 640 }}>
+            <div className="fields-cap">
               <div className="sectitle" style={{ marginTop: 0 }}>Procurement gate approvers</div>
               <Table cols={[{ t: "Approver" }, { t: "" }]}>
                 {T.approvers.map((a, i) => (

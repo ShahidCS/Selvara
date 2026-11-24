@@ -1,5 +1,5 @@
 import { API_ON } from "@/lib/rbac";
-import { Chip, Empty, Icon, Page, StatusChip, Table } from "@/components/ui";
+import { Chip, Empty, Icon, Page, StatusChip, Table, DocCard, DocGrid } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { bumpData, useApp, useData } from "@/lib/store";
 import { useGo } from "@/lib/route";
@@ -76,12 +76,11 @@ export function EvidenceDetail({ id }: { id: string }) {
               <button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} disabled={!!writeWhy} title={writeWhy || undefined} onClick={() => L.openModal("Attach file", (close) => <AttachFile id={id} close={close} />)}><Icon name="plus" />Attach file</button></div>
               <div className="c-body flush" style={{ padding: 0 }}>
                 {e.attachments.length ? (
-                  <Table cols={[{ t: "File" }, { t: "Size" }, { t: "" }]}>
+                  <DocGrid>
                     {e.attachments.map((a: { id?: string; name: string; size: string }, ai: number) => (
-                      <tr key={ai}><td className="strong"><Icon name="evidence" /> {safeFileName(a.name)}</td><td className="num" style={{ color: "var(--muted)" }}>{a.size}</td>
-                        <td className="r">{API_ON && a.id ? <button className="btn btn-ghost sm" aria-label={`Download ${safeFileName(a.name)}`} onClick={() => download(a.id!)}><Icon name="download" />Download</button> : null}<button className="btn btn-ghost sm" disabled={!!writeWhy} title={writeWhy || undefined} aria-label={`Remove ${safeFileName(a.name)}`} onClick={() => detach(ai, safeFileName(a.name))}><Icon name="x" />Remove</button></td></tr>
+                      <DocCard key={ai} name={safeFileName(a.name)} meta={a.size} actions={<>{API_ON && a.id ? <button className="btn btn-ghost sm" aria-label={`Download ${safeFileName(a.name)}`} onClick={() => download(a.id!)}><Icon name="download" />Download</button> : null}<button className="btn btn-ghost sm" disabled={!!writeWhy} title={writeWhy || undefined} aria-label={`Remove ${safeFileName(a.name)}`} onClick={() => detach(ai, safeFileName(a.name))}><Icon name="x" />Remove</button></>} />
                     ))}
-                  </Table>
+                  </DocGrid>
                 ) : <Empty icon="evidence" title="No files attached">Attach the file this evidence refers to.</Empty>}
               </div></div>
 

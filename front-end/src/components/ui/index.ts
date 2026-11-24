@@ -11,3 +11,6 @@ export * from "./Flow";
 export * from "./Charts";
 export * from "./Record";
 export * from "./BrandMark";
+export * from "./People";
+export * from "./Docs";
+export * from "./KvCard";

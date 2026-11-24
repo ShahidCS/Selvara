@@ -8,6 +8,7 @@ import { approve as engineApprove, getApproval, reject as engineReject, requestA
 import { guard, iAm, isoDay, parseIso, reasonText, selfReason } from "@/lib/grcSod";
 import { viaApi } from "@/services/http";
 import { wsPost } from "@/services/ws";
+import { scoped } from "@/services/audits";
 import { attestBlock, decideExceptionBlock, exceptionStateOf, manageControlsBlock, requestExceptionBlock, runTestsBlock, setStatusBlock, statusFromTests, ticketBlock } from "@/lib/rulesWs";
 import { API_ON } from "@/lib/rbac";
 
@@ -153,15 +154,15 @@ export function syncAllTests() {
 /* exports: return file text (mock builds it from DATA) */
 export function exportSoa() {
   return viaApi(() => csv(["Doc", "Control", "Title", "Domain", "Owner", "Status", "Frameworks"],
-    DATA.controls.map((c) => ["SoA", c.id, c.title, c.domain, c.owner, c.status, Object.keys(c.map || {}).map((k) => FW_SHORT[k] || k).join("|")])),
+    scoped("controls", DATA.controls).map((c) => ["SoA", c.id, c.title, c.domain, c.owner, c.status, Object.keys(c.map || {}).map((k) => FW_SHORT[k] || k).join("|")])),
   logged(() => csv(["Doc", "Control", "Title", "Domain", "Owner", "Status", "Frameworks"],
-    DATA.controls.map((c) => ["SoA", c.id, c.title, c.domain, c.owner, c.status, Object.keys(c.map || {}).map((k) => FW_SHORT[k] || k).join("|")])), "controls.soa.exported", `${DATA.controls.length} controls`));
+    scoped("controls", DATA.controls).map((c) => ["SoA", c.id, c.title, c.domain, c.owner, c.status, Object.keys(c.map || {}).map((k) => FW_SHORT[k] || k).join("|")])), "controls.soa.exported", `${DATA.controls.length} controls`));
 }
 export function exportMatrix() {
   return viaApi(() => csv(["Control", "Domain", ...MATRIX_FWS.map((f) => FW_SHORT[f])],
-    DATA.controls.map((c) => [c.id, c.domain, ...MATRIX_FWS.map((f) => ((c.map || {})[f] || []).join("|"))])),
+    scoped("controls", DATA.controls).map((c) => [c.id, c.domain, ...MATRIX_FWS.map((f) => ((c.map || {})[f] || []).join("|"))])),
   logged(() => csv(["Control", "Domain", ...MATRIX_FWS.map((f) => FW_SHORT[f])],
-    DATA.controls.map((c) => [c.id, c.domain, ...MATRIX_FWS.map((f) => ((c.map || {})[f] || []).join("|"))])), "controls.matrix.exported", `${DATA.controls.length} controls`));
+    scoped("controls", DATA.controls).map((c) => [c.id, c.domain, ...MATRIX_FWS.map((f) => ((c.map || {})[f] || []).join("|"))])), "controls.matrix.exported", `${DATA.controls.length} controls`));
 }
 function workpaper(id: string) {
     const c = DATA.controls.find((x) => x.id === id)!;

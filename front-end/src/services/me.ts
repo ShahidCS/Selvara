@@ -8,11 +8,12 @@ import { apiFetch, viaApi } from "./http";
 import { wsPost } from "./ws";
 import { hasRecentAuth } from "@/lib/accountSecurity";
 import { signOutOtherSessions } from "@/lib/session";
-import { SodError } from "@/lib/sod";
+import { baseRole, SodError } from "@/lib/sod";
 
 const send = <T,>(method: string, path: string, body?: unknown) => apiFetch<T>(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
 
 export function acknowledge(user: string, policyId: string): Promise<Ack | null> {
+  if (baseRole(appStore.get().role) === "auditor") return Promise.reject(new SodError("Auditors do not acknowledge policies: acknowledgement is for the company's own members.")); // the server refuses it too
   return viaApi(() => recordAck(user, policyId), () => (modAllowed(appStore.get().role, "ws", "policies") ? wsPost<Ack>(`/ws/policies/${encodeURIComponent(policyId)}/acknowledge`) : wsPost<Ack>("/ws/me/acknowledgements", { policyId })));
 }
 /** Ends every other session of the signed-in person (safe direction, no re-authentication). Returns how many ended. */

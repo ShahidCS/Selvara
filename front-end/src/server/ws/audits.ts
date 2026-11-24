@@ -10,10 +10,15 @@
    - Risk register snapshots taken while an auditor's access is live are shared with that engagement's auditor, who can download them here.
    - The company audit log is the real, hash-chained server log: company admins read it, verify it (migration 0009), export it and build an
      evidence package with a SHA-256 manifest. Every export is recorded; at most 10 an hour.
-   - Ids are unique per company. The report is a draft and is recorded in the company's own log only. People are compared by user id. */
+   - Ids are unique per company. The report is a draft and is recorded in the company's own log only. People are compared by user id.
+   - What an auditor may see outside this module is what management shares with the engagement (its framework, and the controls, evidence and
+     policies listed in `shared`), only while their access is live: `auditorScope` is the one place that works it out, and the Frameworks,
+     Controls, Evidence and Policies routes use it (a record outside the scope does not exist for the auditor). */
 import { createHash } from "node:crypto";
 import { isoDayOf, roleBlock } from "@/lib/rulesWs";
+import fwShort from "@/data/fwShort.json";
 import type { Deps } from "../types";
+import { LIB_FRAMEWORKS } from "./catalogue";
 import { invalid, membersOf, missing, ok, refuse, str, txt, wsRoute, type WsHelpers } from "./common";
 import { createIssueIn } from "./issues";
 import type { RiskSnapshot } from "./risk";
@@ -24,6 +29,11 @@ export const AUDIT_FWS = ["ISO 27001", "SOC 2", "GDPR", "PCI DSS", "NIST CSF", "
 const SEVS = ["Critical", "High", "Medium", "Low"];
 const PROGRESS = [0, 40, 85, 100];
 const ACCESS_MAX_DAYS = 180;
+/** What management shares with an engagement's auditor, and the record kind each list names. */
+export const SHARE_KINDS = { controls: "control", evidence: "evidence", policies: "policy" } as const;
+export type ShareKind = keyof typeof SHARE_KINDS;
+export const SHARE_MAX = 500;
+type Shared = Record<ShareKind, string[]>;
 interface Pbc { id: string; item: string; owner: string; ownerId?: string; status: "Requested" | "Outstanding" | "Received" }
 interface Finding { id: string; title: string; sev: string; status: "Draft" | "Open" | "Rejected" | "Closed"; rec: string; issue: string; draftedBy?: string; draftedById?: string; acceptedBy?: string; acceptedAt?: string; rejectedReason?: string; rejectedBy?: string }
 interface Ir { id: string; item: string; by: string; byId: string; at: string; status: "Open" | "Answered" | "Closed"; response: string; answeredBy?: string; closedBy?: string }
@@ -31,6 +41,7 @@ interface Access { status: "none" | "granted" | "ended"; auditorId?: string; aud
 export interface Audit {
   id: string; name: string; fw: string; auditor: string; lead: string; stage: string; scope: string; period: string; progress: number; opened: string;
   pbc: Pbc[]; tests: unknown[]; findings: Finding[]; irs: Ir[]; access: Access; populationsFrozen: boolean; frozenAt?: string; frozenBy?: string; createdBy: string; createdById: string; closeReason?: string;
+  /** Shared with the auditor (missing on older records: nothing shared). */ shared?: Partial<Shared>;
 }
 const manageBlock = (role: string) => roleBlock(role, "managing an audit", "admin", "owner");
 const stamp = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace("T", " "); // the same form as a snapshot's `at`
@@ -38,12 +49,13 @@ const stamp = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace("T
 const inWindow = (a: Audit, at: string, now: number) => !!a.access.fromAt && at >= a.access.fromAt && at <= (a.access.endedAtStamp ?? (a.access.until ? `${a.access.until} 23:59` : stamp(now)));
 const isOpenFinding = (f: Finding) => f.status !== "Closed" && f.status !== "Draft" && f.status !== "Rejected";
 const live = (a: Audit, today: string) => a.access.status === "granted" && !!a.access.until && a.access.until >= today;
+const sharedOf = (a: Audit): Shared => ({ controls: a.shared?.controls ?? [], evidence: a.shared?.evidence ?? [], policies: a.shared?.policies ?? [] });
 /** The audit as the screens read it (the demonstration's `auditorAccess` flag is derived). */
-export const auditView = (a: Audit) => ({ ...a, auditorAccess: a.access.status });
+export const auditView = (a: Audit) => ({ ...a, auditorAccess: a.access.status, shared: sharedOf(a) });
 /** What an external auditor receives: names, never the company's internal user ids. */
 const forAuditor = (a: Audit) => {
   const { createdById: _c, ...rest } = a; void _c;
-  return { ...rest, auditorAccess: a.access.status, access: { status: a.access.status, auditor: a.access.auditor, from: a.access.from, until: a.access.until, endedAt: a.access.endedAt, endedBy: a.access.endedBy },
+  return { ...rest, auditorAccess: a.access.status, shared: sharedOf(a), access: { status: a.access.status, auditor: a.access.auditor, from: a.access.from, until: a.access.until, endedAt: a.access.endedAt, endedBy: a.access.endedBy },
     pbc: a.pbc.map(({ ownerId: _o, ...p }) => (void _o, p)), irs: a.irs.map(({ byId: _b, ...r }) => (void _b, r)), findings: a.findings.map(({ draftedById: _d, ...f }) => (void _d, f)) };
 };
 async function load(t: WsTx, id: string): Promise<Rec<Audit>> { return (await t.get<Audit>("audit", str(id, 20))) ?? missing("Audit"); }
@@ -52,6 +64,40 @@ const whyCannotComplete = (a: Audit) => {
   const drafts = a.findings.filter((f) => f.status === "Draft").length; const open = a.irs.filter((r) => r.status === "Open").length;
   return drafts ? `${drafts} auditor-drafted finding${drafts === 1 ? "" : "s"} await${drafts === 1 ? "s" : ""} a management decision.` : open ? `${open} information request${open === 1 ? " is" : "s are"} still open.` : null;
 };
+/** The framework an engagement names ("ISO 27001", a display name) as the id the frameworks data uses, or null when none matches. */
+async function fwIdOf(t: WsTx, fw: string): Promise<string | null> {
+  const lib = Object.entries(fwShort as Record<string, string>).find(([, v]) => v === fw)?.[0];
+  if (lib && LIB_FRAMEWORKS.some((f) => f.id === lib)) return lib;
+  return (await t.list<{ name: string; short: string }>("fw-custom")).find((x) => x.data.short === fw || x.data.name === fw)?.id ?? null;
+}
+export interface AuditorScope { frameworks: Set<string>; controls: Set<string>; evidence: Set<string>; policies: Set<string> }
+/** What the acting auditor may see in Frameworks, Controls, Evidence and Policies: the union, over their engagements whose access is live
+ *  today, of the engagement's framework and what management shared with it. Null for every other role (their role decides). Computed on
+ *  each request, so it disappears when access ends or runs out. */
+export async function auditorScope(t: WsTx): Promise<AuditorScope | null> {
+  if (t.actor.role !== "auditor") return null;
+  const s: AuditorScope = { frameworks: new Set(), controls: new Set(), evidence: new Set(), policies: new Set() }; const today = isoDayOf(t.now);
+  for (const { data: a } of await t.list<Audit>("audit")) {
+    if (a.access.auditorId !== t.actor.id || !live(a, today)) continue;
+    const fw = await fwIdOf(t, a.fw); if (fw) s.frameworks.add(fw);
+    const sh = sharedOf(a); for (const k of Object.keys(SHARE_KINDS) as ShareKind[]) for (const id of sh[k]) s[k].add(id);
+  }
+  return s;
+}
+/** Fields that carry a company member's user id. An auditor keeps the display names already on a shared record, never the ids. */
+const MEMBER_ID_KEYS = new Set(["ownerId", "byId", "requestedById", "requesterId", "authorId", "editorIds", "lastEditorId", "approverId", "submittedById", "approvedById",
+  "publishedById", "creatorId", "userId", "decidedById", "draftedById", "answeredById", "createdById", "auditorId", "forbid"]);
+/** A record as an auditor receives it: the same shape, with every member id emptied ("" or []), however deeply nested. */
+export function withoutMemberIds<T>(x: T): T {
+  if (Array.isArray(x)) return x.map(withoutMemberIds) as T;
+  if (!x || typeof x !== "object") return x;
+  return Object.fromEntries(Object.entries(x as Record<string, unknown>).map(([k, v]) => [k, MEMBER_ID_KEYS.has(k) ? (Array.isArray(v) ? [] : v == null ? v : "") : withoutMemberIds(v)])) as T;
+}
+/** For an auditor, a record outside their scope does not exist (404, before anything else); every other role passes. */
+export async function scopeGuard(t: WsTx, kind: keyof AuditorScope, id: string, what: string) {
+  const s = await auditorScope(t); if (s && !s[kind].has(id)) missing(what);
+  return s;
+}
 const needsReason = (a: Audit) => a.findings.some(isOpenFinding) || a.pbc.some((p) => p.status !== "Received");
 
 /** Access that ran out ends by itself, once, recorded by the system; the auditor is told. */
@@ -138,6 +184,26 @@ export function auditRoutes(h: WsHelpers) {
     await t.audit("audit.auditor.access.granted", `${a.id} ${a.name} → ${m!.name} until ${until}`, "Audit");
     await t.notify(m!.id, `${t.actor.name} gave you auditor access to ${a.name} until ${until}.`);
     return { auditor: m!.name, until };
+  });
+  /** Management adds (on) or removes one control, evidence item or policy from what the engagement's auditor may see. */
+  const share = manage(async (_d, t, rec, b) => {
+    const a = rec.data; const kind = str(b.kind, 20) as ShareKind; const id = str(b.id, 40); const on = b.on !== false;
+    if (!Object.keys(SHARE_KINDS).includes(kind)) invalid("Choose controls, evidence or policies.");
+    if (!id) invalid("Choose an item to share.");
+    const sh = sharedOf(a); const list = sh[kind]; const has = list.includes(id);
+    if (on) {
+      if (has) return {};
+      if (!(await t.get(SHARE_KINDS[kind], id))) invalid("Unknown item: choose one of the company's records.");
+      if (list.length >= SHARE_MAX) invalid(`At most ${SHARE_MAX} ${kind} can be shared with one engagement.`);
+      sh[kind] = [...list, id];
+    } else {
+      if (!has) return {};
+      sh[kind] = list.filter((x) => x !== id);
+    }
+    a.shared = sh; await save(t, rec);
+    await t.audit(on ? "audit.shared.added" : "audit.shared.removed", `${a.id} ${a.name}: ${kind} ${id} by ${t.actor.name}`, "Audit");
+    if (a.access.auditorId && live(a, isoDayOf(t.now))) await t.notify(a.access.auditorId, on ? `${t.actor.name} shared ${id} with you on ${a.name}.` : `${t.actor.name} stopped sharing ${id} with you on ${a.name}.`);
+    return { shared: sh };
   });
   const end = manage(async (_d, t, rec, b) => { if (rec.data.access.status !== "granted") invalid("Auditor access is not granted."); await complete(t, rec, txt(b.reason, 500), "complete and end auditor access"); return {}; });
   const freeze = manage(async (_d, t, rec) => {
@@ -249,7 +315,7 @@ export function auditRoutes(h: WsHelpers) {
     const s = (await t.get<RiskSnapshot>("risk-snapshot", str(r.path[4], 20))) ?? missing("Snapshot");
     if (!inWindow(a, s.data.at, t.now)) missing("Snapshot");
     await t.audit("risk.register.snapshot.downloaded", `${s.id} (SHA-256 ${s.data.sha256}) for ${a.id} by ${c.actor.name}`, "Risk");
-    return ok(s.data);
+    return ok(c.actor.role === "auditor" ? withoutMemberIds(s.data) : s.data); // the external auditor: names, never member ids
   }));
 
   /* ----- the company audit log (company admins) ----- */
@@ -303,7 +369,7 @@ export function auditRoutes(h: WsHelpers) {
 
   return {
     "GET ws/data/audits": data, "POST ws/audits": create,
-    "POST ws/audits/:id/auditor-access": grant, "POST ws/audits/:id/auditor-access/end": end, "POST ws/audits/:id/populations/freeze": freeze,
+    "POST ws/audits/:id/auditor-access": grant, "POST ws/audits/:id/shared": share, "POST ws/audits/:id/auditor-access/end": end, "POST ws/audits/:id/populations/freeze": freeze,
     "POST ws/audits/:id/advance": advance, "POST ws/audits/:id/pbc": addPbc, "POST ws/audits/:id/pbc/:pid/advance": advancePbc,
     "POST ws/audits/:id/findings": draft, "POST ws/audits/:id/findings/:fid/issue": promote, "POST ws/audits/:id/findings/:fid/reject": reject,
     "POST ws/audits/:id/information-requests": raiseIr, "POST ws/audits/:id/information-requests/:rid/respond": respond, "POST ws/audits/:id/information-requests/:rid/close": closeIr,

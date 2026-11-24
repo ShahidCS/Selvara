@@ -1,5 +1,5 @@
 import { adminLog } from "@/lib/adminAudit";
-import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, Ring, StatusChip, Table, type DTColumn } from "@/components/ui";
+import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, Ring, StatusChip, Table, type DTColumn, Person } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData } from "@/lib/store";
 import { hasRole } from "@/lib/sod";
@@ -52,7 +52,7 @@ function AiList() {
     { key: "eu", header: "EU AI Act", value: (a) => a.euClass || "Not classified", render: (a) => <><AiEuChip c={a.euClass} />{a.euState && a.euState.state === "Draft" ? <> <Chip cls="warn" icon="edit">Draft</Chip></> : null}</> },
     { key: "guard", header: "Guardrail", value: (a) => a.guardrail || "Controlled", render: (a) => <AiGuardChip g={a.guardrail} /> },
     { key: "status", header: "Status", value: (a) => a.status, render: (a) => <StatusChip s={a.status} /> },
-    { key: "owner", header: "Owner", value: (a) => a.owner, render: (a) => a.owner },
+    { key: "owner", header: "Owner", value: (a) => a.owner, render: (a) => <Person name={a.owner} /> },
     { key: "fria", header: "Impact assessment", value: (a) => a.fria?.status || "", render: (a) => <AiFriaChip f={a.fria} /> },
   ];
   const readiness: [string, string][] = [

@@ -1,3 +1,4 @@
+import { SETTINGS_KEYS, settingsHome } from "./SettingsMenu";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { BrandMark, Icon } from "@/components/ui";
@@ -54,7 +55,8 @@ export function Sidebar() {
   useData(); // nav counts follow DATA
   useModVersion(); // sub-nav highlight follows module tabs
   const s = useApp((x) => x);
-  const space = route.space === "admin" ? "admin" : "ws";
+  // the Help centre and Your account belong to no space: show the person's own (platform staff have only the Admin Console)
+  const space = route.space === "admin" || (route.space === "auth" && !allowedSpaces(s.role).includes("ws")) ? "admin" : "ws";
   const spaces = allowedSpaces(s.role);
   type Tip = { anchor: HTMLElement; label: string; parent?: string };
   const tipKey = `${s.collapsed}|${route.mod}`;
@@ -176,6 +178,16 @@ export function Sidebar() {
           {groups.length === 0 ? (
             <div className="empty" style={{ padding: "24px 12px" }}><div className="ei"><Icon name="shieldcheck" /></div><p>{API_ON ? "Nothing to show here yet for your role. More of Selvara appears here as each part moves to live company data." : "This role has no modules in this space."}</p></div>
           ) : groups.map((g) => {
+            if (space === "ws" && g.g === "Settings") {
+              // R37: the company's settings are one page with its own menu; the sidebar keeps a single entry, without a group heading
+              const home = settingsHome(s.role); if (!home) return null;
+              const active = SETTINGS_KEYS.includes(route.mod);
+              return (
+                <div key={g.g} className="grp grp-solo"><div className="grp-items">
+                  <button className={`nav-item ${active ? "active" : ""}`} data-tip="Settings" aria-current={active ? "page" : undefined} onClick={() => go(`/ws/${home}`)}><Icon name="team" className="ico" /><span className="lbl">Settings</span></button>
+                </div></div>
+              );
+            }
             const open = groupOpen(g);
             return (
               <div key={g.g} className={`grp ${open ? "" : "closed"}`}>

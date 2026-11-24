@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { API_ON } from "@/lib/rbac";
 import { ApiCustomers } from "./ApiCustomers";
-import { Empty, Icon, Page } from "@/components/ui";
+import { Empty, Icon, Page, Segmented } from "@/components/ui";
+import { SupportQuestions } from "./SupportQuestions";
 import { useLayer } from "@/hooks/useLayer";
 import { useApp, useData, useModState, getModState, setModState } from "@/lib/store";
 import { customersCanManage, findCustomer } from "@/services/customers";
@@ -12,6 +13,19 @@ import { OnboardForm } from "./Onboard";
 
 /** Prototype: REND.customers + custBody/custPick/custClear. Also used by Billing's "Onboard customer" via the `customers.onboardPending` flag. */
 function DemoCustomersModule() {
+  const [view, setView] = useModState<"customers" | "questions">("customers.demo.view", "customers");
+  if (view === "questions") return (
+    <Page mod="customers" acts={<DemoViews view={view} setView={setView} />}>
+      <div className="card"><div className="c-body scroll"><SupportQuestions /></div></div>
+    </Page>
+  );
+  return <DemoCustomers views={<DemoViews view={view} setView={setView} />} />;
+}
+/** The demonstration's two views: customers, and the support questions companies asked from the Help centre (R4). */
+function DemoViews({ view, setView }: { view: "customers" | "questions"; setView: (v: "customers" | "questions") => void }) {
+  return <Segmented<"customers" | "questions"> label="Customers view" value={view} onChange={(v) => setView(v)} options={[{ value: "customers", label: "Customers" }, { value: "questions", label: "Support questions" }]} />;
+}
+function DemoCustomers({ views }: { views: React.ReactNode }) {
   useData(); const L = useLayer(); const gate = useGate();
   const allowed = customersCanManage(useApp((s) => s.role));
   const [selId, setSel] = useModState<string | null>("customers.sel", null);
@@ -25,9 +39,9 @@ function DemoCustomersModule() {
   const pick = (id: string) => { setSel(id); setRecent([id, ...recent.filter((x) => x !== id)].slice(0, 4)); };
   const recents = recent.map((id) => findCustomer(id)).filter(Boolean);
   return (
-    <Page mod="customers" acts={<>{c ? <button className="btn btn-secondary" onClick={() => setSel(null)}><Icon name="x" />Clear</button> : null}<button className="btn btn-primary" data-tour="customers-onboard" onClick={openOnboard} disabled={gate.locked} title={gate.title}><Icon name="plus" />Onboard customer</button></>}>
+    <Page mod="customers" acts={<>{views}{c ? <button className="btn btn-secondary" onClick={() => setSel(null)}><Icon name="x" />Clear</button> : null}<button className="btn btn-primary" data-tour="customers-onboard" onClick={openOnboard} disabled={gate.locked} title={gate.title}><Icon name="plus" />Onboard customer</button></>}>
       <ElevateGateBanner />
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card">
         <div className="c-body" id="custBody" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <CustomerSearch key={c ? c.id : "none"} onPick={pick} />
           {c ? <CustomerProfile c={c} /> : (

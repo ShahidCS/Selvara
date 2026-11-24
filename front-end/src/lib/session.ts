@@ -19,7 +19,7 @@ import { wsLog } from "./audit";
 import { adminLog } from "./adminAudit";
 import { elevationActive, endElevation } from "./elevation";
 import { allowAction, allowJoin, clientIp, ipBlockMessage, isTrusted, recentFailures, recordIpFailure, recordIpSuccess, reputationOf } from "./ipGuard";
-import { CHALLENGE, LOCKOUT, MFA, ruleFor, RESET, acct, hasRecentAuth, allowResetFor, dropTicket, getTicket, hashCodes, newTicket, redeemRecoveryCode, type Ticket, clearRecentAuth, createReset, currentSession, deviceLabel, endCurrentSession, findReset, markRecentAuth, notify, revokeSessions, saveAcct, setWelcome, sha256, startSession, verifyChallenge } from "./accountSecurity";
+import { appLabel, type AuthApp, type Factor, CHALLENGE, LOCKOUT, MFA, ruleFor, RESET, acct, hasRecentAuth, allowResetFor, dropTicket, getTicket, hashCodes, newTicket, redeemRecoveryCode, type Ticket, clearRecentAuth, createReset, currentSession, deviceLabel, endCurrentSession, findReset, markRecentAuth, notify, revokeSessions, saveAcct, setWelcome, sha256, startSession, verifyChallenge } from "./accountSecurity";
 
 /** Sign-in events go to the audit log of the space the person works in. */
 function logAuth(action: string) {
@@ -201,7 +201,7 @@ export async function completeSignIn(ticketId: string, code: string, opts: { rec
   else if (t.method === "enroll") {
     const step = await verifyTotp(t.secret as string, code); if (step === null) wrong();
     recoveryCodes = generateRecoveryCodes(MFA.RECOVERY_CODES);
-    acct().mfa[t.email] = { secret: t.secret as string, lastStep: step as number, enrolledAt: Date.now(), codes: await hashCodes(recoveryCodes) }; saveAcct();
+    acct().mfa[t.email] = { secret: t.secret as string, lastStep: step as number, enrolledAt: Date.now(), codes: await hashCodes(recoveryCodes), apps: [{ id: "app-" + secureHex(6), label: appLabel("", 0), secret: t.secret as string, lastStep: step as number, addedAt: Date.now() }] }; saveAcct();
     notify(t.email, "An authenticator app was added to your account and new recovery codes were issued.");
   } else {
     const f = acct().mfa[t.email];
@@ -209,8 +209,7 @@ export async function completeSignIn(ticketId: string, code: string, opts: { rec
       const left = await redeemRecoveryCode(f, code); if (left < 0) wrong();
       recoveryLeft = left; notify(t.email, `A recovery code was used to sign in. ${left} left.`);
     } else {
-      const step = await verifyTotp(f.secret, code, f.lastStep); if (step === null) wrong();
-      f.lastStep = step as number; saveAcct();
+      if (!(await verifyAnyApp(f, code))) wrong(); // a code from any of the person's apps (at most two)
     }
   }
   return finish(t, acc, ip, { recoveryCodes, recoveryLeft });
@@ -231,7 +230,7 @@ const site = () => (typeof location === "undefined" ? { rpId: "localhost", origi
 /** Platform super admins must use a passkey as their second step (SOD_MATRIX §2). */
 export const needsPasskey = (roleId: string) => baseRole(roleId) === "super";
 /** Finish the passkey step: either the new passkey (first sign-in) or a signature from an existing one. A failure counts like a wrong code. */
-export async function completePasskey(ticketId: string, p: { register: { id: string; publicKey: string; clientDataJSON: string } } | { assertion: { id: string; authenticatorData: string; clientDataJSON: string; signature: string } }): Promise<SignInResult> {
+export async function completePasskey(ticketId: string, p: { register: { id: string; publicKey: string; clientDataJSON: string } } | { assertion: { id: string; authenticatorData: string; clientDataJSON: string; signature: string } }): Promise<SignInResult | Extract<SignInStep, { step: "mfa" }>> {
   const t = getTicket(ticketId); if (!t || t.method !== "passkey" || !t.webauthn) throw new Error("This sign-in has expired. Start again.");
   const ip = clientIp(); const blocked = ipBlockMessage(ip); if (blocked) { dropTicket(t.id); throw new Error(blocked); }
   const acc = accountOf(t.email); if (!acc) throw new Error("This sign-in has expired. Start again.");
@@ -248,6 +247,8 @@ export async function completePasskey(ticketId: string, p: { register: { id: str
     if (count === null) refuse();
     (key as StoredPasskey).signCount = count as number; saveAcct();
   }
+  // A super admin who also added an authenticator app gives its code next: an extra step after the passkey, never instead of it.
+  if (appsOf(acct().mfa[t.email]).length) { t.method = "totp"; delete t.webauthn; return { step: "mfa", ticket: t.id, method: "totp" }; }
   return finish(t, acc, ip);
 }
 function notifyOnce(t: Ticket) { if (!t.alerted) { t.alerted = true; notify(t.email, "Someone entered your correct password but then failed the second step. If this was not you, change your password now."); } }
@@ -370,13 +371,11 @@ export async function completeReset(token: string, code: string, next: string): 
   const f = acct().mfa[link.email];
   if (!f) throw new Error("This account has no second factor yet, so it cannot be reset. Ask a company admin.");
   const c = String(code ?? "").trim();
-  const step = /^\d{6}$/.test(c) ? await verifyTotp(f.secret, c, f.lastStep) : null;
-  const ok = step !== null || (await redeemRecoveryCode(f, c)) >= 0;
+  const ok = (await verifyAnyApp(f, c)) || (await redeemRecoveryCode(f, c)) >= 0; // a code from any app, or a recovery code
   if (!ok) {
     link.codeFails += 1; if (link.codeFails >= RESET.CODE_TRIES) link.used = true; saveAcct();
     throw new Error(link.used ? "Too many wrong codes. Ask for a new link." : "That code is not correct.");
   }
-  if (step !== null) { f.lastStep = step; saveAcct(); }
   const pw = checkPassword(String(next ?? ""), { email: link.email, name: acc.person });
   if (!pw.ok) throw new Error(pw.errors[0] || "Choose a stronger password.");
   await setPassword(link.email, next);
@@ -389,6 +388,71 @@ export async function completeReset(token: string, code: string, next: string): 
 
 /** Name shown for the signed-in person. */
 export const currentPerson = () => roleOf(appStore.get().role).person;
+
+/* ---------- authenticator apps from Your account (owner decision 2026-11-24) ----------
+   The same rules as the server (server/core.ts appAdd): the password again and a code from an app already in use; a lost app is replaced with a
+   recovery code, which removes every app first; at most MFA.MAX_APPS apps; the last app of a company account stays. Demo accounts have none. */
+/** The person's apps, converting an account saved before apps were a list. */
+export function appsOf(f: Factor | undefined): AuthApp[] {
+  if (!f) return [];
+  if (!f.apps) f.apps = f.secret ? [{ id: "app-" + secureHex(6), label: appLabel("", 0), secret: f.secret, lastStep: f.lastStep, addedAt: f.enrolledAt }] : [];
+  return f.apps;
+}
+const syncPrimary = (f: Factor) => { const a = appsOf(f)[0]; f.secret = a?.secret ?? ""; f.lastStep = a?.lastStep ?? -1; };
+async function verifyAnyApp(f: Factor | undefined, code: string): Promise<boolean> {
+  if (!f || !/^\d{6}$/.test(String(code).trim())) return false;
+  for (const a of appsOf(f)) { const st = await verifyTotp(a.secret, String(code).trim(), a.lastStep); if (st !== null) { a.lastStep = st; syncPrimary(f); saveAcct(); return true; } }
+  return false;
+}
+let pendingApp: { email: string; secret: string; label: string; replaces?: string; tries: number; expires: number } | null = null;
+function meForApps() {
+  const me = currentAccount(); if (!me) throw new Error("Sign in first.");
+  if (isDemoAccount(me.email)) throw new SodError("Demo accounts have no authenticator app.");
+  return me;
+}
+/** Step one: returns the set-up key and otpauth URI of the new app, once. */
+export async function startAddAuthenticator(o: { password: string; code: string; recovery?: boolean; label?: string; replaces?: string }): Promise<{ secret: string; uri: string; label: string }> {
+  const me = meForApps(); pendingApp = null;
+  if (!(await verifyPassword(me.email, o.password))) { recordIpFailure(clientIp()); throw new Error("That password is not correct."); }
+  const f = acct().mfa[me.email]; const apps = appsOf(f);
+  if (o.replaces !== undefined && !apps.some((a) => a.id === o.replaces)) throw new Error("Authenticator app not found.");
+  if (!o.recovery && o.replaces === undefined && apps.length >= MFA.MAX_APPS) throw new SodError(`You already have ${MFA.MAX_APPS} authenticator apps. Replace or remove one first.`);
+  if (o.recovery) {
+    const left = f ? await redeemRecoveryCode(f, o.code) : -1; if (left < 0) { recordIpFailure(clientIp()); throw new Error("That recovery code is not correct or was already used."); }
+    f!.apps = []; syncPrimary(f!); saveAcct();
+    notify(me.email, `A recovery code was used to replace your authenticator app${apps.length === 1 ? "" : "s"}. ${left} recovery code${left === 1 ? "" : "s"} left.`); logAuth("auth.totp.removed_with_recovery_code");
+  } else if (apps.length && !(await verifyAnyApp(f, o.code))) { recordIpFailure(clientIp()); throw new Error(/^\d{6}$/.test(o.code.trim()) ? "That code is not correct." : "Enter the 6-digit code from an authenticator app you already use."); }
+  const label = appLabel(o.label, o.replaces !== undefined ? apps.length - 1 : o.recovery ? 0 : apps.length);
+  const secret = newSecret(); pendingApp = { email: me.email, secret, label, replaces: o.recovery ? undefined : o.replaces, tries: 0, expires: Date.now() + MFA.SETUP_MS };
+  return { secret, uri: otpauthUri(secret, me.email), label };
+}
+/** Step two: the first code from the new app confirms it. New recovery codes come back (once) only when the person has none left. */
+export async function confirmAddAuthenticator(code: string): Promise<{ recoveryCodes?: string[] }> {
+  const me = meForApps(); const p = pendingApp;
+  if (!p || p.email !== me.email || p.expires <= Date.now()) { pendingApp = null; throw new Error("This set-up has expired. Start again."); }
+  const step = /^\d{6}$/.test(String(code).trim()) ? await verifyTotp(p.secret, String(code).trim()) : null;
+  if (step === null) { p.tries += 1; recordIpFailure(clientIp()); if (p.tries >= MFA.TRIES) { pendingApp = null; throw new Error("Too many wrong codes. Start again."); } throw new Error("That code is not correct."); }
+  pendingApp = null; const s = acct();
+  const f: Factor = s.mfa[me.email] ?? (s.mfa[me.email] = { secret: "", lastStep: -1, enrolledAt: Date.now(), codes: [], apps: [] });
+  const apps = appsOf(f).filter((a) => a.id !== p.replaces);
+  f.apps = [...apps, { id: "app-" + secureHex(6), label: p.label, secret: p.secret, lastStep: step, addedAt: Date.now() }]; syncPrimary(f);
+  let recoveryCodes: string[] | undefined;
+  if (!f.codes.some((c) => !c.used)) { recoveryCodes = generateRecoveryCodes(MFA.RECOVERY_CODES); f.codes = await hashCodes(recoveryCodes); }
+  saveAcct();
+  notify(me.email, `An authenticator app ("${p.label}") was ${p.replaces ? "added in place of another one" : "added"}${recoveryCodes ? " and new recovery codes were issued" : ""}. If this was not you, change your password now.`);
+  logAuth(p.replaces ? "auth.totp.replaced" : "auth.totp.added");
+  return recoveryCodes ? { recoveryCodes } : {};
+}
+/** Removes one app: the password and a current code. A company account keeps at least one; a super admin's passkey stays the second step. */
+export async function removeAuthenticator(id: string, password: string, code: string): Promise<void> {
+  const me = meForApps(); const f = acct().mfa[me.email]; const apps = appsOf(f);
+  if (!apps.some((a) => a.id === id)) throw new Error("Authenticator app not found.");
+  if (apps.length <= 1 && !needsPasskey(appStore.get().role)) throw new SodError("Your account needs an authenticator app. Add another one first, or use Replace.");
+  if (!(await verifyPassword(me.email, password))) { recordIpFailure(clientIp()); throw new Error("That password is not correct."); }
+  if (!(await verifyAnyApp(f, code))) { recordIpFailure(clientIp()); throw new Error("That code is not correct."); }
+  f!.apps = apps.filter((a) => a.id !== id); syncPrimary(f!); saveAcct();
+  notify(me.email, "An authenticator app was removed from your account. If this was not you, change your password now."); logAuth("auth.totp.removed");
+}
 
 /* ---------- recovery codes and server sessions ---------- */
 /** New recovery codes for a real account: the password confirmed within 5 minutes, the old codes replaced, the owner alerted. Returned once. */

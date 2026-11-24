@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Chip, DataTable, Icon, type DTColumn } from "@/components/ui";
+import { Chip, DataTable, Icon, Segmented, type DTColumn } from "@/components/ui";
+import { AgentCards, AgentLists, AgentSummary } from "./AgentsOverview";
 import { LayerFoot, useLayer } from "@/components/shell/LayerProvider";
 import { wsLog } from "@/lib/audit";
-import { bumpData, setModState } from "@/lib/store";
+import { bumpData, setModState, useModState } from "@/lib/store";
 import * as svc from "@/features/assistant/services/assistant";
 import { AUTONOMY, CERT, REJECTED_AFTER, RUNG_HELP, certDate, certState, nextRung, trackRecord, type Rung } from "@/features/assistant/lib/autonomy";
 import { getApproval } from "@/lib/approvals";
@@ -33,14 +34,11 @@ export function AgentsTab({ manage }: { manage: boolean }) {
   const raise = (a: Agent) => L.openModal(`Raise autonomy: ${a.name}`, () => <RaiseForm id={a.id} />);
   const recert = (a: Agent) => L.openModal(`Recertify: ${a.name}`, () => <RecertForm id={a.id} />);
   useEffect(() => { if (svc.sweepCertifications().length) bumpData(); }, []);
+  const [view, setView] = useModState<"cards" | "table">("assistant.agentsView", "cards");
   const del = (a0: Agent) => askReason(L, { title: `Delete ${a0.name}?`, label: "", danger: true, confirm: "Delete agent",
     intro: "The agent stops running. This cannot be undone.",
     run: async () => { const a = await svc.deleteAgent(a0.id); if (!a) throw new Error("Agent not found"); wsLog("assistant.agent.deleted", a.name, "System"); return "Agent deleted"; } });
-  const cols: DTColumn<Agent>[] = [
-    { key: "name", header: "Agent", value: (a) => a.name, locked: true, render: (a) => <span className="strong">{a.name}</span> },
-    { key: "trigger", header: "Trigger", value: (a) => a.trigger, render: (a) => a.trigger },
-    { key: "runsAs", header: "Runs as", value: (a) => a.runsAs, render: (a) => a.runsAs },
-    { key: "autonomy", header: "Autonomy", value: (a) => a.autonomy, render: (a) => {
+  const autonomyCell = (a: Agent) => {
       const pending = !!a.pendingAutonomy && getApproval(a.pendingAutonomy)?.status === "Pending";
       const up = nextRung(a.autonomy);
       const n = svc.trackSetting(); const t = up && n && !pending ? trackRecord(a, svc.ASST.runs, n) : null;
@@ -61,16 +59,22 @@ export function AgentsTab({ manage }: { manage: boolean }) {
               </>}</div>) : null}
         </div>
       );
-    } },
-    { key: "last", header: "Last run", value: (a) => a.last, render: (a) => <span style={{ color: "var(--muted)" }}>{a.last}</span> },
-    { key: "status", header: "Status", value: (a) => a.status, render: (a) => (a.status === "Active" ? <Chip cls="ok" icon="check">Active</Chip> : a.status === "Pending approval" ? <Chip cls="warn" icon="clock">Pending approval</Chip> : <Chip cls="neutral" icon="dot">Paused</Chip>) },
-    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (a) => (manage ? (
+  };
+  const actionsCell = (a: Agent) => (manage ? (
       <div className="btngrp" style={{ justifyContent: "flex-end", flexWrap: "nowrap", whiteSpace: "nowrap" }}>
         <button className="btn btn-ghost sm" disabled={a.status !== "Active"} title={a.status === "Active" ? "Run now" : "Only an active agent can run"} aria-label={`Run ${a.name} now`} onClick={() => run(a.id)}><Icon name="play" /></button>
         <button className="btn btn-ghost sm" disabled={a.status === "Pending approval"} title={a.status === "Pending approval" ? "Waiting for a different admin or owner to approve" : undefined} onClick={() => toggle(a.id)}>{a.status === "Active" ? "Pause" : a.status === "Pending approval" ? "Awaiting approval" : "Request enable"}</button>
         <button className="btn btn-ghost sm" title="Delete agent" aria-label={`Delete agent ${a.name}`} onClick={() => del(a)}><Icon name="trash" /></button>
       </div>
-    ) : <span style={{ color: "var(--faint)", fontSize: 12 }}>View only</span>) },
+    ) : <span style={{ color: "var(--faint)", fontSize: 12 }}>View only</span>);
+  const cols: DTColumn<Agent>[] = [
+    { key: "name", header: "Agent", value: (a) => a.name, locked: true, render: (a) => <span className="strong">{a.name}</span> },
+    { key: "trigger", header: "Trigger", value: (a) => a.trigger, render: (a) => a.trigger },
+    { key: "runsAs", header: "Runs as", value: (a) => a.runsAs, render: (a) => a.runsAs },
+    { key: "autonomy", header: "Autonomy", value: (a) => a.autonomy, render: (a) => autonomyCell(a) },
+    { key: "last", header: "Last run", value: (a) => a.last, render: (a) => <span style={{ color: "var(--muted)" }}>{a.last}</span> },
+    { key: "status", header: "Status", value: (a) => a.status, render: (a) => (a.status === "Active" ? <Chip cls="ok" icon="check">Active</Chip> : a.status === "Pending approval" ? <Chip cls="warn" icon="clock">Pending approval</Chip> : <Chip cls="neutral" icon="dot">Paused</Chip>) },
+    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (a) => actionsCell(a) },
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -79,8 +83,13 @@ export function AgentsTab({ manage }: { manage: boolean }) {
         <summary style={{ cursor: "pointer", width: "fit-content" }}>How autonomy works</summary>
         <p style={{ margin: "6px 0 0" }}>Agents run on triggers with least-privilege access. Creating or resuming an agent needs approval from a different admin or owner. Every agent starts at &quot;Suggests only&quot;, where a person approves each change. It can be raised to &quot;Acts (logged)&quot; after {svc.trackSetting() ? `${svc.trackSetting()} approved suggestions and no recent rejection` : "approval (no track record is required in this workspace)"}, with approval from a different admin or owner (two for an agent that runs as a service account). Lowering is immediate, and rejecting a change an agent applied lowers it automatically. An acting agent must be recertified every {CERT.VALID_DAYS} days or it drops to &quot;Suggests only&quot; before its next run.{API_ON ? " A run reads the records its trigger names (for example failing controls), and the AI drafts a note to their owners; the note is sent once approved. Agents run when someone selects Run now: scheduled runs need the platform scheduler, which is not set up yet." : ""}</p>
       </details></div>
+      <AgentSummary manage={manage} />
+      <AgentLists />
+      <div style={{ display: "flex", justifyContent: "flex-end" }}><Segmented<"cards" | "table"> label="Show agents as" value={view} onChange={(v) => setView(v)} options={[{ value: "cards", label: "Cards" }, { value: "table", label: "Table" }]} /></div>
+      {view === "cards" ? <AgentCards rows={svc.ASST.agents} autonomy={autonomyCell} actions={actionsCell} /> : (
       <DataTable<Agent> id="agents" label="Agents" rows={svc.ASST.agents} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.name} ${a.trigger} ${a.runsAs}`}
         tabs={["Active", "Pending approval", "Paused"].map((st) => ({ key: st, label: st, match: (a: Agent) => a.status === st }))} exportName="agents" />
+      )}
     </div>
   );
 }

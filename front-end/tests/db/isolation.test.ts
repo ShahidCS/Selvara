@@ -14,6 +14,7 @@ import { UpstreamError } from "@/server/errors";
 import { PgDirectory } from "@/server/directory";
 import { PgPlatform } from "@/server/platform";
 import { PgSupport } from "@/server/support";
+import { PgHelpDesk } from "@/server/helpdesk";
 import { PgWsStore, WsConflict, WsRefused, type Actor } from "@/server/ws/store";
 import { MemoryStore } from "@/server/memory";
 import type { AuditRow } from "@/server/types";
@@ -636,6 +637,41 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
       expect(await code(app.tx(ctxA(), (q) => q.query("select * from platform_company_admins()")))).toBe("42501");
       expect((await app.tx({ tenantId: null, userId: pat, platform: true }, (q) => q.query("select * from platform_company_admins()"))).some((x) => x.user_id === alex)).toBe(true);
       await admin.query("update public.elevations set ended_ms = expires_ms where ended_ms is null and user_id = $1", [ivy]);
+    });
+  });
+
+  describe("Help centre questions (0011)", () => {
+    it("the asker sees only their own questions, staff see all and answer, and nothing is changed or deleted that should not be", async () => {
+      const desk = new PgHelpDesk(app); const at = Date.now();
+      const e = (actorId: string, tenantId: string | null) => (ref: string): AuditRow => ({ at, actor: "x", actorId, tenantId, action: "help.test", target: ref, cat: "Access", space: tenantId ? "ws" : "admin", ip: "198.51.100.7" });
+      const q = await desk.ask(A, alex, { company: "Company A", asker: "Alex Kim", topic: "risk", subject: "How do I score a risk?", body: "Is likelihood 1 to 5?" }, at, e(alex, A));
+      expect(q).toMatchObject({ status: "Open", asker: "Alex Kim", messages: [{ by: "Alex Kim", staff: false, text: "Is likelihood 1 to 5?" }] });
+      // a colleague and another company see nothing; a colleague cannot add to it or close it
+      expect(await desk.mine(A, blair)).toEqual([]);
+      expect(await app.tx(ctxA(blair), (q2) => q2.query("select id from support_questions"))).toEqual([]);
+      expect(await app.tx(ctxB(), (q2) => q2.query("select id from support_messages"))).toEqual([]);
+      expect(await desk.followUp(A, blair, "Blair Ng", q.id, "me too", at, e(blair, A))).toBeNull();
+      // nobody asks on someone else's behalf or in another company, and staff cannot ask
+      expect(await code(app.tx(ctxA(), (q2) => q2.query("insert into support_questions (tenant_id, asker_id, asker_name, company_name, topic, subject, created_ms, updated_ms) values ($1, $2, 'Blair Ng', 'Company A', 'risk', 'Pretending to be Blair', $3, $3)", [A, blair, at])))).toBe("42501");
+      expect(await code(app.tx(ctxA(), (q2) => q2.query("insert into support_questions (tenant_id, asker_id, asker_name, company_name, topic, subject, created_ms, updated_ms) values ($1, $2, 'Alex Kim', 'Company B', 'risk', 'Asking in another company', $3, $3)", [B, alex, at])))).toBe("42501");
+      expect(await code(app.tx({ tenantId: null, userId: drew, platform: true }, (q2) => q2.query("insert into support_questions (tenant_id, asker_id, asker_name, company_name, topic, subject, created_ms, updated_ms) values ($1, $2, 'Drew Platt', 'Company A', 'risk', 'Staff asking a question', $3, $3)", [A, drew, at])))).toBe("42501");
+      // the asker cannot mark their own question answered, nor post as staff
+      expect(await code(app.tx(ctxA(), (q2) => q2.query("update support_questions set status = 'Answered' where id = $1", [q.id])))).toBe("42501");
+      expect(await code(app.tx(ctxA(), (q2) => q2.query("insert into support_messages (question_id, author_id, author_name, staff, body, at_ms) values ($1, $2, 'Alex Kim', true, 'Official answer', $3)", [q.id, alex, at])))).toBe("42501");
+      // platform staff see it (with the flag only) and answer it
+      expect((await desk.inbox(drew)).map((x) => x.id)).toContain(q.id);
+      expect(await app.tx({ tenantId: null, userId: drew }, (q2) => q2.query("select id from support_questions"))).toEqual([]);
+      const a = await desk.answer(drew, "Drew Platt", q.id, "Yes, 1 to 5.", at + 1, e(drew, null));
+      expect(a?.status).toBe("Answered"); expect(a?.messages.map((m) => m.staff)).toEqual([false, true]);
+      // the subject and who asked never change; messages are never changed or deleted; questions are never deleted
+      expect(await code(app.tx({ tenantId: null, userId: drew, platform: true }, (q2) => q2.query("update support_questions set subject = 'Changed by staff' where id = $1", [q.id])))).toBe("42501");
+      expect(await code(app.tx({ tenantId: null, userId: drew, platform: true }, (q2) => q2.query("update support_messages set body = 'rewritten' where question_id = $1", [q.id])))).toBe("42501");
+      expect(await code(app.tx(ctxA(), (q2) => q2.query("delete from support_questions where id = $1", [q.id])))).toBe("42501");
+      // the asker follows up and closes; then cannot write to it
+      expect((await desk.followUp(A, alex, "Alex Kim", q.id, "Thanks!", at + 2, e(alex, A)))?.status).toBe("Open");
+      expect((await desk.closeMine(A, alex, q.id, at + 3, e(alex, A)))?.status).toBe("Closed");
+      expect(await code(app.tx(ctxA(), (q2) => q2.query("insert into support_messages (question_id, author_id, author_name, staff, body, at_ms) values ($1, $2, 'Alex Kim', false, 'After closing', $3)", [q.id, alex, at + 4])))).toBe("42501");
+      expect((await desk.mine(A, alex))[0].messages.length).toBe(3);
     });
   });
 

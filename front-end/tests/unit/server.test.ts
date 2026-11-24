@@ -8,6 +8,7 @@ import { MemoryWsStore } from "@/server/ws/store";
 import { MemoryFileStore } from "@/server/ws/files";
 import { sha256Hex } from "@/server/crypto";
 import type { Deps } from "@/server/types";
+import type { MailMessage } from "@/server/mail";
 import { totpAt } from "@/lib/totp";
 import { toB64u } from "@/lib/webauthn";
 import { safeMessage, upstream } from "@/server/errors";
@@ -19,7 +20,13 @@ beforeEach(() => {
   clock = 1_800_000_000_000; auth = new MemoryAuth(() => clock); used.clear(); store = new MemoryStore(() => clock); dir = new MemoryDirectory(store); plat = new MemoryPlatform(store, dir); sup = new MemorySupport(store, dir, plat); ws = new MemoryWsStore(store); files = new MemoryFileStore();
   ACME = dir.addCompany("acme-eu", "Acme Test Co");
   d = { auth, store, dir, plat, sup, ws, files, site: { origin: ORIGIN, rpId: "app.example.test" }, secret: "x".repeat(40), now: () => clock };
+  outbox.length = 0;
 });
+/** Invitation links go only by email: the tests read them from what would be sent. Mail is on only where a test turns it on. */
+const outbox: MailMessage[] = [];
+const mailOn = () => { d.mail = { provider: "resend", from: "Selvara <no-reply@mail.example.test>", send: async (m) => { outbox.push(m); } }; };
+/** The invitation token in the latest email to `to`. */
+const inviteToken = (to: string) => { const m = [...outbox].reverse().find((x) => x.to === to.toLowerCase()); const t = m?.text.match(/#invite=([A-Za-z0-9_-]+)/)?.[1]; if (!t) throw new Error(`no invitation emailed to ${to}`); return t; };
 const PW = "Lantern-orbit-Quince-71"; const NEW = "Copper-harbour-Violet-58";
 async function call(method: string, path: string, body: Record<string, unknown> = {}, o: { cookie?: string; ip?: string; origin?: string | null } = {}): Promise<Res> {
   const r: Req = { method, path: path.split("/").filter(Boolean), body, ip: o.ip ?? "198.51.100.7", cookies: o.cookie ? { [COOKIE]: o.cookie } : {},
@@ -199,6 +206,82 @@ describe("account endpoints", () => {
   });
 });
 
+describe("authenticator apps from Your account (owner decision 2026-11-24)", () => {
+  const usedBy = new Map<string, number>();
+  /** A code from one particular app (secret); waits for the next 30-second step when this app's current code was already used. */
+  const codeFor = async (secret: string) => { const step = Math.floor(clock / 30_000); if ((usedBy.get(secret) ?? -1) >= step) clock = (step + 1) * 30_000 + 1_000; usedBy.set(secret, Math.floor(clock / 30_000)); return totpAt(secret, clock); };
+  const view = async (cookie: string) => (await call("GET", "me/security", {}, { cookie })).body as { authenticators: { id: string; label: string }[]; authenticatorsMax: number; mfa: { codesLeft: number } | null };
+  it("adds a second app with the password and a current code, shows the set-up key once, and accepts either app at sign-in", async () => {
+    const alex = await account("alex.kim@company.example"); const first = auth.secretsOf("alex.kim@company.example")[0]; usedBy.set(first, used.get("alex.kim@company.example")!);
+    expect((await view(alex.cookie))).toMatchObject({ authenticators: [{ label: "Authenticator app" }], authenticatorsMax: 2 });
+    const add = await call("POST", "me/authenticators", { password: PW, code: await codeFor(first), label: "Backup <b>phone</b>" }, { cookie: alex.cookie });
+    expect(add.status).toBe(200);
+    const setup = add.body as { secret: string; uri: string; label: string };
+    expect(setup.uri.startsWith("otpauth://totp/")).toBe(true); expect(setup.label).toBe("Backup bphone/b"); // markup characters removed
+    const done = await call("POST", "me/authenticators/verify", { code: await codeFor(setup.secret) }, { cookie: alex.cookie });
+    expect([done.status, done.body]).toEqual([200, {}]); // recovery codes already exist: none issued
+    expect((await view(alex.cookie)).authenticators.map((x) => x.label)).toEqual(["Authenticator app", "Backup bphone/b"]);
+    expect(JSON.stringify((await call("GET", "me/security", {}, { cookie: alex.cookie })).body)).not.toContain(setup.secret); // never shown again
+    expect((await call("POST", "me/authenticators", { password: PW, code: await codeFor(first) }, { cookie: alex.cookie })).status).toBe(409); // two at most
+    const st = (await call("POST", "auth/sign-in", { email: "alex.kim@company.example", password: PW })).body as { ticket: string };
+    const sv = await call("POST", "auth/sign-in/verify", { ticket: st.ticket, code: await codeFor(setup.secret) }); expect(sv.body).toEqual(expect.objectContaining({ roleId: "employee" })); // the backup app works
+    // wrong password, wrong current code, wrong first code from the new app: refused, each counted as a failure
+    expect((await call("POST", "me/authenticators/" + "x/remove", {}, { cookie: alex.cookie })).status).toBe(404);
+    const kept = (await view(alex.cookie)).authenticators[1].id;
+    expect((await call("POST", "me/authenticators", { password: "wrong-password-1", code: await codeFor(first), replaces: kept }, { cookie: alex.cookie })).status).toBe(400);
+    expect((await call("POST", "me/authenticators", { password: PW, code: "000000", replaces: kept }, { cookie: alex.cookie })).status).toBe(400);
+    await call("POST", "me/authenticators", { password: PW, code: await codeFor(first), replaces: kept }, { cookie: alex.cookie });
+    expect((await call("POST", "me/authenticators/verify", { code: "123456" }, { cookie: alex.cookie })).status).toBe(400);
+    expect(store.auditLog.some((x) => x.action === "auth.totp.added")).toBe(true);
+    expect(store.notices.some((n) => /authenticator app \("Backup bphone\/b"\) was added/.test(n.text))).toBe(true);
+  });
+  it("replaces an app, keeps at least one, and removes one only with the password and a code", async () => {
+    const alex = await account("alex.kim@company.example"); const [a1] = auth.secretsOf("alex.kim@company.example"); usedBy.set(a1, used.get("alex.kim@company.example")!);
+    const only = (await view(alex.cookie)).authenticators[0];
+    expect((await call("POST", `me/authenticators/${only.id}/remove`, { password: PW, code: await codeFor(a1) }, { cookie: alex.cookie })).status).toBe(400); // the last one stays
+    const add = (await call("POST", "me/authenticators", { password: PW, code: await codeFor(a1), replaces: only.id, label: "New phone" }, { cookie: alex.cookie })).body as { secret: string };
+    expect((await call("POST", "me/authenticators/verify", { code: await codeFor(add.secret) }, { cookie: alex.cookie })).status).toBe(200);
+    expect((await view(alex.cookie)).authenticators.map((x) => x.label)).toEqual(["New phone"]); // the old app is gone
+    const b = (await call("POST", "me/authenticators", { password: PW, code: await codeFor(add.secret), label: "Tablet" }, { cookie: alex.cookie })).body as { secret: string };
+    await call("POST", "me/authenticators/verify", { code: await codeFor(b.secret) }, { cookie: alex.cookie });
+    const tablet = (await view(alex.cookie)).authenticators.find((x) => x.label === "Tablet")!;
+    expect((await call("POST", `me/authenticators/${tablet.id}/remove`, { password: PW, code: "000000" }, { cookie: alex.cookie })).status).toBe(400);
+    expect((await call("POST", `me/authenticators/${tablet.id}/remove`, { password: PW, code: await codeFor(add.secret) }, { cookie: alex.cookie })).status).toBe(204);
+    expect((await view(alex.cookie)).authenticators.map((x) => x.label)).toEqual(["New phone"]);
+    expect((await call("POST", "me/authenticators/nope/remove", { password: PW, code: await codeFor(add.secret) }, { cookie: alex.cookie })).status).toBe(404);
+  });
+  it("replaces a lost app with a recovery code (once), and gives up after too many wrong codes", async () => {
+    const alex = await account("alex.kim@company.example");
+    const add = await call("POST", "me/authenticators", { password: PW, code: alex.codes[0], recovery: true, label: "Replacement" }, { cookie: alex.cookie });
+    expect(add.status).toBe(200); const { secret } = add.body as { secret: string };
+    expect((await view(alex.cookie)).authenticators).toEqual([]); // every app was removed first
+    for (let i = 0; i < 4; i++) expect((await call("POST", "me/authenticators/verify", { code: "000000" }, { cookie: alex.cookie })).status).toBe(400);
+    expect(((await call("POST", "me/authenticators/verify", { code: "000000" }, { cookie: alex.cookie })).body as { error: string }).error).toMatch(/Start again/);
+    expect((await call("POST", "me/authenticators/verify", { code: await codeFor(secret) }, { cookie: alex.cookie })).status).toBe(400); // that set-up is over
+    expect((await call("POST", "me/authenticators", { password: PW, code: alex.codes[0], recovery: true }, { cookie: alex.cookie })).status).toBe(400); // used once
+    const again = (await call("POST", "me/authenticators", { password: PW, code: alex.codes[1], recovery: true }, { cookie: alex.cookie })).body as { secret: string };
+    expect((await call("POST", "me/authenticators/verify", { code: await codeFor(again.secret) }, { cookie: alex.cookie })).status).toBe(200);
+    expect((await view(alex.cookie)).mfa?.codesLeft).toBe(8);
+  });
+  it("lets a platform super admin add an app as an extra step after the passkey, never instead of it", async () => {
+    const id = await auth.createUser("dana@platform.example", PW, "Dana Whitfield"); await auth.confirmUser(id);
+    await store.insertProfile({ id, email: "dana@platform.example", person: "Dana Whitfield", status: "Active", requestedAt: clock }); dir.staff.set(id, "super");
+    const t = (await auth.signInWithPassword("dana@platform.example", PW))!; const en = await auth.enrollTotp(t, "Authenticator app"); await auth.verifyTotp(t, en.factorId, await codeFor(en.secret));
+    const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+    const spki = new Uint8Array(await crypto.subtle.exportKey("spki", kp.publicKey)); const kid = toB64u(crypto.getRandomValues(new Uint8Array(16)));
+    const st = (await call("POST", "auth/sign-in", { email: "dana@platform.example", password: PW })).body as { step: string; ticket: string; challenge: string };
+    expect(st.step).toBe("passkey"); // the passkey always comes first
+    const cd = toB64u(new TextEncoder().encode(JSON.stringify({ type: "webauthn.create", challenge: st.challenge, origin: ORIGIN })));
+    const next = await call("POST", "auth/sign-in/passkey", { ticket: st.ticket, register: { id: kid, publicKey: toB64u(spki), clientDataJSON: cd } });
+    expect(next.body).toEqual({ step: "mfa", ticket: st.ticket, method: "totp" }); expect(next.cookies).toBeUndefined(); // not signed in yet
+    expect((await call("POST", "auth/sign-in/verify", { ticket: st.ticket, code: "000000" })).status).toBe(400);
+    const done = await call("POST", "auth/sign-in/verify", { ticket: st.ticket, code: await codeFor(en.secret) });
+    expect([done.status, (done.body as { roleId: string }).roleId]).toEqual([200, "super"]);
+    const only = (await view(cookieOf(done))).authenticators[0]; // a super admin may remove the last app: the passkey stays the second step
+    expect((await call("POST", `me/authenticators/${only.id}/remove`, { password: PW, code: await codeFor(en.secret) }, { cookie: cookieOf(done) })).status).toBe(204);
+  });
+});
+
 describe("companies: sessions belong to one company, roles come from memberships (slice 2a)", () => {
   it("a person with no active membership cannot sign in, and a removed member's session ends at their next request", async () => {
     const id = await auth.createUser("lee@company.example", PW, "Lee Park"); await auth.confirmUser(id);
@@ -332,11 +415,12 @@ describe("role changes, invitations and four-eyes requests (slice 2c)", () => {
   });
 
   it("an invitation link admits the invited email once, with the invited role, and confirms a new account", async () => {
-    const jordan = await account("jordan@company.example", "admin", "Jordan Avery");
+    const jordan = await account("jordan@company.example", "admin", "Jordan Avery"); mailOn();
     const res = await call("POST", "team/invitations", { email: "Rae.Fox@company.example", role: "analyst" }, { cookie: jordan.cookie });
     expect(res.status).toBe(200);
-    const { link } = res.body as { link: string }; const token = link.split("#invite=")[1];
-    expect(link.startsWith(`${ORIGIN}/login#invite=`)).toBe(true);
+    expect(res.body).toMatchObject({ emailed: true }); expect(JSON.stringify(res.body)).not.toContain("#invite="); // email only, never in the response
+    const token = inviteToken("rae.fox@company.example");
+    expect(outbox.at(-1)!.text).toContain(`${ORIGIN}/login#invite=${token}`);
     expect(JSON.stringify(dir.invites)).not.toContain(token); // only the hash is stored
     expect((await call("POST", "team/invitations", { email: "rae.fox@company.example", role: "employee" }, { cookie: jordan.cookie })).status).toBe(409);
     // another email with the right link: nothing
@@ -355,24 +439,25 @@ describe("role changes, invitations and four-eyes requests (slice 2c)", () => {
 
   it("a new link replaces the old one, a revoked or expired invitation admits nobody, and an existing account must prove its password", async () => {
     const GLOBEX = dir.addCompany("globex-uk", "Globex Test Ltd");
-    const jordan = await account("jordan@company.example", "admin", "Jordan Avery");
-    const old = ((await call("POST", "team/invitations", { email: "casey@globex.example", role: "auditor" }, { cookie: jordan.cookie })).body as { link: string; id: string });
-    const fresh = (await call("POST", `team/invitations/${old.id}/link`, {}, { cookie: jordan.cookie })).body as { link: string };
+    const jordan = await account("jordan@company.example", "admin", "Jordan Avery"); mailOn();
+    const old = ((await call("POST", "team/invitations", { email: "casey@globex.example", role: "auditor" }, { cookie: jordan.cookie })).body as { id: string });
+    const oldToken = inviteToken("casey@globex.example");
+    await call("POST", `team/invitations/${old.id}/link`, {}, { cookie: jordan.cookie }); const freshToken = inviteToken("casey@globex.example");
     await account("casey@globex.example", "employee", "Casey Morgan", GLOBEX);
     const casey = (await store.profileByEmail("casey@globex.example"))!.id;
-    expect((await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: PW, invite: old.link.split("#invite=")[1] }, { ip: "203.0.113.1" })).status).toBe(202);
+    expect((await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: PW, invite: oldToken }, { ip: "203.0.113.1" })).status).toBe(202);
     expect(roleOf(casey)).toBeUndefined(); // the replaced link
-    expect((await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: NEW, invite: fresh.link.split("#invite=")[1] }, { ip: "203.0.113.2" })).status).toBe(202);
+    expect((await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: NEW, invite: freshToken }, { ip: "203.0.113.2" })).status).toBe(202);
     expect(roleOf(casey)).toBeUndefined(); // wrong password for the existing account
-    expect((await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: PW, invite: fresh.link.split("#invite=")[1] }, { ip: "203.0.113.3" })).status).toBe(202);
+    expect((await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: PW, invite: freshToken }, { ip: "203.0.113.3" })).status).toBe(202);
     expect([roleOf(casey), roleOf(casey, GLOBEX)]).toEqual(["auditor", "employee"]);
-    const other = ((await call("POST", "team/invitations", { email: "lee@company.example", role: "employee" }, { cookie: jordan.cookie })).body as { link: string; id: string });
+    const other = ((await call("POST", "team/invitations", { email: "lee@company.example", role: "employee" }, { cookie: jordan.cookie })).body as { id: string });
     expect((await call("POST", `team/invitations/${other.id}/revoke`, {}, { cookie: jordan.cookie })).status).toBe(204);
-    expect((await call("POST", "auth/join-requests", { name: "Lee Park", email: "lee@company.example", password: PW, invite: other.link.split("#invite=")[1] }, { ip: "203.0.113.4" })).status).toBe(202);
+    expect((await call("POST", "auth/join-requests", { name: "Lee Park", email: "lee@company.example", password: PW, invite: inviteToken("lee@company.example") }, { ip: "203.0.113.4" })).status).toBe(202);
     expect(await store.profileByEmail("lee@company.example")).toBeNull();
-    const late = ((await call("POST", "team/invitations", { email: "kim@company.example", role: "employee" }, { cookie: jordan.cookie })).body as { link: string });
+    await call("POST", "team/invitations", { email: "kim@company.example", role: "employee" }, { cookie: jordan.cookie }); const lateToken = inviteToken("kim@company.example");
     clock += 73 * 3600_000;
-    expect((await call("POST", "auth/join-requests", { name: "Kim Lee", email: "kim@company.example", password: PW, invite: late.link.split("#invite=")[1] }, { ip: "203.0.113.5" })).status).toBe(202);
+    expect((await call("POST", "auth/join-requests", { name: "Kim Lee", email: "kim@company.example", password: PW, invite: lateToken }, { ip: "203.0.113.5" })).status).toBe(202);
     expect(await store.profileByEmail("kim@company.example")).toBeNull();
   });
 
@@ -386,8 +471,8 @@ describe("role changes, invitations and four-eyes requests (slice 2c)", () => {
     expect((await call("POST", `team/approvals/${(req.body as { id: string }).id}/approve`, { reason: "Pat leads security operations" }, { cookie: casey.cookie })).body).toEqual({ status: "Approved" });
     const inv = ((await call("GET", "team/invitations", {}, { cookie: jordan.cookie })).body as { id: string; linkAt?: number; role: string }[])[0];
     expect([inv.role, inv.linkAt]).toEqual(["admin", undefined]);
-    const { link } = (await call("POST", `team/invitations/${inv.id}/link`, {}, { cookie: jordan.cookie })).body as { link: string };
-    await call("POST", "auth/join-requests", { name: "Pat Lane", email: "pat@company.example", password: PW, invite: link.split("#invite=")[1] });
+    mailOn(); await call("POST", `team/invitations/${inv.id}/link`, {}, { cookie: jordan.cookie });
+    await call("POST", "auth/join-requests", { name: "Pat Lane", email: "pat@company.example", password: PW, invite: inviteToken("pat@company.example") });
     expect(roleOf((await store.profileByEmail("pat@company.example"))!.id)).toBe("admin");
   });
 
@@ -455,9 +540,9 @@ describe("Admin Console (slice 3a): elevation, companies through four-eyes, plat
     expect(dir.invites.find((i) => i.tenantId === globex.id)).toEqual(expect.objectContaining({ email: "casey@globex.example", role: "admin", status: "Pending", tokenHash: null }));
     expect(store.auditLog.find((x) => x.action === "platform.company.created")).toEqual(expect.objectContaining({ space: "admin", tenantId: null, actorId: riley.id }));
     expect(store.auditLog.find((x) => x.action === "tenant.created")!.tenantId).toBe(globex.id); // the customer's own log shows it too
-    const link = (await call("POST", "admin/companies/globex-uk/admin-link", {}, { cookie: dana.cookie })).body as { link: string; email: string };
-    expect(link.email).toBe("casey@globex.example");
-    await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: PW, invite: link.link.split("#invite=")[1] });
+    mailOn(); const link = (await call("POST", "admin/companies/globex-uk/admin-link", {}, { cookie: dana.cookie })).body as { emailed: boolean; email: string };
+    expect([link.emailed, link.email]).toEqual([true, "casey@globex.example"]); expect(JSON.stringify(link)).not.toContain("#invite=");
+    await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: PW, invite: inviteToken("casey@globex.example") });
     const casey = (await store.profileByEmail("casey@globex.example"))!;
     expect(dir.memberships.find((m) => m.tenantId === globex.id && m.userId === casey.id)).toEqual(expect.objectContaining({ role: "admin", status: "Active" }));
     expect((await call("POST", "admin/companies/globex-uk/admin-link", {}, { cookie: dana.cookie })).status).toBe(409); // used

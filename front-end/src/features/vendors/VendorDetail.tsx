@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
-import { Chip, Empty, Icon, Page, StatusChip, Table } from "@/components/ui";
+import { Chip, Empty, Icon, Page, StatusChip, Table , SeverityBars, VendorTile } from "@/components/ui";
+import { useRef, useState } from "react";
+import { LOGO_ACCEPT, makeLogo } from "@/lib/logoImage";
 import { addMonths, fmtDay, parseDay } from "@/lib/grcSod";
 import { useLayer } from "@/hooks/useLayer";
 import { wsLog } from "@/lib/audit";
@@ -121,7 +123,7 @@ export function VendorDetail({ id }: { id: string }) {
                 {v.findings.length ? (
                   <Table cols={[{ t: "ID" }, { t: "Finding" }, { t: "Severity" }, { t: "Status" }, { t: "" }]}>
                     {v.findings.map((f: any, fi: number) => (
-                      <tr key={fi}><td className="strong num">{f.id}</td><td>{f.title}</td><td><StatusChip s={f.sev} /></td><td><StatusChip s={f.status} /></td>
+                      <tr key={fi}><td className="strong num">{f.id}</td><td>{f.title}</td><td><SeverityBars level={f.sev} /></td><td><StatusChip s={f.status} /></td>
                         <td className="r">{f.status !== "Closed" ? <button className="btn btn-ghost sm" disabled={!can} aria-label={`Close finding ${f.id}`} onClick={() => API_ON ? askReason(L, { title: "Close finding " + f.id, label: "How was it resolved?", confirm: "Close finding", run: async (why) => { await must(svc.closeFinding(id, fi, why)); return "Finding closed"; } })
                           : act(() => svc.closeFinding(id, fi), (r) => { wsLog("vendor.finding.closed", r.title, "Vendor"); L.toast("Finding closed"); bumpData(); })}><Icon name="check" />Close</button> : null}</td></tr>
                     ))}
@@ -131,13 +133,14 @@ export function VendorDetail({ id }: { id: string }) {
           </div>
 
           <aside className="rec-side">
+            <VendorLogo id={id} name={String(v.name)} logo={v.logo} can={can} />
             <div className="card">{head("Continuous monitoring")}<div className="c-body">
               {v.monitoring.length ? v.monitoring.map((a: any, i: number) => (
                 <div key={i} className="feed-item"><span className="dot" style={{ marginTop: 5, background: a.level === "Review" ? "var(--warn-ink)" : "var(--accent)" }} /><div className="fi"><div className="ft">{a.signal}</div><div className="fm">{a.at}</div></div>{a.level === "Review" ? <Chip cls="warn" icon="alert">Review</Chip> : <Chip cls="neutral" icon="dot">Info</Chip>}</div>
-              )) : <p className="field help" style={{ margin: 0 }}>No monitoring signals. Continuous monitoring is enabled for Critical-tier vendors.</p>}
+              )) : <Empty compact icon="vendors" title="No monitoring signals">Continuous monitoring is enabled for Critical-tier vendors.</Empty>}
             </div></div>
             <div className="card">{head("Discovered applications")}<div className="c-body flush" style={{ padding: 0 }}>
-              {!v.apps.length ? <p className="field help" style={{ margin: 0, padding: 14 }}>No applications discovered yet. Discovery arrives with the integrations.</p> : null}
+              {!v.apps.length ? <Empty compact icon="vendors" title="No applications discovered yet">Discovery arrives with the integrations.</Empty> : null}
               <Table cols={[{ t: "App" }, { t: "Users" }, { t: "Status" }]}>
                 {v.apps.map((a: any, i: number) => <tr key={i}><td className="strong">{a.name}</td><td className="num">{a.users}</td><td>{a.sanctioned ? <Chip cls="ok" icon="check">Sanctioned</Chip> : <Chip cls="warn" icon="alert">Shadow IT</Chip>}</td></tr>)}
               </Table>
@@ -153,5 +156,32 @@ export function VendorDetail({ id }: { id: string }) {
         </div>
       </div>
     </Page>
+  );
+}
+
+/** R14: the vendor's logo, shown in lists and on this page; a letter tile until one is added. The image is redrawn as a small PNG before it is kept. */
+function VendorLogo({ id, name, logo, can }: { id: string; name: string; logo?: string | null; can: boolean }) {
+  const L = useLayer(); const input = useRef<HTMLInputElement>(null); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const save = async (next: string | null) => {
+    setBusy(true); setErr("");
+    try { const r = await svc.setVendorLogo(id, next); if (r.ok === false) { setErr(r.msg); return; } L.toast(next ? "Logo updated" : "Logo removed"); bumpData(); }
+    catch (e) { setErr(e instanceof Error && e.message ? e.message : "The logo could not be saved."); }
+    finally { setBusy(false); if (input.current) input.current.value = ""; }
+  };
+  const pick = async (f?: File) => { if (!f) return; try { await save(await makeLogo(f)); } catch (e) { setErr(e instanceof Error ? e.message : "The image could not be read."); } };
+  return (
+    <div className="card"><div className="c-head"><h3>Logo</h3></div><div className="c-body" style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      <VendorTile name={name} logo={logo} size={56} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+        <span className="cell-sub">{logo ? "Shown in lists and on this page." : "A letter tile is shown until you add a logo."}</span>
+        {can ? <div className="btngrp">
+          <input ref={input} type="file" className="vh" accept={LOGO_ACCEPT} tabIndex={-1} aria-hidden="true" onChange={(e) => void pick(e.target.files?.[0])} />
+          <button className="btn btn-secondary sm" disabled={busy} onClick={() => input.current?.click()}><Icon name="upload" />{logo ? "Change logo" : "Add logo"}</button>
+          {logo ? <button className="btn btn-ghost sm" disabled={busy} onClick={() => void save(null)}><Icon name="trash" />Remove</button> : null}
+        </div> : null}
+        {can ? <span className="cell-sub">PNG, JPEG or WebP, up to 2 MB. Stored as a small PNG.</span> : null}
+        {err ? <p className="advisory" role="alert" style={{ margin: 0 }}><Icon name="alert" /><span>{err}</span></p> : null}
+      </div>
+    </div></div>
   );
 }

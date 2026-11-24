@@ -57,6 +57,7 @@ Every decision below writes an audit entry (`wsLog`, and `adminLog` for platform
 | Rates | Manual rate/tax override; release a held rate | super (elevated) | different super (elevated) | initiator != approver | numeric bounds; the held value must be unchanged when applied |
 | Rates | Reject a held rate; refresh from the feeds | super (elevated) | none (safe direction: the rate in force stays; held values need a person) | | reason + ticket for a rejection |
 | Trust Center | Turn the anonymous public page on | admin/owner | a different admin or owner (`trust.public-page`, 24 h) | requester != approver | turning it off: one admin or owner (safe direction) |
+| Trust Center | Show the live control status to visitors (public page and the Viewer/Vendor view) | admin/owner | a different admin or owner (`trust.section-controls`, 24 h) | requester != approver | hiding it, and showing or hiding any other section: one admin or owner, audited and in the page history |
 | Vendor portal | Send the assessment by email; send a new link; ask for clarification on chosen questions | admin/owner | none (the vendor answers; the company reviews) | | the vendor contact proves the invited address with an emailed code |
 | Reports | Schedule external distribution | owner/admin | different admin | | |
 
@@ -124,6 +125,7 @@ Decision (2026-11, designed from the existing agent behaviour, draft for review)
 | Track record | To be raised, an agent needs N suggestions approved by a person and no rejection among its last N decided changes. N is a company setting (Team & Rules, admin only, audited as `team.agent_track_record.changed`): 3 (default), 2, or Off for teams too small to build a record. Off removes only the record; the second person's approval of the raise always stays. |
 | Raise | One rung at a time, with a reason (at least 10 characters), as a four-eyes approval (`assistant.agent.autonomy`) by an admin or owner who is neither the requester nor the agent's creator. An agent that runs as a service account needs two different approvers. The rung and the record are checked again when it is decided. |
 | Lower | Immediate, by any admin or owner (safe direction). Climbing back needs the record again. |
+| Pause all agents | Immediate, by any admin or owner (safe direction), with a reason of at least 10 characters, recorded as `assistant.agents.paused_all` (how many were paused, by whom, the reason). Enable requests already waiting are withdrawn, so a later approval cannot restart an agent. Each agent is resumed on its own through a new enable request (`assistant.agent.enable`), approved by an admin or owner other than the requester and the agent's creator. Decided 2026-11 (reference review R33), draft for compliance review. |
 | Rejected applied change | Any admin or owner, including whoever ran it (safe direction), can reject a change an acting agent applied, with a reason. The agent drops to `Suggests only` at once and the rejection counts against its record. The change itself is reversed where it was made. |
 | Audit | `assistant.agent.autonomy_requested` (with reason), `assistant.agent.autonomy_raised` (approvers and requester), `assistant.agent.autonomy_lowered` (by whom, or automatically after a rejection), `assistant.run.rejected_after_applying` (with reason), `team.agent_track_record.changed`. |
 | Decided (2026-11) | Track record configurable as 3, 2 or Off; a rejected applied change lowers the agent automatically; service-account agents need two approvers to be raised. |
@@ -190,4 +192,22 @@ Enforced in `src/features/team/services/governance.ts`.
 
 ## 15. Presence (draft)
 Record and form pages show who else has the record open ("Also here"), and warn when two people are editing the same record ("the last save wins"). Names only, never content; nothing is stored. Demonstration build: between tabs of one browser (BroadcastChannel). Production: a Supabase Realtime Presence channel per record, joinable only by people the database allows to read that record. Presence is information, not a lock. Open for review: whether editing should take a lock instead.
+
+## 16. Platform roles, combined-role mode and the deputy approver (back-end v2, ADR-021)
+
+Accepted by the owner on 2026-11-24. It applies to Selvara's platform operations now and is built into back-end v2 (2D D-26a, 2E E-71e and E-72j, 2F F-K-49, 2H H-KS-13). The names of the people holding each role are recorded in the Phase 5 sign-off table (`docs/architecture/backend-v2/phase5/00-readiness-gate.md`, section 3) and are not repeated here.
+
+| Rule | Detail |
+|---|---|
+| Roles are assignments | One person may hold several platform roles: Management Approver (R-A), CISO (R-B), support and custom platform roles. Holding R-A and R-B together is **combined-role mode**. It is on now, because the same person holds both roles. |
+| Two different people, always | Every four-eyes action needs two **different** people. The approval engine counts people, not roles: a person holding R-A and R-B counts once, never twice. No self-approval, and no second vote. |
+| Deputy approver (R-DEP): delegation record | **Delegator:** the R-A and R-B holder. **Delegate:** the contracted deputy approver. **Scope:** acts for R-A **or** R-B (never both in one action) in platform four-eyes actions, dual-role kinds, deletion approvals (D-58), key-store restore, release of a keep-newest hold, and break-glass. **Not delegated:** tenant workspace access (only through a customer support grant), changing their own roles, approving their own requests. **Start:** 2026-11-24. **Review:** at every release gate, and when combined-role mode ends. **Ends:** on written revocation, or when a second person holds R-A or R-B. |
+| Deputy mandatory in combined-role mode | With no active deputy, platform four-eyes actions wait. Nothing proceeds on one approval. |
+| Key-store recovery | `ks` restore and hold release need the combined holder **and** the deputy (2F F-K-48, F-K-49; 2H H-KS-12, H-KS-13). |
+| Compensating controls | Approvals in combined-role mode are flagged `combined_mode = true`. Every super-admin elevation alerts the deputy. Break-glass needs the deputy and is reviewed afterwards by the internal auditor (R-D). |
+| Monthly independent review | The technical reviewer, or the outsourced internal auditor (R-D), reviews the platform audit log, elevations and approvals each month and records a signed review. A missed review alerts the owner. |
+| Changing the mode or role holders | Four-eyes kind `platform.roles.change` (the combined holder and the deputy). |
+| Technical reviewer | Contracted, independent of the code author and of the approvers (2K K-M06, OD-12). Signs the technical part of every release gate. **Not** an approver of platform four-eyes actions. |
+| Exit | Combined-role mode ends when a second person holds R-A or R-B. It is reviewed at every release gate. Recommendation: end it before cutover (V2-R6). |
+| Accepted risk | R-66 (concentration of authority in one person), accepted by the owner on 2026-11-24 with these controls. |
 

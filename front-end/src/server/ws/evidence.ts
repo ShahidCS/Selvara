@@ -9,6 +9,7 @@ import {
 import { approvalBlock, reasonBlock } from "@/lib/rules";
 import type { Deps } from "../types";
 import { approvalsView, invalid, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
+import { auditorScope, scopeGuard, withoutMemberIds } from "./audits";
 import { checkFile } from "./files";
 import { WsConflict, WsRefused, type Rec, type WsTx } from "./store";
 
@@ -45,13 +46,17 @@ export function evidenceRoutes(h: WsHelpers) {
     const name = txt(b.name, 160); if (!name) invalid("Name is required.");
     return { name, type: (EVIDENCE_TYPES as readonly string[]).includes(str(b.type, 20)) ? str(b.type, 20) : null, note: txt(b.note, 2000) };
   };
+  /** For an auditor, evidence outside their scope (not shared with a live engagement of theirs) does not exist: answered before any other check. */
+  const hide = async (d: Deps, c: { actor: import("./store").Actor }, id: string) => { if (c.actor.role === "auditor") await tx(d, c, (t) => scopeGuard(t, "evidence", id, "Evidence")); };
 
   const data = wsRoute(h, "evidence", async (d, _r, c) => ok(await tx(d, c, async (t) => {
     await sweepApprovals(t, DEL);
     const names = new Map((await membersOf(d, t.actor)).map((m) => [m.id, m.name]));
+    const scope = await auditorScope(t); const sees = (id: string) => !scope || scope.evidence.has(id); // an auditor: only what is shared with them
     // newest first, as the register shows them; file paths stay on the server
-    const items = (await t.list<Evidence>("evidence")).map((x) => ({ ...x.data, _v: x.version, attachments: x.data.attachments.map(({ path: _p, ...a }) => (void _p, a)) })).reverse();
-    return { evidence: items, approvals: await approvalsView(t, DEL, names), filesConfigured: d.files.configured };
+    const items = (await t.list<Evidence>("evidence")).filter((x) => sees(x.id)).map((x) => ({ ...x.data, _v: x.version, attachments: x.data.attachments.map(({ path: _p, ...a }) => (void _p, a)) })).reverse();
+    const out = { evidence: items, approvals: (await approvalsView(t, DEL, names)).filter((a) => sees(String(a.subject ?? ""))), filesConfigured: d.files.configured };
+    return scope ? withoutMemberIds(out) : out; // an external auditor: collector and reviewer names stay, member ids do not
   })));
   const create = wsRoute(h, "evidence", async (d, r, c) => {
     refuse(evidenceWriteBlock(c.actor.role)); const x = input(r.body); const me = c.actor;
@@ -64,7 +69,8 @@ export function evidenceRoutes(h: WsHelpers) {
     });
   });
   const update = wsRoute(h, "evidence", async (d, r, c) => {
-    refuse(evidenceWriteBlock(c.actor.role)); const x = input(r.body); const id = str(r.path[2], 40);
+    const id = str(r.path[2], 40); await hide(d, c, id);
+    refuse(evidenceWriteBlock(c.actor.role)); const x = input(r.body);
     return tx(d, c, async (t) => {
       const rec = await item(t, id); const e = rec.data;
       e.name = x.name; if (x.type) e.type = x.type; e.note = x.note; e.updated = isoDayOf(t.now); // the collector never changes
@@ -74,6 +80,7 @@ export function evidenceRoutes(h: WsHelpers) {
   });
   const action = wsRoute(h, "evidence", async (d, r, c) => {
     const id = str(r.path[2], 40); const what = r.path[3]; const me = c.actor;
+    await hide(d, c, id);
     return tx(d, c, async (t) => {
       const rec = await item(t, id); const e = rec.data;
       if (what === "review") {
@@ -108,6 +115,7 @@ export function evidenceRoutes(h: WsHelpers) {
   /** approve | reject (a different admin, with a reason) | withdraw (the requester). An approval deletes the files and keeps a tombstone. */
   const deleteDecide = wsRoute(h, "evidence", async (d, r, c) => {
     const id = str(r.path[2], 40); const decision = str(r.path[4], 10); const me = c.actor;
+    await hide(d, c, id);
     if (!["approve", "reject", "withdraw"].includes(decision)) return missing("Action");
     let gone: string[] = [];
     const res = await tx(d, c, async (t) => {
@@ -140,6 +148,7 @@ export function evidenceRoutes(h: WsHelpers) {
   });
   /** Upload (raw bytes, at most 4 MB): checked, stored under the company's id, then recorded on the evidence in one transaction. */
   const upload = wsRoute(h, "evidence", async (d, r, c) => {
+    await hide(d, c, str(r.path[2], 40));
     refuse(evidenceWriteBlock(c.actor.role));
     if (!d.files.configured) refuse("File storage is not configured yet. Ask the platform owner to create the evidence bucket (SUPABASE.md section 4d).");
     const id = str(r.path[2], 40); const bytes = r.raw ?? new Uint8Array();
@@ -162,6 +171,7 @@ export function evidenceRoutes(h: WsHelpers) {
   /** download (a signed link for 60 seconds, audited) | remove (the file is deleted). */
   const file = wsRoute(h, "evidence", async (d, r, c) => {
     const id = str(r.path[2], 40); const fileId = str(r.path[4], 40); const what = r.path[5];
+    await hide(d, c, id);
     if (what !== "download" && what !== "remove") return missing("Action");
     let path = "";
     const res = await tx(d, c, async (t) => {

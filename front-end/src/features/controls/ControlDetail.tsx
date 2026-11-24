@@ -1,4 +1,6 @@
+import { inAuditorScope } from "@/services/audits";
 import { DATA, FW_ID, testsForControl } from "@/lib/data";
+import { RecordHistory } from "@/components/kit/RecordHistory";
 import { bumpData, setModState, useApp, useData } from "@/lib/store";
 import { iAm, uiMessage } from "@/lib/grcSod";
 import { API_ON } from "@/lib/rbac";
@@ -17,7 +19,7 @@ export function ControlDetail({ id }: { id: string }) {
   useData(); useApp((s) => s.role);
   const L = useLayer(); const go = useGo();
   const back = { href: "/ws/controls", label: "Controls" };
-  const c = DATA.controls.find((x) => x.id === id);
+  const c = DATA.controls.find((x) => x.id === id && inAuditorScope("controls", x.id)); // outside an auditor's scope it does not exist for them
   if (!c) return <Page title="Control not found" back={back}><Empty icon="controls" title="No such control">There is no control with the ID &ldquo;{id}&rdquo;. It may have been removed, or the link may be wrong.</Empty></Page>;
   svc.sweepExceptions();
   const attestWhy = svc.whyCannotAttest(c), statusWhy = svc.whyCannotSetStatus(c), mapWhy = svc.whyCannotManage(), excWhy = svc.whyCannotRequestException();
@@ -59,14 +61,14 @@ export function ControlDetail({ id }: { id: string }) {
                     <div style={{ fontSize: 12.5, color: "var(--muted)" }}>Compensating control: {x.compensating}</div>
                     {st === "Pending" ? (
                       <div className="btngrp" style={{ marginTop: 6 }}>
-                        <button className="btn btn-primary sm" {...dis(dw)} onClick={() => openReasonModal(L, "Approve exception " + x.id, "Approval reason", "Approve", async (r) => { await svc.decideException(id, x.id, "approve", r); return "Exception approved"; }, refresh)}><Icon name="check" />Approve</button>
+                        <button className="btn btn-primary btn-decide sm" {...dis(dw)} onClick={() => openReasonModal(L, "Approve exception " + x.id, "Approval reason", "Approve", async (r) => { await svc.decideException(id, x.id, "approve", r); return "Exception approved"; }, refresh)}><Icon name="check" />Approve</button>
                         <button className="btn btn-secondary sm" {...dis(dw)} onClick={() => openReasonModal(L, "Reject exception " + x.id, "Reason", "Reject", async (r) => { await svc.decideException(id, x.id, "reject", r); return "Exception rejected"; }, refresh)}><Icon name="x" />Reject</button>
                       </div>) : null}
                     {st === "Pending" && dw ? <p className="field help" style={{ margin: "6px 0 0" }}>{dw}</p> : null}
                     {API_ON && st === "Pending" && iAm(x.requestedBy) ? <button className="btn btn-ghost sm" style={{ marginTop: 6 }} onClick={() => svc.withdrawException(id, x.id).then(() => L.toast("Exception request withdrawn")).catch((e) => L.toast(uiMessage(e), false))}><Icon name="x" />Withdraw request</button> : null}
                   </div>
                 );
-              }) : <p className="field help" style={{ marginTop: 0 }}>No exceptions or waivers.</p>}
+              }) : <Empty compact icon="check" title="No exceptions or waivers" />}
               <button className="btn btn-ghost sm" {...dis(excWhy)} onClick={() => go(`/ws/controls/${encodeURIComponent(id)}/exception`)}><Icon name="plus" />Request exception</button>
             </div></div>
 
@@ -77,7 +79,7 @@ export function ControlDetail({ id }: { id: string }) {
                   onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setModState("controls.view", "tests"); go(`/ws/controls/test/${encodeURIComponent(t.id)}`); } }}>
                   <div className="fi"><div className="lt">{t.name}</div><div className="lm">{t.id}, {t.cadence}</div></div>{testChip(t.result)}
                 </div>
-              )) : <p className="field help" style={{ margin: 0 }}>No automated tests linked to this control.</p>}
+              )) : <Empty compact icon="controls" title="No automated tests linked to this control" />}
             </div></div>
           </div>
 
@@ -92,7 +94,7 @@ export function ControlDetail({ id }: { id: string }) {
                   <div style={{ fontWeight: 500 }}><Icon name="check" /> Attested by {att.by}</div>
                   <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{att.at}: &quot;{att.note}&quot;</div>
                 </div></div>
-              ) : <p className="field help" style={{ marginTop: 0 }}>No current attestation. The control owner should confirm the control is designed and operating.</p>}
+              ) : <Empty compact icon="controls" title="No current attestation">The control owner should confirm the control is designed and operating.</Empty>}
               <div style={{ marginTop: 8 }}><button className="btn btn-secondary sm" {...dis(attestWhy)} onClick={() => openAttestModal(L, id)}><Icon name="check" />Record attestation</button></div>
               {attestWhy ? <p className="field help" style={{ margin: "6px 0 0" }}>{attestWhy}</p> : null}
             </div></div>
@@ -101,9 +103,10 @@ export function ControlDetail({ id }: { id: string }) {
               {keys.length ? keys.map((k) => (
                 <div key={k} style={{ marginBottom: 8 }}><div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 3 }}>{FW_ID[k] || k}</div>
                   <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>{c.map[k].map((r: string, i: number) => <span key={i} className="tag num">{r}</span>)}</div></div>
-              )) : <p className="field help" style={{ marginTop: 0 }}>No mappings.</p>}
+              )) : <Empty compact icon="controls" title="No mappings" />}
               <button className="btn btn-ghost sm" {...dis(mapWhy)} onClick={() => openMappingModal(L, id)}><Icon name="plus" />Add mapping</button>
             </div></div>
+            <RecordHistory id={c.id} />
           </aside>
         </div>
       </div>

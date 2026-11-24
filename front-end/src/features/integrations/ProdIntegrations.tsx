@@ -111,7 +111,7 @@ function SetupForm({ c }: { c: Conn }) {
     finally { setBusy(false); }
   };
   return (
-    <div className="card"><div className="c-head"><h3>Set up {c.name}</h3></div><div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 820 }}>
+    <div className="card"><div className="c-head"><h3>Set up {c.name}</h3></div><div className="c-body fields-cap" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.55, display: "flex", flexDirection: "column", gap: 6, overflowWrap: "anywhere" }}>{c.instructions.map((s: string, i: number) => <li key={i}>{s}</li>)}</ol>
       {c.externalId ? <div className="field"><label htmlFor="int-ext">External id (for the role&apos;s trust policy)</label><div style={{ display: "flex", gap: 8 }}><input className="input num" id="int-ext" readOnly value={c.externalId} /><button className="btn btn-secondary sm" onClick={() => copy(c.externalId)}><Icon name="copy" />Copy</button></div></div> : null}
       {c.jwk ? <div className="field"><label htmlFor="int-jwk">Public key for Okta (JSON)</label><div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}><textarea className="input num" id="int-jwk" readOnly rows={3} value={c.jwk} style={{ fontSize: 11.5 }} /><button className="btn btn-secondary sm" onClick={() => copy(c.jwk)}><Icon name="copy" />Copy</button></div><p className="field help">Selvara keeps the matching private key sealed; it is never shown.</p></div> : null}
