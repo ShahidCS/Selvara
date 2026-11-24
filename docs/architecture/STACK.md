@@ -29,6 +29,7 @@
 | `pg` | Server-side Postgres driver for the module APIs, connecting as the row-level-security-bound selvara_app role (src/server/db.ts; never shipped to the browser) | `8.23.1` | `8.23.1` |
 | `react` | UI library | `^19.3.1` | `19.3.1` |
 | `react-dom` | React renderer for the browser | `^19.3.1` | `19.3.1` |
+| `uqr` | (not described: add it to ROLES in .github/scripts/generate-stack.mjs) | `0.1.3` | `0.1.3` |
 
 ## Build, test and quality tooling
 

@@ -26,6 +26,15 @@ export interface AuthProvider {
   mfaEnrolled(userId: string): Promise<boolean>;
   /** Removes every authenticator factor of the person (an approved MFA reset): they enrol again at their next sign-in. */
   resetMfa(userId: string): Promise<void>;
+  /** The person's confirmed authenticator apps (admin API, no session needed). */
+  listTotp(userId: string): Promise<{ id: string; label: string; createdAt: number }[]>;
+  /** Removes one authenticator app of the person (admin API). */
+  removeTotp(userId: string, factorId: string): Promise<void>;
+  /** Which confirmed authenticator app `code` belongs to, or null. A correct code raises this session to two-step level. */
+  verifyAnyTotp(t: { access: string; refresh: string }, code: string): Promise<string | null>;
+  /** Adds another authenticator app when one is already confirmed: `code` from a confirmed app first (Supabase needs the two-step level
+   *  to enrol another), then a new unconfirmed app. Null when the code is wrong. Returns the session tokens to confirm the new app with. */
+  enrollTotpStepUp(t: { access: string; refresh: string }, code: string, label: string): Promise<{ factorId: string; secret: string; uri: string; access: string; refresh: string } | null>;
 }
 /** Supabase Postgres (or the test stand-in). Only the server reaches it, with the service key; row level security denies everyone else. */
 export interface Store {
