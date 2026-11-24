@@ -74,6 +74,7 @@
 | R-62 | `cp` is on every request (R2-01): overload or outage stops all tenants; no capacity NFR or test | P3-X3-04 | M | H | R-B | `cp` NFR A-NFR-07a, 2J H12 load test, connection ceiling A-CN-07 (DA-12) | Open (rev P3) |
 | R-63 | Cost model omits lines, so plans are priced below cost | P3-X3-08 | M | M | R-A | Recompute before pricing (VC-08) | Open (rev P3) |
 | R-64 | Trial flood fills cell capacity and KMS key count | P3-X3-10 | M | M | R-A | Concurrent-trial cap in the trial policy | Open (rev P3) |
+| R-65 | A uniform contractual SLA (OQ-23) is committed above what the underlying Supabase and Vercel plans guarantee, creating penalty exposure | Medium | Medium | R-A | Set the SLA at or below the combined vendor SLAs once VC-13 is verified; service credits only; exclusions for scheduled maintenance and vendor-wide outages | Open |
 
 
 ## Residual acceptance pending (P3-X2-35)
@@ -90,3 +91,4 @@ These threats and abuse cases in 2F carry a residual rating of M with a named ow
 ## Not adopted
 
 - R-41a (P3-X2-32, "`ks` lost in region loss, accepted residual") is not registered: DA-11 adds a DR-region standby and an off-site key journal instead (R-41 treatment). (rev P3)
+
