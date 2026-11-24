@@ -123,6 +123,15 @@ Each case proves one ISO-HARD control. KMS cases run against the test KMS in sta
 | J-ISO-56 | (c) Routed to A, ask `storagebroker` for an upload or download URL, a copy, a delete or a list under `<tkey_B>/`, `<tkey_A>/../<tkey_B>/`, an encoded or Unicode look-alike prefix, or an absolute key | Refused, with an audit entry; the prefix is derived only from the routed tenant (extends J-ISO-08 to every broker operation and to jobs) |
 | J-ISO-57 | (d) Tenant-mismatch detector: in staging, a test hook issues a KMS call whose encryption context differs from the routed tenant recorded for that request id | S1 alert within 5 minutes with the request id, both `tkey` values and the caller; 1,000 normal calls in the same window raise no alert |
 | J-ISO-58 | (a, d) Worker jobs: a message routed to A carries a payload that names B's key or file | Refused before any KMS call (J-ISO-07); if a KMS call is forced through a test hook, J-ISO-57 fires |
+| J-ISO-59 | (a) 2F F-IT-100: inside A's request, use A's tenant-bound KMS session (`kms-tenant` role, session tag `tkey = A`) to unwrap B's DEK, once with context `tkey = B` and once with context `tkey = A` | KMS denies both (key-policy condition on session tag **and** encryption context, 2F F-ISO-40); 2F F-M-19 fires (rev P4) |
+| J-ISO-60 | (b) 2F F-IT-101: as `ks_rw`, `SELECT` (and INSERT, UPDATE, DELETE) on every `ks` table | SQLSTATE 42501 on each (rev P4) |
+| J-ISO-61 | (c) 2F F-IT-102: every refusal of J-ISO-56 | Refused before any Storage call (the test Storage client records no request) and F-M-19 raised (rev P4) |
+| J-ISO-62 | (d) 2F F-IT-103: a synthetic KMS call (and a synthetic `ks` function call) with **no** routed request id, or a request id the router span log does not hold | F-M-19 within 5 minutes (rev P4) |
+| J-ISO-63 | Static, 2F F-IT-104: bundle grep of the built server output for a Storage client, a `ks` connection string or role, or a KMS `Decrypt` / `GenerateDataKey` call outside `storagebroker`, `keysvc` and `src/server/router/**` | Any hit fails the build; a seeded violation proves the check (rev P4) |
+| J-ISO-64 | Realtime, 2F F-IT-105 (2F F-ISO-39): with A's Realtime token, subscribe and send to `tkey:<B>:...`; use a token minted before A's membership was revoked; use a token without the `tkey` claim | Refused in each case; nothing from B's channel is received (rev P4) |
+| J-ISO-65 | DB + SIEM, 2F F-IT-106 (P4-A1-02): through a handler, inject `set_config('role' / 'search_path' / 'app.tenant_id', ..., true)` inside a SELECT expression, and a `SET ROLE` mid-transaction | `assert_context` (checks `current_user`, `app.tenant_id` and `search_path` after each mutation statement and before COMMIT) fails, the transaction rolls back, no response byte is sent (response buffered until the assertion and commit succeed); F-M-01 fires (rev P4) |
+
+Traceability to 2F F-4.3 (rev P4): F-IT-100 = J-ISO-50, J-ISO-59; F-IT-101 = J-ISO-53, J-ISO-54, J-ISO-60; F-IT-102 = J-ISO-56, J-ISO-61; F-IT-103 = J-ISO-57, J-ISO-62; F-IT-104 = J-ISO-52, J-ISO-63; F-IT-105 = J-ISO-64; F-IT-106 = J-ISO-65. J-ISO-59 to J-ISO-65 run on every pull request except the KMS and SIEM cases (J-ISO-59, J-ISO-62), which run nightly and pre-release in staging with J-ISO-50 and J-ISO-57 (2F F-SD-01).
 
 ## J-3. Authorisation suite (J-AUTHZ)
 
@@ -246,14 +255,14 @@ Runs quarterly in staging and production and is a V2-R0 exit criterion. In produ
 | ID | Step | Pass criterion |
 |---|---|---|
 | J-KSS-01 | Seed canary tenants A, B and C with E2 fields, subject keys and files; record a fingerprint of `ks` (row counts per table and a hash of the wrapped material) | Recorded outside `ks` |
-| J-KSS-02 | Run the snapshot job (2H H-KS-03..06) | Object in `ks-snap` with compliance-mode lock, retain-until exactly 8 days after write; manifest signed, with counts and the journal high-water mark |
-| J-KSS-03 | Attempt to delete the object, shorten its retention, read it with the writer role, and decrypt it with any role other than the restore role | Every attempt refused |
+| J-KSS-02 | Run the snapshot job (2H H-KS-03..06; writer role `ks_snap_ro`, 2F F-K-41) | Object in bucket `ks-snap` (`offsite-prod`) with compliance-mode lock, retain-until exactly 8 days after write; envelope-encrypted under `kek/ks-snap` with context `{purpose: "ks-snap", snapshot_id, taken_at}` (2F F-K-42); manifest signed, with counts and the journal high-water mark (rev P4, aligned with 2F F-7.5) |
+| J-KSS-03 | Attempt to delete the object, shorten its retention, read it with the writer role, call `Decrypt` on `kek/ks-snap` with the writer role or any role other than `ks-restore`, and assume `ks-restore` with only one of R-A and R-B | Every attempt refused; each `ks-restore` use alerts both (2F F-M-20) (rev P4) |
 | J-KSS-04 | After the snapshot: create a new subject key for A, destroy B's subject key P (tombstone), and add a file to C | Journal entries written within 5 minutes |
 | J-KSS-05 | Treat the Supabase organisation as lost (revoke the drill's access to `ks` and its standby). Under four-eyes, rebuild `ks` into a fresh project from the newest snapshot plus journal replay from the high-water mark (H-KS-08) | Manifest signature and counts verify; the rebuilt `ks` equals the expected state: A's new key present, P absent, C's file key present |
-| J-KSS-06 | Decrypt a sample of E2 fields and files for A, B and C through the rebuilt `ks` and the tenant KEKs (and, in a second pass, through the DR-region KEKs) | Plaintext equals the seeded values; P's fields stay unreadable |
+| J-KSS-06 | Decrypt a sample of at least 20 E2 values and 5 files per canary tenant (2F F-K-45) through the rebuilt `ks` and the tenant KEKs (and, in a second pass, through the DR-region KEKs) | Plaintext equals the seeded values; counts equal the manifest plus the replayed journal; P's fields stay unreadable (rev P4) |
 | J-KSS-07 | Measure RPO (last journal entry recovered against the last change) and RTO (start of rebuild to first successful decrypt) | RPO ≤ 5 min and RTO ≤ 4 h (2A A-NFR-19); a regression over 25% fails the drill |
 | J-KSS-08 | Monitoring: disable the job and advance a simulated clock | S2 at 26 h and S1 at 50 h (2H H-FL-10); an object written with governance mode or a shorter retention raises S1 |
-| J-KSS-09 | Roll-off: 8 days after J-KSS-04, list every snapshot and journal object | None holds P's key; the snapshot that held it has expired |
+| J-KSS-09 | Roll-off: 8 days after J-KSS-04, list every `ks-snap` object and journal object, the `ks` PITR window (7 days) and the daily `ks` backups | None holds P's key; the snapshot that held it has expired (lock end plus at most 15 minutes of deletion-job latency, recorded); the PITR window no longer reaches before P's destruction (2F F-K-44) (rev P4) |
 
 ### J-6.4 FINAL-EXPORT round trip (J-FEX) (S-3, P4-A3-08) (rev P4)
 

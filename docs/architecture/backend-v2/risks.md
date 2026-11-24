@@ -2,13 +2,13 @@
 
 | | |
 |---|---|
-| Status | Unified register, Phase 3 (2026-11-23). Replaces the Phase 1 seed and the per-workstream "Open risks" blocks; duplicates merged (P3-X3-28). R-60 to R-64 added. (rev P3) |
+| Status | Unified register, Phase 3 (2026-11-23). Replaces the Phase 1 seed and the per-workstream "Open risks" blocks; duplicates merged (P3-X3-28). R-60 to R-64 added. (rev P3) Phase 4 (2026-11-24): R-41 re-rated L by KS-SNAP, R-02 re-confirmed by the owner (OD-15) with ISO-HARD, residual acceptances recorded from OQ-16, F-AB-16 added as pending (rev P4) |
 | Scale | Likelihood (L) and Impact (I): H, M, L or Crit. Owner: R-A (Management Approver) or R-B (CISO). "→" means merged into the master risk; the merged ID stays as an alias so references in the documents keep resolving. No ID is reused for a different risk. |
 
 | ID | Risk | Source | L | I | Owner | Treatment (short) | Status |
 |---|---|---|---|---|---|---|---|
 | R-01 | Single region blocks in-country deals | P1 | H | H | R-A | Cells per region later | Accepted (OQ-04) |
-| R-02 | Pooled login can assume any tenant role (C1-01) | P1 | L | Crit | R-B | ADR-002 controls (one routing point, a role per tenant, RLS as defence in depth, escape tests in CI), plus the R-56 controls (injection prevention and detection, 2F F-ISO-06, DA-02); acceptance to be re-confirmed for R-56 (OQ-16) (rev P3) | Accepted with controls |
+| R-02 | Pooled login can assume any tenant role (C1-01) | P1 | L | Crit | R-B | ADR-002 controls (one routing point, a role per tenant, RLS as defence in depth, escape tests in CI), plus the R-56 controls (injection prevention and detection, 2F F-ISO-06, DA-02); extended to R-56 by OQ-16 (2026-11-23) (rev P3); ISO-HARD added (KMS, `ks` and Storage bound to the routed tenant, tenant-mismatch detector; 2F F-D-14, F-4.5, ADR-002 decision 9) (rev P4) | Accepted with controls; **re-confirmed by the owner OD-15 (2026-11-24) with ISO-HARD** (rev P4). Residual: code execution in `app` can still request any tenant's keys (2F F-T-075). Review at the Phase 5 gate against the pen-test results |
 | R-03 | No team: approvals block | P1 | M | H | R-A | Two approvers; automation | Open (A-08 validated; A-24, A-39 open) |
 | R-04 | No payment provider for a Pakistan entity | P1 | H | H | R-A | OD-01 bank transfer; adapters | Treated (OD-01); residual open until a Stripe-eligible entity or MoR exists |
 | R-05 | Full MVP scope too large | P1 | H | H | R-A | Ordered releases (K-M01) | Open |
@@ -47,7 +47,7 @@
 | R-38 | Collusion or one compromised super admin | 2E | L | Crit | R-A | Passkeys; dual-role; external anchor; R-D review | Open |
 | R-39 | Break-glass used without trace | 2E | L | H | R-B | Alerts on two channels; drills | Open |
 | R-40 | → R-56 (injection or router defect defeats C1-01 controls) | 2F | | | | | Merged |
-| R-41 | `ks` loss beyond its window loses subject and file keys (incl. region loss; 24 h backup RPO) | 2F | M (was L) | Crit (was H) | R-B | `ks` standby in the DR region and an 8-day off-site key journal with tombstones; destroyed keys unrecoverable from every copy after 8 days (DA-11, DU-36) (rev P3) | Open, **re-rated** |
+| R-41 | `ks` loss beyond its window loses subject and file keys (incl. region loss or loss of the Supabase organisation) | 2F | L (rev P4; was M) | Crit (was H) | R-B | `ks` standby in the DR region, PITR 7 days, an 8-day off-site key journal with tombstones (DA-11, DU-36) (rev P3), and **KS-SNAP**: a daily snapshot of `ks` to the `ks-snap` bucket in `offsite-prod` under an 8-day compliance lock, encrypted under `kek/ks-snap`, restored by snapshot plus journal replay, drilled quarterly and at the V2-R0 exit (2F F-D-13, F-7.5; 2H H-9.1a; 2J J-KSS) (rev P4). Destroyed keys unrecoverable from every copy after 8 days. Residual depends on KEK survival (VC-14) and compliance lock (VC-22, fallback 2F F-K-46) | Open, **re-rated L** (rev P4); stays open until the first KS-SNAP drill passes |
 | R-42 | KMS outage or BYOK revocation makes tenants unavailable | 2F | M | M | R-A | 5-minute DEK cache; `KeyUnavailable` | Open |
 | R-43 | Security account adds a subprocessor and cost before revenue | 2F | M | L | R-A | Managed per-use services | Open |
 | R-44 | Operator access exposes E0 plaintext and metadata | 2F | L | M | R-A | Attestations; E1/E2 | Open |
@@ -78,16 +78,21 @@
 | R-49a | Certification readiness: the ISMS documents and evidence of G-14 are not ready when a customer or tender requires ISO 27001 (Q-17), because two people carry all rows (rev P4, P4-A3-12) | High | Medium | R-A | G-14 plan with priority rows by V2-R6; progress reviewed at each gate; outsourced internal auditor before certification |
 
 
-## Residual acceptance pending (P3-X2-35)
+## Residual acceptance (P3-X2-35, 2F F-2.13)
 
-These threats and abuse cases in 2F carry a residual rating of M with a named owner, but no recorded acceptance. Each needs the owner's acceptance (OQ-16) before the Phase 5 gate. (rev P3)
+These threats and abuse cases in 2F carry a residual rating of M with a named owner. The owner accepted the Phase 3 items on 2026-11-23 (OQ-16; approver R-A Management Approver), for review at the Phase 5 gate and then yearly. Items added in Phase 4, and F-AB-16, which was missing from the Phase 3 list, are put to the owner at the Phase 5 gate. The authoritative per-item table is 2F F-2.13. (rev P3, rev P4)
 
 | 2F item | Owner | Acceptance status | Review date |
 |---|---|---|---|
-| F-T-005, F-T-016, F-T-030, F-T-061, F-T-063, F-T-073, F-T-074, F-T-083, F-T-084, F-T-101, F-T-111, F-T-112 | Per 2F F-2 | Pending owner acceptance | Phase 5 gate |
-| F-T-011 (R-56) | R-B | Pending: re-confirmation of R-02 to cover R-56 | Phase 5 gate |
-| F-T-024, F-T-081 | Per 2F F-2 | Pending owner acceptance | Phase 5 gate |
-| F-AB-02, F-AB-05, F-AB-09, F-AB-10, F-AB-11, F-AB-12 | Per 2F F-3 | Pending owner acceptance | Phase 5 gate |
+| F-T-005, F-T-016, F-T-030, F-T-061, F-T-063, F-T-073, F-T-083, F-T-084, F-T-101, F-T-111, F-T-112 | Per 2F F-2.13 | Accepted by owner OQ-16 (2026-11-23) (rev P4) | Phase 5 gate, then yearly |
+| F-T-074 (R-41) | R-B | Accepted by owner OQ-16 (2026-11-23) at M; re-rated L by KS-SNAP, listed until the first KS-SNAP drill passes (rev P4) | Phase 5 gate, then yearly |
+| F-T-011 (R-56) | R-B | Accepted by owner OQ-16 (2026-11-23); inside C1-01 / R-02, re-confirmed by owner OD-15 (2026-11-24) with ISO-HARD (rev P4) | Phase 5 gate, then yearly |
+| F-T-024, F-T-081 | Per 2F F-2.13 | Accepted by owner OQ-16 (2026-11-23) (rev P4) | Phase 5 gate, then yearly |
+| F-AB-02 (R-56) | R-B | Accepted by owner OQ-16 (2026-11-23); inside C1-01 / R-02, re-confirmed by owner OD-15 (2026-11-24) with ISO-HARD (rev P4) | Phase 5 gate, then yearly |
+| F-AB-05, F-AB-09, F-AB-10, F-AB-11, F-AB-12 | Per 2F F-2.13 | Accepted by owner OQ-16 (2026-11-23) (rev P4) | Phase 5 gate, then yearly |
+| F-T-075, F-T-045 | R-B | Inside C1-01 / R-02, re-confirmed by owner OD-15 (2026-11-24) with ISO-HARD (rev P4) | Phase 5 gate (against pen-test results), then yearly |
+| F-AB-16 (external report distribution) | R-B | Not covered by OQ-16 (missing from the Phase 3 list): pending owner acceptance (rev P4) | Phase 5 gate, then yearly |
+| F-T-122, F-T-130 (new in Phase 4) | Per 2F F-2.13 | Pending owner acceptance (rev P4) | Phase 5 gate, then yearly |
 
 ## Not adopted
 
