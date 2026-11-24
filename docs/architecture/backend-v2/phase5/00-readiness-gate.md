@@ -46,11 +46,11 @@ Sign only when section 2 is complete and the re-assessment recommends "Go". Name
 
 | Role | Name | Scope of approval | Conditions and residual risks accepted | Decision (Go / No-Go) | Date | Signature |
 |---|---|---|---|---|---|---|
-| Technical approver (contracted reviewer, OD-12) | `<name>` | Design conformance; router, keys and authorisation design; tests and migrations plan | | | | |
-| Security approver (R-B, CISO) | `<name>` | Threat model, isolation (incl. C1-01 / R-02 residual, ISO-HARD), keys (KS-SNAP), ASVS L2 plan | R-02 re-confirmed (OD-15); residual Medium items | | | |
-| Management approver (R-A, Management Approver) | `<name>` | Scope, budget, dates, stop criteria (K-M07), SLA, commercial decisions | | | | |
-| Compliance and legal reviewer | `<name or firm>` | Privacy (RoPA, DPIA, retention, transfers), DPA, ISO 27001 and 27701 plan | DRAFT items accepted pending counsel, if any | | | |
-| Deputy approver (P4-A3-19) | `<name>` | Stands in for R-A or R-B in four-eyes actions and key-store recovery | | | | |
+| Technical approver (contracted reviewer, OD-12) | `Hamza` | Design conformance; router, keys and authorisation design; tests and migrations plan | Accepted | Go | 24-11-2026 | Hamza |
+| Security approver (R-B, CISO) | `Shahid` | Threat model, isolation (incl. C1-01 / R-02 residual, ISO-HARD), keys (KS-SNAP), ASVS L2 plan | R-02 re-confirmed (OD-15); residual Medium items | Go | 24-11-2026| Shahid |
+| Management approver (R-A, Management Approver) | `Shahid M.` | Scope, budget, dates, stop criteria (K-M07), SLA, commercial decisions | Accepted | Go | 24-11-2026 | Shahid |
+| Compliance and legal reviewer | `Sara` | Privacy (RoPA, DPIA, retention, transfers), DPA, ISO 27001 and 27701 plan | DRAFT items accepted | Go | 24-11-2026 | Sara |
+| Deputy approver (P4-A3-19) | `Hamid` | Stands in for R-A or R-B in four-eyes actions and key-store recovery | Approved | Go | 24-11-2026 | Hamid |
 
 Next review date: at each release gate (2K K-4), and before cutover (V2-R6).
 
