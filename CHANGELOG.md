@@ -4,7 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-11-24
+## [0.3.1] - 2026-11-24
+
+The first release of these changes. Tag `v0.3.0` was pushed before the version bump was merged; it points at a commit still versioned 0.2.5, so the release workflow refused it and nothing was deployed. Tags are immutable, so the release is 0.3.1.
+
 
 Response guard, authenticator apps with QR codes, and the layout review. **Deploy note: no database migration.** Invitation links are now sent only by email, so **email must be set up in production** (`MAIL_PROVIDER`, `MAIL_API_KEY`, `MAIL_FROM`; see `docs/guides/`); without it an invitation is created but not delivered, and the app says so. The version moves to 0.3.0 because invitations change behaviour and a dependency is added (`uqr` 0.1.3, security-reviewed).
 
