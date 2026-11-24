@@ -51,7 +51,7 @@ function IntegrationsList() {
           Connect identity first (Arbor Identity), then cloud logs and monitoring, then source control, scanners and training. Connectors are <b>read-only</b> and scoped to the least privilege needed.
         </div>
       </div>
-      <div className="card" data-tour="integrations-table" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="integrations-table">
         <div className="c-body flush scroll" style={{ padding: 0 }}>
           <DataTable<Integration> id="integrations" label="Connectors" rows={rows} rowKey={(r) => r.name} columns={cols} searchText={(r) => `${r.name} ${r.cat} ${r.scope}`}
             tabs={["Connected", "Not connected"].map((st) => ({ key: st, label: st, match: (r: Integration) => r.status === st }))}

@@ -218,7 +218,7 @@ export function AuditDetail({ id }: { id: string }) {
         <button className="btn btn-secondary" onClick={report}><Icon name="reports" />Generate report</button>
         {a.stage !== "Complete" ? <button className="btn btn-primary" {...dis(manageWhy)} onClick={advance}><Icon name="check" />Advance stage</button> : null}
       </>}>
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card">
         <div className="c-head" style={{ padding: "0 8px" }}>
           <div className="tabs" role="tablist" aria-label="Audit sections" style={{ overflowX: "auto", flexWrap: "nowrap", maxWidth: "100%", scrollbarWidth: "thin" }}>
             {TABS.map((t) => (

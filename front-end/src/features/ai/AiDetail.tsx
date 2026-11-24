@@ -194,7 +194,7 @@ export function AiDetail({ id }: { id: string }) {
   }
   return (
     <Page title={a.name} sub={`${a.id} · ${a.purpose}`} back={back} acts={<><AiEuChip c={a.euClass} /><AiGuardChip g={a.guardrail} /><StatusChip s={a.status} /></>}>
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card">
         <div className="c-body scroll" id="aiDBody">{tabs}<div style={{ maxWidth: 860 }}>{body}</div></div>
       </div>
     </Page>

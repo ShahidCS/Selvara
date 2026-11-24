@@ -25,7 +25,7 @@ export function AuditorOverview() {
   ];
   return (
     <Page title="Your engagements" sub="You see each engagement's framework and the controls, evidence and policies management shares with it, while your access is live.">
-      <div className="card" style={{ flex: "1 1 auto" }}><div className="c-body flush scroll" style={{ padding: 0 }}>
+      <div className="card"><div className="c-body flush scroll" style={{ padding: 0 }}>
         {rows.length ? (
           <DataTable<Eng> id="auditor-engagements" label="Your engagements" rows={rows} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.name} ${a.fw}`}
             onOpen={(a) => go("/ws/audits/" + encodeURIComponent(a.id))} exportName="engagements" />

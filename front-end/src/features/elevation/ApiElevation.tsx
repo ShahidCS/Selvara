@@ -26,8 +26,8 @@ export function ApiElevation() {
   if (s.loaded && !s.canElevate) return <Page mod="elevation"><Empty icon="access" title="Support accounts do not elevate">You can browse the Admin Console. Changes are made by platform super admins, each with an elevated session.</Empty></Page>;
   return (
     <Page mod="elevation" sub="Time-boxed elevation for platform changes: reason, ticket, 60 minutes at most.">
-      <div className="card" data-tour="elevation-request" style={{ flex: "1 1 auto" }}><div className="c-body scroll">
-        <ServerElevationBanner s={s} />
+      <div className="card" data-tour="elevation-request"><div className="c-body scroll">
+        {s.el ? <ServerElevationBanner s={s} /> : null}
         {s.el ? (
           <>
             <dl style={{ display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px 16px", margin: "0 0 12px" }}>
@@ -39,7 +39,7 @@ export function ApiElevation() {
             <button className="btn btn-secondary" onClick={end}>End now</button>
           </>
         ) : s.loaded ? (
-          <form onSubmit={start} noValidate style={{ maxWidth: 560 }}>
+          <form onSubmit={start} noValidate className="fields-cap">
             <p className="field help" style={{ marginTop: 0 }}>Changes in the Admin Console need an elevated session: one at a time, 60 minutes at most, with the reason and ticket recorded in the platform audit log. Signing out ends it.</p>
             <div className="field"><label htmlFor="el-reason">Reason (at least {ELEVATION_REASON_MIN} characters)</label><textarea className="input" id="el-reason" rows={3} maxLength={300} style={{ resize: "vertical" }} value={reason} onChange={(e) => { setReason(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby="el-err" /></div>
             <div className="field"><label htmlFor="el-ticket">Ticket</label><input className="input" id="el-ticket" maxLength={13} autoComplete="off" placeholder="SEC-1234" value={ticket} onChange={(e) => { setTicket(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby="el-err" /></div>

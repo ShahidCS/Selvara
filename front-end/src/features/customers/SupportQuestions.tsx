@@ -27,7 +27,7 @@ export function SupportQuestions() {
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <p className="field help" style={{ margin: 0 }}>Questions companies sent to Selvara support from their Help centre. Answer here; the person is told in Selvara{data.mail ? " and by email" : ""}. Never ask for passwords, codes or customer data.{data.mail ? "" : " New questions are not emailed to the support inbox: set SUPPORT_INBOX_EMAIL to turn that on."}</p>
+      <p className="field help" style={{ margin: 0 }}>Questions companies sent to Selvara support from their Help centre. Answer here; the person is told in Selvara{data.mail ? " and by email" : ""}. Never ask for passwords, codes or customer data. {data.mail ? "" : " New questions are not emailed to the support inbox yet; the platform team can turn that on."}</p>
       {data.questions.length ? (
         <DataTable<svc.HelpQ> id="support-questions" label="Support questions" rows={data.questions} rowKey={(x) => x.id} columns={cols} searchText={(x) => `${x.ref} ${x.subject} ${x.company ?? ""} ${x.asker}`}
           tabs={["Open", "Answered", "Closed"].map((s) => ({ key: s, label: s, match: (x: svc.HelpQ) => x.status === s }))} exportName="support-questions" />

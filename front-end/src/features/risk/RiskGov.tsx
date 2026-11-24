@@ -1,5 +1,5 @@
 /* Governance tab (source renderRiskGov + riskSnapshot, lines 2740-2768). Snapshots: riskCanApprove (admin). */
-import { Chip } from "@/components/ui";
+import { Chip, Empty } from "@/components/ui";
 import { useLayer } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
@@ -33,7 +33,7 @@ export default function RiskGov() {
         <div className="rgrid-meta">{meta.map((x) => <div key={x[0]} style={{ background: "var(--surface-2)", borderRadius: 10, padding: "10px 12px" }}><div style={{ fontSize: 12, color: "var(--muted)" }}>{x[0]}</div><div style={{ fontSize: 13, fontWeight: 500 }}>{String(x[1])}</div></div>)}</div></div></section>
       <section className="card"><div className="c-body"><h3 style={{ margin: "0 0 2px" }}>Enterprise risks</h3>
         <p className="sub" style={{ margin: "0 0 10px" }}>Each scenario rolls up to one enterprise risk; the enterprise view shows the highest current exposure among its scenarios.</p>
-        {!RISK_ENT.length ? <p className="field help" style={{ margin: 0 }}>No enterprise risks are defined for this register yet.</p> : null}
+        {!RISK_ENT.length ? <Empty compact icon="risk" title="No enterprise risks are defined for this register yet" /> : null}
         <div className="rgrid3">{RISK_ENT.map((e) => {
           const kids = e.kids.map(riskFindR).filter(Boolean) as any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
           const top = kids.length ? Math.max(...kids.map(sCur)) : 0;
@@ -60,7 +60,7 @@ export default function RiskGov() {
               <span><span className="num strong">{s.id}</span> <span style={{ fontSize: 13 }}>{s.at} · {s.count} risks · {s.scope}</span><span style={{ display: "block", fontSize: 12, color: "var(--muted)" }}>{s.sha256 ? "SHA-256 " : "Hash "}{s.hash} · by {s.by}</span></span>
               <span style={{ display: "flex", gap: 6, alignItems: "center" }}>{API_ON && admin ? <button className="btn btn-ghost sm" onClick={() => download(s.id)}>Download</button> : null}{s.shared ? <Chip cls="info" icon="check">Shared with auditor</Chip> : <Chip cls="neutral" icon="dot">Not in audit window</Chip>}</span>
             </div>
-          )) : <p className="field help" style={{ margin: "6px 0 0" }}>No snapshots taken yet.</p>}
+          )) : <Empty compact icon="risk" title="No snapshots taken yet" />}
         </div></section>
         <section className="card"><div className="c-body"><h3 style={{ margin: "0 0 2px" }}>Risk acceptances</h3>
           <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>Acceptance lasts at most 12 months and names an authority at or above the level the rating requires. Those ending within 60 days are highlighted.</div>
@@ -69,7 +69,7 @@ export default function RiskGov() {
               <span style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}><span className="strong">{r.id} {r.title}</span>{expiresSoon(r.acceptance.until) ? <Chip cls="warn" icon="clock">Expires &lt;60d</Chip> : <Chip cls="ok" icon="check">Valid</Chip>}</span>
               <span style={{ fontSize: 12, color: "var(--muted)" }}>By {r.acceptance.by}{r.acceptance.board ? " (Board approved " + r.acceptance.board.ref + ", " + r.acceptance.board.date + ")" : ""} · residual {sRes(r)} · valid until {r.acceptance.until || "—"}</span>
             </button>
-          )) : <p className="field help" style={{ margin: 0 }}>No accepted risks.</p>}
+          )) : <Empty compact icon="risk" title="No accepted risks" />}
         </div></section>
       </div>
     </div>

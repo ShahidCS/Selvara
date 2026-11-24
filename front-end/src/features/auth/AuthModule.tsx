@@ -10,7 +10,7 @@ import { API_ON } from "@/lib/rbac";
  *  Every panel is its own component keyed by view, so password / OTP / phone state is discarded whenever the view changes or the page unmounts. */
 export default function AuthModule() {
   // Production: only the person's own account (from the server). The other tabs preview the sign-in screens with demonstration logic.
-  if (API_ON) return <Page title="Your account" sub="Sign-in history, two-step verification, sessions and password"><div className="card" style={{ flex: "1 1 auto" }}><div className="c-body scroll"><YourAccount /></div></div></Page>;
+  if (API_ON) return <Page title="Your account" sub="Sign-in history, two-step verification, sessions and password"><div className="card"><div className="c-body scroll"><YourAccount /></div></div></Page>;
   return <Gallery />;
 }
 
@@ -36,7 +36,7 @@ function Gallery() {
   const lab = onTab ? { "aria-labelledby": "authtab-" + view } : { "aria-label": view === "resetpw" ? "Set a new password" : "Two-factor authentication" };
   return (
     <Page mod="auth" acts={view === "account" ? undefined : <span className="tag"><Icon name="access" />Preview</span>}>
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card">
         <div className="c-head" style={{ padding: "0 8px" }}>
           <div className="tabs" role="tablist" aria-label="Sign-in screens" onKeyDown={tabKey}>
             {AUTH_TABS.map((t) => {

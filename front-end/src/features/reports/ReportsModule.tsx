@@ -1,4 +1,4 @@
-import { DonutChart, HBarList, Icon, KpiStrip, KpiTile, LineChart, PairBarChart, Page, Segmented, Table, type Tone } from "@/components/ui";
+import { DonutChart, HBarList, Icon, KpiStrip, KpiTile, LineChart, PairBarChart, Page, Segmented, Table, type Tone, Empty } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
@@ -91,11 +91,11 @@ export default function ReportsModule() {
               : <PairBarChart title={`Issues closed and opened, ${range}`} data={flow.map((f) => ({ label: f.label, a: f.closed, b: f.opened }))} aLabel="Closed" bLabel="Opened" />}</div></div>
           <div className="card"><div className="c-head"><h3>Framework readiness</h3><span className="tag" style={{ marginLeft: "auto" }}>Today</span></div>
             <div className="c-body">{fws.length ? <HBarList title="Furthest from target first" rows={fws.slice(0, FW_SHOWN).map((f) => ({ label: f.name, value: f.pct, text: f.pct + "%", tone: f.pct >= TARGET ? "ok" : f.pct >= 50 ? "warn" : "bad" }))} max={100} unit="%" target={TARGET} />
-              : <p className="field help" style={{ margin: 0 }}>No frameworks are in scope yet.</p>}
+              : <Empty compact icon="frameworks" title="No frameworks are in scope yet" />}
               {fws.length > FW_SHOWN ? <p className="chart-note">{fws.length - FW_SHOWN} more framework{fws.length - FW_SHOWN === 1 ? "" : "s"}, {fws.slice(FW_SHOWN).filter((f) => f.pct >= TARGET).length} at or above target. See Frameworks for all.</p> : null}</div></div>
           <div className="card"><div className="c-head"><h3>Open issues by severity</h3><span className="tag" style={{ marginLeft: "auto" }}>Today</span></div>
             <div className="c-body">{sevs.length ? <DonutChart title="Open issues by severity" segments={sevs} center={String(open.length)} centerSub="open" />
-              : <p className="field help" style={{ margin: 0 }}>No open issues.</p>}</div></div>
+              : <Empty compact icon="check" title="No open issues" />}</div></div>
         </div>
         <ApprovalsPanel prefix="report." title="External distribution awaiting a different admin" />
         <div style={{ marginBottom: 14 }}><AskPanel title="Ask about this report" facts={reportFacts(M)}

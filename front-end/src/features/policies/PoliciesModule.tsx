@@ -52,7 +52,7 @@ function PoliciesList() {
         <KpiTile label="Review due" value={policies.filter((p) => policyState(p) === "Review due").length} delta={policies.some((p) => policyState(p) === "Review due") ? { tone: "watch", text: "Due now" } : { tone: "good", text: "Up to date" }} caption="Active, past the review date" />
         <KpiTile label="Emergency approvals" value={policies.filter((p) => openExceptions(p).length).length} delta={policies.some((p) => openExceptions(p).length) ? { tone: "bad", text: "Needs action" } : { tone: "good", text: "None open" }} caption="Awaiting a second approver" />
       </KpiStrip>
-      <div className="card" data-tour="policies-table" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="policies-table">
         <div className="c-body flush scroll" style={{ padding: 0 }}>
           <DataTable<Policy> id="policies" label="Policies" rows={policies} rowKey={(p) => p.id} columns={cols} searchText={(p) => `${p.id} ${p.name} ${p.owner}`}
             tabs={STATES.map((s) => ({ key: s, label: s, match: (p: Policy) => policyState(p) === s }))}

@@ -24,7 +24,7 @@ export function ApiCustomers() {
   return (
     <Page mod="customers" sub="Companies on the platform. Changes need an elevated session and a second platform super admin's approval.">
       <ServerElevationBanner s={s} />
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card">
         <div className="c-head"><div className="seg" role="tablist" data-tour="customers-views">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className="c-body scroll">
           {view === "companies" ? <Companies s={s} /> : view === "support" ? <ApiSupportSessions /> : view === "questions" ? <SupportQuestions /> : (
@@ -89,7 +89,7 @@ function CreateForm({ locked }: { locked: boolean }) {
         <div className="field" style={{ margin: 0, flex: "1 1 220px" }}><label htmlFor="cc-email">First admin&apos;s work email</label><input className="input" id="cc-email" type="email" maxLength={254} autoComplete="off" value={email} onChange={(e) => { setEmail(e.target.value); setErr(""); }} aria-describedby="cc-help cc-err" /></div>
         <button type="submit" className="btn btn-primary" disabled={busy || locked} title={locked ? ELEVATE_TEXT : undefined}>Request</button>
       </div>
-      <p className="field help" id="cc-help" style={{ maxWidth: "80ch" }}>The code is what people type to join (3 to 40 lower-case letters, digits and hyphens). Another platform super admin approves; then use Email first admin to send them an invitation by email. Platform staff cannot be a company admin.</p>
+      <p className="field help" id="cc-help">The code is what people type to join (3 to 40 lower-case letters, digits and hyphens). Another platform super admin approves; then use Email first admin to send them an invitation by email. Platform staff cannot be a company admin.</p>
       <p className="field help" id="cc-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
     </form>
   );
