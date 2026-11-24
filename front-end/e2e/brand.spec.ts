@@ -54,6 +54,9 @@ test("every colour is accessible in the light and dark themes", async ({ browser
       await expect(p.locator("html")).toHaveAttribute("data-brand", brand);
       for (const path of ["/ws/overview", "/ws/issues", "/ws/team"]) {
         await nextPush(p, path); await p.waitForTimeout(400);
+        // the "Workspace colour" confirmation toast (2.2s, then a 0.2s fade) must be gone before the scan: a toast that starts fading while
+        // axe runs is measured half-transparent, and its blended colours read as low contrast. Shown in full, the toast is white on near-black, well above 4.5:1.
+        await expect.poll(() => p.evaluate(() => { const t = document.getElementById("toast"); return t ? getComputedStyle(t).opacity : "0"; }), { timeout: 5000 }).toBe("0");
         const r = await new AxeBuilder({ page: p }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();
         const bad = r.violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${theme}/${brand}${path}: ${v.id} x${v.nodes.length}: ${v.nodes.slice(0, 2).map((n) => n.target.join(" ")).join(" | ")}`);
         expect(bad, bad.join("\n")).toEqual([]);
