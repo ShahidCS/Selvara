@@ -210,6 +210,17 @@ The provider becomes a sub-processor (record it in RoPA PA-16). Messages carry a
 
 Optional, from v0.2.5: `SUPPORT_INBOX_EMAIL` (not a secret) is the address told when a company asks Selvara support a question in the Help centre. The email names the company, the question's reference and subject, and links to the Admin Console support inbox; the question itself is not included. Without it, staff see new questions in the inbox only. The person who asked is told by email when support answers, whenever email is set up.
 
+### 4i. Live staging preview (you, once; optional)
+
+The `staging` branch deploys a **demo** preview always, and a **live** preview (the production build on the real server) once this is set up. The live preview uses the **staging** Supabase project from section 1, never production, and holds synthetic data only.
+
+1. Run sections 2, 3, 4b, 4d (and 4h for email, in sandbox or test mode) against the `selvara-staging` project.
+2. Vercel → Project → Settings → Environment Variables: give every variable from sections 4 and 4b to 4h the **staging** project's values, with only **Preview** ticked. Set `SITE_URL` to the live preview's address, `https://` plus `STAGING_ALIAS`; that origin is checked on every write and is the passkey relying party. Preview values reach every preview deployment, the demo one too, which does not use them.
+3. GitHub → Settings → Environments → `staging` → Variables: `STAGING_ALIAS` (the hostname, assigned to the Vercel project as a domain) and `STAGING_LIVE_ENABLED` = `true`.
+4. Move the staging branch (docs/security/PIPELINE.md, "Staging branch and previews") and open the live preview: sign in with a staging account from section 5.
+
+Run each new migration on staging **before** production, then test the release on the live preview before tagging it.
+
 ## 5. First accounts (you, per project)
 
 Requests to join need a company admin to approve them, so create the first admin by hand (5a), then their company (5b).

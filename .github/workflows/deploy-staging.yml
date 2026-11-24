@@ -1,17 +1,23 @@
 name: Deploy staging
 
-# Every push to main (a merged pull request) runs the full quality and security gates, then deploys to the
-# staging environment. Nothing here can reach production.
+# The `staging` branch is the preview environment. It only ever points at a commit that is already on main (it is
+# moved forward with `git push origin <main commit>:staging`, never committed to directly), so staging shows reviewed
+# code only. Every push to staging runs the full quality and security gates, then deploys two Vercel PREVIEW
+# deployments from the same commit:
+#   - Demo: the demonstration build (synthetic data in the browser, demo personas). For demos.
+#   - Live: the production build (API_MODE=http) on the staging Supabase project, with synthetic data only. For
+#     testing a release on the real server before it is tagged. Off until STAGING_LIVE_ENABLED=true.
+# A push to main runs the gates only. Nothing here can reach production (release.yml, signed tags only).
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   workflow_dispatch:
 
 permissions: {}
 
 concurrency:
-  group: deploy-staging
+  group: deploy-staging-${{ github.ref }}
   cancel-in-progress: false # never interrupt a deployment half way; queue the next one
 
 jobs:
@@ -30,11 +36,37 @@ jobs:
       actions: read
       pull-requests: read
 
-  deploy:
-    name: Staging
-    needs: [ci, security]
-    # Opt-in: stays off until the Vercel secrets exist. Set the repository variable DEPLOY_ENABLED=true (docs/security/PIPELINE.md).
-    if: vars.DEPLOY_ENABLED == 'true'
+  # Staging must only show reviewed code: the pushed commit has to be on main already. A commit made on staging
+  # directly (or anything not merged through a pull request) stops here and nothing is deployed.
+  on-main:
+    name: Staging commit is on main
+    if: github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Check out (full history)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check the commit is reachable from main
+        shell: bash
+        run: |
+          git fetch --no-tags origin main
+          if git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD; then
+            echo "ok: $GITHUB_SHA is on main"
+          else
+            echo "::error title=Staging is not on main::staging points at $GITHUB_SHA, which is not on main. Move staging only to a main commit: git push origin <main commit>:staging"
+            exit 1
+          fi
+
+  demo:
+    name: Staging demo
+    needs: [ci, security, on-main]
+    # Opt-in: stays off until the Vercel secrets exist (repository variable DEPLOY_ENABLED=true, docs/security/PIPELINE.md).
+    if: vars.DEPLOY_ENABLED == 'true' && github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # The environment is declared HERE (not in a reusable workflow) so that its secrets are available to this job.
@@ -56,7 +88,42 @@ jobs:
         with:
           environment: staging
           vercel-environment: preview
-          label: staging-${{ github.sha }}
+          label: staging-demo-${{ github.sha }}
+          org-id: ${{ vars.VERCEL_ORG_ID }}
+          project-id: ${{ vars.VERCEL_PROJECT_ID }}
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          bypass-secret: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          staging-alias: ${{ vars.STAGING_DEMO_ALIAS }}
+          attestations: ${{ vars.ATTESTATIONS_ENABLED }}
+          cosign: ${{ vars.COSIGN_ENABLED }}
+          api-mode: mock
+
+  live:
+    name: Staging live
+    needs: [ci, security, on-main]
+    # Off until the staging Supabase project and the Vercel Preview variables exist (docs/guides/SUPABASE.md section 4i).
+    if: vars.DEPLOY_ENABLED == 'true' && vars.STAGING_LIVE_ENABLED == 'true' && github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: staging
+      url: ${{ steps.deploy.outputs.url }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build, attest and deploy
+        id: deploy
+        uses: ./.github/actions/deploy
+        with:
+          environment: staging
+          vercel-environment: preview
+          label: staging-live-${{ github.sha }}
           org-id: ${{ vars.VERCEL_ORG_ID }}
           project-id: ${{ vars.VERCEL_PROJECT_ID }}
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
@@ -64,4 +131,4 @@ jobs:
           staging-alias: ${{ vars.STAGING_ALIAS }}
           attestations: ${{ vars.ATTESTATIONS_ENABLED }}
           cosign: ${{ vars.COSIGN_ENABLED }}
-          api-mode: ${{ vars.API_MODE }}
+          api-mode: http

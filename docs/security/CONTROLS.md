@@ -175,7 +175,7 @@ Evidence that the client uses this contract and never the demo path in productio
 | NIST SP 800-63B rev 4 wording | Compliance | Not verified from the primary source: nist.gov is outside this environment's network allow-list (tried again 2026-11). Allow pages.nist.gov in the environment's network settings, or check it manually. |
 | Regulator-specific values (SBP, SECP, CBUAE, DFSA) | Compliance | None found for lockout, so a bounded Custom preset lets each company set its own (decision 2026-11). CBUAE notice on SMS/email OTP phase-out from secondary sources only. |
 | Passkeys for other roles | Product | Platform super admins require passkeys (AUTH-16). Offering passkeys to every account, and requiring them for company admins, is a later decision. |
-| Server implementation | Engineering | Authentication is implemented (`front-end/src/server`); the admin endpoints for trusted networks, lifting network blocks, rules and retention, and every other module API, are not yet. Nothing in demo mode is a control. |
+| Server implementation | Engineering | Authentication and every workspace and Admin Console module run on the server (`front-end/src/server`, since v0.2.0). Nothing in demo mode is a control. |
 | CSP nonce, CSRF tokens, cryptographic audit chain | Engineering | SECURITY.md limitations 2–4; EX-05. |
 | Agent and notification policy periods | Compliance | SOD_MATRIX §10, §11 open questions. |
 | Rules, retention periods and minimums, presence | Compliance | SOD_MATRIX §13–§15: every value is a draft. |
