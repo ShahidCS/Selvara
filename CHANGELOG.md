@@ -4,6 +4,9 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Added
+- **Manage your authenticator apps from Your account.** Every user with a company account can add an authenticator app (a main and a backup, two at most), replace one, or remove one. Each change asks for the password and a current code. If the phone with the app is lost, a recovery code replaces it. Setting up shows a **QR code** to scan, or the key to type into the app by hand, and the first sign-in set-up now shows the QR code too. A code from either app works at sign-in. Platform super admins can add an authenticator app as an extra step after their passkey. Every change is emailed to the account owner as an alert and written to the audit log. The QR code is drawn in the browser by `uqr` 0.1.3, a small MIT library with no dependencies that was security-reviewed before it was added.
+
 ### Security
 - **Secrets never come back in server responses.** Every API response now passes a final check that removes credential fields (passwords, token and key hashes, salts, tokens, secrets, recovery codes, authenticator set-up URIs, invitation links) and blanks out values that look like secrets, such as signed tokens, private keys and API keys. The only values a person sees are the ones they need once to finish their own action: the authenticator set-up key while adding an authenticator, recovery codes when issued, and a new API key or webhook signing secret, once. A blocked value is logged by route and field name, never by its value, and the automated tests fail on any such leak.
 - **Invitation links go only by email.** Company admins and platform super admins no longer see an invitation link in the app, even when email cannot be sent: the invitation is created and the app says it was not sent, and why, so it can be sent again later ("Send again", "Email first admin"). This needs email to be set up in production.

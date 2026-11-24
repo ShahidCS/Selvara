@@ -206,6 +206,82 @@ describe("account endpoints", () => {
   });
 });
 
+describe("authenticator apps from Your account (owner decision 2026-11-24)", () => {
+  const usedBy = new Map<string, number>();
+  /** A code from one particular app (secret); waits for the next 30-second step when this app's current code was already used. */
+  const codeFor = async (secret: string) => { const step = Math.floor(clock / 30_000); if ((usedBy.get(secret) ?? -1) >= step) clock = (step + 1) * 30_000 + 1_000; usedBy.set(secret, Math.floor(clock / 30_000)); return totpAt(secret, clock); };
+  const view = async (cookie: string) => (await call("GET", "me/security", {}, { cookie })).body as { authenticators: { id: string; label: string }[]; authenticatorsMax: number; mfa: { codesLeft: number } | null };
+  it("adds a second app with the password and a current code, shows the set-up key once, and accepts either app at sign-in", async () => {
+    const alex = await account("alex.kim@company.example"); const first = auth.secretsOf("alex.kim@company.example")[0]; usedBy.set(first, used.get("alex.kim@company.example")!);
+    expect((await view(alex.cookie))).toMatchObject({ authenticators: [{ label: "Authenticator app" }], authenticatorsMax: 2 });
+    const add = await call("POST", "me/authenticators", { password: PW, code: await codeFor(first), label: "Backup <b>phone</b>" }, { cookie: alex.cookie });
+    expect(add.status).toBe(200);
+    const setup = add.body as { secret: string; uri: string; label: string };
+    expect(setup.uri.startsWith("otpauth://totp/")).toBe(true); expect(setup.label).toBe("Backup bphone/b"); // markup characters removed
+    const done = await call("POST", "me/authenticators/verify", { code: await codeFor(setup.secret) }, { cookie: alex.cookie });
+    expect([done.status, done.body]).toEqual([200, {}]); // recovery codes already exist: none issued
+    expect((await view(alex.cookie)).authenticators.map((x) => x.label)).toEqual(["Authenticator app", "Backup bphone/b"]);
+    expect(JSON.stringify((await call("GET", "me/security", {}, { cookie: alex.cookie })).body)).not.toContain(setup.secret); // never shown again
+    expect((await call("POST", "me/authenticators", { password: PW, code: await codeFor(first) }, { cookie: alex.cookie })).status).toBe(409); // two at most
+    const st = (await call("POST", "auth/sign-in", { email: "alex.kim@company.example", password: PW })).body as { ticket: string };
+    const sv = await call("POST", "auth/sign-in/verify", { ticket: st.ticket, code: await codeFor(setup.secret) }); expect(sv.body).toEqual(expect.objectContaining({ roleId: "employee" })); // the backup app works
+    // wrong password, wrong current code, wrong first code from the new app: refused, each counted as a failure
+    expect((await call("POST", "me/authenticators/" + "x/remove", {}, { cookie: alex.cookie })).status).toBe(404);
+    const kept = (await view(alex.cookie)).authenticators[1].id;
+    expect((await call("POST", "me/authenticators", { password: "wrong-password-1", code: await codeFor(first), replaces: kept }, { cookie: alex.cookie })).status).toBe(400);
+    expect((await call("POST", "me/authenticators", { password: PW, code: "000000", replaces: kept }, { cookie: alex.cookie })).status).toBe(400);
+    await call("POST", "me/authenticators", { password: PW, code: await codeFor(first), replaces: kept }, { cookie: alex.cookie });
+    expect((await call("POST", "me/authenticators/verify", { code: "123456" }, { cookie: alex.cookie })).status).toBe(400);
+    expect(store.auditLog.some((x) => x.action === "auth.totp.added")).toBe(true);
+    expect(store.notices.some((n) => /authenticator app \("Backup bphone\/b"\) was added/.test(n.text))).toBe(true);
+  });
+  it("replaces an app, keeps at least one, and removes one only with the password and a code", async () => {
+    const alex = await account("alex.kim@company.example"); const [a1] = auth.secretsOf("alex.kim@company.example"); usedBy.set(a1, used.get("alex.kim@company.example")!);
+    const only = (await view(alex.cookie)).authenticators[0];
+    expect((await call("POST", `me/authenticators/${only.id}/remove`, { password: PW, code: await codeFor(a1) }, { cookie: alex.cookie })).status).toBe(400); // the last one stays
+    const add = (await call("POST", "me/authenticators", { password: PW, code: await codeFor(a1), replaces: only.id, label: "New phone" }, { cookie: alex.cookie })).body as { secret: string };
+    expect((await call("POST", "me/authenticators/verify", { code: await codeFor(add.secret) }, { cookie: alex.cookie })).status).toBe(200);
+    expect((await view(alex.cookie)).authenticators.map((x) => x.label)).toEqual(["New phone"]); // the old app is gone
+    const b = (await call("POST", "me/authenticators", { password: PW, code: await codeFor(add.secret), label: "Tablet" }, { cookie: alex.cookie })).body as { secret: string };
+    await call("POST", "me/authenticators/verify", { code: await codeFor(b.secret) }, { cookie: alex.cookie });
+    const tablet = (await view(alex.cookie)).authenticators.find((x) => x.label === "Tablet")!;
+    expect((await call("POST", `me/authenticators/${tablet.id}/remove`, { password: PW, code: "000000" }, { cookie: alex.cookie })).status).toBe(400);
+    expect((await call("POST", `me/authenticators/${tablet.id}/remove`, { password: PW, code: await codeFor(add.secret) }, { cookie: alex.cookie })).status).toBe(204);
+    expect((await view(alex.cookie)).authenticators.map((x) => x.label)).toEqual(["New phone"]);
+    expect((await call("POST", "me/authenticators/nope/remove", { password: PW, code: await codeFor(add.secret) }, { cookie: alex.cookie })).status).toBe(404);
+  });
+  it("replaces a lost app with a recovery code (once), and gives up after too many wrong codes", async () => {
+    const alex = await account("alex.kim@company.example");
+    const add = await call("POST", "me/authenticators", { password: PW, code: alex.codes[0], recovery: true, label: "Replacement" }, { cookie: alex.cookie });
+    expect(add.status).toBe(200); const { secret } = add.body as { secret: string };
+    expect((await view(alex.cookie)).authenticators).toEqual([]); // every app was removed first
+    for (let i = 0; i < 4; i++) expect((await call("POST", "me/authenticators/verify", { code: "000000" }, { cookie: alex.cookie })).status).toBe(400);
+    expect(((await call("POST", "me/authenticators/verify", { code: "000000" }, { cookie: alex.cookie })).body as { error: string }).error).toMatch(/Start again/);
+    expect((await call("POST", "me/authenticators/verify", { code: await codeFor(secret) }, { cookie: alex.cookie })).status).toBe(400); // that set-up is over
+    expect((await call("POST", "me/authenticators", { password: PW, code: alex.codes[0], recovery: true }, { cookie: alex.cookie })).status).toBe(400); // used once
+    const again = (await call("POST", "me/authenticators", { password: PW, code: alex.codes[1], recovery: true }, { cookie: alex.cookie })).body as { secret: string };
+    expect((await call("POST", "me/authenticators/verify", { code: await codeFor(again.secret) }, { cookie: alex.cookie })).status).toBe(200);
+    expect((await view(alex.cookie)).mfa?.codesLeft).toBe(8);
+  });
+  it("lets a platform super admin add an app as an extra step after the passkey, never instead of it", async () => {
+    const id = await auth.createUser("dana@platform.example", PW, "Dana Whitfield"); await auth.confirmUser(id);
+    await store.insertProfile({ id, email: "dana@platform.example", person: "Dana Whitfield", status: "Active", requestedAt: clock }); dir.staff.set(id, "super");
+    const t = (await auth.signInWithPassword("dana@platform.example", PW))!; const en = await auth.enrollTotp(t, "Authenticator app"); await auth.verifyTotp(t, en.factorId, await codeFor(en.secret));
+    const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+    const spki = new Uint8Array(await crypto.subtle.exportKey("spki", kp.publicKey)); const kid = toB64u(crypto.getRandomValues(new Uint8Array(16)));
+    const st = (await call("POST", "auth/sign-in", { email: "dana@platform.example", password: PW })).body as { step: string; ticket: string; challenge: string };
+    expect(st.step).toBe("passkey"); // the passkey always comes first
+    const cd = toB64u(new TextEncoder().encode(JSON.stringify({ type: "webauthn.create", challenge: st.challenge, origin: ORIGIN })));
+    const next = await call("POST", "auth/sign-in/passkey", { ticket: st.ticket, register: { id: kid, publicKey: toB64u(spki), clientDataJSON: cd } });
+    expect(next.body).toEqual({ step: "mfa", ticket: st.ticket, method: "totp" }); expect(next.cookies).toBeUndefined(); // not signed in yet
+    expect((await call("POST", "auth/sign-in/verify", { ticket: st.ticket, code: "000000" })).status).toBe(400);
+    const done = await call("POST", "auth/sign-in/verify", { ticket: st.ticket, code: await codeFor(en.secret) });
+    expect([done.status, (done.body as { roleId: string }).roleId]).toEqual([200, "super"]);
+    const only = (await view(cookieOf(done))).authenticators[0]; // a super admin may remove the last app: the passkey stays the second step
+    expect((await call("POST", `me/authenticators/${only.id}/remove`, { password: PW, code: await codeFor(en.secret) }, { cookie: cookieOf(done) })).status).toBe(204);
+  });
+});
+
 describe("companies: sessions belong to one company, roles come from memberships (slice 2a)", () => {
   it("a person with no active membership cannot sign in, and a removed member's session ends at their next request", async () => {
     const id = await auth.createUser("lee@company.example", PW, "Lee Park"); await auth.confirmUser(id);

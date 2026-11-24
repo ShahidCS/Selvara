@@ -97,7 +97,9 @@ test("a new person asks to join, a company admin approves, and they sign in as a
   // first sign-in of a real account: add an authenticator, then save the recovery codes
   await expect(p.getByRole("heading", { name: "Set up your authenticator" })).toBeVisible();
   expect(await axe(p)).toEqual([]);
-  const key = (await p.locator('[aria-labelledby="en-key-l"]').innerText()).replace(/\s/g, "");
+  await expect(p.getByRole("img", { name: "QR code to add Selvara to your authenticator app" })).toBeVisible(); // scan, or type the key
+  await p.getByRole("radio", { name: "Enter key manually" }).click();
+  const key = (await p.locator('[aria-labelledby="as-key-l"]').innerText()).replace(/\s/g, "");
   expect(key).toMatch(/^[A-Z2-7]{32}$/);
   await p.getByLabel("Authentication code").fill(totpNow(key));
   await p.getByRole("button", { name: "Verify" }).click();

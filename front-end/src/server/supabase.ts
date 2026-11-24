@@ -8,6 +8,9 @@ import type { AuthProvider, NoticeRow, PasskeyRow, Profile, RecoveryRow, Session
 const OPTS = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
 export interface SupabaseEnv { url: string; anonKey: string; serviceKey: string }
 type T = { access: string; refresh: string };
+/** Supabase needs a unique name per factor: the person's label plus a short suffix, which the account page leaves out. */
+const friendly = (label: string) => `${label.slice(0, 40)} · ${Date.now().toString(36)}`;
+const labelOf = (name: string | undefined) => (name || "Authenticator app").replace(/ · [a-z0-9]+$/, "");
 
 export class SupabaseAuth implements AuthProvider {
   constructor(private env: SupabaseEnv) {}
@@ -24,7 +27,7 @@ export class SupabaseAuth implements AuthProvider {
     const c = await this.as(t);
     const { data: list } = await c.auth.mfa.listFactors();
     for (const f of list?.all ?? []) if (f.status !== "verified") await c.auth.mfa.unenroll({ factorId: f.id }); // a half-finished set-up
-    const { data, error } = await c.auth.mfa.enroll({ factorType: "totp", friendlyName: `Selvara ${label} ${Date.now()}` });
+    const { data, error } = await c.auth.mfa.enroll({ factorType: "totp", friendlyName: friendly(label) });
     if (error || !data || data.type !== "totp") throw upstream("auth.totp-enroll", error);
     return { factorId: data.id, secret: data.totp.secret, uri: data.totp.uri };
   }
@@ -41,6 +44,27 @@ export class SupabaseAuth implements AuthProvider {
   async resetMfa(userId: string) {
     const { data, error } = await this.service().auth.admin.mfa.listFactors({ userId }); if (error) throw upstream("auth.mfa-list", error);
     for (const f of data?.factors ?? []) { const r = await this.service().auth.admin.mfa.deleteFactor({ id: f.id, userId }); if (r.error) throw upstream("auth.mfa-delete", r.error); }
+  }
+  async listTotp(userId: string) {
+    const { data, error } = await this.service().auth.admin.mfa.listFactors({ userId }); if (error) throw upstream("auth.mfa-list", error);
+    return (data?.factors ?? []).filter((f) => f.factor_type === "totp" && f.status === "verified")
+      .map((f) => ({ id: f.id, label: labelOf(f.friendly_name), createdAt: Date.parse(f.created_at) || 0 })).sort((a, b) => a.createdAt - b.createdAt);
+  }
+  async removeTotp(userId: string, factorId: string) { const r = await this.service().auth.admin.mfa.deleteFactor({ id: factorId, userId }); if (r.error) throw upstream("auth.mfa-delete", r.error); }
+  private async tryCode(c: SupabaseClient, code: string) {
+    const { data } = await c.auth.mfa.listFactors();
+    for (const f of data?.totp ?? []) if (f.status === "verified") { const { error } = await c.auth.mfa.challengeAndVerify({ factorId: f.id, code }); if (!error) return f.id; }
+    return null;
+  }
+  async verifyAnyTotp(t: T, code: string) { return this.tryCode(await this.as(t), code); }
+  async enrollTotpStepUp(t: T, code: string, label: string) {
+    const c = await this.as(t); if (!(await this.tryCode(c, code))) return null; // the session is now at the two-step level
+    const { data: list } = await c.auth.mfa.listFactors();
+    for (const f of list?.all ?? []) if (f.status !== "verified") await c.auth.mfa.unenroll({ factorId: f.id });
+    const { data, error } = await c.auth.mfa.enroll({ factorType: "totp", friendlyName: friendly(label) });
+    if (error || !data || data.type !== "totp") throw upstream("auth.totp-enroll", error);
+    const { data: ses } = await c.auth.getSession(); if (!ses.session) throw upstream("auth.session", null);
+    return { factorId: data.id, secret: data.totp.secret, uri: data.totp.uri, access: ses.session.access_token, refresh: ses.session.refresh_token };
   }
   async confirmUser(id: string) { const { error } = await this.service().auth.admin.updateUserById(id, { email_confirm: true }); if (error) throw upstream("auth.confirm-user", error); }
   async setPassword(id: string, password: string) { const { error } = await this.service().auth.admin.updateUserById(id, { password }); if (error) throw upstream("auth.set-password", error); }

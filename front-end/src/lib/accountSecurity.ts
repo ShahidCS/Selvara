@@ -32,7 +32,9 @@ export const ruleFor = (p: LockoutPreset): LockoutRule => (p === "custom" ? cust
 /* ---------- persisted state ---------- */
 export interface Sess { id: string; email: string; device: string; ip: string; startedAt: number; lastSeen: number; revokedAt?: number; revokedWhy?: string; /** Absolute end (12 hours; 1 hour for demo accounts). */ expiresAt?: number; demo?: boolean }
 /** A real account's second factor: the authenticator secret, the last step used (no replay) and hashed single-use recovery codes. */
-export interface Factor { secret: string; lastStep: number; enrolledAt: number; codes: { salt: string; hash: string; used?: number }[] }
+/** One authenticator app (demo build). The first is mirrored in `secret`/`lastStep` for accounts saved before apps were a list. */
+export interface AuthApp { id: string; label: string; secret: string; lastStep: number; addedAt: number }
+export interface Factor { secret: string; lastStep: number; enrolledAt: number; codes: { salt: string; hash: string; used?: number }[]; apps?: AuthApp[] }
 export interface Notice { id: string; email: string; at: number; text: string; read?: boolean }
 export interface ResetLink { token: string; email: string; expires: number; used?: boolean; codeFails: number }
 interface State {
@@ -159,7 +161,13 @@ export function welcomeText(w: Welcome): string {
 /* ---------- second step of sign-in ---------- */
 /** Between a correct password and the second factor. Bound to one account, 5 minutes, 5 tries; nothing is signed in until it completes. */
 export interface Ticket { id: string; email: string; method: "totp" | "enroll" | "demo" | "passkey"; expires: number; tries: number; secret?: string; demoCode?: string; alerted?: boolean; challengeOk?: boolean; /** Passkey step: the challenge to sign, and whether a passkey is being added. */ webauthn?: { challenge: string; register: boolean } }
-export const MFA = { TICKET_MS: 5 * MIN, TRIES: 5, RECOVERY_CODES: 10 };
+/** MAX_APPS: authenticator apps per person (owner decision 2026-11-24: a main and a backup). SETUP_MS: time to confirm a new app from Your account. */
+export const MFA = { TICKET_MS: 5 * MIN, TRIES: 5, RECOVERY_CODES: 10, MAX_APPS: 2, SETUP_MS: 10 * MIN, LABEL_MAX: 40 };
+/** The name a person gives an authenticator app: printable text, trimmed, at most LABEL_MAX characters; a default when empty. */
+export const appLabel = (v: unknown, have: number) => {
+  const l = (typeof v === "string" ? v : "").replace(/[\u0000-\u001f\u007f<>]/g, "").trim().slice(0, MFA.LABEL_MAX);
+  return l || (have ? `Authenticator app ${have + 1}` : "Authenticator app");
+};
 const tickets = new Map<string, Ticket>();
 export function newTicket(t: Omit<Ticket, "id" | "expires" | "tries">): Ticket {
   const k: Ticket = { ...t, id: secureHex(16), expires: Date.now() + MFA.TICKET_MS, tries: 0 }; tickets.set(k.id, k); return k;

@@ -8,7 +8,7 @@
 import { sendMail } from "./mail";
 import { vendorPortalRoutes } from "./vendorportal";
 import { trustPublicRoutes } from "./trustpublic";
-import { CHALLENGE, CUSTOM_BOUNDS, LOCKOUT, MFA, REAUTH_MS, RESET, type LockoutRule } from "@/lib/accountSecurity";
+import { appLabel, CHALLENGE, CUSTOM_BOUNDS, LOCKOUT, MFA, REAUTH_MS, RESET, type LockoutRule } from "@/lib/accountSecurity";
 import { checkPassword, POLICY } from "@/lib/credentials";
 import { IP_POLICY, LEVEL_LABEL, REPUTATION } from "@/lib/ipGuard";
 import { generateRecoveryCodes } from "@/lib/me";
@@ -195,7 +195,7 @@ const signIn: H = async (d, r) => {
     return ok({ step: "passkey", ticket: tid, register: t.register, challenge: t.challenge, rpId: d.site.rpId, allow: keys.map((k) => k.id), email, name: p.person });
   }
   const factor = await d.auth.verifiedTotpFactor(res);
-  if (!factor) { const en = await d.auth.enrollTotp(res, email); t.method = "enroll"; t.factorId = en.factorId; await saveTicket(d, tid, t); return ok({ step: "enroll", ticket: tid, secret: en.secret, uri: en.uri }); }
+  if (!factor) { const en = await d.auth.enrollTotp(res, appLabel("", 0)); t.method = "enroll"; t.factorId = en.factorId; await saveTicket(d, tid, t); return ok({ step: "enroll", ticket: tid, secret: en.secret, uri: en.uri }); }
   t.factorId = factor; await saveTicket(d, tid, t);
   return ok({ step: "mfa", ticket: tid, method: "totp" });
 };
@@ -216,7 +216,8 @@ const verify: H = async (d, r) => {
     await notify(d, t.userId, `A recovery code was used to sign in. ${left} left.`);
     return finish(d, r, tid, t, { recoveryLeft: left });
   }
-  if (!/^\d{6}$/.test(code) || !(await d.auth.verifyTotp(t, t.factorId as string, code))) return wrongSecond(d, r, tid, t);
+  // Enrolment confirms the new app; afterwards a code from any of the person's apps (at most two) is accepted.
+  if (!/^\d{6}$/.test(code) || !(t.method === "enroll" ? await d.auth.verifyTotp(t, t.factorId as string, code) : await d.auth.verifyAnyTotp(t, code))) return wrongSecond(d, r, tid, t);
   if (t.method === "enroll") {
     const codes = generateRecoveryCodes(MFA.RECOVERY_CODES); await storeRecovery(d, t.userId, codes);
     await d.store.kvSet("mfa", t.userId, { enrolledAt: d.now() });
@@ -244,15 +245,21 @@ const passkeyStep: H = async (d, r) => {
     if (!t.register || typeof reg.id !== "string" || typeof reg.publicKey !== "string" || !checkRegistration(s(reg.clientDataJSON, 4096), { challenge: t.challenge, origin: d.site.origin })) return wrongSecond(d, r, tid, t);
     await d.store.insertPasskey({ id: s(reg.id, 512), userId: t.userId, publicKey: s(reg.publicKey, 1024), signCount: 0, createdAt: d.now(), label: device(r) });
     await notify(d, t.userId, `A passkey was added to your account (${device(r)}).`); await audit(d, r, actorOf(p, await accessAtSignIn(d, p.id)), "auth.passkey.added", p.person);
-    return finish(d, r, tid, t);
+    return afterPasskey(d, r, tid, t);
   }
   if (!as) return wrongSecond(d, r, tid, t);
   const key = (await d.store.passkeysOf(t.userId)).find((k) => k.id === as.id); if (!key) return wrongSecond(d, r, tid, t);
   const count = await verifyAssertion(as, { ...key }, { challenge: t.challenge, origin: d.site.origin, rpId: d.site.rpId });
   if (count === null) return wrongSecond(d, r, tid, t);
   await d.store.updatePasskey(key.id, { signCount: count });
-  return finish(d, r, tid, t);
+  return afterPasskey(d, r, tid, t);
 };
+/** A platform super admin who also added an authenticator app gives its code after the passkey: an extra step, never instead of the passkey. */
+async function afterPasskey(d: Deps, r: Req, tid: string, t: Ticket): Promise<Res> {
+  const apps = await d.auth.listTotp(t.userId); if (!apps.length) return finish(d, r, tid, t);
+  t.method = "totp"; t.factorId = apps[0].id; delete t.challenge; await saveTicket(d, tid, t);
+  return ok({ step: "mfa", ticket: tid, method: "totp" });
+}
 /** Readiness of the module database: 200 when DATABASE_URL works and the schema is current, 503 otherwise (the reason goes to the log only). */
 const ready: H = async (d, r) => {
   if (!d.db) return err(503, "The database is not configured.");
@@ -363,12 +370,13 @@ const resetDo: H = async (d, r) => {
 const signed = (h: (d: Deps, r: Req, c: Ctx) => Promise<Res>): H => async (d, r) => { const c = await current(d, r); return c ? h(d, r, c) : err(401, "Sign in first."); };
 const security = signed(async (d, r, { s: me, p, a }) => {
   const sessions = (await d.store.sessionsOf(p.id)).filter((x) => !x.revokedAt && x.expiresAt > d.now());
-  const recovery = await d.store.recoveryOf(p.id); const mfa = await d.store.kvGet<{ enrolledAt: number }>("mfa", p.id);
+  const recovery = await d.store.recoveryOf(p.id); const mfa = await d.store.kvGet<{ enrolledAt: number }>("mfa", p.id); const apps = await d.auth.listTotp(p.id);
   return ok({
     email: p.email, person: p.person, demo: false, thisSignIn: await d.store.kvGet("last", p.id),
     sessions: sessions.map((x) => ({ id: x.idHash.slice(0, 16), device: x.device, ip: x.ip, startedAt: x.createdAt, current: x.idHash === me.idHash, expiresAt: x.expiresAt })),
     notices: (await d.store.noticesOf(p.id, 20)).map((n) => ({ id: n.id, at: n.at, text: n.text })),
-    mfa: mfa ? { enrolledAt: mfa.enrolledAt, codesLeft: recovery.filter((x) => !x.usedAt).length } : null,
+    mfa: apps.length ? { enrolledAt: mfa?.enrolledAt ?? apps[0].createdAt, codesLeft: recovery.filter((x) => !x.usedAt).length } : null,
+    authenticators: apps.map((x) => ({ id: x.id, label: x.label, addedAt: x.createdAt })), authenticatorsMax: MFA.MAX_APPS,
     passkeys: (await d.store.passkeysOf(p.id)).map((k) => ({ id: k.id, label: k.label, createdAt: k.createdAt })), passkeyRequired: isSuper(a),
   });
 });
@@ -415,6 +423,70 @@ const newCodes = signed(async (d, r, { s: me, p, a }) => {
   const codes = generateRecoveryCodes(MFA.RECOVERY_CODES); await storeRecovery(d, p.id, codes);
   await notify(d, p.id, "New recovery codes were issued. The old ones no longer work."); await audit(d, r, actorOf(p, a), "recovery.codes.regenerated", p.person);
   return ok({ codes });
+});
+/* Authenticator apps from Your account (owner decision 2026-11-24). Each change needs the password again and a code from an app the person
+   already uses; a lost app is replaced with a recovery code instead, which removes every app first. At most MFA.MAX_APPS apps. The set-up
+   key and URI are returned once (responseGuard.ts ALLOWED); the session tokens wait sealed until the first code from the new app confirms it. */
+type AppSetup = { factorId: string; access: string; refresh: string; label: string; replaces?: string; tries: number; expires: number };
+const failAuth = async (d: Deps, r: Req, p: Profile) => { await ipFail(d, r); await accountFail(d, p.email, p); };
+const appAdd = signed(async (d, r, { s: me, p, a }) => {
+  if (await blocked(d, r.ip)) return err(403, BLOCKED_MSG);
+  const prev = await d.store.kvGet<string>("appadd", me.idHash); // a set-up left unfinished ends here
+  if (prev) { const o = await unseal<AppSetup>(d.secret, prev); await d.store.kvDel("appadd", me.idHash); if (o) await d.auth.signOut(o); }
+  const res = await d.auth.signInWithPassword(p.email, s(r.body.password, 1024));
+  if (!res) { await failAuth(d, r, p); return err(400, "That password is not correct."); }
+  const apps = await d.auth.listTotp(p.id); const code = s(r.body.code, 20).trim(); const recovery = r.body.recovery === true;
+  const replaces = typeof r.body.replaces === "string" ? s(r.body.replaces, 100) : undefined;
+  const stop = async (status: number, m: string) => { await d.auth.signOut(res); return err(status, m); };
+  if (replaces !== undefined && !apps.some((x) => x.id === replaces)) return stop(404, "Authenticator app not found.");
+  if (!recovery && replaces === undefined && apps.length >= MFA.MAX_APPS) return stop(409, `You already have ${MFA.MAX_APPS} authenticator apps. Replace or remove one first.`);
+  const label = appLabel(r.body.label, replaces !== undefined ? apps.length - 1 : recovery ? 0 : apps.length);
+  let en: { factorId: string; secret: string; uri: string; access: string; refresh: string } | null;
+  if (recovery) {
+    const left = await redeemRecovery(d, p.id, code); if (left < 0) { await failAuth(d, r, p); return stop(400, "That recovery code is not correct or was already used."); }
+    for (const x of apps) await d.auth.removeTotp(p.id, x.id);
+    await notify(d, p.id, `A recovery code was used to replace your authenticator app${apps.length === 1 ? "" : "s"}. ${left} recovery code${left === 1 ? "" : "s"} left.`);
+    await audit(d, r, actorOf(p, a), "auth.totp.removed_with_recovery_code", p.person);
+    en = { ...(await d.auth.enrollTotp(res, label)), access: res.access, refresh: res.refresh };
+  } else if (apps.length) {
+    if (!/^\d{6}$/.test(code)) return stop(400, "Enter the 6-digit code from an authenticator app you already use.");
+    en = await d.auth.enrollTotpStepUp(res, code, label); if (!en) { await failAuth(d, r, p); return stop(400, "That code is not correct."); }
+  } else en = { ...(await d.auth.enrollTotp(res, label)), access: res.access, refresh: res.refresh }; // no app yet: the password is the check
+  const setup: AppSetup = { factorId: en.factorId, access: en.access, refresh: en.refresh, label, replaces: recovery ? undefined : replaces, tries: 0, expires: d.now() + MFA.SETUP_MS };
+  await d.store.kvSet("appadd", me.idHash, await seal(d.secret, setup), MFA.SETUP_MS);
+  return ok({ secret: en.secret, uri: en.uri, label });
+});
+const appVerify = signed(async (d, r, { s: me, p, a }) => {
+  const raw = await d.store.kvGet<string>("appadd", me.idHash); const t = raw ? await unseal<AppSetup>(d.secret, raw) : null;
+  if (!t || t.expires <= d.now()) return err(400, "This set-up has expired. Start again.");
+  const code = s(r.body.code, 20).trim();
+  if (!/^\d{6}$/.test(code) || !(await d.auth.verifyTotp(t, t.factorId, code))) {
+    t.tries += 1; await ipFail(d, r);
+    if (t.tries >= MFA.TRIES) { await d.store.kvDel("appadd", me.idHash); await d.auth.signOut(t); return err(400, "Too many wrong codes. Start again."); }
+    await d.store.kvSet("appadd", me.idHash, await seal(d.secret, t), Math.max(1000, t.expires - d.now())); return err(400, "That code is not correct.");
+  }
+  await d.store.kvDel("appadd", me.idHash);
+  if (t.replaces) await d.auth.removeTotp(p.id, t.replaces);
+  await d.auth.signOut(t);
+  if (!(await d.store.kvGet("mfa", p.id))) await d.store.kvSet("mfa", p.id, { enrolledAt: d.now() });
+  let codes: string[] | undefined;
+  if (!(await d.store.recoveryOf(p.id)).some((x) => !x.usedAt)) { codes = generateRecoveryCodes(MFA.RECOVERY_CODES); await storeRecovery(d, p.id, codes); }
+  await notify(d, p.id, `An authenticator app ("${t.label}") was ${t.replaces ? "added in place of another one" : "added"}${codes ? " and new recovery codes were issued" : ""}. If this was not you, change your password now.`);
+  await audit(d, r, actorOf(p, a), t.replaces ? "auth.totp.replaced" : "auth.totp.added", p.person);
+  return ok(codes ? { recoveryCodes: codes } : {});
+});
+const appRemove = signed(async (d, r, { p, a }) => {
+  if (await blocked(d, r.ip)) return err(403, BLOCKED_MSG);
+  const id = s(r.path[2], 100); const apps = await d.auth.listTotp(p.id);
+  if (!apps.some((x) => x.id === id)) return err(404, "Authenticator app not found.");
+  if (apps.length <= 1 && !isSuper(a)) return err(400, "Your account needs an authenticator app. Add another one first, or use Replace.");
+  const res = await d.auth.signInWithPassword(p.email, s(r.body.password, 1024));
+  if (!res) { await failAuth(d, r, p); return err(400, "That password is not correct."); }
+  const code = s(r.body.code, 20).trim(); const good = /^\d{6}$/.test(code) && !!(await d.auth.verifyAnyTotp(res, code)); await d.auth.signOut(res);
+  if (!good) { await failAuth(d, r, p); return err(400, "That code is not correct."); }
+  await d.auth.removeTotp(p.id, id);
+  await notify(d, p.id, "An authenticator app was removed from your account. If this was not you, change your password now.");
+  await audit(d, r, actorOf(p, a), "auth.totp.removed", p.person); return ok();
 });
 const revokeOthers = signed(async (d, r, { s: me, p, a }) => {
   let n = 0; for (const x of await d.store.sessionsOf(p.id)) if (!x.revokedAt && x.idHash !== me.idHash) { n++; await d.store.updateSession(x.idHash, { revokedAt: d.now(), revokedWhy: "Signed out from another session" }); }
@@ -594,7 +666,7 @@ export const ROUTES: Record<string, H> = {
   "GET system/ready": ready, "GET auth/session": sessionInfo, "POST auth/sign-out": signOut, "POST auth/join-requests": join,
   "POST auth/password/reset-request": resetRequest, "GET auth/password/reset/:token": resetCheck, "POST auth/password/reset": resetDo,
   "GET me/security": security, "GET me/tours": getTours, "PUT me/tours": putTours, "POST auth/company": switchCompany, "GET team/members": memberList, "POST me/reauth": reauth, "POST me/password": changePassword, "POST me/recovery-codes": newCodes,
-  "POST me/sessions/revoke-others": revokeOthers, "POST me/passkeys/options": passkeyOptions, "POST me/passkeys": passkeyAdd, "DELETE me/passkeys/:id": passkeyDelete,
+  "POST me/sessions/revoke-others": revokeOthers, "POST me/authenticators": appAdd, "POST me/authenticators/verify": appVerify, "POST me/authenticators/:id/remove": appRemove, "POST me/passkeys/options": passkeyOptions, "POST me/passkeys": passkeyAdd, "DELETE me/passkeys/:id": passkeyDelete,
   "GET team/join-requests": joinList, "POST team/join-requests/:id/:decision": joinDecide, "POST team/settings": lockoutSet, "GET team/settings": lockoutGet,
   "POST team/members/:id/role": roleChange, "GET team/approvals": approvalList, "POST team/approvals/:id/:decision": approvalDecide,
   "GET team/invitations": inviteList, "POST team/invitations": inviteCreate, "POST team/invitations/:id/:action": inviteAction,

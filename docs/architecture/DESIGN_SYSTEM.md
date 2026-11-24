@@ -30,6 +30,7 @@ Tailwind 4 utilities for the same tokens are declared in `front-end/src/styles/g
 | Warning text | `#a86200` on `#fff6e5` (4.43:1) | `--c-warning-800` `#8a5000` (6.06:1) | blueprint section 9 asks for the darker shade at small sizes |
 | Focus ring | `0 0 0 3px #2e5cff3d` | solid 2px `#2e5cff` outline (dark: `#8aa4ff`), halo available via `.focus-ring` | the 24% halo alone fails the 3:1 non-text contrast rule |
 | Duration | 150 to 260ms | `--dur` 150ms | matches the blueprint |
+| QR code (`components/kit/QrCode.tsx`) | tokens | fixed `#000000` modules on a `#ffffff` quiet zone in both themes | authenticator apps need dark modules on a light background to scan; an inverted QR code fails in many apps |
 
 Contrast of every legacy text and surface pair was computed for both themes: all text pairs are at least 4.5:1, the primary button is white on `#6c3bff` at 5.66:1.
 
