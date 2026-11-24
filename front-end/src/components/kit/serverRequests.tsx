@@ -16,20 +16,11 @@ export const utcMin = (ms: number) => new Date(ms).toISOString().slice(0, 16).re
 
 type Decide = (id: string, decision: "approve" | "reject" | "withdraw", reason?: string) => Promise<unknown>;
 
-/** Shows an invitation link once, to copy and send to the person outside Selvara. */
-export function LinkBox({ link, email, expiresAt, mail }: { link: string; email: string; expiresAt: number; /** why it was not emailed */ mail?: string }) {
-  const L = useLayer();
-  const copy = async () => { try { await navigator.clipboard.writeText(link); L.toast("Link copied"); } catch { L.toast("Select the link and copy it", false); } };
-  return (
-    <>
-      <p style={{ margin: "0 0 12px", lineHeight: 1.5 }}>Send this link to {email} yourself, for example by email. It works once, only with that email address, until {utcMin(expiresAt)}. It is shown only now: if it is lost, create a new link (the old one stops working).</p>
-      <p className="field help" style={{ margin: "0 0 12px" }}>{mail === "failed" || mail === "rate limited" ? "Selvara could not email it just now, so it is shown here." : "Selvara does not email it: email is not set up for this platform yet."}</p>
-      <div className="field"><label htmlFor="lb-link">Invitation link</label><input className="input num" id="lb-link" data-focus readOnly value={link} onFocus={(e) => e.currentTarget.select()} /></div>
-      <div className="btngrp" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
-        <button className="btn btn-primary" onClick={copy}>Copy link</button>
-      </div>
-    </>
-  );
+/** Invitation links go only by email (never to the inviter's browser). Says why one was not sent, so the admin can try again later. */
+export function notSentText(email: string, mail?: string) {
+  return mail === "rate limited" ? `The invitation to ${email} was not sent: too many emails to that address in the last hour. Try again later.`
+    : mail === "failed" ? `The invitation to ${email} could not be emailed just now. Try again in a few minutes.`
+    : `The invitation to ${email} was not sent: email is not set up for this platform yet. Ask the platform team to set it up, then send it again.`;
 }
 
 /** Four-eyes requests: approve or reject with a reason, withdraw your own; a request you may not decide shows why. */

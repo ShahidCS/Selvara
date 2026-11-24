@@ -8,6 +8,7 @@ import { MemoryWsStore } from "@/server/ws/store";
 import { MemoryFileStore } from "@/server/ws/files";
 import { sha256Hex } from "@/server/crypto";
 import type { Deps } from "@/server/types";
+import type { MailMessage } from "@/server/mail";
 import { totpAt } from "@/lib/totp";
 import { toB64u } from "@/lib/webauthn";
 import { safeMessage, upstream } from "@/server/errors";
@@ -19,7 +20,13 @@ beforeEach(() => {
   clock = 1_800_000_000_000; auth = new MemoryAuth(() => clock); used.clear(); store = new MemoryStore(() => clock); dir = new MemoryDirectory(store); plat = new MemoryPlatform(store, dir); sup = new MemorySupport(store, dir, plat); ws = new MemoryWsStore(store); files = new MemoryFileStore();
   ACME = dir.addCompany("acme-eu", "Acme Test Co");
   d = { auth, store, dir, plat, sup, ws, files, site: { origin: ORIGIN, rpId: "app.example.test" }, secret: "x".repeat(40), now: () => clock };
+  outbox.length = 0;
 });
+/** Invitation links go only by email: the tests read them from what would be sent. Mail is on only where a test turns it on. */
+const outbox: MailMessage[] = [];
+const mailOn = () => { d.mail = { provider: "resend", from: "Selvara <no-reply@mail.example.test>", send: async (m) => { outbox.push(m); } }; };
+/** The invitation token in the latest email to `to`. */
+const inviteToken = (to: string) => { const m = [...outbox].reverse().find((x) => x.to === to.toLowerCase()); const t = m?.text.match(/#invite=([A-Za-z0-9_-]+)/)?.[1]; if (!t) throw new Error(`no invitation emailed to ${to}`); return t; };
 const PW = "Lantern-orbit-Quince-71"; const NEW = "Copper-harbour-Violet-58";
 async function call(method: string, path: string, body: Record<string, unknown> = {}, o: { cookie?: string; ip?: string; origin?: string | null } = {}): Promise<Res> {
   const r: Req = { method, path: path.split("/").filter(Boolean), body, ip: o.ip ?? "198.51.100.7", cookies: o.cookie ? { [COOKIE]: o.cookie } : {},
@@ -332,11 +339,12 @@ describe("role changes, invitations and four-eyes requests (slice 2c)", () => {
   });
 
   it("an invitation link admits the invited email once, with the invited role, and confirms a new account", async () => {
-    const jordan = await account("jordan@company.example", "admin", "Jordan Avery");
+    const jordan = await account("jordan@company.example", "admin", "Jordan Avery"); mailOn();
     const res = await call("POST", "team/invitations", { email: "Rae.Fox@company.example", role: "analyst" }, { cookie: jordan.cookie });
     expect(res.status).toBe(200);
-    const { link } = res.body as { link: string }; const token = link.split("#invite=")[1];
-    expect(link.startsWith(`${ORIGIN}/login#invite=`)).toBe(true);
+    expect(res.body).toMatchObject({ emailed: true }); expect(JSON.stringify(res.body)).not.toContain("#invite="); // email only, never in the response
+    const token = inviteToken("rae.fox@company.example");
+    expect(outbox.at(-1)!.text).toContain(`${ORIGIN}/login#invite=${token}`);
     expect(JSON.stringify(dir.invites)).not.toContain(token); // only the hash is stored
     expect((await call("POST", "team/invitations", { email: "rae.fox@company.example", role: "employee" }, { cookie: jordan.cookie })).status).toBe(409);
     // another email with the right link: nothing
@@ -355,24 +363,25 @@ describe("role changes, invitations and four-eyes requests (slice 2c)", () => {
 
   it("a new link replaces the old one, a revoked or expired invitation admits nobody, and an existing account must prove its password", async () => {
     const GLOBEX = dir.addCompany("globex-uk", "Globex Test Ltd");
-    const jordan = await account("jordan@company.example", "admin", "Jordan Avery");
-    const old = ((await call("POST", "team/invitations", { email: "casey@globex.example", role: "auditor" }, { cookie: jordan.cookie })).body as { link: string; id: string });
-    const fresh = (await call("POST", `team/invitations/${old.id}/link`, {}, { cookie: jordan.cookie })).body as { link: string };
+    const jordan = await account("jordan@company.example", "admin", "Jordan Avery"); mailOn();
+    const old = ((await call("POST", "team/invitations", { email: "casey@globex.example", role: "auditor" }, { cookie: jordan.cookie })).body as { id: string });
+    const oldToken = inviteToken("casey@globex.example");
+    await call("POST", `team/invitations/${old.id}/link`, {}, { cookie: jordan.cookie }); const freshToken = inviteToken("casey@globex.example");
     await account("casey@globex.example", "employee", "Casey Morgan", GLOBEX);
     const casey = (await store.profileByEmail("casey@globex.example"))!.id;
-    expect((await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: PW, invite: old.link.split("#invite=")[1] }, { ip: "203.0.113.1" })).status).toBe(202);
+    expect((await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: PW, invite: oldToken }, { ip: "203.0.113.1" })).status).toBe(202);
     expect(roleOf(casey)).toBeUndefined(); // the replaced link
-    expect((await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: NEW, invite: fresh.link.split("#invite=")[1] }, { ip: "203.0.113.2" })).status).toBe(202);
+    expect((await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: NEW, invite: freshToken }, { ip: "203.0.113.2" })).status).toBe(202);
     expect(roleOf(casey)).toBeUndefined(); // wrong password for the existing account
-    expect((await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: PW, invite: fresh.link.split("#invite=")[1] }, { ip: "203.0.113.3" })).status).toBe(202);
+    expect((await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: PW, invite: freshToken }, { ip: "203.0.113.3" })).status).toBe(202);
     expect([roleOf(casey), roleOf(casey, GLOBEX)]).toEqual(["auditor", "employee"]);
-    const other = ((await call("POST", "team/invitations", { email: "lee@company.example", role: "employee" }, { cookie: jordan.cookie })).body as { link: string; id: string });
+    const other = ((await call("POST", "team/invitations", { email: "lee@company.example", role: "employee" }, { cookie: jordan.cookie })).body as { id: string });
     expect((await call("POST", `team/invitations/${other.id}/revoke`, {}, { cookie: jordan.cookie })).status).toBe(204);
-    expect((await call("POST", "auth/join-requests", { name: "Lee Park", email: "lee@company.example", password: PW, invite: other.link.split("#invite=")[1] }, { ip: "203.0.113.4" })).status).toBe(202);
+    expect((await call("POST", "auth/join-requests", { name: "Lee Park", email: "lee@company.example", password: PW, invite: inviteToken("lee@company.example") }, { ip: "203.0.113.4" })).status).toBe(202);
     expect(await store.profileByEmail("lee@company.example")).toBeNull();
-    const late = ((await call("POST", "team/invitations", { email: "kim@company.example", role: "employee" }, { cookie: jordan.cookie })).body as { link: string });
+    await call("POST", "team/invitations", { email: "kim@company.example", role: "employee" }, { cookie: jordan.cookie }); const lateToken = inviteToken("kim@company.example");
     clock += 73 * 3600_000;
-    expect((await call("POST", "auth/join-requests", { name: "Kim Lee", email: "kim@company.example", password: PW, invite: late.link.split("#invite=")[1] }, { ip: "203.0.113.5" })).status).toBe(202);
+    expect((await call("POST", "auth/join-requests", { name: "Kim Lee", email: "kim@company.example", password: PW, invite: lateToken }, { ip: "203.0.113.5" })).status).toBe(202);
     expect(await store.profileByEmail("kim@company.example")).toBeNull();
   });
 
@@ -386,8 +395,8 @@ describe("role changes, invitations and four-eyes requests (slice 2c)", () => {
     expect((await call("POST", `team/approvals/${(req.body as { id: string }).id}/approve`, { reason: "Pat leads security operations" }, { cookie: casey.cookie })).body).toEqual({ status: "Approved" });
     const inv = ((await call("GET", "team/invitations", {}, { cookie: jordan.cookie })).body as { id: string; linkAt?: number; role: string }[])[0];
     expect([inv.role, inv.linkAt]).toEqual(["admin", undefined]);
-    const { link } = (await call("POST", `team/invitations/${inv.id}/link`, {}, { cookie: jordan.cookie })).body as { link: string };
-    await call("POST", "auth/join-requests", { name: "Pat Lane", email: "pat@company.example", password: PW, invite: link.split("#invite=")[1] });
+    mailOn(); await call("POST", `team/invitations/${inv.id}/link`, {}, { cookie: jordan.cookie });
+    await call("POST", "auth/join-requests", { name: "Pat Lane", email: "pat@company.example", password: PW, invite: inviteToken("pat@company.example") });
     expect(roleOf((await store.profileByEmail("pat@company.example"))!.id)).toBe("admin");
   });
 
@@ -455,9 +464,9 @@ describe("Admin Console (slice 3a): elevation, companies through four-eyes, plat
     expect(dir.invites.find((i) => i.tenantId === globex.id)).toEqual(expect.objectContaining({ email: "casey@globex.example", role: "admin", status: "Pending", tokenHash: null }));
     expect(store.auditLog.find((x) => x.action === "platform.company.created")).toEqual(expect.objectContaining({ space: "admin", tenantId: null, actorId: riley.id }));
     expect(store.auditLog.find((x) => x.action === "tenant.created")!.tenantId).toBe(globex.id); // the customer's own log shows it too
-    const link = (await call("POST", "admin/companies/globex-uk/admin-link", {}, { cookie: dana.cookie })).body as { link: string; email: string };
-    expect(link.email).toBe("casey@globex.example");
-    await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: PW, invite: link.link.split("#invite=")[1] });
+    mailOn(); const link = (await call("POST", "admin/companies/globex-uk/admin-link", {}, { cookie: dana.cookie })).body as { emailed: boolean; email: string };
+    expect([link.emailed, link.email]).toEqual([true, "casey@globex.example"]); expect(JSON.stringify(link)).not.toContain("#invite=");
+    await call("POST", "auth/join-requests", { name: "Casey Morgan", email: "casey@globex.example", password: PW, invite: inviteToken("casey@globex.example") });
     const casey = (await store.profileByEmail("casey@globex.example"))!;
     expect(dir.memberships.find((m) => m.tenantId === globex.id && m.userId === casey.id)).toEqual(expect.objectContaining({ role: "admin", status: "Active" }));
     expect((await call("POST", "admin/companies/globex-uk/admin-link", {}, { cookie: dana.cookie })).status).toBe(409); // used

@@ -53,7 +53,7 @@ describe("email (off until configured)", () => {
     const m = compose("x@acme.example", { t: "invite", company: "<b>Acme</b>\r\nBcc: evil@example.test", role: "employee", link: "https://app.example.test/login#invite=abc\"><script>", expires: "2027-01-01 00:00 UTC" });
     expect(m.subject).not.toMatch(/[\r\n]/); expect(m.html).not.toContain("<b>Acme"); expect(m.html).not.toContain("<script>"); expect(m.html).toContain("&lt;b&gt;");
   });
-  it("emails an invitation instead of showing the link, and shows the link when email is off", async () => {
+  it("emails an invitation and never shows the link, even when email is off", async () => {
     const jordan = await member("jordan@acme.example", "admin", "Jordan Avery");
     const r = body<{ emailed: boolean; link?: string }>(await call("POST", "team/invitations", { email: "new.person@acme.example", role: "employee" }, jordan.c));
     expect(r.emailed).toBe(true); expect(r.link).toBeUndefined();
@@ -61,14 +61,14 @@ describe("email (off until configured)", () => {
     expect(log("email.sent")[0].target).toBe("invite to n•••@acme.example"); // a masked address, never the message
     d.mail = null;
     const off = body<{ emailed: boolean; link?: string; mail?: string }>(await call("POST", "team/invitations", { email: "second@acme.example", role: "employee" }, jordan.c));
-    expect(off).toMatchObject({ emailed: false, mail: "not configured" }); expect(off.link).toMatch(/#invite=/);
+    expect(off).toMatchObject({ emailed: false, mail: "not configured" }); expect(off.link).toBeUndefined(); expect(JSON.stringify(off)).not.toContain("#invite=");
   });
   it("limits messages to one address to 10 an hour", async () => {
     const jordan = await member("jordan@acme.example", "admin", "Jordan Avery");
     const inv = body<{ id: string }>(await call("POST", "team/invitations", { email: "busy@acme.example", role: "employee" }, jordan.c));
     for (let i = 0; i < 9; i++) expect(body<{ emailed: boolean }>(await call("POST", `team/invitations/${inv.id}/link`, {}, jordan.c)).emailed).toBe(true);
     const r = body<{ emailed: boolean; link?: string; mail?: string }>(await call("POST", `team/invitations/${inv.id}/link`, {}, jordan.c));
-    expect(r).toMatchObject({ emailed: false, mail: "rate limited" }); expect(r.link).toMatch(/#invite=/); // the admin still gets a working link
+    expect(r).toMatchObject({ emailed: false, mail: "rate limited" }); expect(r.link).toBeUndefined(); // never shown: the admin tries again later
   });
   it("tells an applicant the outcome of their request to join", async () => {
     const jordan = await member("jordan@acme.example", "admin", "Jordan Avery");
