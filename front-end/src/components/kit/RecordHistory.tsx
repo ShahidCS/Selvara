@@ -3,7 +3,7 @@
 import { WS_AUDIT, type WsEntry } from "@/lib/audit";
 import { API_ON, modAllowed } from "@/lib/rbac";
 import { useApp, useData } from "@/lib/store";
-import { Avatar } from "@/components/ui";
+import { Avatar, Empty } from "@/components/ui";
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** "issue.closure.proposed" -> "Closure proposed"; the record type prefix is dropped (the page already says what it is). */
@@ -37,7 +37,7 @@ export function RecordHistory({ id, limit = 8 }: { id: string; limit?: number })
             </li>
           ))}
         </ol>
-      ) : <p className="field help" style={{ margin: 0 }}>No changes recorded yet.</p>}
+      ) : <Empty compact icon="log" title="No changes recorded yet" />}
       {items.length > limit ? <p className="field help" style={{ margin: "8px 0 0" }}>{items.length - limit} earlier change{items.length - limit === 1 ? "" : "s"} in Audit Logs.</p> : null}
     </div></div>
   );

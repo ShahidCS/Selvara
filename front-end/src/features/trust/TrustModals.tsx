@@ -1,3 +1,4 @@
+import { Empty } from "@/components/ui";
 import { useState } from "react";
 import { API_ON } from "@/lib/rbac";
 import { uiMessage } from "@/lib/grcSod";
@@ -159,7 +160,7 @@ export function ApproveForm({ id, L }: { id: string; L: LayerApi }) {
             <label key={i} style={{ display: "flex", gap: 8, alignItems: "center", padding: "4px 0" }}>
               <input type="checkbox" checked={sel.includes(i)} onChange={(e) => { setErr(false); setSel((s) => (e.target.checked ? [...s, i] : s.filter((x) => x !== i))); }} />{t.name}
             </label>
-          )) : <p className="field help" style={{ margin: 0 }}>No documents are under NDA.</p>}
+          )) : <Empty compact icon="evidence" title="No documents are under NDA" />}
         </fieldset>
         <p className="field help" id="ta-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{svc.NO_GRANT}</p>
         <p className="field help">The requester sees the names of these documents only, and accepts the NDA themselves before opening them.</p>

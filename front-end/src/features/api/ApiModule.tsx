@@ -113,7 +113,7 @@ function ApiTabs() {
 
   return (
     <Page mod="api" acts={acts}>
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card">
         <div className="c-head" style={{ padding: "0 8px" }}>
           <div className="tabs" role="tablist" data-tour="api-tabs">
             {TABS.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={tab === x[0]} onClick={() => setT(x[0])}>{x[1]}</button>)}

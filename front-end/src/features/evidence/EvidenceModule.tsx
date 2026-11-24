@@ -28,7 +28,7 @@ function EvidenceList() {
   const owners = Array.from(new Set<string>(evidence.map((e: Ev) => String(e.by)))).sort();
   const cols: DTColumn<Ev>[] = [
     { key: "id", header: "ID", nowrap: true, value: (e) => e.id, locked: true, render: (e) => <span className="strong num">{e.id}</span> },
-    { key: "name", header: "Evidence", value: (e) => e.name, render: (e) => e.name, sub: (e) => e.type },
+    { key: "name", header: "Evidence", value: (e) => e.name, render: (e) => e.name },
     { key: "type", header: "Type", value: (e) => e.type, render: (e) => e.type },
     { key: "ver", header: "Version", value: (e) => e.ver, render: (e) => `v${e.ver}` },
     { key: "by", header: "Collected by", value: (e) => e.by, render: (e) => <Person name={e.by} /> },
@@ -44,7 +44,7 @@ function EvidenceList() {
         <KpiTile label="Accepted" value={n("Accepted")} caption="Reviewed by a second person" />
         <KpiTile label="Rejected" value={n("Rejected")} caption="Needs fixing" />
       </KpiStrip>
-      <div className="card" data-tour="evidence-table" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="evidence-table">
         <div className="c-body flush scroll" style={{ padding: 0 }} id="evList">
           <DataTable<Ev> id="evidence" label="Evidence" rows={evidence} rowKey={(e) => e.id} columns={cols} searchText={(e) => `${e.id} ${e.name} ${e.type} ${e.by}`}
             tabs={REVIEW_STATES.map((s) => ({ key: s, label: s, match: (e: Ev) => status(e) === s }))}

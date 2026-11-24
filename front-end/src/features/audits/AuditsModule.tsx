@@ -43,7 +43,7 @@ export default function AuditsModule({ param: propParam }: { param?: string | nu
         <KpiTile label="Outstanding requests" value={outstanding} delta={outstanding ? { tone: "watch", text: "Chase owners" } : undefined} caption="Evidence requests (PBC) outstanding" />
         <KpiTile label="Complete" value={pool.filter((a: Audit) => a.stage === "Complete").length} caption="Engagements closed" />
       </KpiStrip>
-      <div className="card" data-tour="audits-table" style={{ flex: "1 1 auto" }}><div className="c-body scroll">
+      <div className="card" data-tour="audits-table"><div className="c-body scroll">
         {auditorView ? (
           <div className="card" role="note" data-tour="audits-auditor-note" style={{ background: "var(--surface-2)", borderColor: "var(--line)", marginBottom: 12 }}><div className="c-body" style={{ padding: 14 }}>
             <div style={{ fontWeight: 600, display: "flex", gap: 6, alignItems: "center" }}><Icon name="eye" /> Audits assigned to you</div>

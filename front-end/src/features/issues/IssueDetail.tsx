@@ -90,7 +90,7 @@ export function IssueDetail({ id }: { id: string }) {
                   <input type="checkbox" checked={!!t.done} disabled={!!writeWhy} onChange={() => toggle(ti)} />
                   <span style={t.done ? { textDecoration: "line-through", color: "var(--muted)" } : undefined}>{t.text}</span>
                 </label>
-              )) : <p className="field help">No tasks yet.</p>}
+              )) : <Empty compact icon="issues" title="No tasks yet" />}
               <button className="btn btn-ghost sm" {...dis(writeWhy)} onClick={() => openAddTask(L, id)}><Icon name="plus" />Add task</button>
             </div></div>
           </div>

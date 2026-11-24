@@ -52,7 +52,7 @@ function VendorsList() {
   const cats = Array.from(new Set<string>(DATA.vendors.map((v: Vendor) => String(v.cat)))).sort();
   const statuses = Array.from(new Set<string>(DATA.vendors.map((v: Vendor) => String(v.status)))).sort();
   const cols: DTColumn<Vendor>[] = [
-    { key: "name", header: "Vendor", value: (v) => v.name, locked: true, render: (v) => <span className="person"><VendorTile name={v.name} logo={v.logo} /><span className="strong">{v.name}</span></span>, sub: (v) => v.cat },
+    { key: "name", header: "Vendor", value: (v) => v.name, locked: true, render: (v) => <span className="person"><VendorTile name={v.name} logo={v.logo} /><span className="strong">{v.name}</span></span> },
     { key: "cat", header: "Category", value: (v) => v.cat, render: (v) => v.cat },
     { key: "tier", header: "Tier", value: (v) => v.tier, sortBy: (v) => { const i = VENDOR_TIERS.indexOf(v.tier); return i < 0 ? 99 : i; }, render: (v) => { const [cl, ic] = TIER_CHIP[v.tier] || ["neutral", "dot"]; return <Chip cls={cl} icon={ic}>{v.tier}</Chip>; } },
     { key: "score", header: "Risk score", value: (v) => v.score, render: (v) => <span style={{ display: "inline-flex", gap: 6, alignItems: "center", whiteSpace: "nowrap" }}><span><span style={{ fontWeight: 600, color: scoreColor(v.score) }}>{v.score}</span><span style={{ color: "var(--muted)" }}>/100</span></span><ScoreChip s={v.score} /></span> },
@@ -95,7 +95,7 @@ function VendorsList() {
           </div>
         </div>
       ) : null}
-      <div className="card" data-tour="vendors-table" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="vendors-table">
         <div className="c-head"><h3>Third parties{vt !== "All" ? ` · ${vt} tier` : ""}</h3>{vt !== "All" ? <button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} onClick={() => setTier("All")}><Icon name="x" />Clear filter</button> : null}</div>
         <div className="c-body flush scroll" style={{ padding: 0 }}>
           <DataTable<Vendor> id="vendors" label="Third parties" rows={list} rowKey={(v) => v.id} columns={cols} searchText={(v) => `${v.name} ${v.cat} ${v.tier} ${v.status}`}

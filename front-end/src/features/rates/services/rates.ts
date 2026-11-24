@@ -16,8 +16,10 @@ import { appStore } from "@/lib/store";
 import { clampText } from "@/lib/security";
 import { ApiError, apiFetch, viaApi } from "@/services/http";
 
-export interface RateRow { country: string; code: string; currency: string; rate: number; tax: { type: string; rate: number; eff: string }; status: string; reason: string; region?: string }
-export const RATE_ROWS: RateRow[] = JSON.parse(JSON.stringify(RATES));
+export interface RateRow { country: string; code: string; currency: string; rate: number; tax: { type: string; rate: number; eff: string }; status: string; reason: string; region?: string; /** When this row's rate or tax last changed (ms). */ updatedAt?: number }
+/** Demo: every seeded rate was last updated by the seeded refresh (synthetic time). */
+const SEEDED_AT = Date.UTC(2026, 10, 23, 17, 26);
+export const RATE_ROWS: RateRow[] = (JSON.parse(JSON.stringify(RATES)) as RateRow[]).map((r) => ({ ...r, updatedAt: r.updatedAt ?? SEEDED_AT }));
 export const REGIONS = ["All", "MENA", "Europe", "APAC", "Americas", "Africa"];
 export const TAX_TYPES = ["VAT", "GST", "GST/HST", "Sales tax", "WHT"];
 /** Held-for-review thresholds (copy in the "Rate rules" panel). The source states them in text only; no client code evaluates them. */
@@ -80,10 +82,10 @@ function applyRate(a: Approval) {
   const code = String(a.payload.code); const r = rowOf(code); const by = getActor().name; const note = `${a.id}; ticket ${a.ticket}; initiator ${a.requestedBy}; second approver ${by}${ticketNote()}`;
   if (a.kind === "rates.override") {
     const v = a.payload.v as RateValues; checkValues(v); const before = `${r.rate} ${r.currency}, ${r.tax.type} ${r.tax.rate}% from ${r.tax.eff}`;
-    r.currency = v.currency; r.rate = v.rate; r.tax.type = v.taxType; r.tax.rate = v.taxRate; r.tax.eff = v.eff;
+    r.currency = v.currency; r.rate = v.rate; r.tax.type = v.taxType; r.tax.rate = v.taxRate; r.tax.eff = v.eff; r.updatedAt = Date.now();
     adminLog("rate.override.applied", r.country, { before, after: `${a.payload.summary}; reason: ${a.payload.reason}; ${note}`, categories: ["Billing"] });
   } else {
-    r.status = "Applied"; r.reason = "";
+    r.status = "Applied"; r.reason = ""; r.updatedAt = Date.now();
     adminLog(a.kind === "rates.heldapprove" ? "rate.held.released" : "rate.held.rejected", r.country, { before: "Held", after: `Applied; reason: ${a.payload.reason}; ${note}`, categories: ["Billing"] });
   }
 }

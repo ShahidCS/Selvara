@@ -59,7 +59,7 @@ function IssuesList() {
         <KpiTile label="High or critical" value={live.filter((i: Issue) => isHighSev(i.sev)).length} caption="Open, by severity" />
         <KpiTile label="In progress" value={live.filter((i: Issue) => i.status === "In progress").length} caption="Being worked on" />
       </KpiStrip>
-      <div className="card" data-tour="issues-table" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="issues-table">
         <div className="c-head"><h3>Remediation</h3></div>
         <div className={`c-body ${view === "table" ? "flush" : ""} scroll`} style={view === "table" ? { padding: 0 } : undefined} id="issBody">
           {view === "table" ? (

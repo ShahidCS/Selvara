@@ -311,6 +311,17 @@ The sidebar takes about 280px when open, so the content of a 1024px window is na
 - Card heads (`.c-head`), segmented controls (`.seg`) and KPI figures wrap rather than overflow. A long KPI figure (more than 6 characters, such as `$16,750.00`) shrinks with its tile; short ones keep the full size.
 - Anything drawn at a fixed position next to an element (tour, popover, rail flyout) follows the element with `useAnchorWatch`, never a one-off measurement.
 
+### Owner layout review (November 2026)
+Rules that changed after the owner's screen-by-screen review (before/after evidence in the PR):
+- **Cards keep the height of their content.** `.panels` no longer stretches to the bottom of the window, and module cards no longer carry `flex: 1 1 auto`; a long register grows and the page scrolls. Cards side by side in one row share the tallest card's height. Only the chat assistant keeps a full-height panel.
+- **Running text fills its container and is justified** (`.field.help`, page subtitles, card text, banners), with hyphenation; it stays left-aligned under 600px. Form text runs the full card width; the class `.fields-cap` keeps only inputs, selects and button rows at a readable width (640px).
+- **One helper text size**, `--fs-help` (13px), for help text and banners.
+- **Plain forms space their fields** (12px between a field and what follows) unless the form lays itself out (`.rec-form`, or a `gap` of its own).
+- **One empty state.** `Empty` has a `compact` form (icon, title, one line) for empty lists inside a card; no plain "No …" sentences.
+- **Tables** drop a column that is empty in every row (`emptyWhen`), and a name cell does not repeat a value that has its own column.
+- **Tab bars** stay on one line and scroll sideways on a phone; arrow keys, Home and End move between tabs on every tab bar (`lib/tabKeys.ts`, installed by the shell).
+- **Guided tours** place the bubble beside a large area, never over the fields it describes.
+
 ## Guided tours
 
 Each module has a short walkthrough (`src/data/tours/*`, engine `src/components/kit/Tour.tsx`): a bubble that points at one part of the page at a time with **Back**, **Next** (**Done** on the last step) and **Skip tour**. It replaces the old banner tips.

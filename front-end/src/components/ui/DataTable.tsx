@@ -11,6 +11,8 @@ export interface DTColumn<T> {
   key: string;
   header: string;
   render: (row: T) => ReactNode;
+  /** The column is left out while this is true for every row (for example a "Proposed" column when nothing is proposed). */
+  emptyWhen?: (row: T) => boolean;
   /** Plain value used for sorting and for "Export selected". Without `value` or `sortBy` the column is not sortable; without `value` it is not exported. */
   value?: (row: T) => string | number;
   /** Sort key when the text order is not the natural order (for example Critical, High, Medium, Low). Defaults to `value`. */
@@ -97,7 +99,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
   const [st, setSt] = useModState<TableState>(`dt.${p.id}`, initial(sizes, p.columns as DTColumn<unknown>[]));
   const patch = (x: Partial<TableState>) => setSt({ ...st, ...x });
 
-  const cols = p.columns.filter((c) => !st.hidden.includes(c.key));
+  const cols = p.columns.filter((c) => !st.hidden.includes(c.key) && !(c.emptyWhen && p.rows.length > 0 && p.rows.every(c.emptyWhen)));
   const tab = p.tabs?.find((t) => t.key === st.tab) || null;
   const valueOf = (key: string) => { const c = p.columns.find((x) => x.key === key); return c?.sortBy || c?.value; };
   const rows = queryRows(p.rows, { tab, search: p.searchText ? { q: st.q || "", text: p.searchText } : null, filters: (p.filters || []).map((f) => ({ key: f.key, get: f.get, test: f.test ? (r: T, want: string) => f.test!(r, want) : undefined })), state: st, value: valueOf });

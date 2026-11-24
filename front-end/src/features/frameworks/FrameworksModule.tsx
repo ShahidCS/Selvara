@@ -104,7 +104,7 @@ function FrameworksList() {
         <KpiTile label="Snoozed" value={snoozed} caption="Paused, not scored as due" />
       </KpiStrip>
       <div className="banner warn" data-tour="frameworks-draft" style={{ display: "block" }}>Requirement titles are paraphrased; licensed standard text is not reproduced. All requirement-to-control mappings and applicability decisions are draft content requiring review by qualified compliance staff before reliance.</div>
-      <div className="card" data-tour="frameworks-table" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="frameworks-table">
         <div className="c-body flush scroll" style={{ padding: 0 }}>
           <DataTable<Fw> id="frameworks" label="Frameworks" rows={rows} rowKey={(f) => f.id} columns={cols} searchText={(f) => `${f.name} ${f.id} ${f.region || ""}`}
             tabs={KINDS.map((k) => ({ key: k, label: k + "s", match: (f: Fw) => f.kind === k }))}

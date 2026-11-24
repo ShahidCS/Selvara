@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
-import { Chip, Icon, StatusChip } from "@/components/ui";
+import { Chip, Icon, StatusChip, Empty } from "@/components/ui";
 import { ApiError, apiFetch, API_MODE } from "@/services/http";
 import { NDA_DOCS, ndaCountText } from "@/lib/trustSections";
 
@@ -61,7 +61,7 @@ export default function PublicTrustPage({ code }: { code: string }) {
                 {asked ? <Chip cls="warn" icon="clock">Requested</Chip> : v.visitor ? <RequestButton onSend={sendRequest} /> : <span className="field help" style={{ margin: 0 }}>Confirm your email to request them</span>}
               </div>
             ) : null}
-            {!v.documents.length && !v.ndaCount ? <p style={{ margin: 0, color: "var(--muted)" }}>No documents are published yet.</p> : null}
+            {!v.documents.length && !v.ndaCount ? <Empty compact icon="evidence" title="No documents are published yet" /> : null}
           </Card> : null}
           {v.controls?.length ? <Card title="Control status">{v.controls.map(([k, s]) => <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--line)" }}><span>{k}</span><StatusChip s={s} /></div>)}</Card> : null}
           {v.subprocessors?.length ? <Card title="Sub-processors">{v.subprocessors.map((s) => <div key={s.name} style={{ padding: "6px 0", borderTop: "1px solid var(--line)" }}><span className="strong">{s.name}</span> <span style={{ color: "var(--muted)" }}>· {s.purpose}</span></div>)}</Card> : null}

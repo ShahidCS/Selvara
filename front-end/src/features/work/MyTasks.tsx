@@ -1,4 +1,4 @@
-import { Chip } from "@/components/ui";
+import { Chip, Empty } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { getMe, wsLog } from "@/lib/audit";
 import { useData, useModState, bumpData } from "@/lib/store";
@@ -32,7 +32,7 @@ export default function MyTasks({ role }: { role: string }) {
     <div className="card" style={{ flex: "1 1 420px" }}>
       <div className="c-head"><h3>My tasks</h3></div>
       <div className="c-body flush">
-        {tasks.length === 0 ? <p className="sub" style={{ padding: 16, margin: 0 }}>No open tasks. Nothing is waiting on you.</p> : (
+        {tasks.length === 0 ? <Empty compact icon="check" title="No open tasks">Nothing is waiting on you.</Empty> : (
           <ul style={{ listStyle: "none", margin: 0, padding: "0 16px" }}>
             {tasks.map((t) => (
               <li key={t.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", padding: "10px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>

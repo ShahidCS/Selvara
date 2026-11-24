@@ -1,3 +1,4 @@
+import { Empty } from "@/components/ui";
 import { useState } from "react";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { useLayer } from "@/hooks/useLayer";
@@ -92,5 +93,5 @@ export function openActivity(L: ReturnType<typeof useLayer>, uid: string) {
   L.openModal("Activity, " + u.name, rows.length ? (
     <div className="tbl-wrap"><table className="tbl"><thead><tr><th scope="col">When (UTC)</th><th scope="col">Action</th><th scope="col">Detail</th></tr></thead>
       <tbody>{rows.map((l) => <tr key={l.seq}><td style={{ color: "var(--muted)" }} className="num">{l.at}</td><td className="num">{l.action}</td><td>{l.object}</td></tr>)}</tbody></table></div>
-  ) : <p className="field help">No recent platform events recorded for this user.</p>);
+  ) : <Empty compact icon="log" title="No recent platform events recorded for this user" />);
 }

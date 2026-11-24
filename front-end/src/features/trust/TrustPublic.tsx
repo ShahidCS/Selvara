@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AIPanel, Chip, FormMessage, Icon, Page, StatusChip, Table } from "@/components/ui";
+import { AIPanel, Chip, FormMessage, Icon, Page, StatusChip, Table, Empty } from "@/components/ui";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
 import { getMe, wsLog } from "@/lib/audit";
@@ -102,12 +102,12 @@ export default function TrustPublic({ L, manage, back }: { L: LayerApi; manage: 
             </Table>
           </div></div> : null}
           {show.updates ? <div className="card"><div className="c-head"><h3>Updates</h3></div><div className="c-body"><div className="feed">
-            {!TRUST_UPDATES.length ? <p className="field help" style={{ margin: 0 }}>No updates yet.</p> : null}
+            {!TRUST_UPDATES.length ? <Empty compact icon="bell" title="No updates yet" /> : null}
             {TRUST_UPDATES.map((u, i) => <div className="feed-item" key={i}><span className="dot" style={{ marginTop: 5, background: "var(--accent)" }}></span><div className="fi"><div className="ft">{u.title}</div><div className="fm">{u.at}</div></div></div>)}
           </div></div></div> : null}
         </div> : null}
         {show.faq ? <div className="card" style={{ marginBottom: 14 }}><div className="c-head"><h3>Frequently asked questions</h3></div><div className="c-body">
-          {!TRUST_FAQ.length ? <p className="field help" style={{ margin: 0 }}>No answers published yet.</p> : null}
+          {!TRUST_FAQ.length ? <Empty compact icon="message" title="No answers published yet" /> : null}
           {TRUST_FAQ.map((f, i) => <details key={i} style={{ marginBottom: 8 }}><summary style={{ cursor: "pointer", fontWeight: 500 }}>{f.q}</summary><p className="field help" style={{ margin: "6px 0 0" }}>{f.a}</p></details>)}
         </div></div> : null}
         <div className="card" data-tour="trust-pub-ask"><div className="c-head"><h3>Ask a question</h3></div><div className="c-body">

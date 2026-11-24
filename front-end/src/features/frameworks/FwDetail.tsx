@@ -134,7 +134,7 @@ function ReqPane({ fwId, reqF, setReqF, rq, setRq, grp, setGrp, limit, setLimit 
         </div>
         <div className="scroll" id="fwReqBody" style={{ flex: "1 1 auto", minHeight: 120, maxHeight: 520, overflow: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
           {!list.length ? (
-            <div className="empty" style={{ padding: 24 }}><div className="ei"><Icon name="search" /></div><h4>No requirements match</h4><p>No requirements with this status, group or search.</p></div>
+            <Empty icon="search" title="No requirements match">No requirements with this status, group or search.</Empty>
           ) : (
             <>
               {page.map((r) => <ReqRow key={r[0]} fwId={fwId} r={r} />)}

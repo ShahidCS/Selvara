@@ -2,7 +2,7 @@
    lists (each agent's permission boundary, for human oversight), and agent cards with status, latest run and an autonomy meter.
    Figures are counted from the agents and runs already loaded; nothing here calls a model. */
 import type { ReactNode } from "react";
-import { Chip, Icon, KpiStrip, KpiTile } from "@/components/ui";
+import { Chip, Icon, KpiStrip, KpiTile, Empty } from "@/components/ui";
 import { useLayer } from "@/components/shell/LayerProvider";
 import { askReason } from "@/components/kit/ReasonDialog";
 import { bumpData } from "@/lib/store";
@@ -96,7 +96,7 @@ function statusOf(a: Agent, waiting: number): ReactNode {
 
 /** R32: one card per agent. The autonomy controls and actions are the table's own, so both views do the same things. */
 export function AgentCards({ rows, autonomy, actions }: { rows: Agent[]; autonomy: (a: Agent) => ReactNode; actions: (a: Agent) => ReactNode }) {
-  if (!rows.length) return <p className="cell-sub">No custom agents yet.</p>;
+  if (!rows.length) return <Empty compact icon="assistant" title="No custom agents yet" />;
   return (
     <ul className="agent-cards" aria-label="Agents">
       {rows.map((a) => {

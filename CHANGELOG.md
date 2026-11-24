@@ -4,6 +4,11 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Changed
+- **Layout review across every screen.** Cards now end where their content ends instead of stretching to the bottom of the window, and long lists grow with the page instead of scrolling inside a small box. Text in descriptions, notes and banners runs the full width of its card and is justified, with one helper text size. Fields in a form have even spacing. Every empty list uses one style (icon, title and a line). Tour tips no longer cover the fields they describe. Tab bars stay on one line on phones and work with the arrow keys. Tables hide columns that are empty in every row, and a name no longer repeats a value shown in its own column (Third Parties, Team, Evidence). Elevated Access no longer repeats the read-only banner above its own form.
+- **Platform Security** lists its rules in full-width rows, and each rule is marked "In place" or "Planned". Four controls the page used to state as working are now marked Planned: Argon2id with a hardware-held pepper, network allow-listing for the console, streaming to a security monitoring service, and new-device or new-country alerts. Password storage is described as it is today (Supabase Auth, algorithm to confirm with the vendor, VC-31).
+- **Exchange Rates & Tax** has a "Last updated" column with each currency's last change (UTC). A rate never refreshed shows "Never".
+
 ### Added
 - **Manage your authenticator apps from Your account.** Every user with a company account can add an authenticator app (a main and a backup, two at most), replace one, or remove one. Each change asks for the password and a current code. If the phone with the app is lost, a recovery code replaces it. Setting up shows a **QR code** to scan, or the key to type into the app by hand, and the first sign-in set-up now shows the QR code too. A code from either app works at sign-in. Platform super admins can add an authenticator app as an extra step after their passkey. Every change is emailed to the account owner as an alert and written to the audit log. The QR code is drawn in the browser by `uqr` 0.1.3, a small MIT library with no dependencies that was security-reviewed before it was added.
 

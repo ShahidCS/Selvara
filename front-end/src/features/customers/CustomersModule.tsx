@@ -16,7 +16,7 @@ function DemoCustomersModule() {
   const [view, setView] = useModState<"customers" | "questions">("customers.demo.view", "customers");
   if (view === "questions") return (
     <Page mod="customers" acts={<DemoViews view={view} setView={setView} />}>
-      <div className="card" style={{ flex: "1 1 auto" }}><div className="c-body scroll"><SupportQuestions /></div></div>
+      <div className="card"><div className="c-body scroll"><SupportQuestions /></div></div>
     </Page>
   );
   return <DemoCustomers views={<DemoViews view={view} setView={setView} />} />;
@@ -41,7 +41,7 @@ function DemoCustomers({ views }: { views: React.ReactNode }) {
   return (
     <Page mod="customers" acts={<>{views}{c ? <button className="btn btn-secondary" onClick={() => setSel(null)}><Icon name="x" />Clear</button> : null}<button className="btn btn-primary" data-tour="customers-onboard" onClick={openOnboard} disabled={gate.locked} title={gate.title}><Icon name="plus" />Onboard customer</button></>}>
       <ElevateGateBanner />
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card">
         <div className="c-body" id="custBody" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <CustomerSearch key={c ? c.id : "none"} onPick={pick} />
           {c ? <CustomerProfile c={c} /> : (

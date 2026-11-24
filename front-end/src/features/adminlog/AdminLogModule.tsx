@@ -87,7 +87,7 @@ function DemoAdminLogModule() {
         <KpiTile label="Tenants touched" value={tenants.length} delta={{ tone: "flat", text: "Includes platform" }} caption="Distinct scopes in the log" />
         <KpiTile label="Latest event" value={all[0] ? all[0].at.slice(0, 10) : "None"} delta={{ tone: "flat", text: all[0] ? all[0].action : "No events" }} caption="Newest entry" />
       </KpiStrip>
-      <div className="card" data-tour="adminlog-table" style={{ flex: "1 1 auto", minHeight: 0 }}>
+      <div className="card" data-tour="adminlog-table" style={{ minHeight: 0 }}>
         <div className="c-head" style={{ flexWrap: "wrap", gap: 8 }}>
           <div className="seg" role="tablist" data-tour="adminlog-views">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div>
           <span id="alChain" role="status" data-tour="adminlog-chain" style={{ marginLeft: "auto", fontSize: 12 }}>

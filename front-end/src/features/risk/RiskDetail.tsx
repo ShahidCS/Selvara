@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { ExplainCard } from "@/components/kit/ExplainCard";
 import { explainRisk } from "@/lib/insights";
-import { Chip, Icon, StatusChip, Stepper } from "@/components/ui";
+import { Chip, Icon, StatusChip, Stepper, Empty } from "@/components/ui";
 import { useLayer } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
@@ -272,7 +272,7 @@ export default function RiskDetail({ id }: { id: string }) {
               <span style={{ flex: 1, minWidth: 0, ...(a.done || a.cancelled ? { textDecoration: "line-through", color: "var(--muted)" } : {}) }}>{a.text}<span style={{ display: "block", fontSize: 12, color: "var(--muted)" }}>{a.owner || "Unassigned"}{a.due ? " · due " + a.due : ""}{a.cancelled ? " · cancelled: " + a.cancelReason : ""}</span></span>
               {canEdit && !a.done && !a.cancelled ? <button type="button" className="btn btn-ghost sm" aria-label={`Cancel action ${a.text}`} onClick={(e) => { e.preventDefault(); cancelAct(ai, a.text); }}>Cancel</button> : null}
             </label>
-          )) : <p className="field help" style={{ margin: 0 }}>No treatment actions yet.</p>}
+          )) : <Empty compact icon="risk" title="No treatment actions yet" />}
           {allDone || (acts.length > 0 && openActs.length === 0) ? <div style={{ fontSize: 12, color: "var(--ok-ink)", fontWeight: 600 }}>All actions complete — exposure at residual.</div> : null}
           {canEdit ? <button className="btn btn-ghost sm" style={{ alignSelf: "flex-start" }} onClick={addAction}><Icon name="plus" />Add action</button> : null}
         </div>
@@ -290,7 +290,7 @@ export default function RiskDetail({ id }: { id: string }) {
         <div style={{ ...box, gap: 4 }}><h3 style={{ margin: "0 0 4px", fontSize: 15 }}>Interested parties</h3>
           {parties.length ? parties.map((p) => (
             <div key={p.party} style={{ fontSize: 13, padding: "5px 0", borderTop: "1px solid var(--line)" }}><strong>{p.party}</strong> <span style={{ color: "var(--muted)" }}>({p.loc})</span><div style={{ fontSize: 12, color: "var(--ink-2)" }}>{p.req}</div></div>
-          )) : <p className="field help" style={{ margin: 0 }}>No interested party linked. Link on the Interested parties tab.</p>}
+          )) : <Empty compact icon="risk" title="No interested party linked">Link on the Interested parties tab.</Empty>}
           <h3 style={{ margin: "10px 0 4px", fontSize: 15 }}>History</h3>
           {(r.history || []).slice().reverse().map((h: any, k: number) => (
             <div key={k} style={{ fontSize: 12, color: "var(--ink-2)", padding: "4px 0", borderTop: "1px solid var(--line)" }}>{h.ts} · {h.by} · {h.a}</div>

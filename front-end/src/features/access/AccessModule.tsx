@@ -36,7 +36,7 @@ export default function AccessModule() {
         : undefined;
   return (
     <Page mod="access" acts={acts}>
-      <div className="card" data-tour="access-panel" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="access-panel">
         <div className="c-head">
           <div style={{ maxWidth: "100%", overflowX: "auto", scrollbarWidth: "thin" }}>
             <div className="seg" role="tablist" aria-label="Access views" data-tour="access-views">
