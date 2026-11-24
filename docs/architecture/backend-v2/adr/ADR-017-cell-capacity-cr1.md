@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Proposed** (rev P5, 2026-11-24). Records CR-1, adopted by the design authority (DA-10) and registered as DU-01. The owner confirms the measured value at the V2-R0 exit. |
+| Status | **Accepted** (owner, 2026-11-24, OD-19). Written rev P5 (2026-11-24). Records CR-1, adopted by the design authority (DA-10) and registered as DU-01. The owner confirms the measured value at the V2-R0 exit. |
 | Date | 2026-11-24 |
 | Workstream | 2A (placement), 2J (measurement), 2H (provisioning, alerts, cost) |
 | Related | ADR-001 C1-04 and C1-05; DU-01, DU-08; A-07, A-11, A-15, A-60; risks R-12, R-55, R-64; P3-X3 §2.2; finding P4-A3-06 (3) |

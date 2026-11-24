@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | **Accepted** (owner, 2026-11-24, OD-19). |
 | Date | 2026-11-23; revised 2026-11-24 (rev P4); Phase 5 documentation pass 2026-11-24 (rev P5: keep-newest rule RA-01, deputy approver R-DEP, KS-SNAP texts aligned) |
 | Owners | 2H (infrastructure), with 2F/2G for keys and retention |
 | Related | ADR-001 C1-03 and C1-08, ADR-003, spine v2 S7, `2H-infrastructure.md` H-9; DA-11, DU-02, DU-36 (rev P3); Phase 4 findings P4-A1-07, P4-A1-08, P4-A1-09, P4-A3-11; shared specifications KS-SNAP and SLA-U (rev P4) |
@@ -54,6 +54,15 @@ Supabase point-in-time restore (PITR) and daily backups work at project level, s
 - The deletion certificate lists KS-SNAP among the stores and states its roll-off (≤ 8 days) with the key journal (rev P4), or, for a key destroyed in the 8 days before a declared `ks` loss, "destroyed; unrecoverable once the hold is released" with the release timestamp (rev P5).
 - Restores are platform actions: four-eyes, logged in the platform audit log and the tenant's own audit log.
 
+## Vendor-fact results (owner, 2026-11-24, OD-14) (rev P5b)
+
+| VC | Result | Effect on this decision |
+|---|---|---|
+| VC-02 | **Confirmed with caveats.** Supabase restores physical backups or PITR into a new project, at an exact time for PITR projects. Paid plans only; documented as Beta (a blog post says Public Alpha). The copy is database-only and needs manual reconfiguration. It is a binary copy, so `pg_cron` and `pg_net` jobs start as soon as it completes. Custom role passwords are not in the backups; Storage objects are not in database backups. The restore is project-wide. | Path B stands, with **restore hygiene** (V-004-17): before the restored project is reachable, disable `pg_cron` jobs and `pg_net`, block the pooler, reset every login role's password from IaC, then extract the one tenant schema (`t_<tkey>`) with its `ks` rows and import it. Schema-per-tenant makes that extraction a single-schema dump. Files come from Storage, not the database copy, and keep their per-file keys. Do not describe the feature as GA until the dashboard says so (risk R-67). |
+| VC-16 | **Half confirmed.** WAL is archived about every 2 minutes (sooner under load, not at all when idle), so the PITR RPO is about 2 minutes; without PITR the exposure is up to a day. No published restore duration: downtime grows with database size and the project is inaccessible during a restore. | A-NFR-13 RPO with PITR is about 2 minutes. RTO stays an objective until a **timed test restore** at the V2-R0 gate gives a measured figure (V-004-18). |
+| VC-19 | **Confirmed.** Daily backups are kept 7 days on Pro, 14 on Team, up to 30 on Enterprise. Enabling PITR stops daily backups; PITR retention is 7, 14 or 28 days. Deleting a project permanently removes its backups, including those in S3. | With PITR on (OD-20), the 7-day PITR window is the provider's backup window, inside the 8-day destruction bound. The deletion certificate (D-12e) cites the provider's backup window and, for a dedicated cell, that project deletion removes its backups. |
+| VC-14 | **Confirmed for AWS KMS.** Multi-Region keys replicate a primary into other Regions in the same partition; USD 1 a month per primary and per replica, plus requests; key policies are not synchronised; replicas of imported key material are created empty and need the same material imported; not available in a custom key store. | Replicas are the primary DR design; H-DR-G (second independent KEK) stays a fallback (OD-20). IaC sets each replica's key policy explicitly (V-004-19). |
+
 ## Verification
 
 | ID | Check |
@@ -74,3 +83,6 @@ Supabase point-in-time restore (PITR) and daily backups work at project level, s
 | V-004-14 | Vendor-fact record: VC-02, VC-13, VC-14, VC-16, VC-19, VC-20 and VC-22 verified by the owner, with the fallback in force for any that failed, before the Phase 5 gate (rev P4) |
 | V-004-15 | Keep-newest drill (rev P5, RA-01): declare a staging `ks` loss; one approver places the hold through `ks-hold`; the deletion job and lifecycle leave the held snapshot and journal objects in place past their 8-day lock; a single person, or R-DEP with R-A or R-B covering the same role, cannot release the hold; after the restore verification the four-eyes release succeeds and the objects expire; an incident with no hold after 1 h raises S1 (2F F-K-47, 2H H-KS-11) |
 | V-004-16 | Deputy restore (rev P5, P4-A3-19): the KS-SNAP drill completes with R-DEP standing in for R-A (and, in another run, for R-B); an attempt by R-DEP to cover both roles is refused (2F F-K-48, 2H H-KS-12) |
+| V-004-17 | Restore-to-new-project hygiene (rev P5b, VC-02): in the drill, the restored project runs no `pg_cron` or `pg_net` job, accepts no pooler connection and no old role password before the steps are done; only the target tenant's schema is imported; other tenants are untouched |
+| V-004-18 | Timed test restore (rev P5b, VC-16) at the V2-R0 gate: the measured RTO is recorded and replaces the objective in A-NFR-14 |
+| V-004-19 | Each KMS multi-Region replica has an explicit key policy equal to its primary's intent, checked by IaC drift detection (rev P5b, VC-14) |

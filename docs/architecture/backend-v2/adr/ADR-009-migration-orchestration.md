@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | **Accepted** (owner, 2026-11-24, OD-19). |
 | Date | 2026-11-23 |
 | Owners | 2H, with 2B (schema) |
 | Related | ADR-001 C1-06; replaces D6 (manual migrations); `2H-infrastructure.md` H-6.3, H-8; `2A-architecture.md` A-D-06, A-PH-02 (CR-1) (rev P3) |

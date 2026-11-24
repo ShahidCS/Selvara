@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Proposed** |
+| Status | **Accepted** (owner, 2026-11-24, OD-19). |
 | Date | 2026-11-23 |
 | Workstream | 2E (detail in `2E-iam.md` E-10..E-28, E-50..E-58) |
 | Related | ADR-001 (schema per tenant), ADR-002 (router), ADR-010 (control plane), ADR-014 (custom roles); spine S2, S3, S5 |

@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | **Accepted** (owner, 2026-11-24, OD-19). |
 | Date | 2026-11-23 |
 | Owners | 2A / 2H |
 | Related | Spine v2 S1, S8; ADR-010; ADR-012 (scanner); A-13; `2H-infrastructure.md` H-1, H-2; R2-03 (rev P3) |

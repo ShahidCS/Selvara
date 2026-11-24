@@ -659,7 +659,7 @@ DRAFT. One row for every ISO/IEC 27001:2022 clause 4 to 10 requirement area, eve
 | G-DR-05 | Designate a DPO (R-G) or record why not | none | R-A, counsel |
 | G-DR-06 | Appoint UK and EU Art. 27 representatives if required | none | R-A, counsel |
 | G-DR-07 | Approve the DPA outline and subprocessor list for counsel drafting | ADR-007 input | R-A |
-| G-DR-08 | Confirm owner and target release of each G-14 remediation row; set calendar dates with the per-release targets (2K K-M07) (rev P4) | none | R-A, R-B |
+| G-DR-08 | Confirm owner and target release of each G-14 remediation row; set calendar dates with the per-release targets (2K K-M07) (rev P4). **Closed by OD-22** (2026-11-24): dates in [P5-roadmap-calendar.md](../phase5/P5-roadmap-calendar.md) §4 (rev P5b) | none | R-A, R-B |
 
 ## Open risks
 

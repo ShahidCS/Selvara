@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Proposed** |
+| Status | **Accepted** (owner, 2026-11-24, OD-19). |
 | Date | 2026-11-23 |
 | Workstream | B (Data model) |
 | Depends on | ADR-001 (accepted), ADR-002 (isolation), ADR-003 (keys), ADR-009 (migration orchestration) |

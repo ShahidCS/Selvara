@@ -125,20 +125,22 @@ The MSS saves about 15% of the likely engineering effort, not more, because V2-R
 | Legal outcomes change retention or the paraphrase position | Rework in V2-R2 (content) and V2-R4 (retention) | DU-21, DU-25 |
 | Pen test finds isolation or key issues | High end of V2-R6 | F-SD-10 |
 
-## 6. Owner fields (to be filled; OD-13)
+## 6. Owner fields (OD-13; recorded 2026-11-24 as OD-21, rev P5b)
+
+Dates are derived from the owner's start date and staffing in [P5-roadmap-calendar.md](P5-roadmap-calendar.md).
 
 | Field | Value | Recorded by | Date |
 |---|---|---|---|
-| Budget ceiling (people, vendors, external review, pen test) | `<owner to fill>` | R-A | |
-| Scope choice: full V2-R0 to V2-R6, or the MSS first | `<owner to fill>` | R-A | |
-| Engineer-equivalents (staffing) | `<owner to fill>` | R-A | |
-| Technical reviewer hourly rate | `<owner to fill>` | R-A | |
-| Deputy approver R-DEP retainer | `<owner to fill>` | R-A | |
-| Target date V2-R0 | `<owner to fill>` | R-A | |
-| Target date V2-R1 | `<owner to fill>` | R-A | |
-| Target date V2-R2 | `<owner to fill>` | R-A | |
-| Target date V2-R3 | `<owner to fill>` | R-A | |
-| Target date V2-R4 (or MSS privacy pieces) | `<owner to fill>` | R-A | |
-| Target date V2-R5 (or MSS commercial pieces) | `<owner to fill>` | R-A | |
-| Target date V2-R6 (cutover) | `<owner to fill>` | R-A | |
-| R-05 (scope too large): accept or treat | `<owner to fill>` | R-A | |
+| Budget ceiling (people, vendors, external review, pen test) | USD 5,000 *(owner query open: about 2.8 weeks of the team at USD 15/h; see the roadmap §5)* | R-A | 2026-11-24 (OD-21) |
+| Scope choice: full V2-R0 to V2-R6, or the MSS first | Full build, V2-R0 to V2-R6 | R-A | 2026-11-24 (OD-21) |
+| Engineer-equivalents (staffing) | 3 | R-A | 2026-11-24 (OD-21) |
+| Technical reviewer hourly rate | USD 15 (owner rate; recorded for engineers; confirm it also applies to the reviewer) | R-A | 2026-11-24 (OD-21) |
+| Deputy approver R-DEP retainer | Not given | R-A | 2026-11-24 (OD-21) |
+| Target date V2-R0 | Start 1 Jan 2027; gate 16 Apr 2027 | R-A | 2026-11-24 (OD-21) |
+| Target date V2-R1 | Gate 2 Jul 2027 | R-A | 2026-11-24 (OD-21) |
+| Target date V2-R2 | Gate 17 Sep 2027 | R-A | 2026-11-24 (OD-21) |
+| Target date V2-R3 | Gate 19 Nov 2027 | R-A | 2026-11-24 (OD-21) |
+| Target date V2-R4 (or MSS privacy pieces) | Gate 28 Jan 2028 | R-A | 2026-11-24 (OD-21) |
+| Target date V2-R5 (or MSS commercial pieces) | Gate 5 Nov 2027 | R-A | 2026-11-24 (OD-21) |
+| Target date V2-R6 (cutover) | Gate 17 Mar 2028; cutover 20 Mar 2028 | R-A | 2026-11-24 (OD-21) |
+| R-05 (scope too large): accept or treat | Accept | R-A | 2026-11-24 (OD-21) |

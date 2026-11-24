@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Recommendation: No-Go** (2026-11-24); **re-confirmed No-Go after the owner's sign-off** (re-assessment of 2026-11-24, [P5-reassessment-2026-11-24.md](P5-reassessment-2026-11-24.md)) |
+| Status | **Recommendation: No-Go** (2026-11-24); **re-confirmed No-Go after the owner's sign-off** (re-assessment of 2026-11-24, [P5-reassessment-2026-11-24.md](P5-reassessment-2026-11-24.md)); **still No-Go after the second batch of owner decisions** (OD-19 to OD-24, section 6, rev P5b) |
 | Basis | Independent readiness assessment ([P5-readiness-evidence.md](P5-readiness-evidence.md)) of the design after the Phase 4 fixes. The assessor did not write the design or the fixes. |
 | Rule (brief) | "Go" only if: no open Critical or High findings; all mandatory MVP decisions are made and recorded as ADRs; all high-impact assumptions are validated or explicitly accepted; the coverage matrix has no Missing cells for MVP modules; provisioning, isolation testing, migration and single-tenant restore are designed with test plans; and a sign-off table is prepared. |
 | Note | All compliance content is a **draft** pending qualified legal and compliance review. |
@@ -94,3 +94,30 @@ All design-authority (DA) items from section 2 are done. **The recommendation st
 | RA2-06 (Low): D-58 called the deputy "R-D" | **Fixed (DA):** 2D D-58, 2G and 2B now say R-DEP; R-D stays the internal auditor. |
 
 The gate stays **No-Go** until the owner actions are recorded (deferred by the owner, OD-17) and ADR-021 is accepted. The independent assessment is then re-run.
+
+## 6. After the owner decisions of 2026-11-24, second batch (rev P5b)
+
+The owner recorded OD-19 to OD-24 and seven vendor-fact results (decisions-log, assumptions-log "Results recorded").
+
+| Owner action (section 4 list) | Status |
+|---|---|
+| 1. Ratify H-DR-H and H-DR-G; decide DU-02 | **Done:** DU-02 option A, H-DR-H ratified, H-DR-G closed as a fallback (OD-20) |
+| 2. Verify VC-01 to VC-34 | **Partly done:** VC-02, VC-13, VC-14, VC-16, VC-19 and VC-21 recorded; VC-22 not confirmed; 27 facts still to verify (tracking date 31 Dec 2026) |
+| 3. Technical reviewer (OD-12) | Named in the sign-off table; engagement terms to record by 31 Dec 2026 |
+| 4. Deputy approver R-DEP | **Done** (OD-18, SOD_MATRIX §16) |
+| 5. Budget ceiling and dates; R-05 | **Recorded, with an open query** (OD-21): the USD 5,000 ceiling against about USD 135,000 likely to cutover. R-05 accepted |
+| 6. ISO dates and SLA figure | **Done:** ISO tracking dates (OD-22, [P5-roadmap-calendar.md](P5-roadmap-calendar.md)); SLA 99.0%, configurable (OD-23, ADR-020) |
+| 7. Mandatory DU items; ADR acceptance; residual Mediums | **ADR-002 to ADR-020 accepted** (OD-19, DU-37 closed). Still open: the other mandatory DU items (for example DU-04, DU-06, DU-10 to DU-16, DU-31 to DU-34) and F-AB-16, F-T-122, F-T-130 |
+| 8. Legal assumptions | **Deferred** by the owner (OD-24); RA2-04 open |
+| 9. Sign the table | Signatures present; valid only after a Go recommendation (RA2-02, RA2-03) |
+
+| Criterion | Verdict now | Why |
+|---|---|---|
+| G1 No open Critical or High | **Not met** | P4-A1-08 (part), P4-A3-17 (budget query), RA2-02 and RA2-03 are still open |
+| G2 Mandatory decisions as ADRs | **Not met (progress)** | All ADRs accepted; mandatory DU items still open |
+| G3 High-impact assumptions | **Not met** | Legal A-05, A-10, A-14, A-52 deferred (OD-24); most vendor facts unverified |
+| G4 Coverage | Met | Unchanged |
+| G5 Test plans | Met | Strengthened: V-004-17 to V-004-19, V-020-5 |
+| G6 Sign-off table | Prepared | Signatures need confirmation after a Go |
+
+**The recommendation stays No-Go.** The shortest remaining path: (1) clarify the budget; (2) verify the remaining vendor facts; (3) decide the open mandatory DU items, most of which are "accept" recommendations; (4) either accept the legal assumptions explicitly as DRAFT with stated limits, or get counsel's view (G3 cannot be met while they are simply deferred); (5) signatories confirm in their own pull request approvals. Then the independent assessment is re-run.

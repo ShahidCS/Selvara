@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Proposed |
+| Status | **Accepted** (owner, 2026-11-24, OD-19). |
 | Date | 2026-11-23; revised 2026-11-24 (rev P4) |
 | Workstream | 2F |
 | Related | Spine S2 (`control.platform_audit_log`), S4 M22 (`audit_log_entry`, `audit_anchor`), S8 (anchoring job), ADR-003, `2F-security.md` F-9 |
@@ -53,6 +53,11 @@ Adopt **O3**.
 - Segments hold ciphertext encrypted with the tenant DEK; tenant KEK destruction at offboarding makes them unreadable while object lock keeps them until expiry (disclosed in the DPA and in the deletion certificate).
 - Personal fields enter the hash only as keyed HMACs (F-D-09, B-D17), so retention nulling (2B B-RC32) and subject-key shredding do not break verification, and the hash input reveals neither plaintext nor ciphertext. An HMAC kept after erasure is a pseudonymous value, consistent with OD-10. (rev P3)
 - The signing key never leaves the KMS; its compromise is detectable through KMS logs and is limited by the TSA tokens, which fix the time of each root independently.
+
+## Vendor-fact results (owner, 2026-11-24, OD-14) (rev P5b)
+
+- **VC-22 not confirmed.** S3 Object Lock has a compliance mode and can be applied with S3 Batch Operations, but availability in region `R1` is unchecked (owner: check the AWS regional table). AWS has no native RFC 3161 timestamp service.
+- Effect: the anchor uses **two independent external TSAs** (the second-provider fallback). A self-hosted TSA (for example one signing with a cloud KMS key) may be added as a third witness, but it is not independent of Selvara and does not replace an external TSA. Each provider's regional claims are verified before V2-R0.
 
 ## Verification (Phase 4)
 
