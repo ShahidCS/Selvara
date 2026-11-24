@@ -32,7 +32,7 @@ export function ApiSupportSessions() {
   ];
   return (
     <>
-      <p className="field help" style={{ marginTop: 0, maxWidth: "70ch" }}>A company&apos;s workspace is closed to platform staff until one of its admins gives support access. A support session is read-only, needs a reason and a ticket, lasts 60 minutes at most and ends with the grant. The company sees the session and everything you look at in its own audit log.</p>
+      <p className="field help" style={{ marginTop: 0 }}>A company&apos;s workspace is closed to platform staff until one of its admins gives support access. A support session is read-only, needs a reason and a ticket, lasts 60 minutes at most and ends with the grant. The company sees the session and everything you look at in its own audit log.</p>
       {data.grants.length ? <DataTable<svc.LiveGrant> id="platform-support-grants" label="Live support grants" rows={data.grants} rowKey={(g) => g.id} columns={cols} searchText={(g) => `${g.name} ${g.ref} ${g.reason}`} exportName="support-grants" />
         : <Empty compact icon="access" title="No support access given">When a company&apos;s admin gives support access, it appears here.</Empty>}
     </>

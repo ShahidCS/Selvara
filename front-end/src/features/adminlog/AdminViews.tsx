@@ -16,7 +16,7 @@ export function AdminChainView({ ok, onVerify, can }: { ok: boolean; onVerify: (
           <button className="btn btn-primary sm" disabled={!can} onClick={onVerify}><Icon name="check" />Verify chain</button>
         </div>
       </div>
-      <p className="field help" style={{ margin: "0 0 14px", maxWidth: "72ch" }}>{DEMO_HASH_NOTE}</p>
+      <p className="field help" style={{ margin: "0 0 14px" }}>{DEMO_HASH_NOTE}</p>
       <div className="sectitle">How the chain of evidence works</div>
       <ul style={{ margin: "0 0 14px", paddingLeft: 18, lineHeight: 1.7, color: "var(--ink-2)", maxWidth: "72ch", fontSize: 13 }}>
         <li>Each entry records the UTC time, the actor and role, the tenant, the action and object, the before and after state, the lawful basis, the data categories and the GDPR Article 30 processing activity it belongs to.</li>

@@ -28,7 +28,7 @@ function EvidenceList() {
   const owners = Array.from(new Set<string>(evidence.map((e: Ev) => String(e.by)))).sort();
   const cols: DTColumn<Ev>[] = [
     { key: "id", header: "ID", nowrap: true, value: (e) => e.id, locked: true, render: (e) => <span className="strong num">{e.id}</span> },
-    { key: "name", header: "Evidence", value: (e) => e.name, render: (e) => e.name, sub: (e) => e.type },
+    { key: "name", header: "Evidence", value: (e) => e.name, render: (e) => e.name },
     { key: "type", header: "Type", value: (e) => e.type, render: (e) => e.type },
     { key: "ver", header: "Version", value: (e) => e.ver, render: (e) => `v${e.ver}` },
     { key: "by", header: "Collected by", value: (e) => e.by, render: (e) => <Person name={e.by} /> },

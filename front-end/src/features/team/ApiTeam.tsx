@@ -129,7 +129,7 @@ function Invitations() {
         <div className="field" style={{ margin: 0 }}><label htmlFor="iv-role">Role</label><select className="input" id="iv-role" value={role} onChange={(e) => setRole(e.target.value)}>{ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{roleName(r)}</option>)}</select></div>
         <button type="submit" className="btn btn-primary" disabled={busy}>Invite</button>
       </form>
-      <p className="field help" id="iv-help" style={{ maxWidth: "70ch" }}>You get a link to send to the person yourself; Selvara does not email it. It works once, only for that email address, for 72 hours. {isPrivilegedRole(role) ? "Admin and owner invitations need a second admin's approval first; then create the link here." : ""}</p>
+      <p className="field help" id="iv-help">Selvara emails the person an invitation link. It works once, only for that email address, for 72 hours. {isPrivilegedRole(role) ? "Admin and owner invitations need a second admin's approval first; then send the invitation here." : ""}</p>
       <p className="field help" id="iv-err" role="alert" style={{ color: "var(--bad-ink)", display: ferr ? "block" : "none" }}>{ferr}</p>
       {err ? <p role="alert" style={{ color: "var(--bad-ink)" }}>{err}</p> : null}
       {rows ? (rows.length ? <DataTable<svc.InvitationItem> id="team-invitations-api" label="Invitations" rows={rows} rowKey={(i) => i.id} columns={cols} searchText={(i) => `${i.email} ${roleName(i.role)} ${i.status}`} exportName="invitations" />
@@ -159,7 +159,7 @@ function SignIn() {
   return (
     <>
       <div className="sectitle" style={{ marginTop: 0 }}>Account lockout</div>
-      <p className="field help" style={{ margin: "0 0 8px", maxWidth: "62ch" }}>How many failed sign-ins lock an account in this company, and for how long. Now: {ruleNote(cur)}. Choose PCI DSS v4 if you handle card data, or Custom to match your regulator or internal policy ({CUSTOM_BOUNDS.attempts[0]} to {CUSTOM_BOUNDS.attempts[1]} attempts, {CUSTOM_BOUNDS.minutes[0]} to {CUSTOM_BOUNDS.minutes[1]} minutes). A person who belongs to several companies gets the strictest of their companies&apos; settings; platform accounts always use Strict. Every change is audited.</p>
+      <p className="field help" style={{ margin: "0 0 8px" }}>How many failed sign-ins lock an account in this company, and for how long. Now: {ruleNote(cur)}. Choose PCI DSS v4 if you handle card data, or Custom to match your regulator or internal policy ({CUSTOM_BOUNDS.attempts[0]} to {CUSTOM_BOUNDS.attempts[1]} attempts, {CUSTOM_BOUNDS.minutes[0]} to {CUSTOM_BOUNDS.minutes[1]} minutes). A person who belongs to several companies gets the strictest of their companies&apos; settings; platform accounts always use Strict. Every change is audited.</p>
       <Segmented<LockoutPreset> label="Account lockout" value={shown} onChange={pick} options={[...(Object.keys(LOCKOUT) as LockoutPreset[]).map((k) => ({ value: k, label: LOCKOUT[k as keyof typeof LOCKOUT].label })), { value: "custom" as LockoutPreset, label: "Custom" }]} />
       {shown === "custom" ? (
         <form onSubmit={saveCustom} noValidate style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, alignItems: "end", marginTop: 8, maxWidth: 520 }}>

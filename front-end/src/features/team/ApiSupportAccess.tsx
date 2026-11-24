@@ -47,7 +47,7 @@ export function ApiSupportAccess() {
   if (!data) return <p style={{ color: "var(--muted)" }}>Loading…</p>;
   return (
     <>
-      <p className="field help" style={{ marginTop: 0, maxWidth: "70ch" }}>Selvara staff cannot see your workspace unless you give support access here. It is read-only (members, the sign-in setting and the audit log), lasts {data.maxHours} hours at most, and you can revoke it at any time. Each support session needs its own reason and ticket, lasts 60 minutes at most, and is listed below with everything it looked at.</p>
+      <p className="field help" style={{ marginTop: 0 }}>Selvara staff cannot see your workspace unless you give support access here. It is read-only (members, the sign-in setting and the audit log), lasts {data.maxHours} hours at most, and you can revoke it at any time. Each support session needs its own reason and ticket, lasts 60 minutes at most, and is listed below with everything it looked at.</p>
       {live ? (
         <div className="banner warn" role="status" style={{ marginBottom: 12, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <Icon name="access" /><span style={{ flex: "1 1 260px" }}><b>Support access is on</b> until {utcMin(live.expiresAt)}, given by {live.grantedBy}.</span>

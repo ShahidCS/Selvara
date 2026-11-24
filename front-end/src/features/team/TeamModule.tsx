@@ -48,7 +48,7 @@ function TeamTabs() {
     intro: "They no longer approve procurement requests. You can add them again later.",
     run: async () => { const a = await svc.removeApprover(i); if (a === null) throw new Error("Approver not found"); return "Approver removed"; } });
   const memberCols: DTColumn<Member>[] = [
-    { key: "name", header: "Member", value: (p) => p.name, locked: true, render: (p) => <span className="person"><Avatar name={p.name} /><span className="strong">{p.name}</span></span>, sub: (p) => p.role },
+    { key: "name", header: "Member", value: (p) => p.name, locked: true, render: (p) => <span className="person"><Avatar name={p.name} /><span className="strong">{p.name}</span></span> },
     { key: "title", header: "Job title", value: (p) => p.role, render: (p) => p.role },
     { key: "role", header: "Workspace role", value: (p) => memberRole(p), render: (p) => memberRole(p) },
     { key: "mfa", header: "MFA", value: (p) => (p.mfa ? "Enrolled" : "No MFA"), render: (p) => (p.mfa ? <Chip cls="ok" icon="check">Enrolled</Chip> : <Chip cls="neutral" icon="dot">No MFA</Chip>) },

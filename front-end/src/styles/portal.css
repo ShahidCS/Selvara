@@ -338,7 +338,7 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 textarea.input{height:auto;padding:9px 11px;resize:vertical;min-height:72px}
 .field{display:flex;flex-direction:column;gap:5px}
 .field label{font-size:12.5px;font-weight:500;color:var(--ink-2)}
-.field .help,.field.help{font-size:12.5px;color:var(--muted);line-height:1.5;max-width:72ch}
+.field .help,.field.help{font-size:12.5px;color:var(--muted);line-height:1.5}
 /* `field help` on one element is a help paragraph, not a form field: plain text flow, so inline bold and links stay inline */
 .field.help{display:block}
 .field.err .input,.field.err .select{border-color:var(--bad-ink)}
@@ -385,7 +385,7 @@ textarea.input{height:auto;padding:9px 11px;resize:vertical;min-height:72px}
 .page-head{flex:0 0 auto;display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
 .page-head .pt{min-width:0}
 .page-head h1{font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:1.2}
-.page-head .sub{color:var(--muted);font-size:13px;margin-top:3px;max-width:76ch}
+.page-head .sub{color:var(--muted);font-size:13px;margin-top:3px}
 .page-head .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .panels{flex:0 0 auto;min-height:0;display:grid;gap:14px;align-items:start} /* cards keep the height of what they hold (owner review, 2026-11-24) */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
@@ -1124,7 +1124,7 @@ main#content{background:var(--surface);margin:0 8px 8px 0;border-radius:0 0 var(
 
 /* Posture brief and AI wording (reference review R9, R22, R36) */
 .brief-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
-.brief-h{font-size:20px;font-weight:400;letter-spacing:-.01em;line-height:1.3;margin:4px 0 0;max-width:62ch}
+.brief-h{font-size:20px;font-weight:400;letter-spacing:-.01em;line-height:1.3;margin:4px 0 0}
 .brief-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px 24px;align-items:start}
 @container (max-width:760px){.brief-grid{grid-template-columns:minmax(0,1fr)}}
 .brief-steps{display:flex;flex-direction:column;gap:8px}
@@ -1231,3 +1231,14 @@ main#content{background:var(--surface);margin:0 8px 8px 0;border-radius:0 0 var(
   body:has(.tabbar) #toast{bottom:calc(76px + env(safe-area-inset-bottom))!important}
 }
 @media print{.tabbar{display:none!important}}
+
+/* Running text fills the width it has and is justified (owner decision, 2026-11-24). Hyphenation (html lang="en") keeps the gaps between
+   words even; a one-line text and the last line of a paragraph stay left-aligned. On phones, columns are too narrow for even spacing,
+   so text stays left-aligned there. Empty states keep their own alignment. */
+.field.help,.field .help,.page-head .sub,.card .c-body p,.brief-h,.banner>span{text-align:justify;hyphens:auto;-webkit-hyphens:auto}
+.card .c-body .empty p,.empty p{text-align:inherit;hyphens:manual}
+@media (max-width:600px){.field.help,.field .help,.page-head .sub,.card .c-body p,.brief-h,.banner>span{text-align:left;hyphens:manual}}
+/* A plain form (no layout of its own) spaces its fields: label groups, help text, segmented controls and the submit button never touch
+   (owner review, 2026-11-24). Forms that lay themselves out (.rec-form, or a gap of their own) are left alone; in block flow the margins
+   collapse with the sign-in page's own spacing. */
+form:not(.rec-form):not([style*="gap"])>.field+*,form:not(.rec-form):not([style*="gap"])>p+.field{margin-top:12px}

@@ -20,7 +20,7 @@ export function BlockedAddresses() {
     <section className="card" aria-labelledby="ipb-h" data-tour="security-blocks">
       <div className="c-head"><h3 id="ipb-h">Blocked sign-in addresses</h3><div className="r"><span className="tag">{list.length} blocked</span></div></div>
       <div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <p className="field help" style={{ margin: 0, maxWidth: "80ch" }}>
+        <p className="field help" style={{ margin: 0 }}>
           {IP_POLICY.THRESHOLD} failed sign-ins from one address within {IP_POLICY.WINDOW_MS / 60_000} minutes, across any accounts, block it. Each repeat within {IP_POLICY.RESET_MS / 86_400_000} days lasts longer: {LEVEL_LABEL.join(", ")}, and 24-hour blocks repeat while failures continue. No block is permanent. Every block ends on its own; only an elevated platform super admin can lift one early.
         </p>
         {list.length === 0 ? <p className="field help" style={{ margin: 0 }}>No address is blocked.</p> : (
@@ -40,7 +40,7 @@ export function BlockedAddresses() {
         )}
         {!isSuper ? <p className="field help" style={{ margin: 0 }}>Read-only for your role: only a platform super admin can lift a block.</p> : null}
         <h4 style={{ margin: "8px 0 0", fontSize: 13 }}>Address reputation</h4>
-        <p className="field help" style={{ margin: 0, maxWidth: "80ch" }}>Hosting, VPN and proxy networks are blocked after {thresholdFor(REPUTATION[0].prefix + "1")} failures instead of {IP_POLICY.THRESHOLD}, and always get the extra check before a sign-in. In production this list comes from an IP intelligence feed; here the ranges are synthetic.</p>
+        <p className="field help" style={{ margin: 0 }}>Hosting, VPN and proxy networks are blocked after {thresholdFor(REPUTATION[0].prefix + "1")} failures instead of {IP_POLICY.THRESHOLD}, and always get the extra check before a sign-in. In production this list comes from an IP intelligence feed; here the ranges are synthetic.</p>
         <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>{REPUTATION.map((r) => <li key={r.prefix}>{r.label}</li>)}</ul>
       </div>
     </section>

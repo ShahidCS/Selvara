@@ -49,7 +49,7 @@ export function RequestsTable({ id, load, decide, note }: { id: string; load: ()
   if (!rows) return <p style={{ color: "var(--muted)" }}>Loading requests…</p>;
   return (
     <>
-      <p className="field help" style={{ marginTop: 0, maxWidth: "70ch" }}>{note}</p>
+      <p className="field help" style={{ marginTop: 0 }}>{note}</p>
       {rows.length ? <DataTable<ApprovalItem> id={id} label="Requests" rows={rows} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.title} ${a.requestedBy} ${a.status}`} exportName="requests" />
         : <Empty compact icon="check" title="No requests yet">Requests that need a second person appear here.</Empty>}
     </>

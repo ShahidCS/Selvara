@@ -31,7 +31,7 @@ export function SignInProtection({ manage }: { manage: boolean }) {
   return (
     <>
       <div className="sectitle" style={{ marginTop: 20 }}>Account lockout</div>
-      <p className="field help" style={{ margin: "0 0 8px", maxWidth: "62ch" }}>How many failed sign-ins lock a workspace account, and for how long. Now: {ruleFor(preset).note}. Choose PCI DSS v4 if you handle card data, or Custom to match your regulator or internal policy ({CUSTOM_BOUNDS.attempts[0]} to {CUSTOM_BOUNDS.attempts[1]} attempts, {CUSTOM_BOUNDS.minutes[0]} to {CUSTOM_BOUNDS.minutes[1]} minutes). Platform accounts always use Strict.</p>
+      <p className="field help" style={{ margin: "0 0 8px" }}>How many failed sign-ins lock a workspace account, and for how long. Now: {ruleFor(preset).note}. Choose PCI DSS v4 if you handle card data, or Custom to match your regulator or internal policy ({CUSTOM_BOUNDS.attempts[0]} to {CUSTOM_BOUNDS.attempts[1]} attempts, {CUSTOM_BOUNDS.minutes[0]} to {CUSTOM_BOUNDS.minutes[1]} minutes). Platform accounts always use Strict.</p>
       {manage ? <Segmented<LockoutPreset> label="Account lockout" value={shown} onChange={pick} options={[...(Object.keys(LOCKOUT) as LockoutPreset[]).map((k) => ({ value: k, label: LOCKOUT[k as keyof typeof LOCKOUT].label })), { value: "custom" as LockoutPreset, label: "Custom" }]} />
         : <p style={{ margin: 0 }}>{ruleFor(preset).label}. Only an admin can change it.</p>}
       {manage && shown === "custom" ? (
@@ -44,7 +44,7 @@ export function SignInProtection({ manage }: { manage: boolean }) {
       <p className="field help" id="lk-err" role="alert" style={{ color: "var(--bad-ink)", display: cerr ? "block" : "none", marginTop: 6 }}>{cerr}</p>
 
       <div className="sectitle" style={{ marginTop: 20 }}>Trusted office networks</div>
-      <p className="field help" style={{ margin: "0 0 8px", maxWidth: "62ch" }}>Sign-ins from these addresses are never blocked for repeated failures and skip the extra check, so one mistyping script cannot lock out a whole office. Accounts still lock and MFA still applies. Adding a network needs approval from a different company admin; removing one is immediate. Your current address is <span className="num">{clientIp()}</span>.</p>
+      <p className="field help" style={{ margin: "0 0 8px" }}>Sign-ins from these addresses are never blocked for repeated failures and skip the extra check, so one mistyping script cannot lock out a whole office. Accounts still lock and MFA still applies. Adding a network needs approval from a different company admin; removing one is immediate. Your current address is <span className="num">{clientIp()}</span>.</p>
       {nets.length ? (
         <Table cols={[{ t: "Network" }, { t: "Office" }, { t: "Status" }, { t: "" }]}>
           {nets.map((n) => (
