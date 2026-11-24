@@ -44,7 +44,7 @@ function EvidenceList() {
         <KpiTile label="Accepted" value={n("Accepted")} caption="Reviewed by a second person" />
         <KpiTile label="Rejected" value={n("Rejected")} caption="Needs fixing" />
       </KpiStrip>
-      <div className="card" data-tour="evidence-table" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="evidence-table">
         <div className="c-body flush scroll" style={{ padding: 0 }} id="evList">
           <DataTable<Ev> id="evidence" label="Evidence" rows={evidence} rowKey={(e) => e.id} columns={cols} searchText={(e) => `${e.id} ${e.name} ${e.type} ${e.by}`}
             tabs={REVIEW_STATES.map((s) => ({ key: s, label: s, match: (e: Ev) => status(e) === s }))}

@@ -38,12 +38,12 @@ export function ApiRates() {
     { key: "country", header: "Country", value: (r) => r.country, locked: true, render: (r) => <span className="strong">{r.country}</span> },
     { key: "currency", header: "Currency", value: (r) => r.currency, render: (r) => <span className="num">{r.currency}</span> },
     { key: "rate", header: "Rate / USD", align: "end", value: (r) => r.rate, render: (r) => <span className="num">{fmt(r.rate)}</span> },
-    { key: "cand", header: "Proposed", align: "end", value: (r) => r.candidate?.rate ?? 0, render: (r) => (r.candidate ? <span className="num" title={`ECB ${r.candidate.ecb ?? "—"}, open.er-api.com ${r.candidate.er ?? "—"}`}>{fmt(r.candidate.rate)}</span> : "") },
+    { key: "cand", header: "Proposed", align: "end", emptyWhen: (r) => !r.candidate, value: (r) => r.candidate?.rate ?? 0, render: (r) => (r.candidate ? <span className="num" title={`ECB ${r.candidate.ecb ?? "—"}, open.er-api.com ${r.candidate.er ?? "—"}`}>{fmt(r.candidate.rate)}</span> : "") },
     { key: "tax", header: "Tax", value: (r) => `${r.taxType} ${r.taxRate}%`, render: (r) => `${r.taxType} ${r.taxRate} %` },
     { key: "eff", header: "Tax from", value: (r) => r.taxEffective, defaultHidden: true, render: (r) => <span className="num">{r.taxEffective}</span> },
     { key: "status", header: "Status", value: (r) => r.status, render: (r) => (r.status === "Held" ? <Chip cls="warn" icon="alert">Held for review</Chip> : r.status === "Reference" ? <Chip cls="neutral" icon="dot">Reference only</Chip> : <StatusChip s="Applied" />) },
     { key: "source", header: "Source", value: (r) => r.source, defaultHidden: true, render: (r) => <span style={{ fontSize: 12.5 }}>{r.source}{r.at ? `, ${utcMin(r.at)}` : ""}</span> },
-    { key: "why", header: "Why held", value: (r) => r.candidate?.reason ?? "", render: (r) => <span style={{ fontSize: 12.5 }}>{r.candidate?.reason ?? ""}</span> },
+    { key: "why", header: "Why held", emptyWhen: (r) => !r.candidate?.reason, value: (r) => r.candidate?.reason ?? "", render: (r) => <span style={{ fontSize: 12.5 }}>{r.candidate?.reason ?? ""}</span> },
   ];
   return (
     <Page mod="rates" sub="Exchange rates and tax used when invoices are issued." acts={!s.loaded || s.canElevate ? <button className="btn btn-primary" data-tour="rates-refresh" onClick={refresh} disabled={busy || !!lock} title={lock} aria-busy={busy}>{busy ? <span className="spin" /> : <Icon name="refresh" />}Refresh rates</button> : undefined}>
@@ -56,7 +56,7 @@ export function ApiRates() {
           <KpiTile label="Last refresh" value={d.lastRefresh ? utcMin(d.lastRefresh.at).slice(11) : "Never"} caption={d.lastRefresh ? `${utcMin(d.lastRefresh.at).slice(0, 10)}, by ${d.lastRefresh.by}${d.lastRefresh.errors.length ? `; ${d.lastRefresh.errors.join(" ")}` : ""}` : "Refresh to read the feeds"} />
         </KpiStrip>
       ) : null}
-      <div className="card" data-tour="rates-table" style={{ flex: "1 1 auto", marginTop: 12 }}>
+      <div className="card" data-tour="rates-table" style={{ marginTop: 12 }}>
         <div className="c-head"><div className="seg" role="tablist" aria-label="Rates views">{[["rates", "Rates and tax"], ["requests", "Requests"]].map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setView(x[0])}>{x[1]}</button>)}</div></div>
         <div className="c-body flush scroll" style={{ padding: view === "rates" ? 0 : undefined }}>
           {err ? <p role="alert" style={{ padding: 12, color: "var(--bad-ink)" }}>{err}</p> : !d ? <p style={{ padding: 12, color: "var(--muted)" }}>Loading…</p>

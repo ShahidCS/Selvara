@@ -72,7 +72,9 @@ export function Page({ mod, title, sub, acts, back, status, eyebrow, children }:
     </PageActsSlot.Provider>
   );
 }
-export function Empty({ icon = "search", title, children, action }: { icon?: string; title: string; children?: ReactNode; action?: ReactNode }) {
+/** An empty list or panel: icon, title and one line. `compact` is the one-line form inside a card or under a short note. */
+export function Empty({ icon = "search", title, children, action, compact }: { icon?: string; title: string; children?: ReactNode; action?: ReactNode; compact?: boolean }) {
+  if (compact) return <div className="empty compact" role="status"><div className="ei"><Icon name={icon} /></div><div><h4>{title}</h4>{children ? <p>{children}</p> : null}</div>{action}</div>;
   return <div className="empty"><div className="ei"><Icon name={icon} /></div><h4>{title}</h4>{children ? <p>{children}</p> : null}{action}</div>;
 }
 

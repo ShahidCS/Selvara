@@ -60,7 +60,7 @@ function TeamTabs() {
   const spaces: [string, string][] = [["ws", "Company"], ["admin", "Admin Console"]];
   return (
     <Page mod="team" acts={view === "members" && manage ? <button className="btn btn-primary" data-tour="team-invite" onClick={() => go("/ws/team/invite")}><Icon name="plus" />Invite member</button> : undefined}>
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card">
         <div className="c-head" style={{ padding: "0 8px" }}><div className="tabs" role="tablist" aria-label="Team and rules" data-tour="team-views">{VIEWS.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className={`c-body ${flush ? "flush" : ""} scroll`} style={flush ? { padding: 0 } : undefined} id="teamBody" data-tour="team-body">
           {view === "members" ? (

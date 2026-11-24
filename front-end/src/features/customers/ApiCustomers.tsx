@@ -24,7 +24,7 @@ export function ApiCustomers() {
   return (
     <Page mod="customers" sub="Companies on the platform. Changes need an elevated session and a second platform super admin's approval.">
       <ServerElevationBanner s={s} />
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card">
         <div className="c-head"><div className="seg" role="tablist" data-tour="customers-views">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className="c-body scroll">
           {view === "companies" ? <Companies s={s} /> : view === "support" ? <ApiSupportSessions /> : view === "questions" ? <SupportQuestions /> : (

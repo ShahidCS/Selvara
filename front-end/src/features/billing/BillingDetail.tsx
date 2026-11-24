@@ -47,7 +47,7 @@ export function BillingDetail({ id }: { id: string }) {
   };
   const nw = { whiteSpace: "nowrap" } as const;
   return (
-    <div className="card" style={{ flex: "1 1 auto" }}>
+    <div className="card">
       <div className="c-head" style={{ gap: 10 }}>
         <div><h3>Billing account</h3><div className="sub">{c.plan}, {c.region}</div></div>
         <div className="r"><StatusChip s={chip} /></div>

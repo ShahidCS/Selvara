@@ -95,7 +95,7 @@ function VendorsList() {
           </div>
         </div>
       ) : null}
-      <div className="card" data-tour="vendors-table" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="vendors-table">
         <div className="c-head"><h3>Third parties{vt !== "All" ? ` · ${vt} tier` : ""}</h3>{vt !== "All" ? <button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} onClick={() => setTier("All")}><Icon name="x" />Clear filter</button> : null}</div>
         <div className="c-body flush scroll" style={{ padding: 0 }}>
           <DataTable<Vendor> id="vendors" label="Third parties" rows={list} rowKey={(v) => v.id} columns={cols} searchText={(v) => `${v.name} ${v.cat} ${v.tier} ${v.status}`}

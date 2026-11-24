@@ -113,7 +113,7 @@ svg:not([width]){width:16px;height:16px;flex:0 0 auto}
 .feed-item .dot+svg,.sectitle svg{width:14px;height:14px}
 ::selection{background:var(--accent-weak)}
 .num{font-variant-numeric:tabular-nums}
-.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.vh{position:absolute;top:0;left:0;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* ============================ APP SHELL ============================ */
 #app{height:100dvh;width:100vw;display:grid;grid-template-columns:var(--sb-w) 1fr;grid-template-rows:var(--topbar-h) 1fr;
@@ -381,13 +381,13 @@ textarea.input{height:auto;padding:9px 11px;resize:vertical;min-height:72px}
    `.rec-scroll`, `.empty`, and any block that sets flex itself (the main register card's flex:1 1 auto). Later rules override this one. */
 .page>*,.scroll>*{flex-shrink:0}
 .page>.scroll{flex-shrink:1}
-.page>.panels,.page>.split,.scroll>.panels,.scroll>.split{min-height:320px}
+.page>.split,.scroll>.split{min-height:320px}
 .page-head{flex:0 0 auto;display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
 .page-head .pt{min-width:0}
 .page-head h1{font-size:20px;font-weight:600;letter-spacing:-.02em;line-height:1.2}
 .page-head .sub{color:var(--muted);font-size:13px;margin-top:3px;max-width:76ch}
 .page-head .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.panels{flex:1 1 auto;min-height:0;display:grid;gap:14px}
+.panels{flex:0 0 auto;min-height:0;display:grid;gap:14px;align-items:start} /* cards keep the height of what they hold (owner review, 2026-11-24) */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
 .card>.c-head{flex:0 0 auto;display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
 .card>.c-head h3{font-size:14px;font-weight:600;letter-spacing:-.01em}
@@ -540,10 +540,14 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .pop .ph{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;padding:7px 10px 3px;font-weight:600}
 
 /* misc */
-.empty{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:var(--muted);padding:30px}
+.empty{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:var(--muted);padding:30px}
 .empty .ei{width:40px;height:40px;color:var(--faint)}
 .empty h4{font-size:15px;font-weight:600;color:var(--ink)}
 .empty p{font-size:13px;max-width:44ch}
+.empty.compact{padding:18px 12px;gap:6px;flex-direction:row;justify-content:flex-start;text-align:left}
+.empty.compact .ei{width:20px;height:20px}
+.empty.compact h4{font-size:13px}
+.empty.compact p{font-size:13px;max-width:none}
 .skel{background:linear-gradient(90deg,var(--surface-2) 25%,var(--surface-3) 37%,var(--surface-2) 63%);background-size:400% 100%;animation:sh 1.3s ease infinite;border-radius:6px}
 @keyframes sh{0%{background-position:100% 0}100%{background-position:-100% 0}}
 .meta-grid{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px 16px;font-size:13px}

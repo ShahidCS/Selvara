@@ -106,7 +106,7 @@ function QuestionnairesList() {
   }
   return (
     <Page mod="questionnaires" acts={acts}>
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card">
         <div className="c-head"><div className="seg" role="tablist" data-tour="questionnaires-views">{VIEWS.map((v) => <button key={v[0]} role="tab" aria-selected={view === v[0]} onClick={() => setView(v[0])}>{v[1]}</button>)}</div></div>
         <div className="c-body flush scroll" style={{ padding: 0 }} id="qBody">{body}</div>
       </div>

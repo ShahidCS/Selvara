@@ -56,7 +56,7 @@ export function ApiBilling({ param }: { param?: string | null }) {
           <KpiTile label="Card payments" value={b.payments ? (b.payments.mode === "live" ? "Live" : "Test mode") : "Off"} caption={b.payments ? "Through the payment provider" : "Bank transfer only"} />
         </KpiStrip>
       ) : null}
-      <div className="card" data-tour="billing-table" style={{ flex: "1 1 auto", marginTop: 12 }}>
+      <div className="card" data-tour="billing-table" style={{ marginTop: 12 }}>
         <div className="c-head"><div className="seg" role="tablist" aria-label="Billing views" data-tour="billing-views">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setView(x[0])}>{x[1]}</button>)}</div></div>
         <div className="c-body scroll">
           {err ? <p role="alert" style={{ color: "var(--bad-ink)" }}>{err}</p> : !b ? <p style={{ color: "var(--muted)" }}>Loading…</p>
@@ -96,7 +96,7 @@ function AccountDetail({ b, acc, lock }: { b: api.Billing; acc: api.Account; loc
   const [tab, setTab] = useModState<string>("billing.api.dt", "Invoices");
   const inv = b.invoices.filter((i) => i.tenantId === acc.tenantId); const ids = new Set(inv.map((i) => i.id));
   return (
-    <div className="card" style={{ flex: "1 1 auto" }}>
+    <div className="card">
       <div className="c-head" style={{ gap: 10 }}>
         <div><h3>{acc.company}</h3><div className="sub">{acc.ref}, {acc.plan}, {acc.cycle.toLowerCase()}</div></div>
         <div className="r" style={{ display: "flex", gap: 8, alignItems: "center" }}><StatusChip s={acc.pastDue ? "Past due" : acc.status} />

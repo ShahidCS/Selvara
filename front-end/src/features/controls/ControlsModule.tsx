@@ -122,7 +122,7 @@ function ControlsList() {
     return (
       <Page mod="controls" acts={acts}>
         {manageNote}
-        <div className="card" style={{ flex: "1 1 auto" }}>
+        <div className="card">
           <div className="c-head">{seg}</div>
           <div className="c-body flush scroll" data-tour="controls-tests" style={{ padding: 0 }} id="testsBody">
             <DataTable<Test> id="tests" label="Tests" rows={tests} rowKey={(t) => t.id} columns={testCols} searchText={(t) => `${t.id} ${t.name} ${t.source} ${t.controls.join(" ")}`}
@@ -139,7 +139,7 @@ function ControlsList() {
     const fws = svc.MATRIX_FWS;
     return (
       <Page mod="controls" acts={acts}>
-        <div className="card" style={{ flex: "1 1 auto" }}>
+        <div className="card">
           <div className="c-head">{seg}<div className="r"><span className="tag">Cross-framework matrix</span></div></div>
           <div className="c-body scroll" id="matrixBody">
             <div className="xscroll">
@@ -167,7 +167,7 @@ function ControlsList() {
   return (
     <Page mod="controls" acts={acts}>
       {manageNote}
-      <div className="card" style={{ flex: "1 1 auto" }}>
+      <div className="card">
         <div className="c-head" style={{ flexWrap: "wrap", gap: 10 }}>
           {seg}
         </div>

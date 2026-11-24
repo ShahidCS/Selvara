@@ -76,11 +76,13 @@ export function TourHost() {
     if (vw < 600) { setPos({ top: 0, left: 0, arrow: null, arrowX: 0, ring: el ? clip(el, el.getBoundingClientRect()) : null, sheet: true }); return; }
     if (!el) { setPos({ top: Math.max(EDGE, (vh - bh) / 2), left: (vw - bw) / 2, arrow: null, arrowX: 0, ring: null, sheet: false }); return; }
     const r = el.getBoundingClientRect();
-    // a large area (a whole table or panel) leaves no room above or below: the bubble sits inside its top right corner, the ring marks it
+    // a large area (a whole table or panel) leaves no room above or below: the bubble goes beside it when there is room, so it never covers the
+    // fields it describes; only when there is no room at either side does it sit at the bottom right of the window (the ring marks the area)
     if (vh - r.bottom < bh + GAP + EDGE && r.top < bh + GAP + EDGE) {
       const top = Math.min(Math.max(EDGE, r.top + GAP), vh - bh - EDGE);
-      const left = Math.min(Math.max(EDGE, r.right - bw - GAP), vw - bw - EDGE);
-      setPos({ top, left, arrow: null, arrowX: 0, ring: clip(el, r), sheet: false }); return;
+      const right = vw - r.right >= bw + GAP + EDGE, leftSide = r.left >= bw + GAP + EDGE;
+      const left = right ? r.right + GAP : leftSide ? r.left - GAP - bw : vw - bw - EDGE;
+      setPos({ top: right || leftSide ? top : vh - bh - EDGE, left, arrow: null, arrowX: 0, ring: clip(el, r), sheet: false }); return;
     }
     const below = vh - r.bottom >= bh + GAP + EDGE || r.top < bh + GAP + EDGE;
     // kept on screen even while its element is scrolled out of view

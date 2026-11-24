@@ -50,7 +50,7 @@ function PeopleList() {
         <KpiTile label="Unmanaged" value={noDevices ? "—" : n - comp} delta={noDevices ? undefined : n - comp ? { tone: "bad", text: "Needs action" } : { tone: "good", text: "None" }} caption={noDevices ? "Shown once devices are connected" : "Devices not compliant"} />
       </KpiStrip>
       <PendingApprovals kinds={KINDS} title="Pending approvals (MFA reset, offboarding)" subjectLabel="Person" />
-      <div className="card" data-tour="people-table" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="people-table">
         <div className="c-head" style={{ padding: "0 8px", gap: 8, flexWrap: "wrap" }}>
           <div className="tabs" role="tablist" data-tour="people-tabs">
             <button className="tab" role="tab" aria-selected={view === "People"} onClick={() => setV("People")}>People &amp; devices</button>
