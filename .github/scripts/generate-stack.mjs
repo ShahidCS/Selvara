@@ -28,6 +28,7 @@ const ROLES = {
   postcss: "CSS processing engine that the Tailwind plugin runs on",
   eslint: "Linting (flat config; see the lint script for the warning limit)",
   "eslint-config-next": "Next.js, React and React Hooks lint rules",
+  uqr: "Draws the authenticator set-up QR code in the browser (src/components/kit/QrCode.tsx); security-reviewed, pinned (CONTROLS AUTH-15)",
   vitest: "Unit tests",
   "@playwright/test": "End-to-end browser tests (Chromium)",
   "@types/node": "Type definitions for Node.js APIs",

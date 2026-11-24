@@ -66,7 +66,7 @@ https://github.com/libvips/libvips.
 | @next/swc-linux-x64-musl | 16.4.6 | MIT | yes |
 | @next/swc-win32-arm64-msvc | 16.4.6 | MIT | yes |
 | @next/swc-win32-x64-msvc | 16.4.6 | MIT | yes |
-| @playwright/test | 1.65.0 | Apache-2.0 |  |
+| @playwright/test | 1.65.1 | Apache-2.0 |  |
 | @supabase/auth-js | 2.119.0 | MIT |  |
 | @supabase/functions-js | 2.119.0 | MIT |  |
 | @supabase/phoenix | 0.4.5 | MIT |  |
@@ -91,8 +91,8 @@ https://github.com/libvips/libvips.
 | pg-types | 2.2.0 | MIT |  |
 | pgpass | 1.0.5 | MIT |  |
 | picocolors | 1.1.1 | ISC |  |
-| playwright | 1.65.0 | Apache-2.0 |  |
-| playwright-core | 1.65.0 | Apache-2.0 |  |
+| playwright | 1.65.1 | Apache-2.0 |  |
+| playwright-core | 1.65.1 | Apache-2.0 |  |
 | postcss | 8.5.23 | MIT |  |
 | postgres-array | 2.0.0 | MIT |  |
 | postgres-bytea | 1.0.1 | MIT |  |
