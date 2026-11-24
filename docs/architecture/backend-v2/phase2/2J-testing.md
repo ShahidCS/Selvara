@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | Phase 2 design, for the owner's review |
+| Status | Phase 2 design, for the owner's review; revised 2026-11-24 for Phase 4 findings: J-ISO ISO-HARD cases, J-AUD, J-KSS, J-FEX, J-SLA (rev P4) |
 | Workstream | J (Testing and quality) |
 | Risk and assumption block | R-55 to R-59, A-60 to A-64 (block shared with 2I) |
 | Inputs | Spine S1 to S9; ADR-001 (C1-01 to C1-08); Phase 1 inventory (166 screens, 125 rule-bearing actions, F1-01 to F1-10); existing suites: `front-end/tests/unit` (45 files), `front-end/tests/db/isolation.test.ts` (real Postgres, RLS), `front-end/e2e` (37 Playwright specs); `.github/workflows/{ci,security,release,deploy-staging}.yml`; CONTROLS.md test references |
@@ -35,6 +35,10 @@
 | J-RST | Single-tenant restore | J-6.1 | Staging cell | — | Weekly + release, blocking for release |
 | J-SHR | Crypto-shredding verification | J-6.2 | Staging cell + test KMS | — | Weekly + release, zero tolerance |
 | J-PERF | Performance, load and cell threshold | J-7 | Dedicated perf cell | — | Weekly trend; release gate on regressions |
+| J-AUD | Audit-event coverage (rev P4) | J-3.3 | J-S03 | Endpoint registry (2C) and the F-EV event list (2F) | PR, blocking |
+| J-KSS | KS-SNAP restore drill (rev P4) | J-6.3 | Staging `ks-stg` and off-site staging account; production quarterly | — | Quarterly + V2-R0 exit, blocking for the release that follows a failed drill |
+| J-FEX | FINAL-EXPORT round trip (rev P4) | J-6.4 | Staging cell + test KMS | — | Weekly + release, blocking |
+| J-SLA | SLA-U measurement (rev P4) | J-7.3 | Unit (calculator) + staging probes | — | PR (calculator), quarterly (probe drill) |
 | J-PAR | Parity (no downgrade) | J-8 | J-S05 + J-S03 | Inventory | Merge (subset), release (all), blocking |
 
 ```mermaid
@@ -49,7 +53,8 @@ flowchart TB
   N[Nightly] --> M3[J-MIG 1,000 schemas]
   N --> Z[DAST ZAP on staging]
   N --> P1[J-PERF baseline at 100 schemas]
-  W[Weekly + pre-release] --> R[J-RST + J-SHR on staging cell]
+  W[Weekly + pre-release] --> R[J-RST + J-SHR + J-FEX on staging cell]
+  Q[Quarterly + V2-R0 exit] --> KS[J-KSS KS-SNAP drill + J-SLA probe drill]
   W --> P2[J-PERF 1,000 and 5,000 schemas]
   REL[Release gate] --> ALL[J-PAR full + evidence bundle]
 ```
@@ -102,6 +107,22 @@ Run on a connection logged in as `selvara_router`, through the pooler in transac
 | J-ISO-44 | A request routes, then calls a provider and awaits (long I/O) inside the transaction | Forbidden by design. Test: the router's transaction wrapper fails if held more than N ms without a query, to keep pooled connections free and avoid leaks. |
 | J-ISO-45 | The worker processes A then B messages back to back on one connection | Same guarantees as J-ISO-40 |
 
+### J-2.4 ISO-HARD tenant-mismatch tests (S-2, with the re-confirmed acceptance of P4-A1-01) (rev P4)
+
+Each case proves one ISO-HARD control. KMS cases run against the test KMS in staging (nightly and pre-release); the database and lint cases run in PR.
+
+| ID | Attempt | Expected |
+|---|---|---|
+| J-ISO-50 | (a) Routed to tenant A, the router or a handler requests KMS decrypt of A's wrapped DEK with encryption context `tkey = B`, and of B's wrapped DEK with context `tkey = A` | KMS refuses both (grant or key-policy condition bound to the encryption context); no plaintext DEK is returned |
+| J-ISO-51 | (a) A DEK unwrapped for A is offered to decrypt B's ciphertext (field and file), through the key cache and directly | Decryption fails (AAD binds `tkey`; the cache is keyed by `tkey` and version); nothing is returned |
+| J-ISO-52 | (a) Static: only the `router` and `keysvc` modules call KMS, and every call passes the routed `tkey` from the router context, never from request input | Lint and CodeQL query pass; a seeded violation fails the build |
+| J-ISO-53 | (b) Catalogue check on `ks`: every function executable by `ks_rw` is `SECURITY DEFINER` with a pinned `search_path`, takes **no** tenant or `tkey` argument and reads `app.tkey`; `ks_rw` has no direct SELECT, INSERT, UPDATE or DELETE on any `ks` table | Pass; any other grant or signature fails |
+| J-ISO-54 | (b) Routed to A (`app.tkey = A`), call each `ks` function to fetch B's DEK, subject key or file key (by id); call with `app.tkey` unset, empty or malformed | B's rows are never returned (zero rows or an error); unset or malformed `app.tkey` raises an error; no fallback to "all tenants" |
+| J-ISO-55 | (b) A code path other than the router sets `app.tkey` | Lint fails; the runtime guard in test mode rejects it |
+| J-ISO-56 | (c) Routed to A, ask `storagebroker` for an upload or download URL, a copy, a delete or a list under `<tkey_B>/`, `<tkey_A>/../<tkey_B>/`, an encoded or Unicode look-alike prefix, or an absolute key | Refused, with an audit entry; the prefix is derived only from the routed tenant (extends J-ISO-08 to every broker operation and to jobs) |
+| J-ISO-57 | (d) Tenant-mismatch detector: in staging, a test hook issues a KMS call whose encryption context differs from the routed tenant recorded for that request id | S1 alert within 5 minutes with the request id, both `tkey` values and the caller; 1,000 normal calls in the same window raise no alert |
+| J-ISO-58 | (a, d) Worker jobs: a message routed to A carries a payload that names B's key or file | Refused before any KMS call (J-ISO-07); if a KMS call is forced through a test hook, J-ISO-57 fires |
+
 ## J-3. Authorisation suite (J-AUTHZ)
 
 ### J-3.1 Generated matrix
@@ -132,6 +153,16 @@ Run on a connection logged in as `selvara_router`, through the pooler in transac
 | J-AUTHZ-31 | Billing state `restricted`: every write endpoint refused **except** the exempt list (2I I-5.3) | Generated over the registry |
 | J-AUTHZ-32 | SCIM token scope: only its own tenant; assigns only non-privileged roles (privileged = `admin`, `owner`, or a custom role holding any admin-only permission; `analyst` is not privileged, DA-08); respects seat limits | A privileged assignment by SCIM or JIT is refused and audited; it succeeds only through in-app four-eyes `team.role` (rev P3) |
 
+### J-3.3 Audit-event coverage (J-AUD) (P4-A2-11) (rev P4)
+
+| ID | Rule |
+|---|---|
+| J-AUD-01 | Generated from the endpoint registry (2C) and the F-EV event list (2F F-EV-01 to F-EV-12): one test per endpoint that writes or is listed as an audited read, and one per event type. |
+| J-AUD-02 | For each allowed call, assert that exactly the expected entry exists in the tenant `audit_log_entry` (or `control.platform_audit_log` for platform kinds) with `actor_kind`, actor id, action, target, `outcome = allowed` and the request id. |
+| J-AUD-03 | For each refused call (403, 404 from object scope, 409 from a rule, four-eyes self-approval), assert an entry with `outcome = refused` and the `refusal_code`, wherever 2F requires refusals to be logged. |
+| J-AUD-04 | The hash chain verifies after each run (ADR-013); the generator fails when an endpoint or event type has no expected-entry declaration (deny by default). |
+| J-AUD-05 | Blocks merges (J-10.1). |
+
 ## J-4. Security suite (J-SEC)
 
 | ID | Area | Cases | Level |
@@ -155,6 +186,8 @@ Run on a connection logged in as `selvara_router`, through the pooler in transac
 | J-SEC-30 | SQL injection fuzz | Every string, array and JSON parameter of every endpoint gets an injection corpus, including stacked `RESET ROLE; SET ROLE` and `set_config` payloads. Success criterion: no database error class 42xxx leaks, no behaviour change, and the database detector (J-ISO-25c) logs no role or `set_config` statement outside the router's fixed shape. The fuzz proves the prevention controls; it is not evidence that an injected `SET ROLE` would fail (R-56). (rev P3) | API, nightly full, PR on changed routes |
 | J-SEC-31 | DAST | ZAP baseline on staging (kept in `security.yml`); authenticated scan per role nightly | staging |
 | J-SEC-32 | Static | CodeQL, Gitleaks, OSV, dependency review, licence and workflow policy (kept) plus custom CodeQL queries: raw SQL outside `router`; `SET`, `RESET`, `set_config` or `search_path` outside `router`; simple-query (multi-statement) calls anywhere (rev P3); service-role key use outside the provisioning and migrator paths | PR |
+| J-SEC-33 | Scan gating of server-side parsing (P4-A2-26, test part) (rev P4) | For every handler or job that reads file bytes (risk import, questionnaire import, contract import and AI analysis, KB documents, evidence), supply a file in each non-clean scan state (pending, infected or blocked, failed or scan error). Expected: refused before any byte is read, the refusal is logged, only `scan_state = clean` is parsed | staging |
+| J-SEC-34 | Support messages (2A A-CP-R1; P4-A1-06 and P4-A1-15, test part) (rev P4) | Messages containing synthetic token patterns (Gitleaks rule set) and pasted synthetic record refs or long structured text. Expected: tokens redacted before storage with an audit entry naming the rule only; pasted content triggers the support-session prompt and an override is recorded | PR |
 
 ## J-5. Migration testing across tenant schemas (J-MIG)
 
@@ -187,7 +220,7 @@ Assumes the ADR-009 orchestrator: canary, then batches, pause, rollback and drif
 | J-RST-06 | Measure RPO and RTO for small, medium and large tenant profiles (A-62) | Recorded; targets set by 2H; the release gate fails on a regression beyond 25% |
 | J-RST-07 | Restore with the tenant's KEK unavailable (KMS down or BYOK key disabled) | Fails closed with a clear operator error; no plaintext fallback |
 | J-RST-08 | Project PITR drill (disaster recovery) on a throwaway project, quarterly | Documented time; not run on the shared staging cell |
-| J-RST-09 | `ks` loss drill (2F F-7.2, ADR-003 V3-09): promote the DR-region standby; separately, restore the last daily `ks` backup and replay the 8-day key journal | Every key present within RPO 5 min and RTO 4 h (2A A-NFR-19); a key destroyed before the drill is not restored (tombstones applied) (rev P3) |
+| J-RST-09 | `ks` loss drill (2F F-7.2, ADR-003 V3-09): promote the DR-region standby; separately, restore the last daily `ks` backup and replay the 8-day key journal; the Supabase-loss case is J-KSS (rev P4) | Every key present within RPO 5 min and RTO 4 h (2A A-NFR-19); a key destroyed before the drill is not restored (tombstones applied) (rev P3) |
 
 ### J-6.2 Crypto-shredding verification (J-SHR)
 
@@ -202,7 +235,41 @@ Assumes the ADR-009 orchestrator: canary, then batches, pause, rollback and drif
 | J-SHR-07 | Deletion certificate | Contains the tenant, scope, key ids and versions, approvers (two distinct), timestamps and hashes; it is anchored in `control.platform_audit_log` and the chain verifies |
 | J-SHR-08 | Negative check: shred S, and tenants T and U stay decryptable | Pass |
 | J-SHR-09 | Evidence bundle | KMS logs of the destruction, test output and the certificate, kept as release evidence |
-| J-SHR-10 | `ks` window: 8 days after P's erasure, list every `ks` backup and journal object | No copy holds P's subject key; the window stated in the certificate (8 days) is met (DA-11) (rev P3) |
+| J-SHR-10 | `ks` window: 8 days after P's erasure, list every `ks` backup, PITR window, journal object and KS-SNAP object | No copy holds P's subject key; the window stated in the certificate (8 days) is met (DA-11) (rev P3, rev P4) |
+| J-SHR-11 | Certificate store coverage (P4-A3-10, test part) (rev P4): for every store named in the deletion certificate schema (2G), the test checks the stated deletion or roll-off date against the store itself (tenant schema, Storage prefixes, `exports` and off-site prefixes, off-site lock expiry, hourly `cp` exports, key journal, KS-SNAP, KMS keys and their DR-region copies, observability and email-log expiry, `auth.*` rows) | Every store in the schema is checked; a store present in the design but absent from the certificate fails the test |
+
+### J-6.3 KS-SNAP restore drill (J-KSS) (S-1, P4-A1-07) (rev P4)
+
+Runs quarterly in staging and production and is a V2-R0 exit criterion. In production it rebuilds into a scratch project in the `prod` organisation (or a self-hosted Postgres in the DR region) and decrypts only the synthetic canary tenants' data.
+
+| ID | Step | Pass criterion |
+|---|---|---|
+| J-KSS-01 | Seed canary tenants A, B and C with E2 fields, subject keys and files; record a fingerprint of `ks` (row counts per table and a hash of the wrapped material) | Recorded outside `ks` |
+| J-KSS-02 | Run the snapshot job (2H H-KS-03..06) | Object in `ks-snap` with compliance-mode lock, retain-until exactly 8 days after write; manifest signed, with counts and the journal high-water mark |
+| J-KSS-03 | Attempt to delete the object, shorten its retention, read it with the writer role, and decrypt it with any role other than the restore role | Every attempt refused |
+| J-KSS-04 | After the snapshot: create a new subject key for A, destroy B's subject key P (tombstone), and add a file to C | Journal entries written within 5 minutes |
+| J-KSS-05 | Treat the Supabase organisation as lost (revoke the drill's access to `ks` and its standby). Under four-eyes, rebuild `ks` into a fresh project from the newest snapshot plus journal replay from the high-water mark (H-KS-08) | Manifest signature and counts verify; the rebuilt `ks` equals the expected state: A's new key present, P absent, C's file key present |
+| J-KSS-06 | Decrypt a sample of E2 fields and files for A, B and C through the rebuilt `ks` and the tenant KEKs (and, in a second pass, through the DR-region KEKs) | Plaintext equals the seeded values; P's fields stay unreadable |
+| J-KSS-07 | Measure RPO (last journal entry recovered against the last change) and RTO (start of rebuild to first successful decrypt) | RPO ≤ 5 min and RTO ≤ 4 h (2A A-NFR-19); a regression over 25% fails the drill |
+| J-KSS-08 | Monitoring: disable the job and advance a simulated clock | S2 at 26 h and S1 at 50 h (2H H-FL-10); an object written with governance mode or a shorter retention raises S1 |
+| J-KSS-09 | Roll-off: 8 days after J-KSS-04, list every snapshot and journal object | None holds P's key; the snapshot that held it has expired |
+
+### J-6.4 FINAL-EXPORT round trip (J-FEX) (S-3, P4-A3-08) (rev P4)
+
+Tests job D-12b "final export" (2D), distinct from the nightly backup export D-73.
+
+| ID | Step | Pass criterion |
+|---|---|---|
+| J-FEX-01 | Seed tenant F with rows in every tenant table, E1 and E2 fields, several file versions, and a per-tenant canary; seed tenant G with its own canary | — |
+| J-FEX-02 | The tenant admin of F requests the final export with step-up; the job runs inside F's tenant context | The job runs as F's role only; a request by G's admin, by a non-admin of F, or without step-up is refused |
+| J-FEX-03 | The passphrase is shown once in-app; the single-use download link is emailed with a 7-day expiry | A second view of the passphrase is refused; the email contains no passphrase |
+| J-FEX-04 | Download and decrypt the bundle with the passphrase (age or AES-256-GCM per the D-12b specification) | Decryption succeeds; a wrong passphrase fails; a second download with the same link is refused; the link fails after 7 days (simulated clock) |
+| J-FEX-05 | Verify the manifest | Signature verifies with the platform signing key; schema version and generation time present; a tampered manifest or file fails verification |
+| J-FEX-06 | Re-count | Rows per table in the JSON files equal the manifest counts, and equal the live counts at export time; the CSV of each main register parses and matches its JSON |
+| J-FEX-07 | Files | Every file is present decrypted; SHA-256 of each equals the manifest; E2 values equal the seeded plaintexts |
+| J-FEX-08 | Isolation and leakage | G's canary appears nowhere in the bundle; no plaintext of the bundle or the passphrase appears in the `exports` bucket, logs, the job payload or error tracking (J-SHR-02 scan) |
+| J-FEX-09 | Deletion gate | Offboarding deletion cannot proceed until the tenant admin confirms receipt or 30 days pass after delivery; both paths are audited |
+| J-FEX-10 | Schema documentation | Every JSON file has a schema description in the bundle; a table added to 2B without a description fails the generator |
 
 ## J-7. Performance, load and the cell threshold (J-PERF)
 
@@ -237,6 +304,18 @@ The profile (A-62): 70% small tenants (10 users, 1 framework, 5k rows), 25% medi
 | J-7.2.5 | Re-measure on every Postgres major version upgrade, compute size change, or growth of the 2B table catalogue by more than 20% in tables. (rev P3) |
 | J-7.2.6 | Tool: a load generator run from outside Vercel against a perf deployment (k6 suggested, as a standalone binary, not an npm dependency; tool choice J-DR3). Results are stored as JSON trend artefacts. |
 
+### J-7.3 SLA measurement method (J-SLA) (S-4, P4-A3-14) (rev P4)
+
+| ID | Rule or test |
+|---|---|
+| J-SLA-01 | **Probes.** Three external probe locations (outside Vercel and Supabase) every minute, per cell: the web app login page (HTTP 200 and an expected marker) and an authenticated read of the canary tenant through the tenant API (HTTP 200 and the canary value). A probe fails on a 5xx, a timeout over 10 s, a TLS error or wrong content. |
+| J-SLA-02 | **Down minute.** A minute is down for a cell when at least two of the three locations record a failure of either probe in that minute. A minute is down for every cell when the shared front door (Vercel project, `cp` or `ks`) fails for all cells. |
+| J-SLA-03 | **Eligible minutes.** All minutes of the calendar month (UTC) minus excluded minutes: maintenance announced at least 72 h ahead (from the maintenance calendar in `control`), vendor-wide region outages (from the vendor's status-page incident, recorded with a link), and customer-caused issues. Each exclusion is recorded with evidence and approved by the other approver (no self-approval). |
+| J-SLA-04 | **Availability** per cell = (eligible minutes − down minutes) / eligible minutes, to two decimals, rounded down. A tenant's figure is its cell's figure. |
+| J-SLA-05 | **Calculator tests (PR):** synthetic minute series give exact figures at the boundaries (99.50% gives no credit, 99.49% gives 10%, 99.00% gives 10%, 98.99% gives 25%); exclusions are subtracted from both terms; overlapping exclusions are counted once; a month with 28, 30 and 31 days. |
+| J-SLA-06 | **Probe drill (quarterly, staging):** inject a 10-minute outage on one cell and a single-location failure on another | The first cell records 10 down minutes; the second records none (one location only); the monthly report and the proposed credit (2I I-4.6.5) match |
+| J-SLA-07 | **Evidence.** Raw probe results and the monthly report are kept with billing records (2H H-OB-05); the report is reproducible from the raw results. |
+
 ## J-8. Parity suite (J-PAR): "nothing breaks, no downgrade"
 
 | ID | Rule |
@@ -262,11 +341,12 @@ The profile (A-62): 70% small tenants (10 users, 1 framework, 5k rows), 25% medi
 
 | ID | Stage | Suites | Time budget | Blocking? |
 |---|---|---|---|---|
-| J-10.1 | PR (`ci.yml` `verify` job, extended) | Typecheck, lint, J-S01, J-S02 with J-ISO DB part (3 to 10 schemas), J-S03 with J-AUTHZ, J-SEC fast (01 to 27, 30 on changed routes, 32), J-S04, J-MIG smoke (20 schemas), notices, audit | ≤ 15 min (sharded) | Yes. Zero tolerance for J-ISO, J-AUTHZ and J-SEC-20/21. |
+| J-10.1 | PR (`ci.yml` `verify` job, extended) | Typecheck, lint, J-S01, J-S02 with J-ISO DB part (3 to 10 schemas, including J-ISO-52 to J-ISO-56), J-S03 with J-AUTHZ and J-AUD, J-SEC fast (01 to 27, 30 on changed routes, 32, 34), J-SLA calculator, J-S04, J-MIG smoke (20 schemas), notices, audit | ≤ 15 min (sharded) | Yes. Zero tolerance for J-ISO, J-AUTHZ and J-SEC-20/21. |
 | J-10.2 | PR (`e2e` job) | J-S05 smoke in http and demo modes, J-PAR smoke (one screen per module per role) | ≤ 15 min | Yes |
 | J-10.3 | Merge queue or `main` | J-S05 full (both modes), J-MIG 200 schemas with failure injection (J-MIG-02 to J-MIG-06) | ≤ 45 min | Yes, blocks deploy to staging |
 | J-10.4 | Nightly (scheduled, default branch) | J-MIG 1,000; J-SEC-30 full fuzz; J-SEC-31 DAST authenticated; J-PERF H1, H2 and H6 at 100 schemas; J-AUTHZ-04 matrix mutation | ≤ 3 h | A failure opens an issue and **blocks the next release** until fixed |
-| J-10.5 | Weekly and pre-release (staging cell) | J-RST, J-SHR, J-PERF full ladder (J-7.2) | — | Release gate |
+| J-10.5 | Weekly and pre-release (staging cell) | J-RST, J-SHR, J-FEX, J-SEC-33, ISO-HARD KMS cases (J-ISO-50, 51, 57, 58), J-PERF full ladder (J-7.2) (rev P4) | — | Release gate |
+| J-10.5a | Quarterly and V2-R0 exit (staging and production) | J-KSS, J-SLA-06, J-RST-08 (rev P4) | — | A failed drill blocks the next release until re-run green |
 | J-10.6 | Release (`release.yml`, kept gates) | All of the above green within the last 7 days for the release commit's schema version; J-PAR 100%; evidence bundle (test reports, drift report, restore and shred evidence, perf trend) attached to the release | — | Yes. The two-person production approval stays (four-eyes on deploy). |
 | J-10.7 | Flaky-test policy | Outside the boundary suites: quarantine for at most 7 days with an issue, at most 2% of e2e quarantined, and the quarantine list is reviewed at the release gate. Boundary suites: never quarantined. | — | — |
 | J-10.8 | Environments | PR and merge use the Supabase Postgres image as a service container, pinned by digest (it carries the pgmq, pg_cron and vault extensions, A-60), plus a local Auth stand-in. Staging and perf cells are separate Supabase projects with synthetic data only and a test KMS (A-61). No CI job holds production credentials. | — | — |
@@ -276,7 +356,7 @@ The profile (A-62): 70% small tenants (10 users, 1 framework, 5k rows), 25% medi
 | ID | Deliverable |
 |---|---|
 | J-D1 | This document |
-| J-D2 | Test-case catalogues J-ISO, J-AUTHZ, J-SEC, J-MIG, J-RST and J-SHR (above), ready to turn into test files in Phase 5 |
+| J-D2 | Test-case catalogues J-ISO, J-AUTHZ, J-AUD, J-SEC, J-MIG, J-RST, J-SHR, J-KSS, J-FEX and J-SLA (above), ready to turn into test files in Phase 5 (rev P4) |
 | J-D3 | Generator specifications: authorisation matrix (J-3.1), catalogue checks (J-ISO-27), parity ledger (J-8) |
 | J-D4 | Performance hypotheses and the cell-threshold rule (J-7) |
 | J-D5 | CI placement and gating (J-10), to submit as a workflow change request |
