@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Recommendation: No-Go** (2026-11-24) |
+| Status | **Recommendation: No-Go** (2026-11-24); **re-confirmed No-Go after the owner's sign-off** (re-assessment of 2026-11-24, [P5-reassessment-2026-11-24.md](P5-reassessment-2026-11-24.md)) |
 | Basis | Independent readiness assessment ([P5-readiness-evidence.md](P5-readiness-evidence.md)) of the design after the Phase 4 fixes. The assessor did not write the design or the fixes. |
 | Rule (brief) | "Go" only if: no open Critical or High findings; all mandatory MVP decisions are made and recorded as ADRs; all high-impact assumptions are validated or explicitly accepted; the coverage matrix has no Missing cells for MVP modules; provisioning, isolation testing, migration and single-tenant restore are designed with test plans; and a sign-off table is prepared. |
 | Note | All compliance content is a **draft** pending qualified legal and compliance review. |
@@ -81,3 +81,16 @@ All design-authority (DA) items from section 2 are done. **The recommendation st
 9. Sign the sign-off table.
 
 **Findings Register now:** 30 Closed, 1 Closed by owner acceptance, 12 open pending owner action, 22 open for DA. The 22 DA items are all Medium or Low and are scheduled into releases; none blocks the gate. Every Critical and High finding is now either closed or waiting on an owner action.
+
+## 5. After the re-assessment (2026-11-24, rev P5)
+
+| Re-assessment finding | Status |
+|---|---|
+| RA2-01 (Critical): R-A and R-B held by one person | **Design changed per the owner's instruction OD-16.** [ADR-021](../adr/ADR-021-flexible-platform-roles.md) lets one person hold several platform roles while every four-eyes action still needs two different people, with R-DEP as the mandatory second person and compensating controls. A-08 is superseded by A-08b; new risk R-66. **Closes on owner acceptance of ADR-021 and R-66, and on recording the R-DEP delegation in `SOD_MATRIX.md`.** |
+| RA2-02 (High): signed before Go | Open (owner). The signatures stay in place; they are not valid gate approval until the re-assessment recommends Go. |
+| RA2-03 (High): signature provenance | Open (owner). Each signatory should confirm in their own pull request review or approval. |
+| RA2-04 (Medium): compliance acceptance not specific | Open (owner, deferred with the section 4 owner actions, OD-17). |
+| RA2-05 (Low): H-DR-H / H-DR-DEP mismatch | **Fixed (DA):** `decisions-log.md` now uses H-DR-H. |
+| RA2-06 (Low): D-58 called the deputy "R-D" | **Fixed (DA):** 2D D-58, 2G and 2B now say R-DEP; R-D stays the internal auditor. |
+
+The gate stays **No-Go** until the owner actions are recorded (deferred by the owner, OD-17) and ADR-021 is accepted. The independent assessment is then re-run.

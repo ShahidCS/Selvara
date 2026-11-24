@@ -17,6 +17,7 @@ Every significant decision gets an ADR with its context, at least two options co
 | [ADR-011](adr/ADR-011-reference-content-versioning.md) | Shared reference content (frameworks, controls, templates): distribution and versioning to tenant schemas | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2B | Yes |
 | [ADR-012](adr/ADR-012-malware-scanning.md) | Malware scanning service | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2F | Yes |
 | [ADR-013](adr/ADR-013-audit-anchoring-worm.md) | Audit-log anchoring and WORM export target | Proposed (Phase 2 written; recommendations accepted 2026-11-23) | 2F | Yes |
+| [ADR-021](adr/ADR-021-flexible-platform-roles.md) | Flexible platform roles: one person may hold several super-admin roles; four-eyes by distinct people with R-DEP as second person (owner instruction 2026-11-24) | Proposed (rev P5) | P5 | Yes |
 | [ADR-014](adr/ADR-014-custom-roles.md) | Custom roles: tenant custom roles and platform custom roles from predefined names (OD-07) | **Accepted** (owner, 2026-11-23, OD-07), as the ADR file states; index corrected (rev P5, P4-A3-07) | 2E | Yes |
 | [ADR-015](adr/ADR-015-approval-engine.md) | One approval engine with a kind registry and two stores (tenant and control plane) | Proposed (rev P5); records DU-19 and 2D D-20 to D-29 | 2D | Yes |
 | [ADR-016](adr/ADR-016-webhook-payload-model.md) | Thin webhook payloads, delivered from a transactional outbox | Proposed (rev P5); records DU-18 and 2C C-70 | 2C | Yes (M18) |
@@ -44,9 +45,16 @@ These are marked "Owner" in 2H or raised by the readiness assessment, and are no
 |---|---|---|---|
 | H-DR-E (DU-02) | PITR before the first external tenant | Turn PITR on with a 7-day window in `cp`, the cells and `ks` | P4-A1-08 (part) |
 | H-DR-G | VC-14 fallback adopted in advance: a second, independent KEK per tenant in the DR region (2H H-VF-02) | Ratify | P4-A1-08 (part) |
-| H-DR-DEP | KS-SNAP replaces the journal-only `ks` rebuild accepted under OQ-17 / DU-36. Stated plainly: without KS-SNAP, losing `ks` together with the Supabase organisation loses every key older than the 8-day journal, so every file and E2 field of every tenant. KS-SNAP includes the keep-newest legal hold after a declared `ks` loss (RA-01; ADR-019 decision 6) | Ratify | P4-A1-07, RA-01 |
+| H-DR-H | KS-SNAP replaces the journal-only `ks` rebuild accepted under OQ-17 / DU-36. Stated plainly: without KS-SNAP, losing `ks` together with the Supabase organisation loses every key older than the 8-day journal, so every file and E2 field of every tenant. KS-SNAP includes the keep-newest legal hold after a declared `ks` loss (RA-01; ADR-019 decision 6) | Ratify | P4-A1-07, RA-01 |
 | H-DR-I | SLA-U figure and terms (ADR-020), after VC-13 | Confirm once VC-13 is verified | P4-A3-14 |
 | Deputy approver (R-DEP) | Contract a deputy who can act for R-A or R-B in four-eyes actions and `ks` recovery, never for both in the same action; record the delegation in SOD_MATRIX (discovery §4, ADR-015 point 7) | Appoint before the first external tenant | P4-A3-19 (re-rated High) |
+
+## Owner instruction of 2026-11-24 (rev P5)
+
+| ID | Instruction | Recorded as |
+|---|---|---|
+| OD-16 | "For company super admin, make it flexible as at this stage not every role can be filled." | [ADR-021](adr/ADR-021-flexible-platform-roles.md) (Proposed; closes RA2-01 on acceptance), A-08b, R-66 |
+| OD-17 | Owner actions in the gate (recording vendor-fact results, budget and dates, ADR acceptance and the other section 4 items) are deferred: "skip point 3 for now and we will work on it later". | The gate stays No-Go until they are done |
 
 ## Earlier decisions (from `BACKEND_FOUNDATION.md` and `PRODUCTION_PROGRAMME.md`)
 
@@ -101,7 +109,7 @@ These exclude everything resolved by the Phase 2 summary §8 (OD-01 to OD-11, OQ
 | DU-33 | Product-scope confirmations: policy body 200,000 characters (A-30), interested parties as organisations (A-32), no custom fields (A-34), HMAC format (A-36), external roles not customisable (A-44) | 2B, 2C, 2E | Yes | R-A | Accept | Open |
 | DU-34 | Interim exposure of the pooler to any IP until Static IPs and network restrictions (R-15) | 2H R-15 | Yes | R-B | Tighten: Static IPs and allowlist before the first external tenant (cost about USD 200 a month for two projects) | Open |
 | DU-35 | Whether to offer a contractual SLA (dedicated or shared) before Supabase and Vercel SLAs back it | A-NFR-02 | Yes (before any customer contract; was "No (launch)") (rev P5) | R-A | Superseded by OQ-23: one uniform contractual SLA for every plan (SLA-U, 2A A-NFR-01, 2I I-4.6, ADR-020), at or below the vendor-backed figure (VC-13) (rev P5) | **Closed by owner decision OQ-23** (superseded); recorded in ADR-020; figure pending VC-13 and H-DR-I |
-| DU-36 | `ks` continuity (DR-region standby and off-site key journal) | P3-X3-03 | Yes | R-B | Adopted under OQ-17 (DA-11); superseded by KS-SNAP (2F F-7.5, 2H H-9.1a, ADR-004), which needs owner ratification H-DR-DEP (rev P5) | Made by OQ-17, then **superseded by KS-SNAP**; owner ratification pending (H-DR-DEP) |
+| DU-36 | `ks` continuity (DR-region standby and off-site key journal) | P3-X3-03 | Yes | R-B | Adopted under OQ-17 (DA-11); superseded by KS-SNAP (2F F-7.5, 2H H-9.1a, ADR-004), which needs owner ratification H-DR-H (rev P5) | Made by OQ-17, then **superseded by KS-SNAP**; owner ratification pending (H-DR-H) |
 | DU-37 | Formal status change of ADR-002 to ADR-014 from Proposed to Accepted after the Phase 3 revisions | decisions-log | Yes | R-A + R-B | After Phase 3 | Open (owner); scope now ADR-002 to ADR-013 and ADR-015 to ADR-020 (ADR-014 already Accepted) |
 | DU-38 | Provider-callback and worker path, and Trust Center reference column name (naming conflicts) | P3-X3-18 | Yes | R-B (design authority) | As proposed in P3-X3-18 Spine v2 S6 and S2 already use these names (rev P3) | **Closed** (design authority, spine v2) |
 

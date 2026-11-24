@@ -327,6 +327,7 @@ Changes from v0.2.5 (†), each to be confirmed under OQ-09 "no downgrade": anal
 | E-71b | `ciso` | Super admin class: every platform permission; the security and privacy approver. With `management_approver` forms the dual-role pair for D-P03, D-P04, D-P06 (AI, KMS), D-P07, D-P08. |
 | E-71c | `support` | Support staff: read tenant directory (minimal), answer help questions, open support sessions on customer grants, request admin MFA resets, read platform audit log and security list. Cannot elevate. |
 | E-71d | Custom platform roles | Created from predefined names (E-73) with a permission set inside the name's ceiling (E-74). |
+| E-71e | **Combined-role mode (rev P5, ADR-021)** | One person may hold several platform roles, including `management_approver` and `ciso`, while the team is small. Four-eyes is counted by **distinct people**; the combined holder counts once, and R-DEP is the mandatory second person. See [ADR-021](../adr/ADR-021-flexible-platform-roles.md). |
 
 E-72 **What "all access" for Management Approver does not include** (recorded against the owner's wording "Management is super admin with all access"):
 
@@ -341,6 +342,7 @@ E-72 **What "all access" for Management Approver does not include** (recorded ag
 | E-72g | Bypassing dual-role kinds alone | D-26 |
 | E-72h | Removing the last other super-admin-class holder or changing own roles | D-P07 subject forbidden; last-holder rule |
 | E-72i | Receiving a tenant invitation link or token (first-admin or any other): links go by email to the invitee only (DA-09) (rev P3) | 2C C-PL-05 returns no link; D-P13 for an email change |
+| E-72j | Counting as two approvers because of holding two roles; approving with no active R-DEP while combined-role mode is on (fails closed) (rev P5, ADR-021) | Engine D-22, D-24, D-26a |
 
 ### 6.3 Predefined platform role names
 
