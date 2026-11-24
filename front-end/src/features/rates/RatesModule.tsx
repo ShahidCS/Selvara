@@ -27,6 +27,7 @@ function DemoRates() {
     { key: "country", header: "Country", value: (r) => r.country, locked: true, render: (r) => <span className="strong">{r.country}</span> },
     { key: "currency", header: "Currency", value: (r) => r.currency, render: (r) => <span className="num">{r.currency}</span> },
     { key: "rate", header: "Rate / USD", align: "end", value: (r) => r.rate, render: (r) => <span className="num">{r.rate.toLocaleString("en-US", { minimumFractionDigits: r.rate < 10 ? 4 : 2 })}</span> },
+    { key: "updated", header: "Last updated", value: (r) => r.updatedAt ?? 0, render: (r) => <span className="num" style={{ whiteSpace: "nowrap" }}>{r.updatedAt ? new Date(r.updatedAt).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "—"}</span> },
     { key: "tax", header: "Tax", value: (r) => `${r.tax.type} ${r.tax.rate}%`, render: (r) => `${r.tax.type} ${r.tax.rate}%` },
     { key: "eff", header: "Effective", value: (r) => r.tax.eff, render: (r) => <span style={{ whiteSpace: "nowrap" }}>{r.tax.eff}</span> },
     { key: "status", header: "Status", value: (r) => r.status, render: (r) => (

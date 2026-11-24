@@ -38,6 +38,7 @@ export function ApiRates() {
     { key: "country", header: "Country", value: (r) => r.country, locked: true, render: (r) => <span className="strong">{r.country}</span> },
     { key: "currency", header: "Currency", value: (r) => r.currency, render: (r) => <span className="num">{r.currency}</span> },
     { key: "rate", header: "Rate / USD", align: "end", value: (r) => r.rate, render: (r) => <span className="num">{fmt(r.rate)}</span> },
+    { key: "updated", header: "Last updated", value: (r) => r.at || 0, render: (r) => <span className="num" style={{ whiteSpace: "nowrap" }}>{r.at ? utcMin(r.at) : "Never"}</span> },
     { key: "cand", header: "Proposed", align: "end", emptyWhen: (r) => !r.candidate, value: (r) => r.candidate?.rate ?? 0, render: (r) => (r.candidate ? <span className="num" title={`ECB ${r.candidate.ecb ?? "—"}, open.er-api.com ${r.candidate.er ?? "—"}`}>{fmt(r.candidate.rate)}</span> : "") },
     { key: "tax", header: "Tax", value: (r) => `${r.taxType} ${r.taxRate}%`, render: (r) => `${r.taxType} ${r.taxRate} %` },
     { key: "eff", header: "Tax from", value: (r) => r.taxEffective, defaultHidden: true, render: (r) => <span className="num">{r.taxEffective}</span> },
