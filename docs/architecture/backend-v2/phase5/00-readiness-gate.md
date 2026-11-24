@@ -53,3 +53,31 @@ Sign only when section 2 is complete and the re-assessment recommends "Go". Name
 | Deputy approver (P4-A3-19) | `<name>` | Stands in for R-A or R-B in four-eyes actions and key-store recovery | | | | |
 
 Next review date: at each release gate (2K K-4), and before cutover (V2-R6).
+
+## 4. Status after the documentation pass (2026-11-24, rev P5)
+
+All design-authority (DA) items from section 2 are done. **The recommendation stays No-Go** until the owner actions below are complete. After that, the independent readiness assessment is re-run.
+
+| # | Item | Status |
+|---|---|---|
+| 1 | KS-SNAP keep-newest rule (RA-01) and alignment of every KS-SNAP text | **Done (DA).** Spine S7, 2F F-K-47, 2H H-KS-11, ADR-003, ADR-004, 2B B-K05, ADR-019. Owner ratification (H-DR-H) is pending. |
+| 3 | Vendor-fact list extended (VC-23 to VC-34) | **Done (DA).** The table is in [assumptions-log.md](../assumptions-log.md), "Vendor facts to verify (OD-14)". **Owner verification pending.** |
+| 6 | Bottom-up effort estimate and minimum sellable subset | **Done (DA):** [P5-effort-estimate.md](P5-effort-estimate.md). Full build 86 / 136 / 221 person-weeks (low / likely / high); minimum sellable subset 73 / 115 / 186. **Owner: budget ceiling and dates.** |
+| 7 | Phase 4 additions scheduled in 2K; deputy role defined | **Done (DA).** 2K K-2a and K-M08; deputy approver **R-DEP** in K-M03 and K-D09 and in the discovery §4 roles table. R-D remains the internal auditor. |
+| 8 | FINAL-EXPORT, certificate and `auth` deletion contradictions; missing tests | **Done (DA).** 2B, 2D, 2G, 2C, 2J (J-AUTHER-01 to 10, J-FEX-11 and 12), 2A A-LC-08. |
+| 9 | ADR-015 to ADR-020; ADR-001, ADR-007 and ADR-014 updates | **Done (DA)**, all Proposed. **Owner acceptance pending** (DU-37). |
+| 12 | Registers cleaned up; Findings Register status column; Phase 4 change log | **Done (DA):** [phase4/00-phase4-summary.md](../phase4/00-phase4-summary.md), [P4-change-log.md](../phase4/P4-change-log.md) |
+| 13 | Sign-off table | Template in section 3, with the deputy row labelled R-DEP. **Signatures pending.** |
+
+**Remaining owner actions, in order:**
+1. Ratify H-DR-H and H-DR-G, and decide DU-02 (PITR on `cp`, the cells and `ks`).
+2. Verify VC-01 to VC-34 against vendor documentation (OD-14). Apply the 2H H-9.4 fallbacks where a fact fails.
+3. Appoint the technical reviewer (OD-12).
+4. Appoint the deputy approver R-DEP (P4-A3-19).
+5. Record the budget ceiling and per-release dates (OD-13), using P5-effort-estimate.md; accept or treat R-05.
+6. Confirm the ISO plan dates (G-14) and the SLA figure after VC-13.
+7. Decide the remaining mandatory DU items; accept ADR-002 to ADR-020; accept residual Medium items F-AB-16, F-T-122 and F-T-130.
+8. Get counsel's view on the legal assumptions, or accept them explicitly as DRAFT with market restrictions.
+9. Sign the sign-off table.
+
+**Findings Register now:** 30 Closed, 1 Closed by owner acceptance, 12 open pending owner action, 22 open for DA. The 22 DA items are all Medium or Low and are scheduled into releases; none blocks the gate. Every Critical and High finding is now either closed or waiting on an owner action.

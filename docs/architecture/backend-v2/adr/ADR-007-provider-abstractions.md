@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Proposed** |
+| Status | **Proposed**. Amended (rev P5, 2026-11-24) to record owner decision OD-01 as the launch billing route (D7-8, C7-1) |
 | Workstream | 2I (owner of this ADR); 2G (AI data handling), 2F (secret store, egress), 2E (four-eyes kinds), 2J (verification) |
 | Related | ADR-003 (keys and the secret store), ADR-005 (hosting), ADR-010 (control plane); risks R-04, R-07, R-50 to R-54; assumptions A-12, A-55 to A-58 |
 | Detail | [2I-billing.md](../phase2/2I-billing.md), sections I-2, I-3 and I-10 |
@@ -56,14 +56,14 @@
 | D7-5 | Billing mode is a property of the payment config. In `merchant_of_record` mode Selvara issues no customer tax invoice and mirrors the provider's documents. In `direct` mode Selvara issues invoices and credit notes and refuses to invoice a jurisdiction without an approved tax rule. |
 | D7-6 | Webhooks: `POST /api/v1/hooks/billing/<config_ref>` (aligned with 2C C-09; rev P3); signature on the raw body, tolerance, dedupe by `(config, event id)`, mode and currency checks; mismatches go to the `unmatched` ledger for review. |
 | D7-7 | AI: activation needs an `approved` `control.ai_provider_reviews` row (training use, retention, region, subprocessors, DPA, zero data retention, licence). Free hosted tiers that train on or retain inputs are rejected by rule. Tenants stay off by default and enable with four-eyes `ai.enable`. A provider change that alters training, retention or region asks for tenant approval again. The PII blocker runs before any adapter. |
-| D7-8 | **The route for the Pakistan entity is not decided by this ADR.** It is an Admin Console configuration made through D7-4 once a route passes legal, tax and KYB checks. Until then: `bank_transfer` (owner decision OD-01). (rev P3) |
+| D7-8 | **Launch billing route (owner decision OD-01, recorded here rev P5; closes the ADR part of P4-A3-06 (5)).** (a) At launch every Selvara customer pays by **bank transfer** through the `bank_transfer` adapter for the Pakistan entity `ENT-PK`; invoices are issued in `direct` mode with reconciliation per 2I I-7.6. (b) The `stripe` adapter ships ready but stays inactive. It is activated **when a Stripe-eligible Selvara entity exists** (UAE, US or UK, VC-07, A-55), through the four-eyes lifecycle of D7-4 (`provider.activate`, then `provider.live`), for that entity only; the country capability check of V7-9 stops activation for an ineligible entity. (c) A MoR or local PSP for `ENT-PK` is optional and activated through D7-4 only after it passes legal, tax and KYB checks (VC-11, A-56). (d) Bank transfer stays available as a fallback route after any card route goes live (R-51). Changing the launch route itself needs a new owner decision recorded in this ADR. (rev P3, rev P5) |
 | D7-9 | Outbound provider calls (payment, tax, email, AI) that are not part of a user's synchronous request go through the queue with retry and dead-letter (2D D-90); synchronous calls use a bounded timeout and fail with a retryable error. Every outbound call leaves through the 2H egress design (allow-listed provider destinations, no internal addresses). (rev P3) |
 
 ## Consequences
 
 | ID | Consequence |
 |---|---|
-| C7-1 | "Stripe now" is honoured as a ready adapter. It goes live when a Stripe-eligible Selvara entity exists. R-04 and R-50 stay visible until then. |
+| C7-1 | "Stripe now" is honoured as a ready adapter. It goes live when a Stripe-eligible Selvara entity exists (D7-8, OD-01). R-04 and R-50 stay visible until then. Bank transfer at launch brings per-wire fees and manual reconciliation work for the two approvers (2I I-7.6, P4-A3-15, P4-A3-19) (rev P5). |
 | C7-2 | Self-serve card payment is not available at launch unless a MoR or PSP qualifies. Annual and invoiced sales work from day one. |
 | C7-3 | Typed control-plane tables replace the `platform_records` billing kinds (2I I-SD1). |
 | C7-4 | "Void" becomes a full credit note to keep numbering intact (parity ledger, intended change). |

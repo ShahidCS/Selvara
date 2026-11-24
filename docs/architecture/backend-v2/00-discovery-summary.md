@@ -86,8 +86,9 @@ Recommended minimum: **two people, plus three outsourced services.**
 | R-E UK GDPR Art. 27 representative | Contact point for UK data subjects and the regulator | **Outsourced service** | Needed if there is no UK establishment *(verify)* |
 | R-F EU GDPR Art. 27 representative | The same for the EU | **Outsourced service** | Needed if EU data subjects are targeted *(verify)* |
 | R-G Data Protection Officer | Formal DPO, if designation is required | R-B or an outsourced DPO | Required by GDPR Art. 37 *(verify)* if core activities involve large-scale processing of special-category data. Health customers make this likely for Selvara **as a processor**. Legal to confirm. |
+| R-DEP Deputy approver (rev P5; P4-A3-19) | Acts for R-A **or** R-B in four-eyes actions and in key-store (`ks`) recovery when that person is unavailable, **never for both in the same action**, and never in an action where the person they stand in for has voted or is the requester. May set the RA-01 keep-newest hold on KS-SNAP alone (it only preserves data). | **Contracted**; appointed by the owner (owner action, readiness gate item 5); role defined by the design authority (ADR-015 point 7) | The appointment, its period and the delegation are recorded in SOD_MATRIX before the first external tenant (owner action; protected file). Needs hardware-key MFA and elevation like R-A and R-B. Not to be confused with R-D (internal auditor). |
 
-Separation of duties: R-A and R-B approve each other's requests; neither can approve their own. Automation (provisioning, migrations, scans, reminders, evidence collection) never counts as an approver.
+Separation of duties: R-A and R-B approve each other's requests; neither can approve their own. When appointed, R-DEP counts as one of the two people only, for one capacity per action (rev P5). Automation (provisioning, migrations, scans, reminders, evidence collection) never counts as an approver.
 
 ## 5. OQ-02: billing entity in Pakistan (draft, needs legal and tax review)
 
