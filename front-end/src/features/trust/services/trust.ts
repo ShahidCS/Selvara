@@ -6,12 +6,13 @@
  * and rate limiting / bot protection + server-side answer filtering for the public chatbot. */
 import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
-import { getApproval, requestApproval } from "@/lib/approvals";
+import { approvals, getApproval, requestApproval } from "@/lib/approvals";
 import { payloadStr, registerApprovalHandler } from "@/lib/approvalKit";
 import { assertNotSelf, assertRole, getActor, SodError } from "@/lib/sod";
 import { nowStamp } from "@/lib/format";
 import { clampText, isEmail } from "@/lib/security";
 import { ANSWER_LIB, TRUST, TRUST_FAQ } from "@/lib/trustData";
+import { isNdaDoc, NDA_DOCS, sectionLabel, type TrustSection } from "@/lib/trustSections";
 import { apiFetch, viaApi } from "@/services/http";
 import { wsPost, wsUpload } from "@/services/ws";
 
@@ -53,6 +54,33 @@ registerApprovalHandler("trust.publish", {
   closed: (ap) => { const t = DATA.trust.find((x) => x.name === payloadStr(ap, "name")); if (t) delete t.publishPending; },
 });
 
+/* What visitors can see (security fix F1-02): showing the live control status is a four-eyes approval; every other change is immediate. */
+registerApprovalHandler("trust.section-controls", {
+  apply: (ap) => {
+    const by = ap.approvals.map((x) => x.by).join(", "); TRUST.sections.controls = true;
+    TRUST.modeHist.unshift({ at: today(), who: by, change: `${sectionLabel("controls")} shown to visitors (approved by ${by})` });
+    wsLog("trust.section.changed", `${sectionLabel("controls")} → shown (approved by ${by}; requested by ${ap.requestedBy})`, "Policy");
+  },
+});
+/** The pending request to show the live control status, in the demonstration. */
+export const sectionsPendingDemo = () => approvals.get().list.find((a) => a.kind === "trust.section-controls" && a.status === "Pending" && a.expiresAt > Date.now())?.id ?? null;
+export function setSection(section: TrustSection, on: boolean) {
+  return viaApi<{ section: TrustSection; on: boolean; pending: boolean }>(() => {
+    gate("changing what visitors can see");
+    const label = sectionLabel(section);
+    if (section === "controls" && on && sectionsPendingDemo()) throw new SodError("Showing the live control status is already awaiting approval.");
+    if (TRUST.sections[section] === on) throw new SodError(`${label} is already ${on ? "shown" : "hidden"}.`);
+    if (section === "controls" && on) {
+      requestApproval({ kind: "trust.section-controls", title: "Show the live control status on the Trust Center", subject: "section-controls", payload: { section: "controls" }, needs: 1, approverRoles: APPROVERS, forbid: [getActor().name] });
+      TRUST.modeHist.unshift({ at: today(), who: getActor().name, change: `Asked to show ${label.toLowerCase()} to visitors (needs a second admin or owner)` });
+      return { section, on: false, pending: true };
+    }
+    TRUST.sections = { ...TRUST.sections, [section]: on };
+    TRUST.modeHist.unshift({ at: today(), who: getActor().name, change: `${label} ${on ? "shown to" : "hidden from"} visitors` });
+    return { section, on, pending: false };
+  }, () => wsPost<{ section: TrustSection; on: boolean; pending: boolean }>("/ws/trust/sections", { section, on }));
+}
+
 /** Why this pending request cannot be approved by the signed-in person (null = may approve). Shared with the UI so the button shows the same reason. */
 export function approveBlockReason(r: { who: string; enteredBy?: string }): string | null {
   if (isBlockedWho(r.who)) return "Blocked domain: this request cannot be approved. Unblock the domain first (audited) or deny the request.";
@@ -61,21 +89,35 @@ export function approveBlockReason(r: { who: string; enteredBy?: string }): stri
   if ([r.who, r.enteredBy].filter(Boolean).some((x) => me.name.toLowerCase() === String(x).toLowerCase())) return "Segregation of duties: you raised this request, so another admin or owner must approve it.";
   return null;
 }
-export function approveRequest(id: string) {
+export const NO_GRANT = "Select at least one document under NDA to grant.";
+/** Approves a request, granting the documents under NDA the approver chose (`docs`: indexes into DATA.trust); none chosen is refused.
+ *  The requester then accepts the NDA themselves before opening them (never marked signed here). */
+export function approveRequest(id: string, docs: number[]) {
   return viaApi(() => {
     gate("approving a Trust Center access request");
     const r = TRUST.requests.find((x) => x.id === id);
     if (!r) return null;
     if (isBlockedWho(r.who)) { wsLog("trust.access.approve.denied", r.who + " (blocked domain)", "Policy"); throw new SodError("Blocked domain: this request cannot be approved."); }
     assertNotSelf("you raised this request, so another admin or owner must approve it", r.who, r.enteredBy);
+    const names = [...new Set(docs)].map((i) => DATA.trust[i]).filter((t) => t && isNdaDoc(t.access)).map((t) => String(t.name));
+    if (!names.length) throw new SodError(NO_GRANT);
     const actor = getActor().name;
     TRUST.requests = TRUST.requests.filter((x) => x.id !== id);
-    TRUST.decisions.unshift({ at: today(), who: r.who, resource: r.resource, decision: "Approved", by: actor, note: "" });
+    TRUST.decisions.unshift({ at: today(), who: r.who, resource: `${r.resource}: ${names.join(", ")}`, decision: "Approved", by: actor, note: "" });
     const acc = TRUST.accounts.find((a) => domainOf(r.who) === a.domain.toLowerCase());
-    if (acc) { if (!acc.viewers.includes(r.who)) acc.viewers.push(r.who); acc.status = "Active"; }
-    else TRUST.accounts.push({ company: r.company, domain: domainOf(r.who) || "—", nda: "Signed " + today(), viewers: [r.who], access: r.resource, status: "Active" });
-    return r;
-  }, async () => { const r = TRUST.requests.find((x) => x.id === id) ?? null; await wsPost(`/ws/trust/requests/${enc(id)}/approve`, {}); return r; });
+    const list = (a: string | string[]) => (Array.isArray(a) ? a : String(a).split(",").map((x) => x.trim())).filter((x) => x && x !== "—");
+    if (acc) {
+      if (!acc.viewers.includes(r.who)) acc.viewers.push(r.who);
+      const people = acc.people ?? acc.viewers.filter((v) => v !== r.who).map((email) => ({ email, nda: "Pending" }));
+      if (!people.some((p) => p.email === r.who)) people.push({ email: r.who, nda: "Pending" });
+      acc.people = people; acc.access = [...new Set([...list(acc.access), ...names])]; acc.status = "Active";
+    } else TRUST.accounts.push({ company: r.company, domain: domainOf(r.who) || "—", nda: "Pending", viewers: [r.who], people: [{ email: r.who, nda: "Pending" }], access: names, status: "Active" });
+    return { ...r, resource: names.join(", ") };
+  }, async () => {
+    const r = TRUST.requests.find((x) => x.id === id) ?? null;
+    await wsPost(`/ws/trust/requests/${enc(id)}/approve`, { resourceIds: docs.map((i) => DATA.trust[i]?.id).filter(Boolean) });
+    return r ? { ...r, resource: docs.map((i) => DATA.trust[i]?.name).filter(Boolean).join(", ") } : null;
+  });
 }
 export function denyRequest(id: string, note: string) {
   return viaApi(() => {
@@ -150,22 +192,24 @@ export const REQUEST_RATE = { windowMs: 3600_000, perEmail: 3, overall: 30, maxQ
 export const REQUEST_ACCESS_COPY = "You can send up to 3 requests per hour from one email address. Our security team reviews every request and will reply by email.";
 const HITS = new Map<string, number[]>();
 function rateOk(key: string, max: number, now: number): boolean { const arr = (HITS.get(key) || []).filter((t) => now - t < REQUEST_RATE.windowMs); HITS.set(key, arr); return arr.length < max; }
-export function requestAccess(resourceIndex: number, email: string, reason: string) {
+/** A request for documents under NDA, naming none (their names are not shown before they are granted); a reason is required. */
+export function requestAccess(email: string, reason: string) {
   return viaApi<{ queued: boolean }>(() => {
-    const t = DATA.trust[resourceIndex]; if (!t) throw new SodError("Resource not found.");
     const em = clampText(email, 254).toLowerCase(); if (!isEmail(em)) throw new SodError("Enter a valid email address.");
+    const why = clampText(reason, 300); if (why.length < 10) throw new SodError("Give a reason of at least 10 characters.");
     const now = Date.now();
     if (!rateOk("e:" + em, REQUEST_RATE.perEmail, now) || !rateOk("all", REQUEST_RATE.overall, now)) throw new SodError("Too many requests. Please wait an hour before trying again.");
     HITS.get("e:" + em)!.push(now); HITS.get("all")!.push(now);
-    if (t.access === "Public" || TRUST.requests.length >= REQUEST_RATE.maxQueue || TRUST.requests.some((x) => x.who === em && x.resource === t.name)) return { queued: false };
+    if (TRUST.requests.length >= REQUEST_RATE.maxQueue || TRUST.requests.some((x) => x.who === em && x.resource === NDA_DOCS)) return { queued: false };
     const n = TRUST.requests.reduce((m, x) => Math.max(m, parseInt(String(x.id).replace(/\D/g, ""), 10) || 0), 0) + 1;
     const label = domainOf(em).split(".")[0] || "";
-    TRUST.requests.unshift({ id: "TR-" + n, who: em, company: label ? label.charAt(0).toUpperCase() + label.slice(1, 80) : "—", resource: t.name, reason: clampText(reason, 300) || "—", at: today() });
+    TRUST.requests.unshift({ id: "TR-" + n, who: em, company: label ? label.charAt(0).toUpperCase() + label.slice(1, 80) : "—", resource: NDA_DOCS, resourceId: "", reason: why, at: today() });
     return { queued: true };
-  }, () => wsPost<{ queued: boolean }>("/ws/trust/access-requests", { resourceId: DATA.trust[resourceIndex]?.id, reason }));
+  }, () => wsPost<{ queued: boolean }>("/ws/trust/access-requests", { reason }));
 }
 
 /* ---- production only: document files, links and the NDA (server/ws/trust.ts) ---- */
 export const uploadResourceFile = (i: number, file: File) => wsUpload<{ name: string }>(`/ws/trust/resources/${enc(DATA.trust[i]?.id ?? "")}/file`, file);
 export const resourceLink = (i: number) => apiFetch<{ url: string }>(`/ws/trust/resources/${enc(DATA.trust[i]?.id ?? "")}/link`);
+export const resourceLinkById = (id: string) => apiFetch<{ url: string }>(`/ws/trust/resources/${enc(id)}/link`);
 export const acceptNda = () => wsPost<{ ok: boolean }>("/ws/trust/nda", {});

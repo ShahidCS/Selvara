@@ -1,6 +1,6 @@
 import { useEffect, type KeyboardEvent, type ReactNode } from "react";
 import { useRouter } from "next/router";
-import { Icon, KpiStrip, KpiTile, Page, Table, StatusChip, activate } from "@/components/ui";
+import { Icon, KpiStrip, KpiTile, Page, Table, StatusChip, activate , SeverityBars, Empty } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData, useModState } from "@/lib/store";
 import { useGo } from "@/lib/route";
@@ -19,12 +19,9 @@ import { DelegationCard } from "./DelegationCard";
 import MyRemarks from "./MyRemarks";
 import MyTasks, { useTasks } from "./MyTasks";
 import PublishedPolicies from "./PublishedPolicies";
+import { WORK_REVIEWS } from "@/data/workReviews";
 
-const REVIEWS = [
-  { t: "Approve P-006 Acceptable Use & Awareness", m: "Policy review, due this week", sev: "Medium", path: "/ws/policies/P-006", mod: "policies", overdue: false, week: true },
-  { t: "Sign off access recertification Q4", m: "Access, due 14d", sev: "Low", path: "/ws/access", mod: "access", overdue: false, week: false },
-  { t: "Review AI impact assessment (6.1.4)", m: "ISO 42001, overdue", sev: "High", path: "/ws/ai", mod: "ai", overdue: true, week: false },
-];
+const REVIEWS = WORK_REVIEWS;
 /** An issue counts as due this week when it is due in 7 days or fewer (and not already overdue). */
 const dueThisWeek = (due: string) => { const m = /^Due (\d+)d/.exec(due); return !!m && Number(m[1]) <= 7; };
 /** The ID column never wraps at the hyphen. */
@@ -168,7 +165,7 @@ function WorkLive() {
               {!w || (!w.issues.length && !w.actions.length) ? <tr><td colSpan={4} style={{ color: "var(--muted)" }}>Nothing is assigned to you right now.</td></tr> : null}
               {(w?.issues ?? []).map((i) => (
                 <tr key={i.id} className={canIssues ? "clickable" : undefined} {...(canIssues ? activate(() => go(`/ws/issues/${encodeURIComponent(i.id)}`)) : {})}>
-                  <td className="strong num" style={ID_CELL}>{i.id}</td><td>{i.title}</td><td><StatusChip s={i.sev} /></td>
+                  <td className="strong num" style={ID_CELL}>{i.id}</td><td>{i.title}</td><td><SeverityBars level={i.sev} /></td>
                   <td>{/Overdue/.test(i.due) ? <span style={{ color: "var(--bad-ink)", fontWeight: 500 }}>{i.due}</span> : i.due}</td>
                 </tr>
               ))}
@@ -185,7 +182,7 @@ function WorkLive() {
           <div className="c-head"><h3>Reviews &amp; approvals</h3></div>
           <div className="c-body scroll flush" style={{ padding: "6px 14px" }}>
             <div className="feed">
-              {!w?.reviews.length ? <p className="field help" style={{ margin: "8px 0" }}>No decisions are waiting for you.</p> : null}
+              {!w?.reviews.length ? <Empty compact icon="check" title="No decisions are waiting for you" /> : null}
               {(w?.reviews ?? []).map((r, n) => (
                 <div key={r.t + n} className="feed-item clickable" {...activate(() => go(r.path))}>
                   <div className="fi"><div className="ft">{r.t}</div><div className="fm" style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", marginTop: 4 }}><StatusChip s={r.sev} /><span>{r.m}</span></div></div>
@@ -223,7 +220,7 @@ function WorkDemo() {
             <Table cols={[{ t: "ID" }, { t: "Issue" }, { t: "Severity" }, { t: "Due" }]}>
               {mine.map((i, k) => (
                 <tr key={i.id + k} className="clickable" {...activate(() => go(`/ws/issues/${encodeURIComponent(i.id)}`))}>
-                  <td className="strong num" style={ID_CELL}>{i.id}</td><td>{i.title}</td><td><StatusChip s={i.sev} /></td>
+                  <td className="strong num" style={ID_CELL}>{i.id}</td><td>{i.title}</td><td><SeverityBars level={i.sev} /></td>
                   <td>{/Overdue/.test(i.due) ? <span style={{ color: "var(--bad-ink)", fontWeight: 500 }}>{i.due}</span> : i.due}</td>
                 </tr>
               ))}

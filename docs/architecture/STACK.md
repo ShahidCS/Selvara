@@ -13,7 +13,7 @@
 | Node.js used by CI, builds and releases | 22 |
 | CI runner image | `ubuntu-latest` |
 | Package manager | npm (`package-lock.json`; installs use `--ignore-scripts`) |
-| Application name / version | `assurance-grc-front-end` 0.2.4 (private, not published) |
+| Application name / version | `assurance-grc-front-end` 0.3.1 (private, not published) |
 | TypeScript `strict` | **off** (`front-end/tsconfig.json`); `noImplicitAny`: off |
 | TypeScript target / module resolution | `es2020` / `bundler` |
 | Browser support (`browserslist`) | `last 2 Chrome versions`, `last 2 Edge versions`, `last 2 Firefox versions`, `last 2 Safari versions`, `last 2 iOS versions` |
@@ -29,6 +29,7 @@
 | `pg` | Server-side Postgres driver for the module APIs, connecting as the row-level-security-bound selvara_app role (src/server/db.ts; never shipped to the browser) | `8.23.1` | `8.23.1` |
 | `react` | UI library | `^19.3.1` | `19.3.1` |
 | `react-dom` | React renderer for the browser | `^19.3.1` | `19.3.1` |
+| `uqr` | (not described: add it to ROLES in .github/scripts/generate-stack.mjs) | `0.1.3` | `0.1.3` |
 
 ## Build, test and quality tooling
 

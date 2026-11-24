@@ -101,8 +101,40 @@ test("the old My Workspace address opens My Work on the Policies tab, and the br
   const a = await openAs(browser, ti, "admin");
   await gotoModule(a.page, "/ws/team");
   const nav = a.page.getByRole("navigation", { name: "Company" });
-  await expect(nav.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
-  await expect(nav).toContainText("Team & Rules");
+  // R37: one Settings entry in the sidebar; the settings pages share a menu of their own
+  await expect(nav.getByRole("button", { name: "Settings", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(nav).not.toContainText("Team & Rules");
+  await expect(a.page.getByRole("navigation", { name: "Settings" }).getByRole("link", { name: "Team & Rules" })).toHaveAttribute("aria-current", "page");
   await expect(heading(a.page)).toHaveText("Team & Rules");
   await a.close();
+});
+
+/* Reference review R2, R4, R6, R10: the header row has the approvals pill (same figure as My Work), a Help menu with the page tour
+   and shortcuts, and the theme moved into the account menu. The Overview greets the person by first name. */
+test("header: approvals pill opens My Work, Help menu, theme in the account menu, greeting on the Overview", async ({ browser }, ti) => {
+  const s = await openAs(browser, ti, "admin"); const p = s.page;
+  await gotoModule(p, "/ws/overview");
+  await expect(heading(p)).toHaveText(/^Good (morning|afternoon|evening), Jordan$/);
+  const pill = p.getByRole("button", { name: /approvals? waiting for you$/ });
+  const n = Number((await pill.getAttribute("aria-label"))!.match(/^\d+/)![0]);
+  await pill.click();
+  await p.waitForURL(/\/ws\/work/);
+  await expect(p.getByRole("group", { name: "Your work summary" })).toContainText(String(n));
+  await p.getByRole("button", { name: "Help", exact: true }).click();
+  await expect(p.getByRole("menuitem", { name: "Take the tour of this page" })).toBeVisible();
+  await p.getByRole("menuitem", { name: "Keyboard shortcuts" }).click();
+  await expect(p.getByRole("dialog", { name: /shortcuts/i })).toBeVisible();
+  await p.keyboard.press("Escape");
+  await p.getByRole("button", { name: /^Account:/ }).click();
+  await p.getByRole("menuitem", { name: /^Theme: Light/ }).click();
+  await expect(p.locator("html")).toHaveAttribute("data-theme", "dark");
+  expect(s.errors).toEqual([]);
+  await s.close();
+});
+
+test("an employee without My Work approvals sees no approvals pill", async ({ browser }, ti) => {
+  const s = await openAs(browser, ti, "vendor"); const p = s.page;
+  await p.goto("/ws/questionnaires"); await expect(heading(p)).toBeVisible();
+  await expect(p.getByRole("button", { name: /approvals? waiting for you$/ })).toHaveCount(0);
+  await s.close();
 });

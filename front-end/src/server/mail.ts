@@ -47,7 +47,9 @@ export type Template =
   | { t: "vendor-clarify"; company: string; vendor: string; link: string }
   | { t: "trust-decided"; company: string; resource: string; approved: boolean; note: string; link: string }
   | { t: "trust-update"; company: string; title: string; link: string; unsubscribe: string }
-  | { t: "invoice"; id: string; amount: string; due: string; link: string; resent: boolean };
+  | { t: "invoice"; id: string; amount: string; due: string; link: string; resent: boolean }
+  | { t: "help-question"; ref: string; company: string; subject: string; link: string }
+  | { t: "help-answered"; ref: string; subject: string; link: string };
 function render(m: Template): { subject: string; lines: string[]; link: string; button: string; foot?: string } {
   switch (m.t) {
     case "invite": return { subject: `${clip(m.company, 80)} invited you to Selvara`, lines: [`${clip(m.company, 80)} invited you to join its Selvara workspace as ${clip(m.role, 30)}.`, `The link works once, with this email address, until ${m.expires}.`], link: m.link, button: "Accept the invitation" };
@@ -59,6 +61,8 @@ function render(m: Template): { subject: string; lines: string[]; link: string; 
     case "vendor-clarify": return { subject: `${clip(m.company, 80)} asks for a clarification`, lines: [`${clip(m.company, 80)} asks for a clarification on the security questionnaire for ${clip(m.vendor, 80)}. The note is in the portal.`], link: m.link, button: "Open the questionnaire" };
     case "trust-decided": return { subject: `${clip(m.company, 80)} Trust Center: ${clip(m.resource, 80)}`, lines: [m.approved ? `${clip(m.company, 80)} gave you access to ${clip(m.resource, 80)}. Confirm your email address on the Trust Center, accept the NDA, and open the document.` : `${clip(m.company, 80)} declined your request for ${clip(m.resource, 80)}.${m.note ? ` Their note: ${clip(m.note, 300)}` : ""}`], link: m.link, button: "Open the Trust Center" };
     case "trust-update": return { subject: `${clip(m.company, 80)} Trust Center update`, lines: [`${clip(m.company, 80)} published: ${clip(m.title, 160)}.`], link: m.link, button: "Open the Trust Center", foot: `You get these because you subscribed. Unsubscribe: ${m.unsubscribe}` };
+    case "help-question": return { subject: `New support question ${m.ref} from ${clip(m.company, 80)}`, lines: [`${clip(m.company, 80)} asked: ${clip(m.subject, 160)}.`, "Read and answer it in the Admin Console support inbox. The question itself is not included in this email."], link: m.link, button: "Open the support inbox" };
+    case "help-answered": return { subject: `Selvara support answered your question ${m.ref}`, lines: [`Selvara support answered your question "${clip(m.subject, 160)}".`, "Read the answer in Selvara, under Help, My questions."], link: m.link, button: "Read the answer" };
     case "invoice": return { subject: `Selvara invoice ${m.id}${m.resent ? " (copy)" : ""}`, lines: [`Invoice ${m.id} for ${m.amount} is due on ${m.due}.`, "Your company admins can see it and pay it in Selvara, under Billing & Invoices."], link: m.link, button: "Open Billing & Invoices" };
   }
 }

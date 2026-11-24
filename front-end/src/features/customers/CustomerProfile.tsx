@@ -34,7 +34,7 @@ export function CustomerProfile({ c }: { c: any }) {
               <dl className="meta-grid"><dt>Billing cycle</dt><dd>{c.cycle}</dd><dt>Region</dt><dd>{c.region}</dd><dt>Billing contact</dt><dd>{c.contact.name}</dd><dt>Next invoice</dt><dd>{c.next}</dd></dl>
             </div>
           ) : (
-            <div style={{ maxWidth: 560 }}>
+            <div className="fields-cap">
               <div className="sectitle" style={{ marginTop: 0 }}>This month against plan limits</div>
               {metrics.map((x) => <Meter key={x[0]} label={x[0]} used={x[1]} limit={x[2]} />)}
             </div>

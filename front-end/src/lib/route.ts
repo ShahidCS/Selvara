@@ -11,6 +11,8 @@ export function parseRoute(path: string): Route {
   const h = clean.split("/").filter(Boolean);
   if (!h.length) return { space: "ws", mod: "overview", param: null, sub: null };
   if (h[0] === "auth") return { space: "auth", mod: "auth", param: null, sub: null };
+  // the Help centre is for everyone signed in, like Your account (not a role-gated module): /help, /help/<article>, /help/ask, /help/questions
+  if (h[0] === "help") return { space: "auth", mod: "help", param: h[1] ? safeDecode(h[1]) : null, sub: null };
   const space = h[0] === "admin" ? "admin" : "ws";
   const rest = h[0] === "admin" || h[0] === "ws" ? h.slice(1) : h;
   return { space, mod: rest[0] || (space === "admin" ? "customers" : "overview"), param: rest[1] ? safeDecode(rest[1]) : null, sub: rest[2] ? safeDecode(rest[2]) : null };

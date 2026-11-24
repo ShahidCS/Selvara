@@ -35,6 +35,8 @@ test("after three failures a quick check appears; passing it leads to the second
 });
 
 /** Creates a real account through the product: request to join, a company admin approves, the person adds an authenticator. Returns its recovery codes. */
+/** The authenticator key each real account added at its first sign-in (what the person's app holds). */
+const KEYS = new Map<string, string>();
 async function realAccount(p: Page, name: string, email: string, pw: string): Promise<string[]> {
   await p.goto("/login");
   await p.getByRole("button", { name: "Request to join" }).click();
@@ -49,7 +51,10 @@ async function realAccount(p: Page, name: string, email: string, pw: string): Pr
   await expect(p.getByText(`${name} can now sign in as an Employee`)).toBeVisible();
   await p.getByRole("button", { name: /^Account:/ }).click(); await p.getByRole("menuitem", { name: "Sign out" }).click(); await p.waitForURL(/\/login$/);
   await fill(p, email, pw);
-  const key = (await p.locator('[aria-labelledby="en-key-l"]').innerText()).replace(/\s/g, "");
+  await expect(p.getByRole("img", { name: "QR code to add Selvara to your authenticator app" })).toBeVisible(); // scan, or type the key
+  await p.getByRole("radio", { name: "Enter key manually" }).click();
+  const key = (await p.locator('[aria-labelledby="as-key-l"]').innerText()).replace(/\s/g, "");
+  KEYS.set(email, key);
   await p.getByLabel("Authentication code").fill(totpNow(key)); await p.getByRole("button", { name: "Verify" }).click();
   const codes = (await p.getByRole("list", { name: "Recovery codes" }).getByRole("listitem").allInnerTexts()).map((c) => c.trim());
   await p.getByLabel("I have stored my recovery codes").check(); await p.getByRole("button", { name: "Continue" }).click();
@@ -142,3 +147,32 @@ test("a company admin sets the PCI DSS lockout and requests a trusted office net
   await a.close();
   void heading;
 });
+
+test("Your account: add a backup authenticator app by QR code or key, with the password and a current code", async ({ browser }, ti) => {
+  const p = await signedOut(browser, ti);
+  const pw = "Lantern-orbit-Quince-71"; const email = "lee.park@company.example";
+  await realAccount(p, "Lee Park", email, pw);
+  await nextPush(p, "/auth");
+  const mfa = p.getByRole("region", { name: "Two-step verification" });
+  await expect(mfa.getByRole("list", { name: "Authenticator apps" }).getByRole("listitem")).toHaveCount(1);
+  await expect(mfa.getByRole("button", { name: "Remove authenticator app: Authenticator app" })).toBeDisabled(); // the last app stays
+  await mfa.getByRole("button", { name: "Add an authenticator app" }).click();
+  const dlg = p.getByRole("dialog");
+  await dlg.getByLabel("Name for the new app (optional)").fill("Backup phone");
+  await dlg.getByLabel("Password", { exact: true }).fill(pw);
+  await dlg.getByLabel("Current 6-digit code").fill(totpNow(KEYS.get(email)!, Date.now() + 30_000)); // the next code: this minute's was used to sign in
+  await dlg.getByRole("button", { name: "Continue" }).click();
+  await expect(dlg.getByRole("img", { name: "QR code to add Selvara to your authenticator app" })).toBeVisible();
+  expect(await axe(p)).toEqual([]);
+  await dlg.getByRole("radio", { name: "Enter key manually" }).click();
+  const key = (await dlg.locator('[aria-labelledby="as-key-l"]').innerText()).replace(/\s/g, "");
+  expect(key).toMatch(/^[A-Z2-7]{32}$/);
+  await dlg.getByLabel("6-digit code from the new app").fill(totpNow(key));
+  await dlg.getByRole("button", { name: "Add app" }).click();
+  await expect(p.getByText("Authenticator app added")).toBeVisible();
+  await expect(mfa.getByRole("list", { name: "Authenticator apps" }).getByRole("listitem")).toHaveCount(2);
+  await expect(mfa).toContainText("Backup phone");
+  await expect(mfa.getByRole("button", { name: "Add an authenticator app" })).toBeDisabled(); // two at most
+  await expect(p.locator("body")).not.toContainText(key.slice(0, 8)); // the key is gone once the dialog closes
+});
+

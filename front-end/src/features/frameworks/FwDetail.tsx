@@ -12,6 +12,7 @@ import { useLayer } from "@/hooks/useLayer";
 import { useGo } from "@/lib/route";
 import { useOpenControl } from "@/features/controls";
 import { readinessTone } from "./FwSegsBar";
+import { inAuditorScope } from "@/services/audits";
 
 /** The "Next audit" figure is a date when the framework's milestone text has one; the full text goes in the caption. */
 const auditDate = (s?: string) => (s ? (/\b\d{1,2} [A-Z][a-z]{2} \d{4}\b/.exec(s)?.[0] ?? /\b(19|20)\d{2}\b/.exec(s)?.[0] ?? null) : null);
@@ -20,7 +21,7 @@ const REQ_TONE: Record<string, Segment["tone"]> = { Met: "ok", "Partially met": 
 /** A framework as a page (`/ws/frameworks/:id`): readiness, requirement mix, groups and requirements with mapping and applicability edits. */
 export function FwDetail({ fwId }: { fwId: string }) {
   const L = useLayer(); const go = useGo();
-  const f = DATA.frameworks.find((x) => x.id === fwId);
+  const f = DATA.frameworks.find((x) => x.id === fwId && inAuditorScope("frameworks", x.id)); // outside an auditor's scope it does not exist for them
   const [, setCtrlQ] = useModState("controls.q", ""); void setCtrlQ;
   const [reqF, setReqF] = useModState("fw.reqf", "all");
   const [rq, setRq] = useModState("fw.rq", "");
@@ -29,7 +30,7 @@ export function FwDetail({ fwId }: { fwId: string }) {
   const back = { href: "/ws/frameworks", label: "Frameworks" };
   if (!f) return <Page title="Framework not found" back={back}><Empty icon="frameworks" title="No such framework">There is no framework with the ID &ldquo;{fwId}&rdquo; in the library.</Empty></Page>;
   const cat = FRAMEWORK_REQS[f.id]; const sc = cat ? fwScore(f.id) : null; const p = sc ? sc.pct : f.pct;
-  const ctrls = controlsForFw(f.id);
+  const ctrls = controlsForFw(f.id).filter((c) => inAuditorScope("controls", c.id));
   const passing = ctrls.filter((c) => c.status === "Pass").length, needs = ctrls.filter((c) => c.status !== "Pass").length;
   const gm = fwGroupMap(f.id);
 
@@ -37,7 +38,7 @@ export function FwDetail({ fwId }: { fwId: string }) {
     const head = ["Framework", "Requirement ID", "Requirement title", "Group", "Status", "Mapped controls", "Not applicable reason"];
     const body = cat.r.filter((r) => reqStatus(f.id, r[0]) !== "Met").map((r) => {
       const st = reqStatus(f.id, r[0]); const na = fwEdits.get().NA[f.id]?.[r[0]];
-      return [f.name, r[0], r[1], (r[2] ? r[2] + " " : "") + (gm[r[2]] || ""), st, fwReqControls(f.id, r[0]).map((c) => c.id + " (" + c.status + ")").join("; "), na ? na.reason : ""];
+      return [f.name, r[0], r[1], (r[2] ? r[2] + " " : "") + (gm[r[2]] || ""), st, fwReqControls(f.id, r[0]).filter((c) => inAuditorScope("controls", c.id)).map((c) => c.id + " (" + c.status + ")").join("; "), na ? na.reason : ""];
     });
     const csv = [head].concat(body).map((r) => r.map(csvCell).join(",")).join("\r\n");
     if (!downloadText("gap-assessment-" + f.id + ".csv", csv, "text/csv;charset=utf-8")) { L.toast("Download not available in this view", false); return; }
@@ -133,7 +134,7 @@ function ReqPane({ fwId, reqF, setReqF, rq, setRq, grp, setGrp, limit, setLimit 
         </div>
         <div className="scroll" id="fwReqBody" style={{ flex: "1 1 auto", minHeight: 120, maxHeight: 520, overflow: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
           {!list.length ? (
-            <div className="empty" style={{ padding: 24 }}><div className="ei"><Icon name="search" /></div><h4>No requirements match</h4><p>No requirements with this status, group or search.</p></div>
+            <Empty icon="search" title="No requirements match">No requirements with this status, group or search.</Empty>
           ) : (
             <>
               {page.map((r) => <ReqRow key={r[0]} fwId={fwId} r={r} />)}
@@ -160,7 +161,7 @@ function ReqRow({ fwId, r }: { fwId: string; r: string[] }) {
   const [err, setErr] = useModState<Record<string, string>>("fw.err", {});
   const L = useLayer();
   const st = reqStatus(fwId, id); const na = st === "Not applicable";
-  const mc = fwReqControls(fwId, id); const isOpen = !!open[id]; const gm = fwGroupMap(fwId);
+  const mc = fwReqControls(fwId, id).filter((c) => inAuditorScope("controls", c.id)); const isOpen = !!open[id]; const gm = fwGroupMap(fwId);
   const E = fwEdits.get(); const mod = E.MOD[fwId]?.[id]; const naRec = E.NA[fwId]?.[id];
   const meta = [gm[gid] ? gid + " " + gm[gid] : "", mc.length + " control" + (mc.length === 1 ? "" : "s"), mod ? "mapping edited" : ""].filter(Boolean).join(" · ");
   const setE = (k: string, v: string | null) => setErr((p) => { const n = { ...p }; if (v == null) delete n[k]; else n[k] = v; return n; });

@@ -1,3 +1,4 @@
+import { inAuditorScope } from "@/services/audits";
 import { API_ON } from "@/lib/rbac";
 import { Chip, Empty, Icon, Page, Ring, Stepper, StatusChip, Table, Timeline, type TimelineItem } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
@@ -38,6 +39,7 @@ export function PolicyDetail({ id }: { id: string }) {
   const btn = (label: string, icon: string, why: string | null, onClick: () => void, cls = "btn-secondary") =>
     <button key={label} className={`btn ${why && cls !== "btn-ghost" ? "btn-secondary" : cls} sm`} disabled={!!why} title={why || undefined} onClick={onClick}><Icon name={icon} />{label}</button>;
   const canAckWhy = !live ? "Only a published policy can be acknowledged." : null;
+  const mapped: string[] = p.mappedControls.filter((c: string) => inAuditorScope("controls", c)); // an external auditor: only controls shared with them
   const step = work ? STEP_OF[work.status] ?? 0 : live ? 3 : 0;
   const log: TimelineItem[] = p.changeLog.slice().reverse().map((h: { at: string; ver: string; by: string; action: string; reason: string }, i: number) => ({
     id: String(i), at: h.at, title: `${h.action} (v${h.ver})`, sub: h.reason, actor: h.by, tone: tone(h.action),
@@ -102,7 +104,7 @@ export function PolicyDetail({ id }: { id: string }) {
                     return (
                       <>
                         {avail.length ? <div className="btngrp">{avail.map((x) => btn(x.label, x.icon, null, x.run, x === next || x.cls === "btn-danger" ? x.cls : "btn-secondary"))}</div>
-                          : <p className="field help" style={{ margin: 0 }}>No workflow action is open to you at this stage.</p>}
+                          : <Empty compact icon="policies" title="No workflow action is open to you at this stage" />}
                         {blocked.length ? <>
                           <div className="eyebrow" style={{ margin: "12px 0 6px" }}>Not available now</div>
                           <div className="btngrp">{blocked.map((x) => btn(x.label, x.icon, x.why, x.run, "btn-ghost"))}</div>
@@ -140,7 +142,8 @@ export function PolicyDetail({ id }: { id: string }) {
                   </div>
                   <div className="btngrp">
                     {manager ? btn("Remind outstanding", "bell", null, () => remind(), "btn-ghost") : null}
-                    {myAck ? <Chip cls="ok" icon="check">You acknowledged v{live.ver}{myAck.at ? ` on ${myAck.at}` : ""}</Chip>
+                    {me.base === "auditor" ? <span className="field help" style={{ margin: 0 }}>Auditors review policies; acknowledgement is for the company&apos;s own members.</span>
+                      : myAck ? <Chip cls="ok" icon="check">You acknowledged v{live.ver}{myAck.at ? ` on ${myAck.at}` : ""}</Chip>
                       : <button className="btn btn-primary sm" disabled={!!canAckWhy} title={canAckWhy || undefined} onClick={() => run(async () => { const r = await acknowledge(me.name, id); if (!r) throw new Error("x"); wsLog("policy.acknowledged", `${p.id} v${live.ver} by ${me.name}`, "Policy"); }, "Acknowledged")}><Icon name="check" />Read &amp; acknowledge</button>}
                   </div>
                 </>
@@ -149,7 +152,7 @@ export function PolicyDetail({ id }: { id: string }) {
 
             <div className="card"><div className="c-head"><h3>Mapped controls</h3></div><div className="c-body">
               <div className="btngrp" style={{ marginBottom: 8 }}>
-                {p.mappedControls.length ? p.mappedControls.map((c: string, i: number) => <span key={i} className="tag num">{c}</span>) : <span style={{ color: "var(--muted)", fontSize: 13 }}>None mapped</span>}
+                {mapped.length ? mapped.map((c: string, i: number) => <span key={i} className="tag num">{c}</span>) : <span style={{ color: "var(--muted)", fontSize: 13 }}>None mapped</span>}
               </div>
               {manager ? <button className="btn btn-ghost sm" onClick={() => openMapControl(L, id)}><Icon name="plus" />Map control</button> : null}
             </div></div>

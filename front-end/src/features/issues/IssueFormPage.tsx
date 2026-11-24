@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Empty, FormActions, FormSection, Icon, Page } from "@/components/ui";
+import { Empty, FormActions, FormSection, Icon, Page, Person, SeverityBars } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useLayer } from "@/hooks/useLayer";
 import { useUnsavedGuard } from "@/hooks/useUnsavedGuard";
@@ -43,6 +43,10 @@ export function IssueFormPage({ id }: { id?: string }) {
   const ownerOpts = Array.from(new Set([init.owner, getActor().name, ...DATA.issues.map((x: { owner: string }) => String(x.owner))].filter(Boolean))).sort();
   const coreWhy = id ? svc.whyCannotEditCore() : null; // after creation only admin/owner may change owner, due date or severity
 
+  // R28: the summary names the owner; the advisory counts what they already hold (open issues on this page's data)
+  const ownerName = API_ON ? (members.find((m) => m.id === owner)?.name ?? "—") : owner || "—";
+  const held = DATA.issues.filter((x: { owner: string; status: string; id: string }) => x.id !== id && x.owner === ownerName && x.status !== "Closed");
+  const ownerLoad = held.length; const ownerOverdue = held.filter((x: { due: string }) => /Overdue/.test(String(x.due))).length;
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const t = clampText(title, 200);
@@ -60,6 +64,7 @@ export function IssueFormPage({ id }: { id?: string }) {
   return (
     <Page title={id ? "Edit issue" : "New issue"} sub={id ? i?.title : "Describe the finding; add tasks and links from its page."} back={back}>
       <div className="scroll rec-scroll">
+        <div className="form-with-summary">
         <form className="rec-form" onSubmit={submit} noValidate>
           <FormSection n={1} title="Issue" note="What needs fixing.">
             <div className="field"><label htmlFor="is-title">Title <Req /></label><input ref={ref} className="input" id="is-title" maxLength={200} placeholder="e.g. Encrypt backups at rest" value={title} onChange={(e) => setTitle(e.target.value)} aria-invalid={!!err && errAt === "title"} aria-describedby={err && errAt === "title" ? "is-err" : undefined} />
@@ -81,6 +86,20 @@ export function IssueFormPage({ id }: { id?: string }) {
             <button type="submit" className="btn btn-primary" disabled={busy}>{id ? "Save changes" : "Create issue"}</button>
           </FormActions>
         </form>
+        {/* R28: what will be saved, and an advisory note (never blocks saving) */}
+        <aside className="form-summary" aria-label="Summary">
+          <div className="panel-soft">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span className="strong">{id || "New issue"}</span><span className="chip neutral">{id ? "Editing" : "Draft"}</span></div>
+            <div style={{ fontSize: 17, lineHeight: 1.3, color: title.trim() ? "var(--ink)" : "var(--muted)" }}>{title.trim() || "Untitled issue"}</div>
+            <dl className="meta-grid lstart" style={{ margin: 0 }}>
+              <dt>Severity</dt><dd><SeverityBars level={sev} /></dd>
+              <dt>Owner</dt><dd><Person name={ownerName} /></dd>
+              <dt>Due</dt><dd>{due || "—"}</dd>
+            </dl>
+          </div>
+          {ownerLoad >= 3 ? <p className="advisory" role="note"><Icon name="alert" /><span>{ownerName} already owns {ownerLoad} open issues{ownerOverdue ? `, ${ownerOverdue} overdue` : ""}. You can still save.</span></p> : null}
+        </aside>
+        </div>
       </div>
     </Page>
   );

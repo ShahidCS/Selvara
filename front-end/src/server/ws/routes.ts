@@ -28,8 +28,9 @@ const EXPORTS: Record<string, string> = {
   "controls.soa.exported": "controls", "controls.matrix.exported": "controls", "control.workpaper.exported": "controls", "framework.gap.exported": "frameworks", "risk.register.exported": "risk", "ropa.exported": "auditlog",
 };
 export function workspaceRoutes(h: WsHelpers) {
-  /** The company's active members (id, name, role) for owner and assignee pickers; any member may see them. */
-  const members = wsRoute(h, null, async (d, _r, c) => (["vendor", "viewer"].includes(c.actor.role) ? ok([]) : ok(await membersOf(d, c.actor))));
+  /** The company's active members (id, name, role) for owner and assignee pickers; any member may see them, except vendors, viewers and
+   *  external auditors (who see only what is shared with their engagements). */
+  const members = wsRoute(h, null, async (d, _r, c) => (["vendor", "viewer", "auditor"].includes(c.actor.role) ? ok([]) : ok(await membersOf(d, c.actor))));
   /** An export the browser built from data the person may already see, recorded in the company's audit log (only known export kinds). */
   const exported = wsRoute(h, null, async (d, r, c) => {
     const action = txt(r.body.action, 60); const mod = EXPORTS[action]; if (!mod) invalid("Unknown export.");

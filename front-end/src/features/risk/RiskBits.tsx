@@ -1,3 +1,4 @@
+import { SeverityBars } from "@/components/ui";
 import type { CSSProperties } from "react";
 import { RBand, bandTint, bandText, rband } from "@/lib/risk";
 
@@ -7,6 +8,10 @@ const TAB: CSSProperties = { fontVariantNumeric: "tabular-nums" };
 export function ScoreChip({ score, label }: { score: number; label?: string }) {
   const b = rband(score);
   return <span className="chip" style={{ ...tone(b), ...TAB, whiteSpace: "nowrap" }}>{label ? label + " " : ""}{score} <span style={{ fontWeight: 500 }}>{b.name}</span></span>;
+}
+/** R17: a score in a register row: the number and the band as signal bars with its name. */
+export function ScoreBars({ score }: { score: number }) {
+  return <span style={{ display: "inline-flex", alignItems: "center", gap: 8, whiteSpace: "nowrap" }}><span className="num" style={{ fontWeight: 600, minWidth: 18 }}>{score}</span> <SeverityBars level={rband(score).name} /></span>;
 }
 export function RatingPill({ b }: { b: RBand }) { return <span className="chip" style={tone(b)}>{b.name}</span>; }
 export function BandPill({ score, label }: { score: number; label?: string }) {

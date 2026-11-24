@@ -9,6 +9,7 @@ import * as fw from "./services/frameworks";
 import { FwDetail } from "./FwDetail";
 import { FwAdd } from "./FwAdd";
 import { FwSegsBar, readinessTone } from "./FwSegsBar";
+import { scoped } from "@/services/audits";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Fw = any;
@@ -53,12 +54,13 @@ function FrameworksList() {
   const toggleScope = (f: Fw, undo = false) => { if (!fwCanAdmin()) return; const was = fwScopeIn(f.id);
     run(fw.toggleScope(f.id), undo ? undefined : () => L.toast(`${f.name} ${was ? "taken out of scope" : "brought into scope"}`, true, { action: { label: "Undo", run: () => toggleScope(f, true) } })); };
 
-  const rows: Fw[] = [...DATA.frameworks].sort((a, b) => (KORD[a.kind] || 3) - (KORD[b.kind] || 3) || (a.name < b.name ? -1 : 1));
-  const regions = Array.from(new Set(DATA.frameworks.map((f) => f.region).filter(Boolean))).sort() as string[];
-  const inScope = DATA.frameworks.filter((f) => fwScopeIn(f.id));
+  const frameworks: Fw[] = scoped("frameworks", DATA.frameworks); // an external auditor: their engagements' frameworks only
+  const rows: Fw[] = [...frameworks].sort((a, b) => (KORD[a.kind] || 3) - (KORD[b.kind] || 3) || (a.name < b.name ? -1 : 1));
+  const regions = Array.from(new Set(frameworks.map((f) => f.region).filter(Boolean))).sort() as string[];
+  const inScope = frameworks.filter((f) => fwScopeIn(f.id));
   const avg = inScope.length ? Math.round(inScope.reduce((a, f) => a + fwReadiness(f.id), 0) / inScope.length) : 0;
   const gaps = inScope.reduce((a, f) => { const sc = fwScore(f.id); return a + (sc ? sc.cnt["Not met"] + sc.cnt["Not assessed"] : f.gaps || 0); }, 0);
-  const snoozed = DATA.frameworks.filter((f) => fwSnoozed(f.id)).length;
+  const snoozed = frameworks.filter((f) => fwSnoozed(f.id)).length;
 
   const cols: DTColumn<Fw>[] = [
     { key: "name", header: "Name", value: (f) => f.name, locked: true, render: (f) => {
@@ -96,13 +98,13 @@ function FrameworksList() {
   return (
     <Page mod="frameworks" acts={<button className="btn btn-primary" data-tour="frameworks-add" onClick={() => go("/ws/frameworks/new")}><Icon name="plus" />Add framework</button>}>
       <KpiStrip label="Library summary">
-        <KpiTile label="In the library" value={DATA.frameworks.length} caption={`${inScope.length} in scope`} />
+        <KpiTile label="In the library" value={frameworks.length} caption={`${inScope.length} in scope`} />
         <KpiTile label="Average readiness" value={avg + "%"} caption="Frameworks in scope" />
         <KpiTile label="Open gaps" value={gaps} delta={gaps ? { tone: "watch", text: "To close" } : { tone: "good", text: "None" }} caption="Not met or not assessed" />
         <KpiTile label="Snoozed" value={snoozed} caption="Paused, not scored as due" />
       </KpiStrip>
       <div className="banner warn" data-tour="frameworks-draft" style={{ display: "block" }}>Requirement titles are paraphrased; licensed standard text is not reproduced. All requirement-to-control mappings and applicability decisions are draft content requiring review by qualified compliance staff before reliance.</div>
-      <div className="card" data-tour="frameworks-table" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="frameworks-table">
         <div className="c-body flush scroll" style={{ padding: 0 }}>
           <DataTable<Fw> id="frameworks" label="Frameworks" rows={rows} rowKey={(f) => f.id} columns={cols} searchText={(f) => `${f.name} ${f.id} ${f.region || ""}`}
             tabs={KINDS.map((k) => ({ key: k, label: k + "s", match: (f: Fw) => f.kind === k }))}

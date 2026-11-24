@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
-import { Chip, Icon, StatusChip } from "@/components/ui";
+import { Chip, Icon, StatusChip, Empty } from "@/components/ui";
 import { ApiError, apiFetch, API_MODE } from "@/services/http";
+import { NDA_DOCS, ndaCountText } from "@/lib/trustSections";
 
 /* The public Trust Center for visitors without an account (production programme group 8b; server/trustpublic.ts). Anyone sees what the
    company publishes and opens public documents; to request the others, accept the NDA or subscribe, a visitor confirms a work email with a
-   code sent to it. The server decides everything; this page shows it. */
+   code sent to it. The server decides everything; this page shows it. Security fix F1-02: a section the company does not publish is not in
+   the answer at all, and documents under NDA come only as a count until they are shared with the visitor. */
 interface Doc { id: string; name: string; access: string; file: boolean; open: boolean }
 interface View {
-  company: string; ref: string; chatbot: boolean; mail: boolean; faq: { q: string; a: string }[]; subprocessors: { name: string; purpose: string }[]; updates: { at: string; title: string }[];
-  controls: [string, string][]; documents: Doc[];
+  company: string; ref: string; chatbot: boolean; mail: boolean; faq?: { q: string; a: string }[]; subprocessors?: { name: string; purpose: string }[]; updates?: { at: string; title: string }[];
+  controls?: [string, string][]; documents?: Doc[]; ndaCount?: number;
   visitor: { email: string; account: { company: string; nda: string; access: string[] } | null; requests: { resource: string; status: string; at: string }[]; subscribed: boolean } | null;
 }
 const post = <T,>(path: string, body: unknown) => apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
@@ -36,40 +38,49 @@ export default function PublicTrustPage({ code }: { code: string }) {
   if (API_MODE !== "http") return <Shell title="Trust Center"><Card title="Public Trust Center"><p style={{ margin: 0 }}>This page is part of the production build. In this demonstration, preview the public page from Trust Center in the workspace.</p><p style={{ margin: 0, display: "flex", gap: 8, flexWrap: "wrap" }}><Link className="btn btn-primary sm" href="/ws/trust">Open Trust Center in the workspace</Link><Link className="btn btn-secondary sm" href="/login">Sign in</Link></p></Card></Shell>;
   if (state === "loading") return <Shell title="Trust Center"><p style={{ color: "var(--muted)" }}>Loading…</p></Shell>;
   if (state === "missing" || !v) return <Shell title="Trust Center"><Card title="This Trust Center is not public">Check the address, or ask your contact at the company for their Trust Center link.</Card></Shell>;
-  const pending = (name: string) => v.visitor?.requests.find((r) => r.resource === name && r.status === "Pending");
+  const asked = !!v.visitor?.requests.some((r) => r.resource === NDA_DOCS && r.status === "Pending");
+  const sendRequest = async (reason: string) => { try { const r = await post<{ queued: boolean; why?: string }>(`${base}/requests`, { reason }); say(r.queued ? "Request sent. You get an email when it is decided." : r.why ?? "Your request was not queued.", r.queued); await reload(); } catch (e) { say(msg(e), false); } };
   return (
     <Shell title={`${v.company} Trust Center`} right={v.visitor ? <span style={{ fontSize: 13, color: "var(--muted)" }}>Verified as {v.visitor.email} <button className="btn btn-ghost sm" onClick={() => act(() => post(`${base}/sign-out`, {}), "Signed out.")}>Sign out</button></span> : null}>
       {note ? <div className={`banner ${note.ok ? "info" : "warn"}`} role="status" style={{ display: "flex", gap: 8, alignItems: "center" }}><Icon name={note.ok ? "check" : "alert"} /><span style={{ flex: 1 }}>{note.text}</span><button className="btn btn-ghost sm" aria-label="Dismiss" onClick={() => setNote(null)}><Icon name="x" /></button></div> : null}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))", gap: 16, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Card title="Documents">
-            {v.documents.length ? v.documents.map((d) => (
+          {v.documents ? <Card title="Documents">
+            {v.documents.map((d) => (
               <div key={d.id} style={{ display: "flex", gap: 10, alignItems: "center", padding: "8px 0", borderTop: "1px solid var(--line)", flexWrap: "wrap" }}>
                 <span style={{ flex: "1 1 200px" }} className="strong">{d.name}</span>
-                {d.access === "Public" ? <Chip cls="ok" icon="check">Public</Chip> : <Chip cls="neutral" icon="access">On request, NDA</Chip>}
+                {d.access === "Public" ? <Chip cls="ok" icon="check">Public</Chip> : <Chip cls="neutral" icon="access">Shared with you, NDA</Chip>}
                 {d.open && d.file ? <button className="btn btn-ghost sm" aria-label={`Open ${d.name}`} onClick={() => open(d)}><Icon name="ext" />Open</button>
-                  : d.access !== "Public" ? (pending(d.name) ? <Chip cls="warn" icon="clock">Requested</Chip> : v.visitor ? <RequestButton d={d} onSend={async (reason) => { try { const r = await post<{ queued: boolean; why?: string }>(`${base}/requests`, { resourceId: d.id, reason }); say(r.queued ? `Request sent for ${d.name}. You get an email when it is decided.` : r.why ?? "Your request was not queued.", r.queued); await reload(); } catch (e) { say(msg(e), false); } }} /> : <span className="field help" style={{ margin: 0 }}>Confirm your email to request it</span>)
-                  : <span className="field help" style={{ margin: 0 }}>No file yet</span>}
+                  : !d.file ? <span className="field help" style={{ margin: 0 }}>No file yet</span> : <span className="field help" style={{ margin: 0 }}>Accept the NDA to open it</span>}
               </div>
-            )) : <p style={{ margin: 0, color: "var(--muted)" }}>No documents are published yet.</p>}
-          </Card>
-          {v.controls.length ? <Card title="Control status">{v.controls.map(([k, s]) => <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--line)" }}><span>{k}</span><StatusChip s={s} /></div>)}</Card> : null}
-          {v.subprocessors.length ? <Card title="Sub-processors">{v.subprocessors.map((s) => <div key={s.name} style={{ padding: "6px 0", borderTop: "1px solid var(--line)" }}><span className="strong">{s.name}</span> <span style={{ color: "var(--muted)" }}>· {s.purpose}</span></div>)}</Card> : null}
-          {v.updates.length ? <Card title="Updates">{v.updates.map((u) => <div key={u.at + u.title} style={{ padding: "6px 0", borderTop: "1px solid var(--line)" }}><span className="num" style={{ color: "var(--muted)" }}>{u.at}</span> {u.title}</div>)}</Card> : null}
+            ))}
+            {v.ndaCount ? (
+              <div style={{ display: "flex", gap: 10, alignItems: "center", padding: "8px 0", borderTop: "1px solid var(--line)", flexWrap: "wrap" }} data-testid="trust-nda-count">
+                <span style={{ flex: "1 1 200px" }} className="strong"><Icon name="access" /> {ndaCountText(v.ndaCount)}</span>
+                <Chip cls="neutral" icon="access">On request, NDA</Chip>
+                {asked ? <Chip cls="warn" icon="clock">Requested</Chip> : v.visitor ? <RequestButton onSend={sendRequest} /> : <span className="field help" style={{ margin: 0 }}>Confirm your email to request them</span>}
+              </div>
+            ) : null}
+            {!v.documents.length && !v.ndaCount ? <Empty compact icon="evidence" title="No documents are published yet" /> : null}
+          </Card> : null}
+          {v.controls?.length ? <Card title="Control status">{v.controls.map(([k, s]) => <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--line)" }}><span>{k}</span><StatusChip s={s} /></div>)}</Card> : null}
+          {v.subprocessors?.length ? <Card title="Sub-processors">{v.subprocessors.map((s) => <div key={s.name} style={{ padding: "6px 0", borderTop: "1px solid var(--line)" }}><span className="strong">{s.name}</span> <span style={{ color: "var(--muted)" }}>· {s.purpose}</span></div>)}</Card> : null}
+          {v.updates?.length ? <Card title="Updates">{v.updates.map((u) => <div key={u.at + u.title} style={{ padding: "6px 0", borderTop: "1px solid var(--line)" }}><span className="num" style={{ color: "var(--muted)" }}>{u.at}</span> {u.title}</div>)}</Card> : null}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {v.visitor ? (
             <Card title="Your access">
               {v.visitor.account ? <>
-                <p style={{ margin: 0 }}>{v.visitor.account.company}: {v.visitor.account.access.join(", ") || "no documents yet"}.</p>
-                {v.visitor.account.nda === "Accepted" ? <p style={{ margin: 0, display: "flex", gap: 6, alignItems: "center" }}><Icon name="check" />NDA accepted.</p>
-                  : <div><p style={{ margin: "0 0 8px" }}>Accept the NDA to open the documents you were given.</p><button className="btn btn-primary sm" onClick={() => act(() => post(`${base}/nda`, {}), "NDA accepted.")}>Accept the NDA</button></div>}
-              </> : <p style={{ margin: 0, color: "var(--ink-2)" }}>Request a document; when it is approved, you accept the NDA here and open it.</p>}
+                <p style={{ margin: 0 }}>Shared with you: {v.visitor.account.access.join(", ") || "no documents yet"}.</p>
+                {v.visitor.account.nda === "Accepted" ? <p style={{ margin: 0, display: "flex", gap: 6, alignItems: "center" }}><Icon name="check" />You accepted the NDA.</p>
+                  : <div><p style={{ margin: "0 0 8px" }}>Accept the NDA to open the documents shared with you. Your acceptance is yours only: each colleague accepts it for themselves.</p><button className="btn btn-primary sm" onClick={() => act(() => post(`${base}/nda`, {}), "NDA accepted.")}>Accept the NDA</button></div>}
+              </> : <p style={{ margin: 0, color: "var(--ink-2)" }}>Request documents under NDA; when the request is approved, you see their names, accept the NDA here and open them.</p>}
+              {v.visitor.requests.length ? <p className="field help" style={{ margin: 0 }}>Your requests: {v.visitor.requests.map((r) => `${r.resource} (${r.status})`).join("; ")}</p> : null}
               {v.visitor.subscribed ? <p className="field help" style={{ margin: 0 }}>You get an email when a document is published.</p>
                 : <button className="btn btn-secondary sm" style={{ alignSelf: "flex-start" }} onClick={() => act(() => post(`${base}/subscribe`, {}), "Subscribed. Each email has an unsubscribe link.")}><Icon name="bell" />Subscribe to updates</button>}
             </Card>
           ) : <Verify base={base} mail={v.mail} onDone={async () => { say("Email confirmed."); await reload(); }} onError={(t) => say(t, false)} />}
-          {v.faq.length ? <Card title="Frequently asked">{v.faq.map((f) => <details key={f.q} style={{ borderTop: "1px solid var(--line)", padding: "6px 0" }}><summary className="strong" style={{ cursor: "pointer" }}>{f.q}</summary><p style={{ margin: "6px 0 0", color: "var(--ink-2)" }}>{f.a}</p></details>)}</Card> : null}
+          {v.faq?.length ? <Card title="Frequently asked">{v.faq.map((f) => <details key={f.q} style={{ borderTop: "1px solid var(--line)", padding: "6px 0" }}><summary className="strong" style={{ cursor: "pointer" }}>{f.q}</summary><p style={{ margin: "6px 0 0", color: "var(--ink-2)" }}>{f.a}</p></details>)}</Card> : null}
           {v.chatbot ? <Ask base={base} /> : null}
         </div>
       </div>
@@ -92,14 +103,16 @@ function Shell({ title, right, children }: { title: string; right?: React.ReactN
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return <section className="card" style={{ padding: "16px 20px", gap: 8 }} aria-label={title}><h2 style={{ fontSize: 15, margin: 0 }}>{title}</h2>{children}</section>;
 }
-function RequestButton({ d, onSend }: { d: Doc; onSend: (reason: string) => Promise<void> }) {
-  const [open, setOpen] = useState(false); const [reason, setReason] = useState("");
-  if (!open) return <button className="btn btn-ghost sm" aria-label={`Request ${d.name}`} onClick={() => setOpen(true)}>Request</button>;
+/** A request for documents under NDA names none (their names are not shown before they are shared); a reason is required. */
+function RequestButton({ onSend }: { onSend: (reason: string) => Promise<void> }) {
+  const [open, setOpen] = useState(false); const [reason, setReason] = useState(""); const [err, setErr] = useState(false);
+  if (!open) return <button className="btn btn-ghost sm" aria-label="Request documents under NDA" onClick={() => setOpen(true)}>Request</button>;
   return (
-    <form style={{ display: "flex", gap: 6, flexBasis: "100%", flexWrap: "wrap" }} onSubmit={async (e) => { e.preventDefault(); await onSend(reason); setOpen(false); }}>
-      <label className="vh" htmlFor={`rq-${d.id}`}>Why you need {d.name}</label>
-      <input className="input" id={`rq-${d.id}`} maxLength={300} placeholder="Why you need it (optional)" value={reason} onChange={(e) => setReason(e.target.value)} style={{ flex: "1 1 220px" }} />
+    <form style={{ display: "flex", gap: 6, flexBasis: "100%", flexWrap: "wrap" }} onSubmit={async (e) => { e.preventDefault(); if (reason.trim().length < 10) { setErr(true); return; } await onSend(reason); setOpen(false); }}>
+      <label className="vh" htmlFor="rq-nda">Why you need the documents under NDA</label>
+      <input className="input" id="rq-nda" maxLength={300} required placeholder="Why you need them (required)" value={reason} onChange={(e) => { setReason(e.target.value); setErr(false); }} aria-invalid={err} aria-describedby={err ? "rq-nda-err" : undefined} style={{ flex: "1 1 220px" }} />
       <button type="submit" className="btn btn-primary sm">Send request</button><button type="button" className="btn btn-ghost sm" onClick={() => setOpen(false)}>Cancel</button>
+      {err ? <p id="rq-nda-err" role="alert" style={{ margin: 0, flexBasis: "100%", color: "var(--bad-ink)" }}>Give a reason of at least 10 characters.</p> : null}
     </form>
   );
 }

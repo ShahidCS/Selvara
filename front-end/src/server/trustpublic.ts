@@ -1,11 +1,13 @@
 /* Server-only. The anonymous public Trust Center (production programme group 8b; inventory group 4, section 4 and group 8, E12-E15), at
    /trust/<company code>. Off until a company turns it on (a second admin or owner approves, server/ws/trust.ts). What anyone sees is the same
-   page members see, built from the company's own records: its name, verified answers, approved sub-processors, control status by domain,
-   documents and recent publications. Public documents open for anyone; the rest only for a verified visitor whose company's account was
-   given access by an admin or owner and whose NDA is accepted.
+   page members see, built from the company's own records and only the sections the company publishes (a hidden section is not sent at
+   all): its name, verified answers, approved sub-processors, control status by domain (off unless a second admin approved showing it),
+   recent publications and documents. Public documents are listed and open for anyone; documents under NDA are only counted, and named
+   only to a verified visitor they were granted to (as a viewer of their company's account), who opens them after accepting the NDA
+   themselves (security fix F1-02).
    - Verifying: a work email (personal and temporary domains refused), a one-time code by email, then a visitor session for this company
      (server/visitor.ts). Without email set up, the page is read-only and says so.
-   - Requests: 3 an hour per address, one pending per document, 200 pending at most; a blocked domain may ask, but its requests cannot be
+   - Requests: for "Documents under NDA" with a reason (the approver chooses which to grant), 3 an hour per address, one pending at a time, 200 pending at most; a blocked domain may ask, but its requests cannot be
      approved. Questions to the chatbot: 20 an hour per network address, answered only from verified answers.
    - Subscriptions: verified addresses only; each update email carries a one-click unsubscribe link. A new public document is emailed to
      subscribers after its publication was approved and committed.
@@ -16,11 +18,10 @@ import { mailConfigured, maskEmail, sendMail } from "./mail";
 import type { Deps } from "./types";
 import { checkCode, endVisitor, sendCode, visitorOf, workEmailBlock, type Visitor } from "./visitor";
 import { onCommitted } from "./ws/common";
-import type { Control } from "./ws/assurance";
 import type { Answer } from "./ws/questionnaires";
 import { WsConflict, WsRefused, type Actor, type WsTx } from "./ws/store";
-import { activity, blockedBy, botAnswer, labelOf, NEEDS_PERSON, settings, type Account, type Chat, type Resource, type Settings, type TrustRequest } from "./ws/trust";
-import type { Vendor } from "./ws/vendors";
+import { accountFor, accountsOf, activity, blockedBy, botAnswer, labelOf, NEEDS_PERSON, pageView, settings, visitorKey, type Chat, type Resource, type Settings, type TrustRequest } from "./ws/trust";
+import { isNdaDoc, NDA_DOCS, sectionsOf } from "@/lib/trustSections";
 
 const ok = (body?: unknown, cookies?: string[]): Res => ({ status: body === undefined ? 204 : 200, body, cookies });
 const err = (status: number, error: string): Res => ({ status, body: { error } });
@@ -55,20 +56,12 @@ async function under(d: Deps, bucket: string, key: string, max: number) {
 
 const view = guard(async (d, r) => {
   const out = await onPage(d, r, r.path[1], async (t, _tid, page, v) => {
-    const resources = (await t.list<Resource>("trust-resource")).map((x) => x.data);
-    const byDomain = new Map<string, { n: number; pass: number }>();
-    for (const c of (await t.list<Control>("control")).map((x) => x.data)) { const k = byDomain.get(c.domain) ?? { n: 0, pass: 0 }; k.n++; if (c.status === "Pass") k.pass++; byDomain.set(c.domain, k); }
-    const acct = v ? (await t.list<Account>("trust-account")).map((x) => x.data).find((x) => x.status === "Active" && x.viewers.includes(v.email)) : undefined;
+    const pv = await pageView(d, t, v ? visitorKey(d, v.email) : null);
     return {
-      company: page.name, ref: page.ref, chatbot: (await settings(t)).data.chatbot, mail: mailConfigured(d),
-      faq: (await t.list<Answer>("answer")).map((x) => x.data).filter((x) => x.verified).map((x) => ({ q: x.q, a: x.a })),
-      subprocessors: (await t.list<Vendor>("vendor")).map((x) => x.data).filter((x) => x.data && x.gate === "Approved").map((x) => ({ name: x.name, purpose: x.cat })),
-      updates: resources.filter((x) => x.access === "Public").sort((a, b) => b.at.localeCompare(a.at)).slice(0, 5).map((x) => ({ at: x.at, title: `${x.name} published` })),
-      controls: [...byDomain.entries()].map(([k, c]) => [k, c.pass === c.n ? "Pass" : "In review"]),
-      documents: resources.map((x) => ({ id: x.id, name: x.name, access: x.access, file: !!x.file, open: x.access === "Public" || (!!acct && acct.access.includes(x.name) && acct.nda.startsWith("Accepted")) })),
+      company: page.name, ref: page.ref, mail: mailConfigured(d), ...pv.view,
       visitor: v ? {
-        email: maskEmail(v.email), account: acct ? { company: acct.company, nda: acct.nda.startsWith("Accepted") ? "Accepted" : "Pending", access: acct.access } : null,
-        requests: (await t.list<TrustRequest>("trust-request")).map((x) => x.data).filter((x) => x.who === v.email).map((x) => ({ resource: x.resource, status: x.status, at: x.at })),
+        email: maskEmail(v.email), account: pv.mine ? { company: pv.mine.acct.company, nda: pv.mine.person.nda ? "Accepted" : "Pending", access: pv.granted } : null,
+        requests: (await t.list<TrustRequest>("trust-request")).map((x) => x.data).filter((x) => x.who === v.email).map((x) => ({ resource: pv.requestLabel(x), status: x.status, at: x.at })),
         subscribed: !!(await t.get<Sub>("trust-sub", `v-${h(v.email).slice(0, 32)}`))?.data.token,
       } : null,
     };
@@ -93,31 +86,39 @@ const verify = guard(async (d, r) => {
 });
 /** A verified visitor of this page, or a refusal. */
 const verified = (v: Visitor | null): Visitor => v ?? bad("Confirm your email address first.", 401);
+const NO_DOC = "Document not found.";
+/** A verified visitor asks for "Documents under NDA" with a reason (their names are not shown, so none is named); naming a public
+ *  document says to open it; naming one under NDA not granted to them answers as if it did not exist. */
 const request = guard(async (d, r) => {
   const out = await onPage(d, r, r.path[1], async (t, _tid, _page, v0) => {
     const v = verified(v0);
-    const rec = (await t.get<Resource>("trust-resource", s(r.body.resourceId, 20))) ?? bad("Document not found.", 404);
+    if (!sectionsOf((await settings(t)).data.sections).documents) bad(NO_DOC, 404);
+    const rid = s(r.body.resourceId, 20); const rec = rid ? await t.get<Resource>("trust-resource", rid) : null;
+    const mine = accountFor(await accountsOf(d, t), visitorKey(d, v.email));
+    if (rid && (!rec || (isNdaDoc(rec.data.access) && !mine?.acct.access.includes(rec.id)))) bad(NO_DOC, 404);
     const reqs = (await t.list<TrustRequest>("trust-request")).map((x) => x.data);
     if (reqs.filter((x) => x.who === v.email && x.atMs > t.now - HOUR).length >= 3) bad("Too many requests. Please wait an hour before trying again.", 429);
-    if (rec.data.access === "Public") return { queued: false, why: "This document is public: open it directly." };
-    if (reqs.some((x) => x.who === v.email && x.resourceId === rec.id && x.status === "Pending")) return { queued: false, why: "You already asked for this document. You get an email when it is decided." };
+    if (rec) return { queued: false, why: rec.data.access === "Public" ? "This document is public: open it directly." : "You already have access to this document." };
+    const reason = s(r.body.reason, 300); if (reason.length < 10) bad("Give a reason of at least 10 characters.", 400);
+    if (reqs.some((x) => x.who === v.email && !x.resourceId && x.status === "Pending")) return { queued: false, why: "You already asked for documents under NDA. You get an email when it is decided." };
     const dom = v.email.split("@")[1];
     if (reqs.filter((x) => x.status === "Pending" && x.who.endsWith(`@${dom}`)).length >= 10) bad("Your organisation has many requests waiting. Please wait until they are decided.", 429);
     if (reqs.filter((x) => x.status === "Pending").length >= 200) bad("Requests cannot be taken right now. Please try again later, or ask your contact at the company.", 503);
     const id = `TR-${await t.next("trust-request", 0)}`;
-    await t.insert("trust-request", id, { id, who: v.email, whoId: "", company: labelOf(v.email), resource: rec.data.name, resourceId: rec.id, reason: s(r.body.reason, 300) || "—", at: new Date(t.now).toISOString().slice(0, 10), atMs: t.now, status: "Pending" } satisfies TrustRequest);
-    await t.audit("trust.access.requested", `${id}: ${rec.data.name} (public page)${blockedBy(v.email, (await settings(t)).data.blocked.map((b) => b.domain)).length ? "; blocked domain" : ""}`, "Policy");
+    await t.insert("trust-request", id, { id, who: v.email, whoId: "", company: labelOf(v.email), resource: NDA_DOCS, resourceId: "", reason, at: new Date(t.now).toISOString().slice(0, 10), atMs: t.now, status: "Pending" } satisfies TrustRequest);
+    await t.audit("trust.access.requested", `${id}: ${NDA_DOCS} (public page)${blockedBy(v.email, (await settings(t)).data.blocked.map((b) => b.domain)).length ? "; blocked domain" : ""}`, "Policy");
     return { queued: true };
   });
   return out ? ok(out) : err(404, NOT_PUBLIC);
 });
+/** The NDA is accepted by this visitor for themselves; it never covers a colleague at the same company. */
 const nda = guard(async (d, r) => {
   const out = await onPage(d, r, r.path[1], async (t, _tid, _page, v0) => {
     const v = verified(v0);
-    const acc = (await t.list<Account>("trust-account")).find((x) => x.data.status === "Active" && x.data.viewers.includes(v.email)) ?? bad("Your company has no access yet. Request a document first.", 409);
-    if (acc.data.nda.startsWith("Accepted")) bad("The NDA is already accepted.", 409);
-    acc.data.nda = `Accepted ${new Date(t.now).toISOString().slice(0, 10)} by ${v.email}`; await t.update("trust-account", acc.id, acc.data, acc.version);
-    await t.audit("trust.nda.accepted", `${acc.data.company} by ${maskEmail(v.email)} (public page)`, "Policy");
+    const mine = accountFor(await accountsOf(d, t), visitorKey(d, v.email)) ?? bad("You have no access yet. Request documents first.", 409);
+    if (mine.person.nda) bad("You already accepted the NDA.", 409);
+    mine.person.nda = { at: new Date(t.now).toISOString().slice(0, 10), by: maskEmail(v.email) }; await t.update("trust-account", mine.rec.id, mine.acct, mine.rec.version);
+    await t.audit("trust.nda.accepted", `${mine.acct.company} by ${maskEmail(v.email)} (public page)`, "Policy");
     return { ok: true };
   });
   return out ? ok(out) : err(404, NOT_PUBLIC);
@@ -126,13 +127,15 @@ const docLink = guard(async (d, r) => {
   const tid = await companyOf(d, r.path[1]); if (!tid) return err(404, NOT_PUBLIC);
   if (!(await under(d, "trust-open", h(`${tid}|${r.ip}`).slice(0, 32), 60)) || !(await under(d, "trust-open-co", h(tid).slice(0, 32), 1000))) return err(429, "Too many documents opened. Please wait an hour.");
   const out = await onPage(d, r, r.path[1], async (t, _tid, _page, v) => {
-    const x = ((await t.get<Resource>("trust-resource", s(r.path[3], 20))) ?? bad("Document not found.", 404)).data;
-    if (!x.file) bad("No file has been attached to this document yet.", 404);
+    if (!sectionsOf((await settings(t)).data.sections).documents) bad(NO_DOC, 404);
+    const x = ((await t.get<Resource>("trust-resource", s(r.path[3], 20))) ?? bad(NO_DOC, 404)).data;
     if (x.access !== "Public") {
-      const me = verified(v); const acct = (await t.list<Account>("trust-account")).map((y) => y.data).find((y) => y.status === "Active" && y.viewers.includes(me.email));
-      if (!acct || !acct.access.includes(x.name)) bad("Request access to this document first.", 403);
-      if (!acct!.nda.startsWith("Accepted")) bad("Accept the NDA first.", 403);
+      const me = verified(v); const mine = accountFor(await accountsOf(d, t), visitorKey(d, me.email));
+      if (!mine || !mine.acct.access.includes(x.id)) bad(NO_DOC, 404);
+      if (!x.file) bad("No file has been attached to this document yet.", 404);
+      if (!mine!.person.nda) bad("Accept the NDA first.", 403);
     }
+    if (!x.file) bad("No file has been attached to this document yet.", 404);
     await t.audit("trust.document.viewed", `${x.name} by ${v ? maskEmail(v.email) : "a public visitor"} (public page)`, "Policy"); await activity(t, `Opened ${x.name} (public page)`);
     return { url: await d.files.link(x.file!.path, x.file!.name, 60) };
   });

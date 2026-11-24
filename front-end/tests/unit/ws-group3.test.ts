@@ -345,9 +345,8 @@ describe("my work and overview", () => {
     const o = body<{ risks: { title: string; owner: string }[]; issues: { title: string; due: string }[]; controls: { title: string }[] }>(await call("GET", "ws/data/overview", {}, priya.cookie));
     expect(o.risks).toHaveLength(1); expect(o.risks[0]).toMatchObject({ title: "", owner: "" });
     expect(o.issues[0]).toMatchObject({ title: "", due: "Overdue 1d" }); expect(o.controls[0].title).toBe("");
-    // the auditor opens controls, so no stripped copy of them
-    const oa = body<Record<string, unknown>>(await call("GET", "ws/data/overview", {}, aud.cookie));
-    expect(oa.controls).toBeUndefined(); expect(oa.frameworks).toBeUndefined(); expect(oa.risks).toBeTruthy();
+    // an external auditor receives no company-wide figures at all (F1-01): their Overview lists their engagements
+    expect(body<Record<string, unknown>>(await call("GET", "ws/data/overview", {}, aud.cookie))).toEqual({});
     expect(body<Record<string, unknown>>(await call("GET", "ws/data/overview", {}, jordan.cookie))).toEqual({});
     expect((await call("GET", "ws/data/work", {}, aud.cookie)).status).toBe(403);
     // vendor request from My Work, with limits

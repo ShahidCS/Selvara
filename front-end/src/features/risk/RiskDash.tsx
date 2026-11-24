@@ -1,5 +1,5 @@
 /* Risk dashboard (source renderRiskDash, lines 2502-2555). */
-import { Chip, DonutChart, KpiStrip, KpiTile, StatusChip, Table, activate, type Segment } from "@/components/ui";
+import { Chip, DonutChart, KpiStrip, KpiTile, StatusChip, Table, activate, type Segment, Empty } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { nowStamp } from "@/lib/format";
 import {
@@ -151,7 +151,7 @@ export default function RiskDash() {
               </tr>
             ))}
           </Table>
-        ) : <p className="field help" style={{ margin: 0 }}>No open treatments.</p>}
+        ) : <Empty compact icon="check" title="No open treatments" />}
       </div></section>
     </div>
   );

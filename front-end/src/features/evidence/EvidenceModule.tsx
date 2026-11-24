@@ -1,10 +1,11 @@
-import { DataTable, Icon, KpiStrip, KpiTile, Page, type DTColumn } from "@/components/ui";
+import { DataTable, Icon, KpiStrip, KpiTile, Page, type DTColumn, Person } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { useApp, useData } from "@/lib/store";
 import { useGo, useRoute } from "@/lib/route";
 import { evInit, pendingDelete, whyCannotWrite, EVIDENCE_TYPES, REVIEW_STATES } from "@/features/evidence/services/evidence";
 import { EvidenceDetail, ReviewChip } from "./EvidenceDetail";
 import { EvidenceFormPage } from "./EvidenceFormPage";
+import { scoped } from "@/services/audits";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Ev = any;
@@ -21,32 +22,33 @@ function EvidenceList() {
   useData(); useApp((s) => s.role);
   const go = useGo();
   const writeWhy = whyCannotWrite();
-  DATA.evidence.forEach(evInit);
+  const evidence: Ev[] = scoped("evidence", DATA.evidence); // an external auditor: only what is shared with them
+  evidence.forEach(evInit);
   const status = (e: Ev) => String(e.review?.status ?? "Pending review");
-  const owners = Array.from(new Set<string>(DATA.evidence.map((e: Ev) => String(e.by)))).sort();
+  const owners = Array.from(new Set<string>(evidence.map((e: Ev) => String(e.by)))).sort();
   const cols: DTColumn<Ev>[] = [
     { key: "id", header: "ID", nowrap: true, value: (e) => e.id, locked: true, render: (e) => <span className="strong num">{e.id}</span> },
     { key: "name", header: "Evidence", value: (e) => e.name, render: (e) => e.name },
     { key: "type", header: "Type", value: (e) => e.type, render: (e) => e.type },
     { key: "ver", header: "Version", value: (e) => e.ver, render: (e) => `v${e.ver}` },
-    { key: "by", header: "Collected by", value: (e) => e.by, render: (e) => e.by },
+    { key: "by", header: "Collected by", value: (e) => e.by, render: (e) => <Person name={e.by} /> },
     { key: "updated", header: "Updated", value: (e) => e.updated, sortBy: (e) => Date.parse(e.updated) || 0, render: (e) => e.updated },
     { key: "review", header: "Review", value: (e) => status(e), render: (e) => <><ReviewChip status={status(e)} />{pendingDelete(e) ? <> <span className="tag">Deletion requested</span></> : null}</> },
   ];
-  const n = (s: string) => DATA.evidence.filter((e: Ev) => status(e) === s).length;
+  const n = (s: string) => evidence.filter((e: Ev) => status(e) === s).length;
   return (
     <Page mod="evidence" acts={<button className="btn btn-primary" data-tour={writeWhy ? undefined : "evidence-add"} disabled={!!writeWhy} title={writeWhy || undefined} onClick={() => go("/ws/evidence/new")}><Icon name="plus" />Add evidence</button>}>
       <KpiStrip label="Evidence summary">
-        <KpiTile label="Evidence items" value={DATA.evidence.length} caption="On record" />
+        <KpiTile label="Evidence items" value={evidence.length} caption="On record" />
         <KpiTile label="Pending review" value={n("Pending review")} delta={n("Pending review") ? { tone: "watch", text: "Needs a reviewer" } : { tone: "good", text: "None" }} caption="Awaiting review by a second person" />
         <KpiTile label="Accepted" value={n("Accepted")} caption="Reviewed by a second person" />
         <KpiTile label="Rejected" value={n("Rejected")} caption="Needs fixing" />
       </KpiStrip>
-      <div className="card" data-tour="evidence-table" style={{ flex: "1 1 auto" }}>
+      <div className="card" data-tour="evidence-table">
         <div className="c-body flush scroll" style={{ padding: 0 }} id="evList">
-          <DataTable<Ev> id="evidence" label="Evidence" rows={DATA.evidence} rowKey={(e) => e.id} columns={cols} searchText={(e) => `${e.id} ${e.name} ${e.type} ${e.by}`}
+          <DataTable<Ev> id="evidence" label="Evidence" rows={evidence} rowKey={(e) => e.id} columns={cols} searchText={(e) => `${e.id} ${e.name} ${e.type} ${e.by}`}
             tabs={REVIEW_STATES.map((s) => ({ key: s, label: s, match: (e: Ev) => status(e) === s }))}
-            filters={[{ key: "type", label: "Type", options: EVIDENCE_TYPES, get: (e: Ev) => e.type }, { key: "by", label: "Collected by", options: owners, get: (e: Ev) => e.by }]}
+            filters={[{ key: "type", label: "Type", options: EVIDENCE_TYPES, get: (e: Ev) => e.type }, { key: "by", label: "Collected by", options: owners, get: (e: Ev) => e.by }, { key: "by", label: "Collected by", options: Array.from(new Set(evidence.map((e: Ev) => String(e.by)))).sort(), get: (e: Ev) => String(e.by), more: true }]}
             onOpen={(e) => go(`/ws/evidence/${encodeURIComponent(e.id)}`)} exportName="evidence" />
         </div>
       </div>

@@ -26,6 +26,15 @@ export interface AuthProvider {
   mfaEnrolled(userId: string): Promise<boolean>;
   /** Removes every authenticator factor of the person (an approved MFA reset): they enrol again at their next sign-in. */
   resetMfa(userId: string): Promise<void>;
+  /** The person's confirmed authenticator apps (admin API, no session needed). */
+  listTotp(userId: string): Promise<{ id: string; label: string; createdAt: number }[]>;
+  /** Removes one authenticator app of the person (admin API). */
+  removeTotp(userId: string, factorId: string): Promise<void>;
+  /** Which confirmed authenticator app `code` belongs to, or null. A correct code raises this session to two-step level. */
+  verifyAnyTotp(t: { access: string; refresh: string }, code: string): Promise<string | null>;
+  /** Adds another authenticator app when one is already confirmed: `code` from a confirmed app first (Supabase needs the two-step level
+   *  to enrol another), then a new unconfirmed app. Null when the code is wrong. Returns the session tokens to confirm the new app with. */
+  enrollTotpStepUp(t: { access: string; refresh: string }, code: string, label: string): Promise<{ factorId: string; secret: string; uri: string; access: string; refresh: string } | null>;
 }
 /** Supabase Postgres (or the test stand-in). Only the server reaches it, with the service key; row level security denies everyone else. */
 export interface Store {
@@ -54,7 +63,7 @@ export interface Store {
 }
 /** `dir` holds companies, memberships and platform staff (directory.ts); `db` is the company-scoped Postgres access (db.ts) behind it, absent in
  *  the in-memory tests. */
-export interface Deps { auth: AuthProvider; store: Store; dir: import("./directory").Directory; /** The Admin Console's data (platform.ts). */ plat: import("./platform").Platform; /** Support access to company workspaces (support.ts). */ sup: import("./support").Support; /** The workspace modules' records (ws/store.ts) and evidence files (ws/files.ts). */ ws: import("./ws/store").WsStore; files: import("./ws/files").FileStore; site: { origin: string; rpId: string }; secret: string; now: () => number; db?: import("./db").Db;
+export interface Deps { auth: AuthProvider; store: Store; dir: import("./directory").Directory; /** The Admin Console's data (platform.ts). */ plat: import("./platform").Platform; /** Support access to company workspaces (support.ts). */ sup: import("./support").Support; /** Questions to Selvara support from the Help centre (helpdesk.ts); absent in tests that do not use it. */ help?: import("./helpdesk").HelpDesk; /** The workspace modules' records (ws/store.ts) and evidence files (ws/files.ts). */ ws: import("./ws/store").WsStore; files: import("./ws/files").FileStore; site: { origin: string; rpId: string }; secret: string; now: () => number; db?: import("./db").Db;
   /** The AI model (server/claude.ts); absent until the owner adds the key. */ ai?: import("./claude").AiClient;
   /** Outgoing webhook delivery (server/ws/webhooks.ts); tests use a stand-in. */ hooks?: import("./ws/webhooks").HookSender;
   /** Integrations (group 7): the network the connectors use and the platform credentials; both default to the real ones, tests use stand-ins. */ net?: import("./integrations/net").Net; intEnv?: import("./integrations/providers").IntegrationEnv;

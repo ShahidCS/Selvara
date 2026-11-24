@@ -10,6 +10,7 @@
    person completes it (SOD_MATRIX: "Critical needs a second approver"; the demonstration needed three people). "Send questionnaire" sends the company's vendor questionnaire to a member with the Vendor role (the vendor's contact);
    they answer it in their own workspace, and it locks when submitted until an admin or owner reopens it with a note. People are compared by
    user id. */
+import { isLogoDataUrl } from "@/lib/logoImage";
 import { VENDOR_CRITICAL_TTL_H, VENDOR_FINDING_SEVS, VENDOR_OUTCOMES, VENDOR_TIER_LIST, VENDOR_TIER_MONTHS, addMonthsIso, certStateOf, isoDayOf, vendorManageBlock, vendorScore } from "@/lib/rulesWs";
 import seed from "@/data/trustSeed.json";
 import type { Deps } from "../types";
@@ -33,7 +34,7 @@ const portalView = (q: PortalQuestionnaire, now: number) => {
 export interface Cert { id: string; type: string; expires: string; recordedBy: string; waived?: boolean; waiver?: { approvalId: string; approvedBy: string; requestedBy: string; reason: string } }
 export interface Finding { id: string; title: string; sev: string; status: "Open" | "Closed"; by: string; at: string; closedBy?: string; closeReason?: string }
 export interface Vendor {
-  id: string; name: string; cat: string; tier: string; score: number; status: "Active" | "In review" | "Needs evidence"; gate: "Pending" | "Approved" | "Blocked"; gateReason?: string;
+  id: string; name: string; cat: string; tier: string; score: number; /** R14: a 128px PNG data URL (lib/logoImage.ts), or none */ logo?: string; status: "Active" | "In review" | "Needs evidence"; gate: "Pending" | "Approved" | "Blocked"; gateReason?: string;
   nextReview: string; certs: Cert[]; findings: Finding[]; monitoring: unknown[]; apps: unknown[];
   reassessments: { at: string; by: string; recordedBy: string; score: number; outcome: string }[];
   requestedBy?: string; requestedById?: string; addedBy?: string; addedById?: string; approvedBy?: string; data?: boolean; requestId?: string;
@@ -239,6 +240,15 @@ export function vendorRoutes(h: WsHelpers) {
     await t.audit("vendor.reassessed", `${v.name}, score ${sc}, ${out}`, "Vendor");
     return { name: v.name, score: sc, outcome: out };
   });
+  /** R14: set or remove the vendor's logo (a small PNG, checked again here); no approval: it changes how the vendor looks, not its risk. */
+  const logo = manage(async (_d, t, rec, b) => {
+    const v = rec.data; const next = b.logo === null ? null : b.logo;
+    if (next !== null && !isLogoDataUrl(next)) invalid("The logo must be a PNG image of at most 64 KB.");
+    if (next === null) delete v.logo; else v.logo = next as string;
+    await save(t, rec);
+    await t.audit(next === null ? "vendor.logo.removed" : "vendor.logo.changed", v.name, "Vendor");
+    return { name: v.name, logo: next };
+  });
   const tier = manage(async (_d, t, rec, b) => {
     const v = rec.data; const to = str(b.tier, 20);
     if (!(VENDOR_TIER_LIST as readonly string[]).includes(to)) invalid("Choose a tier from the list");
@@ -362,7 +372,7 @@ export function vendorRoutes(h: WsHelpers) {
   return {
     "GET ws/data/vendors": data, "POST ws/vendors": create, "POST ws/vendor-requests/:id/approve": reqApprove, "POST ws/vendor-requests/:id/dismiss": reqDismiss,
     "POST ws/vendors/:id/gate": gate, "POST ws/vendors/:id/certificates": cert, "POST ws/vendors/:id/waivers": waiver, "POST ws/vendors/:id/findings": finding,
-    "POST ws/vendors/:id/findings/:fid/close": closeFinding, "POST ws/vendors/:id/reassessments": reassess, "POST ws/vendors/:id/tier": tier, "POST ws/vendors/:id/questionnaire": sendQ,
+    "POST ws/vendors/:id/findings/:fid/close": closeFinding, "POST ws/vendors/:id/reassessments": reassess, "POST ws/vendors/:id/tier": tier, "POST ws/vendors/:id/logo": logo, "POST ws/vendors/:id/questionnaire": sendQ,
     "POST ws/vendor-questionnaires/:id/reopen": reopenQ, "POST ws/vendors/:id/questionnaire/email": sendQByEmail, "POST ws/vendor-questionnaires/:id/link": portalRelink,
     "POST ws/vendor-questionnaires/:id/files/:q/link": portalFile,
     "POST ws/vendor-questionnaires/:id/answers": answer(false), "POST ws/vendor-questionnaires/:id/submit": answer(true),

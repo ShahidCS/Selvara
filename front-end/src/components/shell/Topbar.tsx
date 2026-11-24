@@ -1,5 +1,7 @@
+import { articleById } from "@/data/helpArticles";
 import { hasTour, startTour } from "@/components/kit/Tour";
-import { Icon } from "@/components/ui";
+import { AiMark, Icon } from "@/components/ui";
+import { approvalsWaiting } from "@/lib/approvalsWaiting";
 import { appStore, persist, setModState, useApp, useData, useModVersion } from "@/lib/store";
 import { API_ON, TITLE, landingPath, roleOf, allowedSpaces, modAllowed } from "@/lib/rbac";
 import { isDemoAccount } from "@/lib/session";
@@ -15,6 +17,8 @@ import { NotificationsBody } from "./NotificationsPanel";
 import { openShortcuts } from "./Shortcuts";
 
 /** Labels for the last breadcrumb segment of a form page (`/ws/policies/P-1/edit`, `/ws/controls/C-1/exception`, `/ws/controls/test/new`). */
+/** The Help centre's pages by name: Ask a question, My questions, or the article's title. */
+const helpCrumb = (p: string) => (p === "ask" ? "Ask a question" : p === "questions" ? "My questions" : articleById(p)?.title ?? p);
 const SUB_LABEL: Record<string, string> = { edit: "Edit", exception: "Request exception", new: "New", reassess: "Reassess", waiver: "Waiver", import: "Import", answer: "Add answer" };
 const THEME_NAME: Record<string, string> = { auto: "Auto (follows your device)", light: "Light", dark: "Dark" };
 
@@ -25,11 +29,12 @@ export function Topbar() {
   const collapsed = useApp((s) => s.collapsed); const mobOpen = useApp((s) => s.mobOpen);
   const company = useApp((s) => s.company); const companies = useApp((s) => s.companies);
   const me = roleOf(roleId);
-  const space = route.space === "admin" ? "admin" : "ws";
+  // the Help centre and Your account belong to no space: platform staff see them in the Admin Console's terms
+  const space = route.space === "admin" || (route.space === "auth" && !me.spaces.includes("ws")) ? "admin" : "ws";
   const unread = unreadCount(notificationsFor(roleId, space));
   const canAsk = modAllowed(roleId, "ws", "assistant");
   const [title] = TITLE[route.mod] || [route.mod];
-  const homeHref = route.space === "admin" ? "/admin/customers" : "/ws/overview";
+  const homeHref = space === "admin" ? "/admin/customers" : "/ws/overview";
   // the company area is named after the company (production: the session's company; demo: the persona's seeded company)
   const companyName = (API_ON ? company?.name : me.tenant ? CUSTOMERS[me.tenant]?.name : null) || "Your company";
   const themeIcon = theme === "dark" ? "moon" : theme === "light" ? "sun" : "auto";
@@ -69,12 +74,24 @@ export function Topbar() {
         {modAllowed(roleId, "ws", "work") ? <button role="menuitem" onClick={() => { close(); go("/ws/work"); }}><Icon name="user" />My work</button> : null}
         <button role="menuitem" onClick={() => { close(); go("/auth"); }}><Icon name="access" />Sign-in &amp; security</button>
         <button role="menuitemcheckbox" aria-checked={density === "compact"} onClick={() => { const d = density === "compact" ? "comfortable" : "compact"; appStore.set({ density: d }); persist(); close(); L.toast("Density: " + (d === "compact" ? "Compact" : "Comfortable")); }}><Icon name={density === "compact" ? "check" : "blank"} />Compact density</button>
+        <button role="menuitem" aria-label={`Theme: ${THEME_NAME[theme] ?? theme}. Change theme`} onClick={() => { close(); cycleTheme(); }}><Icon name={themeIcon} />Theme: {THEME_NAME[theme] ?? theme}</button>
         <button role="menuitem" onClick={() => { close(); openShortcuts(L); }}><Icon name="grid" />Keyboard shortcuts</button>
         <div className="div" />
         <button role="menuitem" onClick={doSignOut}><Icon name="back" />Sign out</button>
       </div>
     ));
   };
+  const waiting = approvalsWaiting(roleId);
+  const showTour = route.space !== "auth" && !route.param && hasTour(route.mod);
+  /** R4: help for this page, the shortcuts and (from the Help centre release) searchable articles. */
+  const helpMenu = (ev: React.MouseEvent) => L.popover(ev, (close) => (
+    <>
+      {showTour ? <button role="menuitem" onClick={() => { close(); startTour(route.mod); }}><Icon name="play" />Take the tour of this page</button> : null}
+      <button role="menuitem" onClick={() => { close(); openShortcuts(L); }}><Icon name="grid" />Keyboard shortcuts</button>
+      <button role="menuitem" onClick={() => { close(); go("/help"); }}><Icon name="search" />Help centre</button>
+      {space === "ws" ? <button role="menuitem" onClick={() => { close(); go("/help/ask"); }}><Icon name="message" />Ask Selvara support</button> : null}
+    </>
+  ), { label: "Help" });
   const openNotifications = () => L.openDrawer("Notifications", undefined, (close) => <NotificationsBody space={space} go={go} close={close} L={L} />);
 
   return (
@@ -82,7 +99,7 @@ export function Topbar() {
       <button className="icon-btn hamburger" aria-label="Open menu" title="Open menu" aria-expanded={mobOpen} aria-controls="sidebar" onClick={() => appStore.set({ mobOpen: true })}><Icon name="menu" /></button>
       <button className="icon-btn collapse-btn" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} title={`${collapsed ? "Expand" : "Collapse"} sidebar (⌘B)`} aria-expanded={!collapsed} aria-controls="sidebar" onClick={() => { appStore.set((s) => ({ collapsed: !s.collapsed })); persist(); }}><Icon name="rows" /></button>
       <nav className="crumbs" aria-label="Breadcrumb">
-        <Link href={homeHref}>{route.space === "admin" ? "Admin Console" : companyName}</Link>
+        <Link href={homeHref}>{space === "admin" ? "Admin Console" : companyName}</Link>
         {route.mod === "billing" && route.param && CUSTOMERS[route.param] ? (
           <>
             <span className="sep"><Icon name="chevron" /></span><Link href="/admin/billing">Billing</Link>
@@ -91,10 +108,10 @@ export function Topbar() {
         ) : (
           route.param ? (
             <>
-              <span className="sep"><Icon name="chevron" /></span><Link href={`/${route.space}/${route.mod}`}>{title}</Link>
+              <span className="sep"><Icon name="chevron" /></span><Link href={route.space === "auth" ? `/${route.mod}` : `/${route.space}/${route.mod}`}>{title}</Link>
               <span className="sep"><Icon name="chevron" /></span>
               {route.sub ? <><Link href={route.param === "test" ? `/${route.space}/${route.mod}` : `/${route.space}/${route.mod}/${encodeURIComponent(route.param)}`}>{route.param === "test" ? "Tests" : route.param}</Link><span className="sep"><Icon name="chevron" /></span><span className="cur" aria-current="page">{SUB_LABEL[route.sub] ?? route.sub}</span></>
-                : <span className="cur" aria-current="page">{route.param === "new" || route.param === "import" || route.param === "answer" ? SUB_LABEL[route.param] : route.param}</span>}
+                : <span className="cur" aria-current="page">{route.mod === "help" ? helpCrumb(route.param) : route.param === "new" || route.param === "import" || route.param === "answer" ? SUB_LABEL[route.param] : route.param}</span>}
             </>
           ) : <><span className="sep"><Icon name="chevron" /></span><span className="cur" aria-current="page">{title}</span></>
         )}
@@ -103,12 +120,12 @@ export function Topbar() {
       <div role="search" aria-label="Site" style={{ display: "contents" }}>
       <button className="top-search" onClick={L.openPalette} aria-label="Jump to a module (Command or Ctrl K)" title="Jump to a module (⌘K)"><Icon name="search" /><span className="ph">Jump to module…</span><span className="kbd">⌘K</span></button>
       </div>
-      {canAsk ? <button className="icon-btn" aria-label="Ask AI (Command or Ctrl J)" title="Ask AI (⌘J)" onClick={() => { setModState("assistant.from", window.location.pathname); go("/ws/assistant"); }}><Icon name="assistant" /></button> : null}
+      {canAsk ? <button className="icon-btn ask-ai" aria-label="Ask AI (Command or Ctrl J)" title="Ask AI (⌘J)" onClick={() => { setModState("assistant.from", window.location.pathname); go("/ws/assistant"); }}><AiMark size={20} /></button> : null}
       {API_ON ? null : <button className="icon-btn nbell" aria-label={unread ? `Notifications, ${unread > 9 ? "9+" : unread} unread` : "Notifications"} title="Notifications" aria-haspopup="dialog" onClick={openNotifications}>
         <Icon name="bell" />{unread ? <span className="nbadge" aria-hidden="true">{unread > 9 ? "9+" : unread}</span> : null}
       </button>}
-      {route.space !== "auth" && !route.param && hasTour(route.mod) ? <button className="icon-btn" aria-label="Take the tour of this page" title="Take the tour of this page" onClick={() => startTour(route.mod)}><Icon name="play" /></button> : null}
-      <button className="icon-btn" aria-label={`Theme: ${THEME_NAME[theme] ?? theme}. Change theme`} title={`Theme: ${THEME_NAME[theme] ?? theme} (click for ${THEME_NAME[nextTheme]})`} onClick={cycleTheme}><Icon name={themeIcon} /></button>
+      {waiting && route.space === "ws" ? <button className="appr-pill" onClick={() => go("/ws/work?tab=tasks")} aria-label={`${waiting} approval${waiting === 1 ? "" : "s"} waiting for you`}><AiMark size={28} /><span className="appr-t">{waiting} approval{waiting === 1 ? "" : "s"} waiting</span></button> : null}
+      <button className="icon-btn" aria-label="Help" title="Help" aria-haspopup="menu" onClick={helpMenu}><Icon name="help" /></button>
       <div className="top-div" aria-hidden="true" />
       <button className="top-user" aria-haspopup="menu" aria-expanded="false" onClick={roleMenu}>
         <span className="avatar" aria-hidden="true">{me.initials}</span>

@@ -68,7 +68,7 @@ export function adminRoutes(h: AdminHelpers): Record<string, H> {
       now, h.entry(d, r, c.p, c.a, "approval.platform-company-create.requested", title));
     return { status: 202, body: { pending: true, id } };
   });
-  /** suspend | reactivate (a request another super admin approves, with a reason) | admin-link (the first admin's invitation link, shown once). */
+  /** suspend | reactivate (a request another super admin approves, with a reason) | admin-link (emails the first admin's invitation link). */
   const companyAction = elevated(async (d, r, c) => {
     const ref = s(r.path[2], 40).toLowerCase(); const action = r.path[3]; const now = d.now();
     if (!["suspend", "reactivate", "admin-link"].includes(action)) return err(404, "Not found.");
@@ -79,7 +79,8 @@ export function adminRoutes(h: AdminHelpers): Record<string, H> {
       if (!v) return err(409, "This company has no pending first-admin invitation from the platform.");
       const link = `${d.site.origin}/login#invite=${token}`;
       const m = await sendMail(d, v.email, { t: "first-admin", company: co.name, link, expires: new Date(v.expiresAt).toISOString().slice(0, 16).replace("T", " ") + " UTC" }, { tenantId: null, actor: c.p.person, ip: r.ip });
-      return ok(m.sent ? { emailed: true, email: v.email, expiresAt: v.expiresAt } : { emailed: false, mail: m.reason, link, email: v.email, expiresAt: v.expiresAt });
+      // The link goes only by email (owner decision 2026-11-24; DA-09): never to the platform super admin's browser.
+      return ok(m.sent ? { emailed: true, email: v.email, expiresAt: v.expiresAt } : { emailed: false, mail: m.reason, email: v.email, expiresAt: v.expiresAt });
     }
     const kind: PlatformKind = action === "suspend" ? "platform-company-suspend" : "platform-company-reactivate";
     if (action === "suspend" ? co.status !== "Active" : co.status !== "Suspended") return err(409, `The company is ${co.status.toLowerCase()}.`);

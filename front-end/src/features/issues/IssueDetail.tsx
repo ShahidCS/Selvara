@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { RecordHistory } from "@/components/kit/RecordHistory";
+import { ExplainCard } from "@/components/kit/ExplainCard";
+import { explainIssue } from "@/lib/insights";
 import { Empty, Icon, Page, Stepper, StatusChip } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { bumpData, useApp, useData } from "@/lib/store";
@@ -48,7 +51,7 @@ export function IssueDetail({ id }: { id: string }) {
             <div style={{ fontWeight: 600 }}><Icon name="clock" /> Closure awaiting verification</div>
             <div style={{ fontSize: 12.5, color: "var(--muted)", margin: "3px 0 8px" }}>Proposed by {pend.requestedBy}: {i.closure?.note}</div>
             <div className="btngrp">
-              <button className="btn btn-primary sm" {...dis(verifyWhy)} onClick={() => openDecideClosure(L, id, "verify")}><Icon name="check" />Verify and close</button>
+              <button className="btn btn-primary btn-decide sm" {...dis(verifyWhy)} onClick={() => openDecideClosure(L, id, "verify")}><Icon name="check" />Verify and close</button>
               <button className="btn btn-secondary sm" {...dis(verifyWhy)} onClick={() => openDecideClosure(L, id, "reject")}><Icon name="x" />Reject</button>
               {iAm(pend.requestedBy) ? <button className="btn btn-ghost sm" onClick={() => attempt(L, async () => { await svc.withdrawClosure(id); L.toast("Closure withdrawn"); bumpData(); })}><Icon name="back" />Withdraw</button> : null}
             </div>
@@ -87,12 +90,13 @@ export function IssueDetail({ id }: { id: string }) {
                   <input type="checkbox" checked={!!t.done} disabled={!!writeWhy} onChange={() => toggle(ti)} />
                   <span style={t.done ? { textDecoration: "line-through", color: "var(--muted)" } : undefined}>{t.text}</span>
                 </label>
-              )) : <p className="field help">No tasks yet.</p>}
+              )) : <Empty compact icon="issues" title="No tasks yet" />}
               <button className="btn btn-ghost sm" {...dis(writeWhy)} onClick={() => openAddTask(L, id)}><Icon name="plus" />Add task</button>
             </div></div>
           </div>
 
           <aside className="rec-side">
+            <ExplainCard e={explainIssue(i)} record={{ mod: "issues", id: i.id }} />
             <div className="card"><div className="c-head"><h3>Details</h3></div><div className="c-body">
               <dl className="meta-grid"><dt>Severity</dt><dd><StatusChip s={i.sev} /></dd><dt>Owner</dt><dd>{i.owner}</dd><dt>Due</dt><dd><DueText due={i.due} />{i.dueDate ? <span style={{ color: "var(--muted)" }}> ({i.dueDate})</span> : null}</dd><dt>Status</dt><dd><StatusChip s={i.status} /></dd>
                 {delWhy && !writeWhy ? <><dt>Delete</dt><dd style={{ color: "var(--muted)" }}>{delWhy}</dd></> : null}
@@ -109,6 +113,7 @@ export function IssueDetail({ id }: { id: string }) {
                 <button className="btn btn-ghost sm" {...dis(writeWhy)} onClick={() => openLink(L, id, "risk")}><Icon name="risk" />Link risk</button>
               </div>
             </div></div>
+            <RecordHistory id={id} />
           </aside>
         </div>
       </div>
