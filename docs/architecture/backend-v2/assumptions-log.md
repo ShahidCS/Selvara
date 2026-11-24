@@ -17,7 +17,8 @@
 | A-05 | Global control plane may hold identity data outside a tenant's region | P1 | Legal (OD-08) | Open (owner-accepted; legal pending) | HI |
 | A-06 | All compliance output is a draft | P1 | Policy | Validated | |
 | A-07 | One project holds launch tenants; second cell past a measured threshold | P1 | J-PERF | Open (merged with A-11, A-15, A-60 under CR-1) | HI |
-| A-08 | Two people hold R-A and R-B | P1 | OQ-12 | **Validated** (OQ-12 accepted, spine S0; summary §8) (rev P3) | |
+| A-08 | Two people hold R-A and R-B | P1 | OQ-12 | **Superseded by A-08b** (rev P5): the Phase 5 sign-off shows one person in both roles; owner instruction of 2026-11-24 (ADR-021) | |
+| A-08b | Two different people take part in every platform four-eyes action. R-A and R-B may be held by one person in combined-role mode, with R-DEP as the mandatory second person (ADR-021) | P5 | Owner acceptance of ADR-021; R-DEP appointed and recorded in SOD_MATRIX | **Open**: pending ADR-021 acceptance and R-DEP delegation record (rev P5) | |
 | A-09 | Supabase features exist (SAML, PITR, Queues, pg_cron, file ceiling, Vault) | P1 | VC-01, VC-02, VC-04, VC-06 | Open | HI |
 | A-10 | Crypto-shredding acceptable for erasure in backups (UK GDPR, EU GDPR, UAE PDPL) | P1 | Legal | Open | HI |
 | A-11 | Postgres handles launch schema count | P1 | J-PERF | Open (CR-1) | HI |
@@ -91,7 +92,7 @@
 
 | ID | Change | Source |
 |---|---|---|
-| A-08 | Validated: two people hold R-A and R-B | OQ-12, owner decisions of 2026-11-23 |
+| A-08 | Superseded by A-08b (ADR-021, owner instruction OD-16 of 2026-11-24) (rev P5) | OQ-12; OD-16 |
 | A-19 | Validated: external cloud account accepted | OD-02 |
 | A-25 | Closed: 25 frameworks; licensing moves to OD-09 and DU-25 | OQ-15 |
 | A-29 | Closed: control-plane fields use the platform key | DA-05 |
