@@ -5,7 +5,7 @@ Two layers, both run in CI on every push and pull request.
 | Layer | Tool | Location | Needs a browser |
 | --- | --- | --- | --- |
 | Unit (pure logic and services, Node environment) | Vitest 5.1.0 | `tests/unit/*.test.ts` | No |
-| End to end (built app, real Chromium) | Playwright Test 1.65.0 | `e2e/*.spec.ts` | Yes |
+| End to end (built app, real Chromium) | Playwright Test 1.65.1 | `e2e/*.spec.ts` | Yes |
 
 All commands run from `front-end/`.
 
