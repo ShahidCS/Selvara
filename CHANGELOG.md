@@ -6,7 +6,11 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ### Changed
 - Staging moves to a `staging` branch: pushing a commit that is already on `main` to it deploys two Vercel previews, **Staging demo** (demonstration build, for demos) and **Staging live** (production build on the staging Supabase project, off until `STAGING_LIVE_ENABLED=true`). A commit that is not on `main` deploys nothing. A merge to `main` runs the gates only. Production is unchanged (signed tags).
+- README refreshed for v0.3.1: 15 new screenshots (6 new screens: authenticator set-up, Settings, Help centre, Exchange Rates, Platform Security, AI governance), account security and layout features, staging previews, project status, roadmap and the documentation index.
 - Docs: README and CONTROLS no longer say most modules are browser-only; EX-04 records the 2026-11-24 re-assessment of the Vercel CLI advisories.
+
+### Fixed
+- The sign-in card and the authenticator set-up text are left-aligned: justified text in a narrow column left wide word gaps.
 
 ## [0.3.1] - 2026-11-24
 

@@ -14,7 +14,7 @@ export function AuthenticatorSetup({ secret, uri, email }: { secret: string; uri
       {show === "qr" ? (
         <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
           <QrCode value={uri} label="QR code to add Selvara to your authenticator app" />
-          <p style={{ margin: 0, fontSize: 13, maxWidth: "34ch", lineHeight: 1.5 }}>Open your authenticator app (such as Microsoft Authenticator, Google Authenticator or 1Password), choose to add an account, and scan this code.</p>
+          <p style={{ margin: 0, fontSize: 13, maxWidth: "34ch", lineHeight: 1.5, textAlign: "left", hyphens: "manual" }}>Open your authenticator app (such as Microsoft Authenticator, Google Authenticator or 1Password), choose to add an account, and scan this code.</p>
         </div>
       ) : (
         <div style={{ display: "grid", gap: 8, fontSize: 13 }}>

@@ -1237,6 +1237,8 @@ main#content{background:var(--surface);margin:0 8px 8px 0;border-radius:0 0 var(
    so text stays left-aligned there. Empty states keep their own alignment. */
 .field.help,.field .help,.page-head .sub,.card .c-body p,.brief-h,.banner>span{text-align:justify;hyphens:auto;-webkit-hyphens:auto}
 .card .c-body .empty p,.empty p{text-align:inherit;hyphens:manual}
+/* the sign-in card and other narrow columns are too narrow for justified text: even word gaps need a wide line */
+.auth-card .c-body p{text-align:left;hyphens:manual;-webkit-hyphens:manual}
 @media (max-width:600px){.field.help,.field .help,.page-head .sub,.card .c-body p,.brief-h,.banner>span{text-align:left;hyphens:manual}}
 /* A plain form (no layout of its own) spaces its fields: label groups, help text, segmented controls and the submit button never touch
    (owner review, 2026-11-24). Forms that lay themselves out (.rec-form, or a gap of their own) are left alone; in block flow the margins
