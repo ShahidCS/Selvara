@@ -37,7 +37,7 @@ export function SettingsTab({ manage }: { manage: boolean }) {
   const brand: BrandId = isBrand(T.brand) ? T.brand : "violet";
   const enter = (key: "controlSla" | "critSla", v: string) => (e: React.KeyboardEvent) => { if (e.key === "Enter") commit(key, v); };
   return (
-    <div style={{ maxWidth: 640 }}>
+    <div className="fields-cap">
       {/* R38: read first; Edit opens the same fields, each applying as it changes */}
       {!editing ? (
         <KvCard id="ts-kv" title="Review cycles, appetite and SLAs" note="Used for review reminders, the risk appetite line and remediation due dates."

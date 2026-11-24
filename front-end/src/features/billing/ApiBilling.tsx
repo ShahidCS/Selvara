@@ -208,7 +208,7 @@ function PlanDecide({ id, accept, close }: { id: string; accept: boolean; close:
 function Prices({ b, lock }: { b: api.Billing; lock?: string }) {
   const L = useLayer();
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 720 }}>
+    <div className="fields-cap" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <p className="field help" style={{ margin: 0 }}>Monthly prices in US dollars; an invoice converts them with the rate in force on its issue day and adds the tax of the account&apos;s country. Version {b.prices.version}{b.prices.at ? `, changed ${utcMin(b.prices.at)} (${b.prices.by})` : " (reference catalogue)"}.</p>
       <div className="tbl-wrap"><table className="tbl"><thead><tr><th scope="col">Plan</th><th scope="col" className="r">Per month</th><th scope="col" className="r">Seats</th></tr></thead>
         <tbody>{Object.entries(b.prices.plans).map(([k, p]) => <tr key={k}><td className="strong">{k}</td><td className="r num">{minorMoney(p.monthly, "USD")}</td><td className="r num">{p.seats}</td></tr>)}</tbody></table></div>

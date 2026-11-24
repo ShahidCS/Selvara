@@ -1242,3 +1242,6 @@ main#content{background:var(--surface);margin:0 8px 8px 0;border-radius:0 0 var(
    (owner review, 2026-11-24). Forms that lay themselves out (.rec-form, or a gap of their own) are left alone; in block flow the margins
    collapse with the sign-in page's own spacing. */
 form:not(.rec-form):not([style*="gap"])>.field+*,form:not(.rec-form):not([style*="gap"])>p+.field{margin-top:12px}
+/* A form's text runs the full width of its card; only its inputs, selects, option buttons and button rows keep a readable width. */
+.fields-cap .input,.fields-cap .select,.fields-cap textarea,.fields-cap .btngrp{max-width:640px}
+.fields-cap .seg{width:fit-content;max-width:100%}

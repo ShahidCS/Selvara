@@ -5,7 +5,7 @@ import { DEMO_HASH_NOTE, exportsRegister, linkOk } from "@/features/adminlog/ser
 /** Prototype: alogChain. Entry rows show a per-link Sealed/Broken chip (hash AND predecessor link). Text only. */
 export function AdminChainView({ ok, onVerify, can }: { ok: boolean; onVerify: () => void; can: boolean }) {
   return (
-    <div style={{ padding: 16, maxWidth: 900 }}>
+    <div style={{ padding: 16 }}>
       <div className="card" style={{ boxShadow: "none", background: ok ? "var(--ok-bg)" : "var(--bad-bg)", borderColor: "transparent", marginBottom: 14 }}>
         <div className="c-body" style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <Icon name={ok ? "check" : "alert"} style={{ color: ok ? "var(--ok-ink)" : "var(--bad-ink)", flex: "none" }} />
@@ -41,7 +41,7 @@ export function AdminChainView({ ok, onVerify, can }: { ok: boolean; onVerify: (
 export function AdminExportsView({ onGenerate, can }: { onGenerate: () => void; can: boolean }) {
   const ex = exportsRegister();
   return (
-    <div style={{ padding: 16, maxWidth: 900 }}>
+    <div style={{ padding: 16 }}>
       <div className="card" style={{ boxShadow: "none", marginBottom: 14 }}><div className="c-body">
         <div className="sectitle" style={{ marginTop: 0 }}>Evidence export package</div>
         <p className="field help" style={{ margin: "0 0 10px" }}>Generate a sealed package of the audit log and RoPA register with a hash manifest for auditors. Append-only; each package is recorded in the exports register. Demo digest (FNV-1a), not SHA-256 or a signature: a real package must be signed server-side.</p>

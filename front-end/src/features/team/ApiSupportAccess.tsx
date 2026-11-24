@@ -54,7 +54,7 @@ export function ApiSupportAccess() {
           <button className="btn btn-secondary sm" onClick={() => revoke(live)}>Revoke now</button>
         </div>
       ) : (
-        <form onSubmit={give} noValidate style={{ maxWidth: 640, marginBottom: 12 }}>
+        <form onSubmit={give} noValidate className="fields-cap" style={{ marginBottom: 12 }}>
           <div className="field"><label htmlFor="sg-reason">Why Selvara support needs access (at least {REASON_MIN} characters)</label>
             <textarea className="input" id="sg-reason" rows={2} maxLength={300} style={{ resize: "vertical" }} value={reason} onChange={(e) => { setReason(e.target.value); setFerr(""); }} aria-invalid={!!ferr} aria-describedby="sg-err" /></div>
           <div className="field"><Segmented<string> label="For" value={hours} onChange={setHours} options={SUPPORT_GRANT_HOURS.map((h) => ({ value: String(h), label: `${h} hour${h === 1 ? "" : "s"}` }))} /></div>

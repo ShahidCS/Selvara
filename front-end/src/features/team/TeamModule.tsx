@@ -91,7 +91,7 @@ function TeamTabs() {
               onOpen={(p) => openPerson(p.id)} exportName="members" />
             </>
           ) : view === "rules" ? <><PendingApprovals kinds={["team-rule"]} title="Pending approvals (rules)" subjectLabel="Rule" /><RulesTab manage={manage} /></> : view === "retention" ? <><PendingApprovals kinds={["team-retention", "team-hold"]} title="Pending approvals (retention and holds)" subjectLabel="Records" /><RetentionTab manage={manage} /></> : view === "settings" ? <SettingsTab manage={manage} /> : view === "gates" ? (
-            <div style={{ maxWidth: 640 }}>
+            <div className="fields-cap">
               <div className="sectitle" style={{ marginTop: 0 }}>Procurement gate approvers</div>
               <Table cols={[{ t: "Approver" }, { t: "" }]}>
                 {T.approvers.map((a, i) => (
