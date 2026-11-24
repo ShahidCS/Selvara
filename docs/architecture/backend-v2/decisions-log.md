@@ -33,7 +33,7 @@ Owner decisions OD-01 to OD-11, OQ-14 and OQ-15 are recorded in [phase2/00-phase
 |---|---|---|
 | OD-12 | Contract a fractional senior engineer as the technical code reviewer at every release gate (2K K-M06). | P4-A3-18, once appointed |
 | OD-13 | The owner sets a budget ceiling and per-release target dates before V2-R0, with a mandatory re-plan after V2-R0 and the stop triggers in 2K K-M07. | P4-A3-17, once the figures are recorded |
-| OD-14 | The owner verifies the vendor facts (VC list) against the vendors' own documentation before the Phase 5 gate. The design session cannot reach the vendor sites. The full list is VC-01 to VC-22 (P3-X3 §2.7) plus VC-23 to VC-34, added in the Phase 5 documentation pass: see [assumptions-log.md, "Vendor facts to verify (OD-14)"](assumptions-log.md#vendor-facts-to-verify-od-14) (rev P5). | P4-A1-08, together with the DR fallbacks in 2H and ADR-004 |
+| OD-14 | The owner verifies the vendor facts (VC list) against the vendors' own documentation before the Phase 5 gate. The design session cannot reach the vendor sites. The full list is VC-01 to VC-22 (P3-X3 §2.7) plus VC-23 to VC-34, added in the Phase 5 documentation pass: see [assumptions-log.md, "Vendor facts to verify (OD-14)"](assumptions-log.md#vendor-facts-to-verify-od-14-rev-p5) (rev P5). | P4-A1-08, together with the DR fallbacks in 2H and ADR-004 |
 | OD-15 | The C1-01 / R-02 isolation acceptance is re-confirmed, with added hardening ISO-HARD (2F, ADR-002). | P4-A1-01 (accepted residual) |
 
 ### Owner decisions pending at the Phase 5 gate (rev P5)
