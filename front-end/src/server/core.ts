@@ -28,7 +28,9 @@ import type { Company, Lockout, Log, Outcome } from "./directory";
 import type { Deps, Profile, SessionRow } from "./types";
 
 export interface Req { method: string; path: string[]; body: Record<string, unknown>; headers: Record<string, string | undefined>; cookies: Record<string, string>; ip: string; /** Raw bytes, only for the upload routes (RAW_ROUTES). */ raw?: Uint8Array }
-export interface Res { status: number; body?: unknown; cookies?: string[] }
+/** headers: response headers a handler may add; the API route passes on only those named in RESPONSE_HEADERS. */
+export interface Res { status: number; body?: unknown; cookies?: string[]; headers?: Record<string, string> }
+export const RESPONSE_HEADERS = new Set(["clear-site-data"]);
 const ok = (body?: unknown, cookies?: string[]): Res => ({ status: body === undefined ? 204 : 200, body, cookies });
 const err = (status: number, error: string): Res => ({ status, body: { error } });
 export const SIGNIN_FAILED = "Email or password is incorrect.";
@@ -281,7 +283,8 @@ const signOut: H = async (d, r) => {
       await d.plat.endElevation(c.p.id, d.now(), entry(d, r, actorOf(c.p, c.a), "platform.elevation.ended", "signed out"));
     }
   }
-  return ok(undefined, [cookie("", 0)]);
+  // The browser also clears this site's cache and storage (preferences, cached pages): a shared computer keeps nothing of the session.
+  return { ...ok(undefined, [cookie("", 0)]), headers: { "Clear-Site-Data": '"cache", "storage"' } };
 };
 /** A request to join names the company by its code. The answer is the same whether or not the email or the code is known, so neither can be
  *  probed. A new person's account stays unconfirmed in Supabase (it cannot sign in) until an admin of that company approves; a person who is

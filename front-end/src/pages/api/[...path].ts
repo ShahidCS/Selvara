@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { handle } from "@/server/core";
+import { handle, RESPONSE_HEADERS } from "@/server/core";
 import { clientAddress, deps } from "@/server/env";
 import { EVIDENCE_FILE_MAX } from "@/lib/rulesWs";
 
@@ -43,6 +43,7 @@ export default async function api(req: NextApiRequest, res: NextApiResponse) {
   const headers = Object.fromEntries(Object.entries(req.headers).map(([k, v]) => [k, Array.isArray(v) ? v.join(",") : v]));
   const out = await handle(d, { method: String(req.method), path, body, raw, headers, cookies: parseCookies(req.headers.cookie), ip: clientAddress(req.headers, req.socket.remoteAddress) });
   if (out.cookies) res.setHeader("Set-Cookie", out.cookies);
+  for (const [k, v] of Object.entries(out.headers ?? {})) if (RESPONSE_HEADERS.has(k.toLowerCase())) res.setHeader(k, v);
   res.status(out.status);
   if (out.body === undefined) res.end(); else res.json(out.body);
 }

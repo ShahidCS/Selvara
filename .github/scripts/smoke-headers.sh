@@ -27,6 +27,8 @@ check() { # path expected-status
   has "referrer-policy: strict-origin-when-cross-origin" && echo "ok   referrer-policy" || { echo "FAIL referrer-policy"; fail=1; }
   has "permissions-policy:"                    && echo "ok   permissions-policy"      || { echo "FAIL permissions-policy"; fail=1; }
   has "cross-origin-opener-policy: same-origin" && echo "ok   COOP"                    || { echo "FAIL cross-origin-opener-policy"; fail=1; }
+  has "cross-origin-resource-policy: same-origin" && echo "ok   CORP"                  || { echo "FAIL cross-origin-resource-policy"; fail=1; }
+  has "x-permitted-cross-domain-policies: none" && echo "ok   cross-domain policies none" || { echo "FAIL x-permitted-cross-domain-policies"; fail=1; }
   has "strict-transport-security:"             && echo "ok   HSTS"                    || { echo "FAIL strict-transport-security"; fail=1; }
   has "x-powered-by:"                          && { echo "FAIL x-powered-by is exposed"; fail=1; } || echo "ok   no x-powered-by"
 }

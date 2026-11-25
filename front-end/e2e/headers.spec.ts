@@ -21,6 +21,12 @@ for (const path of ["/", "/auth", "/vendor-portal", "/ws/overview", "/admin/cust
     expect(h["referrer-policy"]).toBe("strict-origin-when-cross-origin");
     expect(h["permissions-policy"]).toContain("camera=()");
     expect(h["cross-origin-opener-policy"]).toBe("same-origin");
+    expect(h["cross-origin-resource-policy"]).toBe("same-origin");
+    expect(h["x-permitted-cross-domain-policies"]).toBe("none");
+    expect(csp).toContain("frame-src 'none'");
+    expect(csp).toContain("worker-src 'self'");
+    for (const f of ["microphone=()", "bluetooth=()", "display-capture=()", "browsing-topics=()"]) expect(h["permissions-policy"]).toContain(f);
+    expect(h["permissions-policy"], "passkeys stay available").toContain("publickey-credentials-get=(self)");
     expect(h["strict-transport-security"]).toMatch(/max-age=\d{7,}/);
     expect(h["x-powered-by"], "framework banner disabled").toBeUndefined();
   });

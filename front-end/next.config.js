@@ -16,11 +16,23 @@ const csp = [
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
   `connect-src 'self'${apiOrigin ? " " + apiOrigin : ""}${isDev ? " ws:" : ""}`,
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "frame-src 'none'", // the app never frames another page
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
 ].join("; ");
+
+/* Permissions-Policy: every powerful browser feature is off, except passkeys (WebAuthn, platform super admins) and copying
+ * to the clipboard (keys and links), which this site alone may use. */
+const permissions = [
+  "camera=()", "microphone=()", "geolocation=()", "payment=()", "usb=()", "bluetooth=()", "hid=()", "serial=()", "midi=()",
+  "accelerometer=()", "gyroscope=()", "magnetometer=()", "display-capture=()", "idle-detection=()", "screen-wake-lock=()",
+  "xr-spatial-tracking=()", "browsing-topics=()",
+  "publickey-credentials-get=(self)", "publickey-credentials-create=(self)", "clipboard-write=(self)",
+].join(", ");
 
 module.exports = {
   reactStrictMode: true,
@@ -33,8 +45,11 @@ module.exports = {
         { key: "X-Content-Type-Options", value: "nosniff" },
         { key: "X-Frame-Options", value: "DENY" },
         { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-        { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
+        { key: "Permissions-Policy", value: permissions },
         { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+        // Other sites cannot load this site's files (scripts, fonts, API answers) into their pages.
+        { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
+        { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
         { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
       ],
     }];
