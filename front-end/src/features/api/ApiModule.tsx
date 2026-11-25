@@ -133,8 +133,9 @@ function ApiTabs() {
             <DataTable<Test> id="custom-tests" label="Custom tests" rows={svc.API.tests} rowKey={(x) => x.id} columns={testCols} searchText={(x) => `${x.name} ${x.target}`} exportName="custom-tests" />
           ) : (
             <>
-              <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--muted)" }}>{API_ON ? "Events your systems pushed to Selvara (POST /api/v1/events with a read/write key) and deliveries to your webhooks, newest first:" : "Push API: private resources can be pushed to Selvara over the event stream for custom tests. Recent deliveries:"}</div>
-              <DataTable<Ev> id="api-events" label="Event stream" rows={svc.API.events} rowKey={(r) => r.id ?? `${r.ev}|${r.res}|${r.when}`} columns={evCols} searchText={(r) => `${r.ev} ${r.res}`} exportName="api-events" />
+              <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--muted)" }}>{API_ON ? <>Events your systems pushed to Selvara (<code>POST /api/v1/events</code> with a read/write key) and deliveries to your webhooks, newest first:</> : "Push API: private resources can be pushed to Selvara over the event stream for custom tests. Recent deliveries:"}</div>
+              <DataTable<Ev> id="api-events" label="Event stream" rows={svc.API.events} rowKey={(r) => r.id ?? `${r.ev}|${r.res}|${r.when}`} columns={evCols} searchText={(r) => `${r.ev} ${r.res}`} exportName="api-events"
+                emptyText="No events yet. Events appear here when your systems push to Selvara or a webhook is delivered." />
             </>
           )}
         </div>

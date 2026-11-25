@@ -39,7 +39,7 @@ export function RulesTab({ manage }: { manage: boolean }) {
                 <td style={{ fontSize: 12 }}>{last ? `${fmt(last.at)}: ${last.acted} of ${last.matched}${last.capped ? " (capped)" : ""}` : "Never"}</td>
                 <td className="r">{manage ? (
                   <div className="btngrp" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
-                    <button className="btn btn-ghost sm" aria-label={`Preview: ${r.name}`} onClick={() => L.openModal(`Preview: ${r.name}`, (close) => <Preview id={r.id} close={close} />)}>Preview</button>
+                    <button className="btn btn-ghost sm" aria-label={`Preview: ${r.name}`} onClick={() => L.openModal(`Preview: ${r.name}`, <Preview id={r.id} />)}>Preview</button>
                     {r.status === "Draft" || r.status === "Paused" ? <button className="btn btn-ghost sm" aria-label={`Turn on: ${r.name}`} onClick={() => L.openModal(`Turn on: ${r.name}`, (close) => <Reason close={close} label="Request approval" run={(why) => { gov.requestEnable(r.id, why); L.toast("A different company admin must approve turning it on"); }} />)}>Turn on</button> : null}
                     {r.status === "Active" ? <><button className="btn btn-ghost sm" aria-label={`Run now: ${r.name}`} onClick={() => act1(() => { const x = gov.runRule(r.id); L.toast(`${x.acted} action${x.acted === 1 ? "" : "s"} taken`); }, "Rule ran")}><Icon name="play" />Run now</button>
                       <button className="btn btn-ghost sm" aria-label={`Pause: ${r.name}`} onClick={() => act1(() => gov.pauseRule(r.id), "Rule paused")}>Pause</button></> : null}
@@ -55,13 +55,12 @@ export function RulesTab({ manage }: { manage: boolean }) {
   );
 }
 
-function Preview({ id, close }: { id: string; close: () => void }) {
+function Preview({ id }: { id: string }) {
   const p = gov.previewRule(id);
   return (
     <>
       <p style={{ margin: "0 0 8px", fontSize: 13 }}>{p.matches.length ? `It would act on ${p.matches.length} record${p.matches.length === 1 ? "" : "s"} now${p.capped ? `, ${gov.RULE_LIMITS.MAX_ACTIONS_PER_RUN} per run` : ""}. Nothing is changed by a preview.` : "Nothing matches now."}</p>
       <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, maxHeight: 240, overflow: "auto" }}>{p.matches.map((m) => <li key={m.id}>{m.id}: {m.title} ({m.owner})</li>)}</ul>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12 }}><button className="btn btn-secondary" onClick={close}>Close</button></div>
     </>
   );
 }

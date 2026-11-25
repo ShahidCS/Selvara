@@ -5,6 +5,16 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ## [Unreleased]
 
 ### Changed
+- Shared components, second part of the design brief (docs/architecture/DESIGN_SYSTEM.md):
+  - **Dialogs:** a close icon in the title, one footer, and no separate Close button. This removes the extra Close in "Add an authenticator app".
+  - **Change role:** uses a new listbox that opens under its field instead of a native menu over the dialog. It lists every role a member can hold, and explains why a role can't be given.
+  - **Empty lists:** they say "nothing yet" instead of "Nothing matches these filters" unless a search or filter is on. The API event stream says "No events yet". A full empty state keeps a sensible height.
+  - **Forms:** helper text no longer runs into the next label. Section labels have one spacing. Placeholders are lighter and italic. Create a company puts its inputs on one grid row.
+  - **AI Assistant settings:** uses one settings-row layout across the full width.
+  - **Platform Security:** header badges look the same, and checklist icons and "Planned" badges line up.
+  - **Your account:** it is called "Your account" everywhere, shows the Settings menu, and no longer puts cards inside a card. "Sign out other sessions" looks enabled when it is, and says why when it isn't.
+  - **Integrations:** connector cards share one grid and footer, with the same Set up button, disabled with a reason when the connector isn't available.
+- **Security:** company admins no longer see the platform's environment variable names when a connector isn't configured.
 - Layout and text, fixed once in the shared components and tokens (docs/architecture/DESIGN_SYSTEM.md, "Fix once, apply everywhere"):
   - **Text:** text is left-aligned everywhere and never hyphenated by the browser (reverses the justified-text decision of 2026-11-24). Code and identifiers use one monospace style that wraps inside its card. The greeting says "Hello" from midnight to 04:59, then "Good Morning", "Good Afternoon" or "Good Evening" (each word capitalised).
   - **KPI tiles:** a status badge sits in a fixed top-right slot, never beside the value. Values use one size, stay on one line and use tabular figures. Long labels end in an ellipsis with the full text on hover. Strips of 5 or 6 tiles use 3 columns until the strip is 1200px wide.

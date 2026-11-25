@@ -10,7 +10,8 @@ import { API_ON } from "@/lib/rbac";
  *  Every panel is its own component keyed by view, so password / OTP / phone state is discarded whenever the view changes or the page unmounts. */
 export default function AuthModule() {
   // Production: only the person's own account (from the server). The other tabs preview the sign-in screens with demonstration logic.
-  if (API_ON) return <Page title="Your account" sub="Sign-in history, two-step verification, sessions and password"><div className="card"><div className="c-body scroll"><YourAccount /></div></div></Page>;
+  // C6: the account's cards sit straight on the page (no card around cards); D2: title, breadcrumb and Settings menu all say "Your account"
+  if (API_ON) return <Page mod="auth"><div className="scroll"><YourAccount /></div></Page>;
   return <Gallery />;
 }
 

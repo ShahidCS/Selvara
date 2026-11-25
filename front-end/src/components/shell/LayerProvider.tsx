@@ -26,7 +26,7 @@ type Layer =
 export type ToastTone = "ok" | "bad" | "info";
 export interface LayerApi {
   openDrawer: (title: string, sub: ReactNode | undefined, body: Content, foot?: Content) => void;
-  /** Modal. Default footer is a single "Close" button, as in the prototype. */
+  /** Modal: title with a close icon, body, and the footer given (primary on the right, Cancel on its left). No footer when there are no actions. */
   openModal: (title: string, body: Content, foot?: Content, opts?: { wide?: boolean }) => void;
   /** Popover anchored under the clicked element (right-aligned to it). */
   popover: (ev: { currentTarget: EventTarget | null }, body: Content, opts?: { role?: "menu" | "listbox"; label?: string; align?: "start" | "end" }) => void;
@@ -108,9 +108,11 @@ function Modal({ l, close }: { l: Extract<Layer, { kind: "modal" }>; close: () =
     <div ref={ref} className={`modal${on ? " on" : ""}`} role="dialog" aria-modal="true" aria-label={l.title}>
       <div className="scrim on" style={{ position: "absolute" }} onClick={close} />
       <div className={`mbox${l.wide ? " mbox-wide" : ""}`}>
-        <div className="m-head"><h3>{l.title}</h3></div>
+        <div className="m-head"><h3>{l.title}</h3><button className="icon-btn" aria-label="Close" onClick={close}><Icon name="x" /></button></div>
         <div className="m-body scroll">{run(l.body, close)}</div>
-        <div className="m-foot" ref={setFootEl}>{l.foot ? run(l.foot, close) : has ? null : <button className="btn btn-secondary" onClick={close}>Close</button>}</div>
+        {/* G2: one footer, primary action on the right and Cancel on its left. No separate "Close" button: the header's close icon, Cancel and
+            Esc dismiss. A modal with no actions has no footer. */}
+        <div className="m-foot" ref={setFootEl} hidden={!l.foot && !has}>{l.foot ? run(l.foot, close) : null}</div>
       </div>
     </div>
     </FootCtx.Provider>
@@ -214,7 +216,11 @@ export function LayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => { const h = () => closeLayer(); router.events.on("routeChangeStart", h); return () => router.events.off("routeChangeStart", h); }, [router.events, closeLayer]);
   useEffect(() => {
     if (!layer) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); closeLayer(); } };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if ((e.target as Element | null)?.closest?.("[data-lb-open]")) return; // an open listbox closes itself first; the next Esc closes the layer
+      e.stopPropagation(); closeLayer();
+    };
     document.addEventListener("keydown", onKey, true);
     return () => document.removeEventListener("keydown", onKey, true);
   }, [layer, closeLayer]);

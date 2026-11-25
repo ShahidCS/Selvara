@@ -80,7 +80,6 @@ export function AuditDetail({ id }: { id: string }) {
   const addPbc = () => L.openModal("Add request, " + a.name, (close) => <AddPbcForm L={{ ...L, closeLayer: close }} id={id} onAdded={() => setTab("pbc")} />);
   const report = () => L.openModal("Audit report, " + a.name, <AuditReportBody id={id} />,
     <>
-      <button className="btn btn-secondary" onClick={L.closeLayer}>Close</button>
       <button className="btn btn-primary" onClick={() => attempt(L, async () => {
         const txt = await svc.exportReport(id);
         downloadText(safeFileName(a.id + "-report.txt", "audit-report.txt"), txt);

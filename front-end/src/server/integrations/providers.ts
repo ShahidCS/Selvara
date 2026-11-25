@@ -7,6 +7,10 @@
      provider. Values are read as data only; the permission lists in the setup texts are to be verified against each provider's documentation.
    Personal data kept: account name, email, status, MFA enrolled (yes or no, never the method's details), admin (yes or no), last sign-in day. */
 import { amzDateOf, failed, json, jwtRS256, ProviderError, sigV4, xmlTag, type AwsCreds, type Net, type NetResponse } from "./net";
+/** J2: what a company admin sees when the platform has not configured a connector. The platform's own setup (Vercel variables GITHUB_APP_*,
+ *  AWS_INTEGRATION_*, ENTRA_CLIENT_*, GOOGLE_SA_* and GOOGLE_OAUTH_*) is never shown in the workspace: it is in docs/guides/SUPABASE.md
+ *  (section 4g, "Connectors") for platform staff. */
+export const NOT_AVAILABLE = "This connector isn't available yet. Contact your platform administrator.";
 
 export type Result = "Pass" | "Fail" | "Needs data";
 export interface Check { key: string; name: string; logic: string; result: Result; items: { item: string; result: string }[]; note: string }
@@ -88,7 +92,7 @@ async function ghToken(c: Ctx, id: string) {
 const github: Provider = {
   id: "github", name: "GitHub", type: "Source control", scope: "Read organisation settings, members, repositories' branch protection, Dependabot and secret-scanning alerts",
   fields: [],
-  ready: (env) => (env.github ? null : "The platform operator has not set up the Selvara GitHub App yet (GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY, GITHUB_APP_SLUG, GITHUB_APP_CLIENT_ID, GITHUB_APP_CLIENT_SECRET)."),
+  ready: (env) => (env.github ? null : NOT_AVAILABLE),
   instructions: (env) => [
     `An organisation owner installs the Selvara GitHub App on your organisation: https://github.com/apps/${env.github?.slug ?? "<app>"}/installations/new. Choose all repositories, or the ones in scope.`,
     "The app asks only for read access: organisation administration and members, repository administration and metadata, Dependabot alerts and secret-scanning alerts. It cannot read your code.",
@@ -183,7 +187,7 @@ const aws: Provider = {
     { key: "roleArn", label: "Role ARN", help: "The ARN of the role you created for Selvara in your AWS account.", pattern: /^arn:aws:iam::\d{12}:role\/[\w+=,.@/-]{1,128}$/, example: "arn:aws:iam::123456789012:role/SelvaraAudit" },
     { key: "region", label: "Main region", help: "The region where your CloudTrail trail and most resources are.", pattern: /^[a-z]{2}(-gov)?-[a-z]+-\d$/, example: "eu-central-1" },
   ],
-  ready: (env) => (env.aws ? null : "The platform operator has not set up Selvara's AWS principal yet (AWS_INTEGRATION_ACCESS_KEY_ID, AWS_INTEGRATION_SECRET_ACCESS_KEY, AWS_INTEGRATION_PRINCIPAL_ARN)."),
+  ready: (env) => (env.aws ? null : NOT_AVAILABLE),
   instructions: (env, cfg) => [
     "In your AWS account, create an IAM role for Selvara (IAM, Roles, Create role, Another AWS account).",
     `Trusted account: ${env.aws?.principalArn ?? "<Selvara's principal>"}. Require an external id: ${cfg.externalId ?? "(shown after you start)"}. Do not share this external id with anyone else.`,
@@ -317,7 +321,7 @@ const MICROSOFT_TENANT = "f8cdef31-a31e-4b4a-93e4-5f571e91255a"; // owner of Mic
 const entra: Provider = {
   id: "entra", name: "Microsoft Entra ID", type: "Identity provider", scope: "Read users, MFA registration, directory role holders, enterprise applications and Conditional Access policies",
   fields: [],
-  ready: (env) => (env.entra ? null : "The platform operator has not set up Selvara's Microsoft Entra app yet (ENTRA_CLIENT_ID, ENTRA_CLIENT_SECRET)."),
+  ready: (env) => (env.entra ? null : NOT_AVAILABLE),
   instructions: (env, cfg, site) => [
     "Select Sign in with Microsoft below as a person in your organisation's tenant. Selvara takes the tenant from Microsoft's answer, so nobody can connect another organisation's tenant.",
     cfg.tenantId ? `A Global Administrator then grants Selvara's app read-only access: https://login.microsoftonline.com/${cfg.tenantId}/adminconsent?client_id=${env.entra?.clientId ?? "<app>"}&redirect_uri=${encodeURIComponent(callbackOf(site))}` : "After signing in, a Global Administrator grants Selvara's app read-only access (the link appears here).",
@@ -376,7 +380,7 @@ async function googleToken(c: Ctx, cfg: Config) {
 const google: Provider = {
   id: "google", name: "Google Workspace", type: "Identity provider", scope: "Read users (2-Step Verification, admin, last sign-in) and which third-party apps people authorised",
   fields: [],
-  ready: (env) => (env.google ? null : "The platform operator has not set up Selvara's Google service account yet (GOOGLE_SA_EMAIL, GOOGLE_SA_PRIVATE_KEY, GOOGLE_SA_CLIENT_ID, GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET)."),
+  ready: (env) => (env.google ? null : NOT_AVAILABLE),
   instructions: (env) => [
     "A super administrator opens the Google Admin console, Security, Access and data control, API controls, Manage domain-wide delegation, Add new.",
     `Client id: ${env.google?.clientId ?? "<Selvara's client id>"}. Scopes (exactly these): ${GOOGLE_SCOPES.join(", ")}.`,

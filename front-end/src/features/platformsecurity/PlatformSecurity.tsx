@@ -46,13 +46,15 @@ function Rules({ title, rules, tour, children }: { title: string; rules: Rule[];
   const planned = rules.filter((r) => r.planned).length;
   return (
     <section className="card" aria-labelledby={`ps-${title.slice(0, 8)}`} data-tour={tour}>
-      <div className="c-head"><h3 id={`ps-${title.slice(0, 8)}`}>{title}</h3><div className="r"><span className="chip neutral num">{rules.length - planned} in place{planned ? `, ${planned} planned` : ""}</span></div></div>
+      <div className="c-head"><h3 id={`ps-${title.slice(0, 8)}`}>{title}</h3><div className="r"><span className="tag num">{rules.length - planned} in place{planned ? `, ${planned} planned` : ""}</span></div></div>
       <div className="c-body">
-        <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(380px, 100%), 1fr))", gap: "10px 24px" }}>
+        {/* C7: every row is icon | text | status on one grid, so icons and "Planned" badges line up down each column */}
+        <ul className="checklist">
           {rules.map((r) => (
-            <li key={r.text} style={{ display: "flex", gap: 10, fontSize: 13, lineHeight: 1.5, alignItems: "flex-start" }}>
-              <span aria-hidden="true" style={{ color: r.planned ? "var(--muted)" : "var(--ok-ink)", flex: "none", marginTop: 2 }}><Icon name={r.planned ? "clock" : "check"} /></span>
-              <span>{r.text}{r.planned ? <> <span className="tag">Planned</span></> : <span className="vh"> (in place)</span>}</span>
+            <li key={r.text} data-planned={r.planned ? "" : undefined}>
+              <span className="cl-i" aria-hidden="true"><Icon name={r.planned ? "clock" : "check"} /></span>
+              <span className="cl-t">{r.text}</span>
+              <span className="cl-s">{r.planned ? <span className="tag">Planned</span> : <span className="vh">In place</span>}</span>
             </li>
           ))}
         </ul>

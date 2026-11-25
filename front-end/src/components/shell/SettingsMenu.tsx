@@ -32,7 +32,7 @@ export function SettingsFrame({ mod, children }: { mod: string; children: ReactN
         ))}
         <div className="settings-sec">
           <div className="settings-sec-h">You</div>
-          <ul><li><Link href="/auth"><Icon name="access" aria-hidden="true" />Your account</Link></li></ul>
+          <ul><li><Link href="/auth" aria-current={mod === "auth" ? "page" : undefined}><Icon name="access" aria-hidden="true" />Your account</Link></li></ul>
         </div>
       </nav>
       <div className="settings-main">{children}</div>

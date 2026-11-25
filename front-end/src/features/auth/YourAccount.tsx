@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Chip, Icon, Segmented, Empty } from "@/components/ui";
+import { CardGrid, Chip, Icon, Segmented, Empty } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { getWelcome, hasRecentAuth, REAUTH_MS, SESSION_MS } from "@/lib/accountSecurity";
 import { LENGTH_COPY } from "@/lib/credentials";
@@ -27,12 +27,13 @@ export function YourAccount() {
   const out = async () => { try { const n = await signOutOthers(); L.toast(n ? `${n} other session${n === 1 ? "" : "s"} signed out` : "No other sessions"); } catch (e) { L.toast(msg(e, "Could not sign out other sessions"), false); } };
   const codes = () => L.openModal("New recovery codes", (close) => <CodesFlow close={close} />);
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(360px, 100%), 1fr))", gap: 16, alignItems: "start", padding: 4 }}>
+    <>
       {view.demo ? (
-        <div className="banner warn" style={{ gridColumn: "1 / -1", margin: 0, fontSize: 13 }}>
+        <div className="banner warn">
           <b>Demo account.</b> Shared and synthetic, for demonstration only. Limited: sessions end after {SESSION_MS.demo / 3_600_000} hour, the password cannot be changed or reset, and there is no authenticator or recovery codes (the second step shows its code on screen). Real accounts, created through Request to join, have all of these.
         </div>
       ) : null}
+      <CardGrid cols={2} label="Your account">
       <section className="card" aria-labelledby="ya-last"><div className="c-head"><h3 id="ya-last">Sign-in history</h3></div>
         <div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
           <div><b>{view.person}</b> · <span className="num">{view.email}</span>{view.demo ? <> <Chip cls="warn" icon="alert">Demo account</Chip></> : null}</div>
@@ -42,7 +43,7 @@ export function YourAccount() {
         </div>
       </section>
 
-      <section className="card" aria-labelledby="ya-mfa"><div className="c-head"><h3 id="ya-mfa">Two-step verification</h3>{view.authenticators.length ? <div className="r"><span className="chip neutral num">{view.authenticators.length} of {view.authenticatorsMax}</span></div> : null}</div>
+      <section className="card" aria-labelledby="ya-mfa"><div className="c-head"><h3 id="ya-mfa">Two-step verification</h3>{view.authenticators.length ? <div className="r"><span className="tag num">{view.authenticators.length} of {view.authenticatorsMax}</span></div> : null}</div>
         <div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13 }}>
           {view.demo ? <p style={{ margin: 0 }}>Demo accounts have no authenticator: the second step shows its code on screen.</p> : <>
             {view.passkeyRequired ? <p style={{ margin: 0 }}>Your passkey is your second step. You can also add an authenticator app: its code is then asked for after the passkey, as an extra step.</p> : null}
@@ -72,7 +73,7 @@ export function YourAccount() {
         </div>
       </section>
 
-      <section className="card" aria-labelledby="ya-sess"><div className="c-head"><h3 id="ya-sess">Active sessions</h3><div className="r"><span className="chip neutral num">{view.sessions.length}</span></div></div>
+      <section className="card" aria-labelledby="ya-sess"><div className="c-head"><h3 id="ya-sess">Active sessions</h3><div className="r"><span className="tag num">{view.sessions.length}</span></div></div>
         <div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <ul style={{ listStyle: "none", margin: 0, padding: 0 }} aria-label="Active sessions">
             {view.sessions.map((x) => (
@@ -82,7 +83,7 @@ export function YourAccount() {
               </li>
             ))}
           </ul>
-          <div><button className="btn btn-danger sm" disabled={!others} onClick={out}>Sign out other sessions</button></div>
+          <div className="form-acts"><button className="btn btn-danger sm" disabled={!others} aria-describedby={others ? undefined : "ya-out-why"} onClick={out}>Sign out other sessions</button>{others ? null : <span className="field help" id="ya-out-why">No other sessions are signed in.</span>}</div>
         </div>
       </section>
 
@@ -92,7 +93,7 @@ export function YourAccount() {
 
       <GuidedTours />
 
-      <section className="card" aria-labelledby="ya-act" style={{ gridColumn: "1 / -1" }}><div className="c-head"><h3 id="ya-act">Security activity</h3></div>
+      <section className="card span-all" aria-labelledby="ya-act"><div className="c-head"><h3 id="ya-act">Security activity</h3></div>
         <div className="c-body">
           {view.notices.length ? (
             <ul style={{ listStyle: "none", margin: 0, padding: 0 }} aria-label="Security activity">
@@ -101,7 +102,8 @@ export function YourAccount() {
           ) : <Empty compact icon="check" title="Nothing to report" />}
         </div>
       </section>
-    </div>
+      </CardGrid>
+    </>
   );
 }
 
