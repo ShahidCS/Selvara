@@ -176,6 +176,12 @@ re-run `.github/scripts/apply-settings.sh --apply`, which is safe to repeat. Mak
 all of them. **Do not onboard regulated customers on this configuration**: it cannot show an auditor enforced
 branch protection or a production approval.
 
+**Status 2026-11-25.** The repository is now public, so the exit condition is met. Applied by the owner the same day
+and read back through the API: `main-protection` and `release-tags` are active (with `staging-protection`, three
+rulesets). The owner also set a required reviewer and a `v*.*.*` tag rule on the `production` environment; that is
+confirmed when the next release pauses for approval. Close this exception (and its row in the table) after that
+release. The compensating controls above stay in place regardless.
+
 ## EX-09 No build-provenance or SBOM attestations
 
 **What.** GitHub's artifact attestations (build provenance and SBOM) are refused for user-owned private repositories:

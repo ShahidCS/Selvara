@@ -241,18 +241,21 @@ The full register, with owners, compensating controls, expiry dates and exit cri
 - Staging deployment end to end: the Vercel build with no secrets, the shipped-output check, the deterministic archive and SBOM, then deploying exactly that checksum-verified archive to Vercel and a smoke test of the live security headers. The token reaches only the deploy step (it shows as `***`).
 - The credential presence check (true/false per credential, never a value) and its fail-fast message.
 - `apply-settings.sh` against the live API, including its fallbacks on a plan without environment protection or rulesets.
+- The production release path (v0.3.1, 2026-11-24): `verify-tag.sh` against a real signed tag, the full gates in `release.yml`, the deploy to the `production` environment and the `publish` job that created the GitHub Release. (v0.3.0 was refused by the tag check: tag on the pre-bump commit.)
+- The `staging-protection` ruleset (2026-11-25): active on `staging` with no bypass; blocks deletion and force pushes and requires signed commits.
+- Rulesets applied 2026-11-25 and read back through the API: `main-protection` (active on the default branch; no deletion or force push, linear history, signed commits, squash-only pull requests with one code-owner review, the 10 required checks; repository admins may bypass only through a pull request) and `release-tags` (active on `refs/tags/v*`; only repository admins may create, move or delete release tags).
+- Dependabot pull requests reviewed and merged through the pipeline (#93, #94), and the weekly scheduled security run (green on 2026-11-16 and 2026-11-23). Major-version bumps (TypeScript, Tailwind, ESLint) still each need their own review.
+- The live staging preview (2026-11-25): the production build on the staging Supabase project, deployed from `staging`, given its stable hostname (`STAGING_ALIAS`) through the Vercel REST API, the security-header smoke test on that hostname, and an owner sign-in on it. `STAGING_LIVE_ENABLED` must be a repository variable; `vercel alias set` failed with this token ("User not found"), hence the API.
 
 **Found and fixed by the first real runs** (each is why a documented step exists): the Actions allow-list also needs `aquasecurity/setup-trivy`; a manual full-history Gitleaks scan flagged two lists of known-weak passwords (allow-listed by path); artifact attestations are refused for user-owned private repositories (EX-09); and secrets of an environment do not reach a job that calls a reusable workflow, so the deploy is a local composite action called from a job that declares the environment.
 
 **Proven locally:** the workflow policy checker (workflows and the local action; catches seven classes of violation on a deliberately bad file); every SHA pin against its upstream tag (39 pins); the licence gate; the ZAP gate; the SARIF gate; the release-tag gate (accepts a valid tag and rejects five invalid scenarios, using a stubbed `gh`); the smoke test; required-check names match real job names; all workflows parse as valid YAML and pass `@action-validator/cli` 0.6.0 (whose bundled schema predates the documented `attestations: write` permission, so that one key is reported and is the only thing it reports); typecheck, unit tests and the build with install scripts disabled.
 
 **Not yet proven:**
-- **The production release path:** `verify-tag.sh` against a real signed tag, the `release.yml` workflow, the `production` environment, and the `publish` job that creates the GitHub Release. Cut a first release from a signed tag and read the run before relying on it.
 - **Build provenance and SBOM attestations, and cosign signing:** both are off (EX-09, EX-06), so `gh attestation verify` does not apply yet.
-- **The staging aliases** (`STAGING_DEMO_ALIAS`, `STAGING_ALIAS`) and the **live staging preview**, which are unused so far.
-- **Rulesets, branch protection and the production approval step:** GitHub refuses them on this plan (EX-08), so none of their effects are proven.
-- **Commit-signing enforcement,** which depends on those rulesets.
-- **Merging Dependabot pull requests and the weekly scheduled security run.** Dependabot is running (it has opened pull requests for the application's development dependencies), but none has been reviewed or merged through this pipeline yet; the major-version bumps (TypeScript, Tailwind, ESLint) each need their own review.
+- **The demo alias** (`STAGING_DEMO_ALIAS`): not set yet. It uses the same alias step as the live preview, which is proven (above).
+- **The production approval step:** set by the owner on 2026-11-25 (required reviewer, tag rule `v*.*.*`); this session cannot read environment settings, so it is proven by the next release pausing for approval.
+- **Merging under `main-protection`:** the first pull request merged through the repository-admin bypass (one code-owner review is required and the owner is the only maintainer).
 
 ## Staging branch and previews
 
