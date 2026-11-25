@@ -58,7 +58,7 @@ export function LoginPage() {
 
 function SignInForm({ onJoin, onForgot, onHold }: { onJoin: () => void; onForgot: () => void; onHold: (v: boolean) => void }) {
   const [em, setEm] = useState(""); const [pw, setPw] = useState(""); const [err, setErr] = useState(""); const [forced, setForced] = useState(false); const [busy, setBusy] = useState(false);
-  const [check, setCheck] = useState<"" | "needed" | "running">("");
+  const [check, setCheck] = useState<"" | "running" | "failed">("");
   const [step, setStep] = useState<SignInStep | null>(null); const [codes, setCodes] = useState<string[] | null>(null);
   const emRef = useRef<HTMLInputElement>(null); const pwRef = useRef<HTMLInputElement>(null);
   useEffect(() => { emRef.current?.focus(); }, []);
@@ -72,13 +72,25 @@ function SignInForm({ onJoin, onForgot, onHold }: { onJoin: () => void; onForgot
     setBusy(true); setErr("");
     try { const st = await auth.signIn(em, pw, challenge); setPw(""); setCheck(""); setStep(st); }
     catch (x) {
-      if (x instanceof ChallengeRequired) { setCheck("needed"); setBusy(false); return; }
+      if (x instanceof ChallengeRequired) {
+        setBusy(false);
+        // first time: run the check at once, nothing to click. Asked again right after a solved check: stop and say so, never loop.
+        if (challenge) { setCheck("failed"); setErr("The check did not go through. Try again."); } else await runCheck();
+        return;
+      }
       setCheck(""); setErr(msg(x, "Could not sign in.")); setPw(""); pwRef.current?.focus();
     }
     setBusy(false);
   };
-  /** Proof of work: the browser spends a moment hashing, which costs a script running thousands of guesses far more. No third-party service. */
-  const runCheck = async () => { setCheck("running"); await attempt(await auth.solveSignInChallenge()); };
+  /** Proof of work: the browser spends a moment hashing, which costs a script running thousands of guesses far more. No third-party service.
+   *  Starts by itself; an error (the server could not issue a check, the network dropped) is shown with Try again and Back, never a page that waits forever. */
+  const runCheck = async () => {
+    setCheck("running"); setErr("");
+    let solved: { seed: string; nonce: number };
+    try { solved = await auth.solveSignInChallenge(); }
+    catch (x) { setCheck("failed"); setErr(msg(x, "The check could not be completed. Try again.")); return; }
+    await attempt(solved);
+  };
   const restart = () => { setStep(null); setCodes(null); setErr(""); onHold(false); };
   if (codes) return <RecoveryCodes codes={codes} done={() => { setCodes(null); onHold(false); }} />;
   if (step) return <SecondStep step={step} onHold={onHold} onCodes={setCodes} onRestart={restart} onNext={setStep} />;
@@ -86,9 +98,10 @@ function SignInForm({ onJoin, onForgot, onHold }: { onJoin: () => void; onForgot
     <>
       <h1 className="auth-h" style={{ fontSize: 20 }}>Quick check</h1>
       <p className="sub" style={{ margin: "0 0 16px" }}>There were several failed sign-ins. Before you try again, your browser does a short calculation that slows down automated guessing. It takes a moment and needs nothing from you.</p>
-      <p className="field help" role="status" aria-live="polite" style={{ margin: "0 0 12px" }}>{check === "running" ? "Checking…" : ""}</p>
-      <button type="button" className="btn btn-primary" style={full} disabled={check === "running"} onClick={runCheck}>{check === "running" ? "Checking…" : "Continue"}</button>
-      <button type="button" className="btn btn-secondary" style={{ ...full, marginTop: 8 }} onClick={() => { setCheck(""); setPw(""); }}>Back</button>
+      <p className="field help" role="status" aria-live="polite" style={{ margin: "0 0 12px", display: check === "running" ? "block" : "none" }}>{check === "running" ? "Checking…" : ""}</p>
+      <ErrP id="li-check-err" msg={check === "failed" ? err : ""} mt={0} />
+      {check === "failed" && <button type="button" className="btn btn-primary" style={{ ...full, marginTop: 12 }} onClick={() => void runCheck()}>Try again</button>}
+      <button type="button" className="btn btn-secondary" style={{ ...full, marginTop: 8 }} onClick={() => { setCheck(""); setErr(""); setPw(""); setBusy(false); }}>Back</button>
     </>
   );
   return (

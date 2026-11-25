@@ -22,7 +22,7 @@ import { helpRoutes } from "./helpdesk";
 import { workspaceRoutes } from "./ws/routes";
 import { v1Routes } from "./ws/apikeys";
 import { admin8Routes, stripeWebhook } from "./admin8";
-import { logFailure } from "./errors";
+import { logFailure, logSignInRefused } from "./errors";
 import { guardBody, ResponseLeak } from "./responseGuard";
 import { CSP_PER_HOUR, rawReports, reduceReport } from "./cspReport";
 import type { Company, Lockout, Log, Outcome } from "./directory";
@@ -186,6 +186,7 @@ const signIn: H = async (d, r) => {
   if (await locked(d, email)) { await ipFail(d, r); return err(423, THROTTLED); }
   if ((await challengeNeeded(d, r, email)) && !(await challengeOk(d, r.body.challenge))) return err(428, "Challenge required.");
   const p = isEmail(email) ? await d.store.profileByEmail(email) : null;
+  if (!p && isEmail(email)) logSignInRefused("no-profile"); // an auth user without a Selvara profile (SUPABASE.md section 5)
   const res = p && p.status !== "Rejected" ? await d.auth.signInWithPassword(email, password) : null;
   if (!p || !res) { await ipFail(d, r); await accountFail(d, email, p); return (await blocked(d, r.ip)) ? err(403, BLOCKED_MSG) : err(401, SIGNIN_FAILED); }
   if (p.status === "Pending") { await d.auth.signOut(res); return err(409, "Your request to join is waiting for a company admin to approve it."); }

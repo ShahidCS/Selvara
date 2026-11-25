@@ -2,7 +2,7 @@
    TOTP and reset emails as the user; the service key for admin actions and the tables. The service key never reaches the browser: this file is
    imported only by pages/api. Schema: supabase/migrations/0001_selvara_auth.sql to 0005_team_changes.sql. */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { upstream } from "./errors";
+import { logSignInRefused, upstream } from "./errors";
 import type { AuthProvider, NoticeRow, PasskeyRow, Profile, RecoveryRow, SessionRow, Store, AuditRow } from "./types";
 
 const OPTS = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
@@ -19,7 +19,7 @@ export class SupabaseAuth implements AuthProvider {
   private async as(t: T): Promise<SupabaseClient> { const c = this.anon(); const { error } = await c.auth.setSession({ access_token: t.access, refresh_token: t.refresh }); if (error) throw upstream("auth.session", error); return c; }
   async signInWithPassword(email: string, password: string) {
     const { data, error } = await this.anon().auth.signInWithPassword({ email, password });
-    if (error || !data.session || !data.user) return null;
+    if (error || !data.session || !data.user) { logSignInRefused("auth-refused", error); return null; }
     return { userId: data.user.id, access: data.session.access_token, refresh: data.session.refresh_token };
   }
   async verifiedTotpFactor(t: T) { const { data } = await (await this.as(t)).auth.mfa.listFactors(); return data?.totp?.find((f) => f.status === "verified")?.id ?? null; }

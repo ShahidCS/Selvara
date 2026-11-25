@@ -41,3 +41,17 @@ export function logFailure(route: string, e: unknown, requestId?: string): void 
   };
   console.error(JSON.stringify(line));
 }
+
+/** Why a password sign-in was refused, for the operator: a reason and Supabase Auth's error code and status. Never the email address, password or
+ *  address; the person still gets the one generic answer. Lets "the password is wrong" be told apart from "the email is not confirmed" or
+ *  "the key is from another project" (all of which look the same on the sign-in page). */
+export function logSignInRefused(reason: "no-profile" | "auth-refused", e?: unknown): void {
+  const o = (e && typeof e === "object" ? e : {}) as { code?: unknown; status?: unknown; message?: unknown };
+  const line = {
+    level: "warn", event: "auth.sign-in.refused", reason,
+    ...(o.code != null && o.code !== "" ? { code: String(o.code).slice(0, 40) } : {}),
+    ...(typeof o.status === "number" ? { status: o.status } : {}),
+    ...(reason === "auth-refused" && safeMessage(o.message) ? { message: safeMessage(o.message) } : {}),
+  };
+  console.warn(JSON.stringify(line));
+}
