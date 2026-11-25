@@ -1,5 +1,6 @@
-import { HBarList, Icon, KpiStrip, KpiTile, LineChart, Page, Segmented, StatusChip, activate, type Desirability, Empty } from "@/components/ui";
-import { DEMO_RISE, PERIODS, demoSeries, periodRange, periodTicks, periodVs, setPeriod, usePeriod } from "@/lib/period";
+import { greetingFor } from "@/lib/greeting";
+import { CardGrid, HBarList, Icon, KpiStrip, KpiTile, LineChart, Page, Segmented, StatusChip, activate, type Desirability, Empty } from "@/components/ui";
+import { DEMO_RISE, PERIODS, demoSeries, periodRange, periodTicks, setPeriod, usePeriod } from "@/lib/period";
 import { FocusCard } from "./FocusCard";
 import { ComplianceCalendar } from "./ComplianceCalendar";
 import { PostureBrief } from "./PostureBrief";
@@ -7,7 +8,7 @@ import { AuditorOverview } from "./AuditorOverview";
 import { baseRole } from "@/lib/sod";
 import { DATA } from "@/lib/data";
 import { appStore, useData } from "@/lib/store";
-import { fwReadiness } from "@/lib/frameworks";
+import { fwAssessed, readinessRows } from "@/lib/frameworks";
 import { metrics } from "@/lib/metrics";
 import { getMe, wsLog } from "@/lib/audit";
 import { useGo } from "@/lib/route";
@@ -60,7 +61,8 @@ function PostureOverview() {
   const can = (m: string) => modAllowed(role, "ws", m);
   const live = (d: ReturnType<typeof tile>) => (API_ON ? undefined : d); // the demonstration's month-on-month texts are not real history
   const M = metrics();
-  const fwRank = [...DATA.frameworks].map((f) => ({ f, r: fwReadiness(f.id) })).sort((a, b) => a.r - b.r).slice(0, 6);
+  const fwRank = readinessRows(DATA.frameworks, 8);
+  const anyAssessed = DATA.frameworks.some((f) => fwAssessed(f.id));
   const sev: Record<string, number> = { High: DATA.issues.filter((i) => i.sev === "High").length, Medium: DATA.issues.filter((i) => i.sev === "Medium").length, Low: DATA.issues.filter((i) => i.sev === "Low").length };
   const sevMax = Math.max(1, ...Object.values(sev));
   // R34: the trend follows the period chosen here or on Reports (demonstration history only; production has none stored yet)
@@ -100,7 +102,7 @@ function PostureOverview() {
   // R6: a personal greeting, with the date and the posture period above it
   const now = new Date(); const hr = now.getHours();
   const first = (roleOf(appStore.get().role).person || "").split(/\s+/)[0];
-  const greeting = `Good ${hr < 12 ? "morning" : hr < 18 ? "afternoon" : "evening"}${first ? `, ${first}` : ""}`;
+  const greeting = `${greetingFor(hr)}${first ? `, ${first}` : ""}`;
   const today = now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
   return (
     <Page eyebrow={`${today} · Security posture · ${period}`} title={greeting} sub={`${M.overdueControls} controls failing and ${M.openIssues} open issues need your attention.`} acts={<>
@@ -110,8 +112,8 @@ function PostureOverview() {
     </>}>
       <div className="scroll" style={{ flex: "1 1 auto", minHeight: 0, display: "flex", flexDirection: "column", gap: 14 }}>
       <KpiStrip label="Posture summary">
-        <KpiTile label="Weighted compliance" value={M.compliance + "%"} delta={live(tile("good", `+${rise.compliance} pt${rise.compliance === 1 ? "" : "s"} ${periodVs(per)}`))} caption="Across frameworks in scope" />
-        <KpiTile label="Open risks" value={M.openRisks} delta={live(rise.risks ? tile("good", `${rise.risks} fewer ${periodVs(per)}`) : tile("flat", `No change ${periodVs(per)}`))} caption={`${M.aboveAppetite} above appetite`} />
+        <KpiTile label="Weighted compliance" value={anyAssessed ? M.compliance + "%" : "—"} delta={live(tile("good", `+${rise.compliance} pt${rise.compliance === 1 ? "" : "s"}`))} caption={anyAssessed ? "Across frameworks in scope" : "Not assessed yet"} />
+        <KpiTile label="Open risks" value={M.openRisks} delta={live(rise.risks ? tile("good", `${rise.risks} fewer`) : tile("flat", "No change"))} caption={`${M.aboveAppetite} above appetite`} />
         <KpiTile label="Controls failing" value={M.overdueControls} delta={live(tile("bad", "1 more this week"))} caption="Need remediation" />
         <KpiTile label="Open issues" value={M.openIssues} delta={live(tile("flat", "No change"))} caption="Not yet closed" />
         <KpiTile label="Upcoming audits" value={M.upcomingAudits} caption={API_ON ? "Not yet complete" : "Not yet complete · next in 136 days"} />
@@ -119,12 +121,11 @@ function PostureOverview() {
       </KpiStrip>
       <FocusCard can={can} />
       <PostureBrief can={can} />
-      <div className="panels" data-tour="overview-panels" style={{ flex: "0 0 auto", gridTemplateColumns: "1.6fr 1fr 1fr", gridAutoRows: "minmax(320px,auto)" }}>
+      <CardGrid cols={3} capped tour="overview-panels">
         <div className="card">
-          <div className="c-head" style={{ flexWrap: "wrap" }}><h3>Risk posture</h3><div className="r" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-            <Segmented label="Trend period" value={per} options={PERIODS} onChange={setPeriod} />
-            {can("risk") ? <button className="btn btn-ghost sm" onClick={() => go("/ws/risk")}>Risk register</button> : null}</div></div>
+          <div className="c-head"><h3>Risk posture</h3>{can("risk") ? <div className="r"><button className="btn btn-ghost sm" onClick={() => go("/ws/risk")}>Risk register</button></div> : null}</div>
           <div className="c-body scroll">
+            <div className="c-toolbar"><Segmented label="Trend period" value={per} options={PERIODS} onChange={setPeriod} /></div>
             {API_ON ? <p className="field help" style={{ margin: 0 }}>{M.openRisks} open risk{M.openRisks === 1 ? "" : "s"}, {M.aboveAppetite} above appetite. The trend for {periodRange(per)} appears here once daily figures have been recorded.</p>
               : <LineChart title={`Open risks, ${periodRange(per)}`} data={openTrend.map((v, i) => ({ label: tk[i].label, value: v }))} unit="" />}
             <div className="hr" />
@@ -134,7 +135,7 @@ function PostureOverview() {
         <div className="card">
           <div className="c-head"><h3>Framework readiness</h3>{can("frameworks") ? <div className="r"><button className="btn btn-ghost sm" onClick={() => go("/ws/frameworks")}>View all</button></div> : null}</div>
           <div className="c-body scroll">
-            <HBarList title="Lowest readiness first" rows={fwRank.map(({ f, r }) => ({ label: f.name, value: r, text: r + "%", tone: r >= 80 ? "ok" : r >= 50 ? "warn" : "bad" }))} max={100} />
+            <HBarList title="Lowest readiness first" rows={fwRank} max={100} />
           </div>
         </div>
         <div className="card" data-tour="overview-attention">
@@ -165,7 +166,7 @@ function PostureOverview() {
             </div>
           </div>
         </div>
-      </div>
+      </CardGrid>
       <ComplianceCalendar can={can} />
       <div className="card" data-tour="overview-coverage" style={{ flex: "0 0 auto" }}>
         <div className="c-head"><h3>Control coverage</h3><div className="r" style={{ fontSize: 12, color: "var(--muted)" }}>Implemented %, framework × category</div></div>

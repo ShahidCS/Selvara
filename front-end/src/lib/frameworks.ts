@@ -75,6 +75,21 @@ export function fwScore(fwId: string) {
 export function fwReadiness(fwId: string): number {
   const sc = fwScore(fwId); return sc ? sc.pct : (DATA.frameworks.find((x) => x.id === fwId) || ({} as { pct?: number })).pct || 0;
 }
+/** E5: whether anything in this framework has been assessed (a requirement met, partly met or not met). Nothing assessed is shown as
+ *  "Not assessed" in neutral colour, never as a red 0%: red is for assessed and failing. Without a requirement catalogue, the stored
+ *  percentage counts as assessed when it is above zero. */
+export function fwAssessed(fwId: string): boolean {
+  const sc = fwScore(fwId);
+  if (!sc) return ((DATA.frameworks.find((x) => x.id === fwId) || ({} as { pct?: number })).pct || 0) > 0;
+  return sc.cnt.Met + sc.cnt["Partially met"] + sc.cnt["Not met"] > 0;
+}
+export const NOT_ASSESSED = "Not assessed";
+/** A readiness bar row for HBarList: assessed frameworks first, furthest from target first; then those not yet assessed, in neutral colour. */
+export function readinessRows(fws: { id: string; name: string }[], limit?: number) {
+  const rows = fws.map((f) => ({ f, ok: fwAssessed(f.id), r: fwReadiness(f.id) }))
+    .sort((a, b) => (a.ok === b.ok ? a.r - b.r : a.ok ? -1 : 1));
+  return (limit ? rows.slice(0, limit) : rows).map(({ f, ok, r }) => ({ id: f.id, label: f.name, value: ok ? r : 0, text: ok ? r + "%" : NOT_ASSESSED, tone: (!ok ? "muted" : r >= 80 ? "ok" : r >= 50 ? "warn" : "bad") as "muted" | "ok" | "warn" | "bad", assessed: ok }));
+}
 export const fwBand = (p: number) => (p >= 80 ? "var(--ok-ink)" : p >= 65 ? "var(--warn-ink)" : p >= 50 ? "var(--high-ink)" : "var(--bad-ink)");
 export function fwGroupMap(fwId: string): Record<string, string> {
   const m: Record<string, string> = {}; (FRAMEWORK_REQS[fwId] || { g: [] }).g.forEach((g) => (m[g[0]] = g[1])); return m;

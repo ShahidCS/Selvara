@@ -30,12 +30,16 @@ export function KpiStrip({ label, children }: { label: string; children: ReactNo
     </div>
   );
 }
+/** One KPI: label (top) with an optional status badge in the fixed top-right slot, the value (one size everywhere: a number, a percentage or a
+ *  short word, kept on one line), then the supporting text. Every tile has the same three rows, so tiles in a strip line up. A long label
+ *  ends in an ellipsis and shows in full on hover. */
 export function KpiTile({ label, value, delta, caption }: { label: string; value: string | number; delta?: { tone: Desirability; text: string; icon?: string }; caption?: string }) {
+  const v = String(value);
   return (
     <div className="kpi-tile">
-      <div className="eyebrow">{label}</div>
-      <div className="kpi-fig"><span className="kpi-v num" data-long={String(value).length > 6 ? "" : undefined}>{value}</span>{delta ? <DeltaPill tone={delta.tone} icon={delta.icon}>{delta.text}</DeltaPill> : null}</div>
-      {caption ? <div className="kpi-cap">{caption}</div> : null}
+      <div className="kpi-head"><span className="eyebrow" title={label}>{label}</span>{delta ? <span className="kpi-badge"><DeltaPill tone={delta.tone} icon={delta.icon}>{delta.text}</DeltaPill></span> : null}</div>
+      <div className="kpi-fig"><span className="kpi-v num" title={v.length > 8 ? v : undefined}>{v}</span></div>
+      <div className="kpi-cap">{caption ?? ""}</div>
     </div>
   );
 }

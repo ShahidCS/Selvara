@@ -85,3 +85,33 @@ describe("fwBand", () => {
     expect(fwBand(49)).toBe("var(--bad-ink)");
   });
 });
+
+describe("E5: nothing assessed is neutral, never a red 0%", () => {
+  it("a framework whose requirements have no mapped controls is not assessed and sorts after assessed ones, in muted tone", async () => {
+    const { fwAssessed, readinessRows, NOT_ASSESSED } = await import("@/lib/frameworks");
+    const FW = Object.keys(FRAMEWORK_REQS)[0];
+    expect(fwAssessed(FW)).toBe(true);
+    // unmap every requirement: nothing is scored any more
+    reqCtrl()[FW] = {};
+    expect(fwAssessed(FW)).toBe(false);
+    const rows = readinessRows(DATA.frameworks);
+    const mine = rows.find((r) => r.id === FW)!;
+    expect(mine).toMatchObject({ text: NOT_ASSESSED, tone: "muted", value: 0, assessed: false });
+    expect(rows.findIndex((r) => !r.assessed)).toBeGreaterThan(rows.findLastIndex((r) => r.assessed));
+    const assessed = rows.filter((r) => r.assessed).map((r) => r.value);
+    expect(assessed).toEqual([...assessed].sort((a, b) => a - b));
+  });
+});
+
+describe("A5: greeting from the local hour", () => {
+  it("is neutral from midnight to 04:59, then morning, afternoon and evening", async () => {
+    const { greetingFor } = await import("@/lib/greeting");
+    expect([0, 3, 4].map(greetingFor)).toEqual(["Hello", "Hello", "Hello"]);
+    expect(greetingFor(5)).toBe("Good morning");
+    expect(greetingFor(11)).toBe("Good morning");
+    expect(greetingFor(12)).toBe("Good afternoon");
+    expect(greetingFor(17)).toBe("Good afternoon");
+    expect(greetingFor(18)).toBe("Good evening");
+    expect(greetingFor(23)).toBe("Good evening");
+  });
+});

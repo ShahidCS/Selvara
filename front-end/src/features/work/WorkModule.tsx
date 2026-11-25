@@ -1,3 +1,4 @@
+import { localGreeting } from "@/lib/greeting";
 import { useEffect, type KeyboardEvent, type ReactNode } from "react";
 import { useRouter } from "next/router";
 import { Icon, KpiStrip, KpiTile, Page, Table, StatusChip, activate , SeverityBars, Empty } from "@/components/ui";
@@ -115,8 +116,7 @@ function useGreeting(role: string): string {
   const toAck = toAcknowledge(me.name);
   const first = me.name.split(" ")[0];
   // the shell renders only on the client (after hydration), so the local hour is safe to read here
-  const h = new Date().getHours();
-  const greet = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  const greet = localGreeting();
   const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   return `${greet}, ${first}. You have ${plural(open, "open task", "open tasks")} · ${plural(toAck, "policy", "policies")} to acknowledge`;
 }

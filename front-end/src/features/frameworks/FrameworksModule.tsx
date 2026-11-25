@@ -1,7 +1,7 @@
 import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, type DTColumn } from "@/components/ui";
 import { DATA, FRAMEWORK_REQS } from "@/lib/data";
 import { setModState, useApp, useData } from "@/lib/store";
-import { useFwEdits, REQ_PAGE, fwCanAdmin, fwLegend, fwReadiness, fwScopeIn, fwScore, fwSnoozed } from "@/lib/frameworks";
+import { useFwEdits, REQ_PAGE, fwAssessed, fwCanAdmin, fwLegend, fwReadiness, fwScopeIn, fwScore, fwSnoozed, NOT_ASSESSED } from "@/lib/frameworks";
 import { useGo, useRoute } from "@/lib/route";
 import { uiMessage } from "@/lib/grcSod";
 import { useLayer } from "@/hooks/useLayer";
@@ -58,7 +58,8 @@ function FrameworksList() {
   const rows: Fw[] = [...frameworks].sort((a, b) => (KORD[a.kind] || 3) - (KORD[b.kind] || 3) || (a.name < b.name ? -1 : 1));
   const regions = Array.from(new Set(frameworks.map((f) => f.region).filter(Boolean))).sort() as string[];
   const inScope = frameworks.filter((f) => fwScopeIn(f.id));
-  const avg = inScope.length ? Math.round(inScope.reduce((a, f) => a + fwReadiness(f.id), 0) / inScope.length) : 0;
+  const assessed = inScope.filter((f) => fwAssessed(f.id));
+  const avg = assessed.length ? Math.round(assessed.reduce((a, f) => a + fwReadiness(f.id), 0) / assessed.length) : null;
   const gaps = inScope.reduce((a, f) => { const sc = fwScore(f.id); return a + (sc ? sc.cnt["Not met"] + sc.cnt["Not assessed"] : f.gaps || 0); }, 0);
   const snoozed = frameworks.filter((f) => fwSnoozed(f.id)).length;
 
@@ -74,7 +75,7 @@ function FrameworksList() {
     { key: "ready", header: "Readiness", value: (f) => pctOf(f), render: (f) => {
       const p = pctOf(f);
       return (<div style={{ minWidth: 200 }}>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}><FwSegsBar fwId={f.id} /><span className="num" style={{ fontSize: 13, fontWeight: 600, color: readinessTone(p), width: 38, textAlign: "right" }}>{p}%</span></div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}><FwSegsBar fwId={f.id} />{fwAssessed(f.id) ? <span className="num" style={{ fontSize: 13, fontWeight: 600, color: readinessTone(p), width: 38, textAlign: "right" }}>{p}%</span> : <span className="num" title={NOT_ASSESSED} aria-label={NOT_ASSESSED} style={{ fontSize: 13, color: "var(--muted)", width: 38, textAlign: "right" }}>—</span>}</div>
         <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3 }}>{fwLegend(f.id)}</div>
       </div>);
     } },
@@ -99,7 +100,7 @@ function FrameworksList() {
     <Page mod="frameworks" acts={<button className="btn btn-primary" data-tour="frameworks-add" onClick={() => go("/ws/frameworks/new")}><Icon name="plus" />Add framework</button>}>
       <KpiStrip label="Library summary">
         <KpiTile label="In the library" value={frameworks.length} caption={`${inScope.length} in scope`} />
-        <KpiTile label="Average readiness" value={avg + "%"} caption="Frameworks in scope" />
+        <KpiTile label="Average readiness" value={avg === null ? "—" : avg + "%"} caption={avg === null ? "Not assessed yet" : `${assessed.length} assessed frameworks in scope`} />
         <KpiTile label="Open gaps" value={gaps} delta={gaps ? { tone: "watch", text: "To close" } : { tone: "good", text: "None" }} caption="Not met or not assessed" />
         <KpiTile label="Snoozed" value={snoozed} caption="Paused, not scored as due" />
       </KpiStrip>

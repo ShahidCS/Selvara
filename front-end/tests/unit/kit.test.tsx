@@ -67,3 +67,17 @@ describe("charts are figures with a summary and the data as a table", () => {
   });
   it("an empty line chart does not throw", () => { expect(() => html(<LineChart title="None" data={[]} />)).not.toThrow(); });
 });
+
+describe("B3-B5: KPI tile structure and the card grid", () => {
+  it("puts the status badge in the label row, never beside the value, and keeps the three rows when there is no badge or caption", async () => {
+    const { KpiTile, CardGrid } = await import("@/components/ui");
+    const t = html(<KpiTile label="Open gaps" value={24} delta={{ tone: "watch", text: "To close" }} caption="0 not met" />);
+    expect(t).toMatch(/class="kpi-head"><span class="eyebrow" title="Open gaps">Open gaps<\/span><span class="kpi-badge">/);
+    expect(t).toMatch(/class="kpi-fig"><span class="kpi-v num">24<\/span><\/div>/);
+    const bare = html(<KpiTile label="Snoozed" value={0} />);
+    expect(bare).toContain('class="kpi-cap"');
+    expect(bare).not.toContain("kpi-badge");
+    const g = html(<CardGrid cols={2} capped label="Panels"><div className="card" /></CardGrid>);
+    expect(g).toContain('class="cgrid" data-cols="2" data-capped="" role="group" aria-label="Panels"');
+  });
+});

@@ -314,7 +314,7 @@ The sidebar takes about 280px when open, so the content of a 1024px window is na
 ### Owner layout review (November 2026)
 Rules that changed after the owner's screen-by-screen review (before/after evidence in the PR):
 - **Cards keep the height of their content.** `.panels` no longer stretches to the bottom of the window, and module cards no longer carry `flex: 1 1 auto`; a long register grows and the page scrolls. Cards side by side in one row share the tallest card's height. Only the chat assistant keeps a full-height panel.
-- **Running text fills its container and is justified** (`.field.help`, page subtitles, card text, banners), with hyphenation; it stays left-aligned under 600px. Form text runs the full card width; the class `.fields-cap` keeps only inputs, selects and button rows at a readable width (640px).
+- ~~Running text is justified, with hyphenation~~ (reversed on 2026-11-26, see "Fix once, apply everywhere" below: all text is left-aligned and never hyphenated). Form text runs the full card width; the class `.fields-cap` keeps only inputs, selects and button rows at a readable width (640px).
 - **One helper text size**, `--fs-help` (13px), for help text and banners.
 - **Plain forms space their fields** (12px between a field and what follows) unless the form lays itself out (`.rec-form`, or a `gap` of its own).
 - **One empty state.** `Empty` has a `compact` form (icon, title, one line) for empty lists inside a card; no plain "No …" sentences.
@@ -330,3 +330,19 @@ Each module has a short walkthrough (`src/data/tours/*`, engine `src/components/
 - **Replay:** Help (the question mark in the header) › "Take the tour of this page".
 - **Following the page:** the ring and bubble re-measure their element every frame while a tour is open (`src/hooks/useAnchorWatch.ts`), so they stay on it when the page scrolls, the sidebar collapses or expands, or content loads. If a layout change (cards stacking or unstacking) takes the element out of view, the page scrolls it back; the bubble is always kept on screen. Popovers and the collapsed-rail flyouts use the same hook.
 - **Accessibility:** the bubble is a labelled non-modal dialog that takes focus on each step and returns it at the end. Escape skips, and the left and right arrow keys move between steps. The page stays usable; a ring marks the element. Below 600px wide the bubble is a bottom sheet.
+
+## Fix once, apply everywhere (owner design rules, November 2026)
+
+Recurring layout defects are fixed in the shared components and tokens, never screen by screen. A screen that needs something different adds a documented variant to the component; it does not add an inline value.
+
+**Tokens** (`portal.css`, `:root`): spacing scale `--space-1` to `--space-6`; `--section-gap` (between page blocks: KPI strip, card rows, tables); `--grid-gap` (between cards, rows and columns alike); `--card-pad`; `--card-head-h` (52px, every card header, with or without a badge, link or segmented control); `--card-min` (narrowest card before a grid wraps); `--panel-max` (a capped dashboard panel body); `--text-max`; rhythm tokens `--rhythm-heading`, `--rhythm-para`, `--rhythm-help`.
+
+**Text (A1 to A5).** All text is left-aligned (`text-align: start`) and never hyphenated by the browser (`hyphens: manual`). Identifiers, code, keys, endpoints and variable names go in `<code>` (monospace, never hyphenated, wraps anywhere rather than leaving its card). An empty paragraph takes no space. The time-of-day greeting comes from `lib/greeting.ts`: "Hello" from midnight to 04:59, then morning, afternoon and evening, from the person's own clock.
+
+**KPI strip and tiles (B1 to B8).** `KpiStrip` lays tiles out on one grid with one gap; columns follow the tile count so no row is left part-empty (5 or 6 tiles: 3 per row until the strip is 1200px wide). `KpiTile` has three fixed rows: label (top-left) with the status badge in the fixed top-right slot, then the value, then the supporting text. The value is one size for every tile of a strip, stays on one line with its % sign or unit, and uses tabular figures. A long label ends in an ellipsis with the full label on hover. A page-level `.scroll` is a stack with `--section-gap`, so the strip never touches the cards below.
+
+**Card grid (C1 to C4).** `CardGrid` (`cols` 2, 3 or 4) is the one grid for side-by-side cards. Cards in a row are one width and stretch to one height; a short last row grows to fill the width (no orphan card beside an empty gap). `capped` (dashboard panels) stops each card body at `--panel-max` and scrolls inside, so one long list cannot stretch the row and leave its neighbours mostly blank. A control row that does not fit a card header (a period switch) goes in `.c-toolbar` at the top of the body, so headers keep one height.
+
+**Focus and tabs (E1, E2).** Focus rings appear for the keyboard only (`:focus-visible`); a mouse click leaves no outline. A filter that switches what a list shows is a `.tabs` tablist with the white-pill selected style, the same everywhere.
+
+**Not assessed (E5).** A readiness or compliance figure with nothing assessed shows "Not assessed" (or "—" in a narrow cell) in neutral colour. Red is for assessed and failing. `fwAssessed` and `readinessRows` in `lib/frameworks.ts` decide it; assessed frameworks sort first, furthest from target first.
