@@ -210,7 +210,9 @@ runs:
         [[ $url =~ ^https://[A-Za-z0-9.-]+$ ]] || { echo "unexpected deploy output" >&2; exit 1; }
         if [[ $TARGET_ENV == staging && -n ${STAGING_ALIAS:-} ]]; then
           [[ $STAGING_ALIAS =~ ^[A-Za-z0-9.-]+$ ]] || { echo "invalid STAGING_ALIAS" >&2; exit 1; }
-          "$VERCEL_BIN" alias set "$url" "$STAGING_ALIAS"
+          # alias set does not read VERCEL_ORG_ID the way deploy does: without --scope it runs as the token's own
+          # user and Vercel answers "User not found".
+          "$VERCEL_BIN" alias set "$url" "$STAGING_ALIAS" --scope "$VERCEL_ORG_ID"
           url="https://$STAGING_ALIAS"
         fi
         echo "url=$url" >> "$GITHUB_OUTPUT"
