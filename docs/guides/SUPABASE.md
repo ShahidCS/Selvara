@@ -210,6 +210,44 @@ The provider becomes a sub-processor (record it in RoPA PA-16). Messages carry a
 
 Optional, from v0.2.5: `SUPPORT_INBOX_EMAIL` (not a secret) is the address told when a company asks Selvara support a question in the Help centre. The email names the company, the question's reference and subject, and links to the Admin Console support inbox; the question itself is not included. Without it, staff see new questions in the inbox only. The person who asked is told by email when support answers, whenever email is set up.
 
+### 4h-R. Email with Resend: the chosen set-up (owner, pending)
+
+**Status (2026-11-25):** Resend is the chosen provider (owner decision). **Blocked until the company domain is bought**; nothing below is configured yet. Until it is, Selvara sends no email (section 4h). Do the steps in order.
+
+**1. Resend: sending domain**
+1. Resend → Domains → Add Domain. Use a subdomain such as `mail.<your-domain>` (keeps Selvara's sending reputation apart from normal company mail). Pick the region nearest the users.
+2. At the DNS provider, add the records Resend shows: MX and TXT (SPF) on `send.mail.<your-domain>`, TXT (DKIM) on `resend._domainkey.mail.<your-domain>`. If the domain has no DMARC record yet, add TXT on `_dmarc.<your-domain>`: `v=DMARC1; p=none; rua=mailto:<a mailbox you read>`; move to `p=quarantine` once mail flows cleanly.
+3. Verify DNS Records; wait for **Verified**.
+
+**2. Resend: three API keys**, each with permission **Sending access** restricted to that one domain, so each can be revoked alone:
+
+| Key name | Used by |
+|---|---|
+| `selvara-production` | Vercel `MAIL_API_KEY`, Production |
+| `selvara-staging` | Vercel `MAIL_API_KEY`, Preview (staging) |
+| `selvara-supabase-smtp` | Supabase custom SMTP, both projects |
+
+A key is shown once: paste it straight into Vercel or Supabase, never into chat, a commit, an issue or a file.
+
+**3. Vercel → Project → Settings → Environment Variables**
+
+| Name | Value | Environments | Sensitive |
+|---|---|---|---|
+| `MAIL_PROVIDER` | `resend` | Production, Preview | no |
+| `MAIL_API_KEY` | `selvara-production` key | Production only | **yes** |
+| `MAIL_API_KEY` | `selvara-staging` key | Preview only | **yes** |
+| `MAIL_FROM` | `Selvara <no-reply@mail.<your-domain>>` (must be on the verified domain) | Production, Preview | no |
+| `SUPPORT_INBOX_EMAIL` (optional) | address told about new Help centre questions | Production | no |
+
+**4. Supabase → Authentication → Emails → SMTP Settings → Enable custom SMTP** (production project and `selvara-staging`). Password-reset emails come from Supabase, not from Selvara's API.
+Host `smtp.resend.com`, port `465`, username `resend`, password the `selvara-supabase-smtp` key, sender `no-reply@mail.<your-domain>`, sender name `Selvara`.
+
+**5. Take effect and test.** Vercel variables apply to new deployments only; do not use Vercel's Redeploy button (it deploys outside the gates).
+1. Staging first: move `staging` forward or run Deploy staging (Actions). On the live preview, invite a test person in Team & Rules with a mailbox you own: the screen says "Invitation emailed" and the mail arrives from the `MAIL_FROM` address. Try "Forgot password" for the Supabase path.
+2. Production picks the variables up with the next signed release tag.
+
+**6. Records.** Resend becomes a sub-processor: replace the placeholder "email delivery provider" recipient in RoPA PA-16 (`front-end/src/data/platform.json`) with Resend, its region and transfer basis, for review by the compliance or privacy lead. Note which key is used where (names only, never values).
+
 ### 4i. Live staging preview (you, once; optional)
 
 The `staging` branch deploys a **demo** preview always, and a **live** preview (the production build on the real server) once this is set up. The live preview uses the **staging** Supabase project from section 1, never production, and holds synthetic data only.

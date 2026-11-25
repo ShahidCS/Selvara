@@ -181,6 +181,9 @@ and read back through the API: `main-protection` and `release-tags` are active (
 rulesets). The owner also set a required reviewer and a `v*.*.*` tag rule on the `production` environment; that is
 confirmed when the next release pauses for approval. Close this exception (and its row in the table) after that
 release. The compensating controls above stay in place regardless.
+**Planned change:** the owner will make the repository private again once the back end is ready. On the free plan that
+turns the rulesets and the production approval off again, so this exception reopens; buy GitHub Pro first (or Team for
+an organisation) to keep them. EX-09 (attestations) stays as it is for the same reason (owner decision 2026-11-25).
 
 ## EX-09 No build-provenance or SBOM attestations
 
