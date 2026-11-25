@@ -243,6 +243,8 @@ The full register, with owners, compensating controls, expiry dates and exit cri
 - `apply-settings.sh` against the live API, including its fallbacks on a plan without environment protection or rulesets.
 - The production release path (v0.3.1, 2026-11-24): `verify-tag.sh` against a real signed tag, the full gates in `release.yml`, the deploy to the `production` environment and the `publish` job that created the GitHub Release. (v0.3.0 was refused by the tag check: tag on the pre-bump commit.)
 - The `staging-protection` ruleset (2026-11-25): active on `staging` with no bypass; blocks deletion and force pushes and requires signed commits.
+- Rulesets applied 2026-11-25 and read back through the API: `main-protection` (active on the default branch; no deletion or force push, linear history, signed commits, squash-only pull requests with one code-owner review, the 10 required checks; repository admins may bypass only through a pull request) and `release-tags` (active on `refs/tags/v*`; only repository admins may create, move or delete release tags).
+- Dependabot pull requests reviewed and merged through the pipeline (#93, #94), and the weekly scheduled security run (green on 2026-11-16 and 2026-11-23). Major-version bumps (TypeScript, Tailwind, ESLint) still each need their own review.
 - The live staging preview (2026-11-25): the production build on the staging Supabase project, deployed from `staging`, given its stable hostname (`STAGING_ALIAS`) through the Vercel REST API, the security-header smoke test on that hostname, and an owner sign-in on it. `STAGING_LIVE_ENABLED` must be a repository variable; `vercel alias set` failed with this token ("User not found"), hence the API.
 
 **Found and fixed by the first real runs** (each is why a documented step exists): the Actions allow-list also needs `aquasecurity/setup-trivy`; a manual full-history Gitleaks scan flagged two lists of known-weak passwords (allow-listed by path); artifact attestations are refused for user-owned private repositories (EX-09); and secrets of an environment do not reach a job that calls a reusable workflow, so the deploy is a local composite action called from a job that declares the environment.
@@ -252,9 +254,8 @@ The full register, with owners, compensating controls, expiry dates and exit cri
 **Not yet proven:**
 - **Build provenance and SBOM attestations, and cosign signing:** both are off (EX-09, EX-06), so `gh attestation verify` does not apply yet.
 - **The demo alias** (`STAGING_DEMO_ALIAS`): not set yet. It uses the same alias step as the live preview, which is proven (above).
-- **`main` protection, release-tag protection and the production approval step** (checked 2026-11-25): the repository is now public, which meets the exit condition of EX-08, and the `staging-protection` ruleset is active (proven above). But `main-protection` and `release-tags` (`.github/rulesets/`) are not applied, `main` has no protection, and GitHub records no approval on the v0.3.1 release run, so `production` has no required reviewer yet. Owner step: `.github/scripts/apply-settings.sh --apply`, then read what it reports.
-- **Commit-signing enforcement on `main` and on tags,** which depends on those rulesets (enforced on `staging` already).
-- **Merging Dependabot pull requests and the weekly scheduled security run.** Dependabot is running (it has opened pull requests for the application's development dependencies), but none has been reviewed or merged through this pipeline yet; the major-version bumps (TypeScript, Tailwind, ESLint) each need their own review.
+- **The production approval step:** set by the owner on 2026-11-25 (required reviewer, tag rule `v*.*.*`); this session cannot read environment settings, so it is proven by the next release pausing for approval.
+- **Merging under `main-protection`:** the first pull request merged through the repository-admin bypass (one code-owner review is required and the owner is the only maintainer).
 
 ## Staging branch and previews
 
