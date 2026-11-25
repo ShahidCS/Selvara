@@ -16,7 +16,7 @@ export const COLUMN_WIDTHS: Record<string, number> = {
   // places
   company: 170, country: 120, region: 100, ip: 130,
   // actions column
-  act: 120,
+  act: 180, // the Actions column is never scaled down and never clips its buttons
 };
 /** A column not listed above. Every column has a width: with a fixed layout, spare room is shared in proportion and a narrow screen scrolls. */
 export const COL_DEFAULT = 170;

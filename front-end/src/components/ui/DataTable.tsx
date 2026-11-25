@@ -119,9 +119,12 @@ export function DataTable<T>(p: DataTableProps<T>) {
   // When the default widths do not fit, they shrink together (to 70% at most); only a table that still does not fit scrolls. A column the
   // person resized keeps exactly their width. Depends only on the container and the configuration, so paging and sorting never move it.
   const fixedW = (p.bulk?.length || p.exportName ? CHECKBOX_W : 0) + (p.rowActions ? ACTIONS_W : 0); // the checkbox column shows when rows can be selected
-  const baseSum = cols.reduce((a, c) => a + (colW[c.key] ?? baseOf(c)), 0);
-  const scale = wrapW && baseSum + fixedW > wrapW ? Math.max(0.7, (wrapW - fixedW) / baseSum) : 1;
-  const widthOf = (c: DTColumn<T>) => colW[c.key] ?? Math.floor(baseOf(c) * scale);
+  // the Actions column keeps its width: its buttons are never squeezed or clipped
+  const keeps = (c: DTColumn<T>) => c.key === "act" || colW[c.key] !== undefined;
+  const keptW = fixedW + cols.filter(keeps).reduce((a, c) => a + (colW[c.key] ?? baseOf(c)), 0);
+  const scalable = cols.filter((c) => !keeps(c)).reduce((a, c) => a + baseOf(c), 0);
+  const scale = wrapW && scalable && scalable + keptW > wrapW ? Math.max(0.7, (wrapW - keptW) / scalable) : 1;
+  const widthOf = (c: DTColumn<T>) => colW[c.key] ?? (keeps(c) ? baseOf(c) : Math.floor(baseOf(c) * scale));
   const resizeTo = (key: string, px: number, save: boolean) => {
     const w = Math.round(Math.min(COL_MAX, Math.max(COL_MIN, px)));
     setColW((m) => ({ ...m, [key]: w })); if (save) saveSessionWidth(p.id, key, w);
@@ -268,7 +271,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
                 <tr key={id} className={`${p.onOpen ? "clickable" : ""}${on ? " sel" : ""}`}
                   tabIndex={p.onOpen ? 0 : undefined} onClick={(e) => onRowClick(e, r)} onKeyDown={(e) => onRowKey(e, r)}>
                   {selectable ? <td className="dt-cb"><input type="checkbox" aria-label={`Select ${nameOf(r)}`} checked={on} onChange={() => patch({ selected: toggleOne(id, selected) })} /></td> : null}
-                  {cols.map((c) => { const t = c.value ? String(c.value(r)) : undefined; return <td key={c.key} className={[c.align === "end" ? "r" : "", c.nowrap ? "nw" : ""].filter(Boolean).join(" ") || undefined}><div className="dt-c" title={t}>{subOf(c, r)}</div></td>; })}
+                  {cols.map((c) => { const t = c.value ? String(c.value(r)) : undefined; return <td key={c.key} className={[c.align === "end" ? "r" : "", c.nowrap ? "nw" : ""].filter(Boolean).join(" ") || undefined}><div className={c.key === "act" ? "dt-c dt-c-act" : "dt-c"} title={c.key === "act" ? undefined : t}>{subOf(c, r)}</div></td>; })}
                   {p.rowActions ? <td className="r dt-act"><button className="icon-btn" aria-label={`Actions for ${nameOf(r)}`} aria-haspopup="menu" onClick={(e) => rowMenu(e, r)}><Icon name="more" /></button></td> : null}
                 </tr>
               );

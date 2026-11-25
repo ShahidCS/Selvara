@@ -18,6 +18,7 @@ test("columns keep their widths across pages and reloads, resize by drag and key
 
   // I3: drag the Region column's edge 80 px to the right
   const rs = table.getByRole("separator", { name: "Resize column Region" });
+  await rs.scrollIntoViewIfNeeded(); // paging scrolled the header out of view
   const before = Math.round((await head("Region").boundingBox())!.width);
   const box = (await rs.boundingBox())!;
   await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await p.mouse.down();

@@ -1378,4 +1378,4 @@ form:not(.rec-form):not([style*="gap"])>.field+*,form:not(.rec-form):not([style*
 th:hover .col-rs::after,.col-rs:focus-visible::after{opacity:1}
 .col-rs:focus-visible{outline:2px solid var(--ring);outline-offset:-2px}
 .row-acts{display:flex;gap:var(--space-1);justify-content:flex-end;align-items:center}
-.tbl.dt-fixed td .dt-c>.row-acts{overflow:visible}
+.tbl.dt-fixed td .dt-c.dt-c-act,.tbl.dt-fixed td .dt-c.dt-c-act>*{overflow:visible;text-overflow:clip}
