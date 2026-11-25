@@ -21,7 +21,7 @@ check() { # path expected-status
   [[ $path == "/ws/overview" ]] || return 0
   local lc; lc=$(echo "$out" | tr -d '\r' | tr 'A-Z' 'a-z')
   has() { echo "$lc" | grep -qE "^$1"; }
-  has "content-security-policy:" && echo "$lc" | grep -q "frame-ancestors 'none'" && ! echo "$lc" | grep -q "unsafe-eval" && ! echo "$lc" | grep -qE "script-src[^;]*'unsafe-inline'" && echo "ok   CSP present, frame-ancestors 'none', no unsafe-eval, no inline scripts" || { echo "FAIL CSP missing or weak"; fail=1; }
+  has "content-security-policy:" && echo "$lc" | grep -q "frame-ancestors 'none'" && ! echo "$lc" | grep -q "unsafe-eval" && ! echo "$lc" | grep -qE "(script|style)-src[^;]*'unsafe-inline'" && echo "ok   CSP present, frame-ancestors 'none', no unsafe-eval, no inline scripts or styles" || { echo "FAIL CSP missing or weak"; fail=1; }
   has "x-content-type-options: nosniff"        && echo "ok   nosniff"                  || { echo "FAIL x-content-type-options"; fail=1; }
   has "x-frame-options: deny"                  && echo "ok   x-frame-options DENY"    || { echo "FAIL x-frame-options"; fail=1; }
   has "referrer-policy: strict-origin-when-cross-origin" && echo "ok   referrer-policy" || { echo "FAIL referrer-policy"; fail=1; }

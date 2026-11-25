@@ -156,11 +156,16 @@ function StandaloneTheme() {
 }
 /** Routes rendered WITHOUT the app chrome (external users have no workspace role, sidebar or role switcher). */
 const STANDALONE = ["/vendor-portal", "/login", "/trust"];
+const noop = () => () => {};
 export function AppShell({ children }: { children: ReactNode }) {
   const { pathname } = useRouter();
+  // The standalone pages render in the browser, like the workspace: the server's HTML is the empty container only. Their
+  // components use React style props, which the browser applies after the page loads (allowed by CSP style-src 'self');
+  // style attributes in the server's HTML would be blocked. The build fails if a page's HTML carries one (scripts/check-html.mjs).
+  const client = useSyncExternalStore(noop, () => true, () => false);
   if (STANDALONE.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
-    // body is overflow:hidden in the portal CSS, so the standalone container scrolls itself
-    return <LayerProvider><StandaloneTheme /><div id="standalone" style={{ height: "100dvh", overflow: "auto", background: "var(--bg)" }}>{children}</div></LayerProvider>;
+    // body is overflow:hidden in the portal CSS, so the standalone container scrolls itself (#standalone in portal.css)
+    return <LayerProvider><StandaloneTheme /><div id="standalone">{client ? children : null}</div></LayerProvider>;
   }
   return <LayerProvider><Frame>{children}</Frame>{API_MODE === "http" ? <StepUpHost /> : null}</LayerProvider>;
 }

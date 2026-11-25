@@ -25,15 +25,22 @@ export async function exportedBoardPack(): Promise<boolean> {
   if (!API_ON) return true;
   try { await apiFetch("/ws/overview/board-pack", { method: "POST", body: "{}" }); return true; } catch { return false; }
 }
-export function boardPackHTML(): string {
+/** "file": a downloaded document, opened from disk without the site's CSP, so it carries its own <style> and print button.
+ *  "tab": opened in a new tab from a blob: address, which inherits the site's CSP (no inline style or script). Its markup
+ *  has no <style>, style attribute or onclick; the app applies them from its own code once the tab has loaded
+ *  (applyBoardPack), through the CSSOM, which CSP allows. */
+export type BoardPackKind = "file" | "tab";
+let packCss = "";
+export function boardPackHTML(kind: BoardPackKind = "file"): string {
+  const tab = kind === "tab";
   const ME = getMe();
  const M=metrics();const now=new Date();
  const dateStr=now.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
  const period=now.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
  const fwRows=[...DATA.frameworks].map(f=>({f,r:fwReadiness(f.id)})).sort((a,b)=>b.r-a.r);
- const fwBars=fwRows.map(({f,r})=>`<div class="bp-bar"><span class="bp-bar-l">${esc(f.name)}</span><span class="bp-track"><span class="bp-fill" style="width:${r}%"></span></span><span class="bp-bar-v">${r}%</span></div>`).join("");
+ const fwBars=fwRows.map(({f,r})=>`<div class="bp-bar"><span class="bp-bar-l">${esc(f.name)}</span><span class="bp-track"><span class="bp-fill" ${tab?`data-w="${r}"`:`style="width:${r}%"`}></span></span><span class="bp-bar-v">${r}%</span></div>`).join("");
  const covHead=`<tr><th class="bp-rowh"></th>${COV_CATS.map(c=>`<th class="bp-covh">${esc(c[0])}</th>`).join("")}</tr>`;
- const covBody=COV_FW.map(([fid,fn])=>`<tr><th class="bp-rowh">${esc(fn)}</th>${COV_CATS.map(([,cats])=>{const r=covCell(fid,cats);return r?`<td class="bp-cov" style="background:${_covShade(r.pct)}">${r.pct}%</td>`:'<td class="bp-cov bp-na">—</td>';}).join("")}</tr>`).join("");
+ const covBody=COV_FW.map(([fid,fn])=>`<tr><th class="bp-rowh">${esc(fn)}</th>${COV_CATS.map(([,cats])=>{const r=covCell(fid,cats);return r?`<td class="bp-cov" ${tab?`data-bg="${_covShade(r.pct)}"`:`style="background:${_covShade(r.pct)}"`}>${r.pct}%</td>`:'<td class="bp-cov bp-na">—</td>';}).join("")}</tr>`).join("");
  /* production: a role sees the detail of the modules it may open; for the others the pack gives totals only */
  const role=appStore.get().role; const sees=(m: string)=>!API_ON||modAllowed(role,"ws",m);
  const hidden=(n: number,what: string)=>`<tr><td colspan="5" class="bp-empty">${n} ${what}. Your role does not open this module, so the detail is not included.</td></tr>`;
@@ -93,9 +100,10 @@ export function boardPackHTML(): string {
   .bp-foot{border-top:1px solid var(--line);margin-top:8px;padding-top:14px;font-size:11px;color:var(--mut)}
   .bp-foot b{color:#8A5600}
   @media print{html,body{background:#fff}.bp-toolbar{display:none}.bp-sheet{box-shadow:none;border-radius:0;margin:0;max-width:none}.bp-section{break-inside:avoid}.bp-cover{break-after:avoid}@page{size:A4;margin:14mm}}`;
+ packCss = css;
  const mark=`<svg viewBox="0 0 30 30" fill="none" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" stroke="#fff" stroke-width="2.4"/><rect x="14" y="14" width="13" height="13" rx="4" fill="#E8653F"/></svg>`;
- return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Selvara — Board &amp; Executive Security Pack</title><style>${css}</style></head><body>
-  <div class="bp-toolbar"><button class="bp-btn pri" onclick="window.print()">Print / Save as PDF</button></div>
+ return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Selvara — Board &amp; Executive Security Pack</title>${tab?"":`<style>${css}</style>`}</head><body>
+  <div class="bp-toolbar"><button class="bp-btn pri"${tab?"":` onclick="window.print()"`}>Print / Save as PDF</button></div>
   <div class="bp-sheet">
    <div class="bp-cover"><div class="bp-brand">${mark}<b>Selvara</b></div>
      <h1>Board &amp; Executive Security Pack</h1>
@@ -121,4 +129,18 @@ export function boardPackHTML(): string {
      <div class="bp-foot"><b>Draft only.</b> This pack is generated from the current Selvara workspace${API_ON?"":" and contains sample data"}. Compliance and risk outputs require review and approval by qualified compliance, legal or risk personnel before use or distribution. Generated ${esc(dateStr)} · Information Security — Confidential.</div>
    </div>
   </div></body></html>`;
+}
+
+/** The tab variant: give the opened board pack its styles, the bar widths and cell shades, and the print button. Runs in the
+ *  app (same origin as the blob: tab), so nothing in the tab is inline script or inline style. Returns false if the tab is
+ *  not ready or not reachable. */
+export function applyBoardPack(w: Window): boolean {
+  let doc: Document;
+  try { doc = w.document; if (!doc?.body || !doc.querySelector(".bp-sheet")) return false; } catch { return false; }
+  const Sheet = (w as unknown as { CSSStyleSheet: typeof CSSStyleSheet }).CSSStyleSheet;
+  const sheet = new Sheet(); sheet.replaceSync(packCss); doc.adoptedStyleSheets = [sheet];
+  doc.querySelectorAll<HTMLElement>("[data-w]").forEach((el) => { const v = Number(el.dataset.w); if (v >= 0 && v <= 100) el.style.width = `${v}%`; });
+  doc.querySelectorAll<HTMLElement>("[data-bg]").forEach((el) => { const v = el.dataset.bg || ""; if (/^#[0-9a-f]{6}$/i.test(v)) el.style.background = v; });
+  doc.querySelector(".bp-btn")?.addEventListener("click", () => w.print());
+  return true;
 }

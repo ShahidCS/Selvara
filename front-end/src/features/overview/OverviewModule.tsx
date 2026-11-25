@@ -12,7 +12,7 @@ import { metrics } from "@/lib/metrics";
 import { getMe, wsLog } from "@/lib/audit";
 import { useGo } from "@/lib/route";
 import { useLayer } from "@/hooks/useLayer";
-import { COV_CATS, COV_FW, covCell, boardPackHTML, exportedBoardPack } from "@/features/overview/lib/boardPack";
+import { COV_CATS, COV_FW, covCell, applyBoardPack, boardPackHTML, exportedBoardPack } from "@/features/overview/lib/boardPack";
 import { downloadText } from "@/lib/format";
 import { useRoute } from "@/lib/route";
 import { useApp } from "@/lib/store";
@@ -77,18 +77,23 @@ function PostureOverview() {
   const period = new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 
   const exportBoardPack = async () => {
-    const html = boardPackHTML();
     wsLog("overview.boardpack.exported", "Board & executive pack", "System");
     if (!(await exportedBoardPack())) { L.toast("Something went wrong. Please try again.", false); return; }
     let w: Window | null = null;
     try {
-      const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
+      // The tab inherits the site's CSP (blob: address): its markup has no inline style or script; the app styles it once loaded.
+      const url = URL.createObjectURL(new Blob([boardPackHTML("tab")], { type: "text/html;charset=utf-8" }));
       w = window.open(url, "_blank");
-      if (w) w.opener = null; // detach (the "noopener" feature would make window.open return null)
+      if (w) {
+        w.opener = null; // detach (the "noopener" feature would make window.open return null)
+        const tab = w; let tries = 0;
+        const apply = () => { if (applyBoardPack(tab) || ++tries > 100 || tab.closed) return; setTimeout(apply, 50); };
+        apply();
+      }
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch { /* fall through to download */ }
     if (w) { L.toast("Board pack ready — use Print / Save as PDF"); return; }
-    if (!downloadText("Selvara-Board-Pack.html", html, "text/html;charset=utf-8")) { L.toast("Download not available in this view", false); return; }
+    if (!downloadText("Selvara-Board-Pack.html", boardPackHTML("file"), "text/html;charset=utf-8")) { L.toast("Download not available in this view", false); return; }
     L.toast("Board pack downloaded — open it, then Print / Save as PDF");
   };
 
