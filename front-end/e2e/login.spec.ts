@@ -9,7 +9,7 @@ async function signedOut(browser: Browser, ti: TestInfo) {
   await page.addInitScript(() => { try { localStorage.setItem("assurance.v1", JSON.stringify({ theme: "light" })); } catch { /* ignore */ } });
   return page;
 }
-/** Fills the sign-in form; when the "Quick check" step appears, continues through it. Waits for an error or for the workspace. */
+/** Fills the sign-in form; the "Quick check" step, when it appears, runs by itself. Waits for an error or for the workspace. */
 async function tryLogin(p: import("@playwright/test").Page, email: string, pw: string) {
   await p.getByLabel("Work email").fill(email);
   await p.getByLabel("Password", { exact: true }).fill(pw);
@@ -18,7 +18,7 @@ async function tryLogin(p: import("@playwright/test").Page, email: string, pw: s
   const err = p.getByRole("alert").filter({ hasText: /incorrect|Too many|from your network/ });
   const inside = p.locator("#topbar");
   await expect(check.or(err).or(inside).first()).toBeVisible();
-  if (await check.isVisible()) { await p.getByRole("button", { name: "Continue" }).click(); await expect(err.or(inside).first()).toBeVisible({ timeout: 20_000 }); }
+  if (await check.isVisible()) await expect(err.or(inside).first()).toBeVisible({ timeout: 20_000 });
 }
 const axe = async (p: import("@playwright/test").Page) => {
   const r = await new AxeBuilder({ page: p }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]).analyze();

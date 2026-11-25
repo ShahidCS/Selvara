@@ -19,14 +19,45 @@ const fill = async (p: Page, email: string, pw: string) => {
   await p.getByRole("button", { name: "Sign in", exact: true }).click();
 };
 
-test("after three failures a quick check appears; passing it leads to the second step and shows the failed attempts since the last sign-in", async ({ browser }, ti) => {
+test("when the quick check cannot finish, it says so and offers Try again and Back instead of waiting forever", async ({ browser }, ti) => {
   const p = await signedOut(browser, ti);
   await p.goto("/login");
   for (let i = 0; i < 3; i++) { await fill(p, demoEmail("Jordan Avery"), "wrong-" + i); await expect(p.getByRole("alert").filter({ hasText: "incorrect" })).toBeVisible(); }
+  await p.evaluate(() => {
+    const d = crypto.subtle.digest.bind(crypto.subtle); (window as unknown as { __fail: boolean }).__fail = true;
+    crypto.subtle.digest = async (a, b) => {
+      if ((window as unknown as { __fail: boolean }).__fail && /^[0-9a-f]{32}:0$/.test(new TextDecoder().decode(b as ArrayBuffer))) throw new Error("The check could not be completed. Try again.");
+      return d(a, b);
+    };
+  });
   await fill(p, demoEmail("Jordan Avery"), DEMO_PASS);
   await expect(p.getByRole("heading", { name: "Quick check" })).toBeVisible();
+  await expect(p.locator("main").getByRole("alert")).toHaveText("The check could not be completed. Try again.");
+  await expect(p.locator("main").getByRole("status")).toBeHidden();
   expect(await axe(p)).toEqual([]);
-  await p.getByRole("button", { name: "Continue" }).click();
+  await p.evaluate(() => { (window as unknown as { __fail: boolean }).__fail = false; });
+  await p.getByRole("button", { name: "Try again" }).click();
+  await demoSecondStep(p);
+  await p.waitForURL(/\/ws\/overview$/, { timeout: 20_000 });
+});
+
+test("after three failures a quick check runs by itself; passing it leads to the second step and shows the failed attempts since the last sign-in", async ({ browser }, ti) => {
+  const p = await signedOut(browser, ti);
+  await p.goto("/login");
+  for (let i = 0; i < 3; i++) { await fill(p, demoEmail("Jordan Avery"), "wrong-" + i); await expect(p.getByRole("alert").filter({ hasText: "incorrect" })).toBeVisible(); }
+  // slow the check down a little so the step can be seen and checked; nothing is clicked
+  await p.evaluate(() => {
+    const d = crypto.subtle.digest.bind(crypto.subtle);
+    crypto.subtle.digest = async (a, b) => { // the check's first guess is "<seed>:0"
+      if (/^[0-9a-f]{32}:0$/.test(new TextDecoder().decode(b as ArrayBuffer))) await new Promise((r) => setTimeout(r, 1500));
+      return d(a, b);
+    };
+  });
+  await fill(p, demoEmail("Jordan Avery"), DEMO_PASS);
+  await expect(p.getByRole("heading", { name: "Quick check" })).toBeVisible();
+  await expect(p.locator("main").getByRole("status")).toHaveText("Checking…");
+  await expect(p.getByRole("button", { name: "Continue" })).toHaveCount(0);
+  expect(await axe(p)).toEqual([]);
   await demoSecondStep(p);
   await p.waitForURL(/\/ws\/overview$/, { timeout: 20_000 });
   await expect(p.getByText(/3 failed sign-in attempts since then|first sign-in on record/)).toBeVisible();

@@ -21,6 +21,8 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 - CSP: production `script-src` is `'self'` only; `'unsafe-inline'` is gone (EX-05 closed). Production builds use webpack (`next build --webpack`), which emits no inline scripts; the dev server keeps it. New e2e checks: no CSP violation and the app starts on five pages; the deploy smoke test fails on inline scripts.
 
 ### Fixed
+- Sign-in: the **Quick check** after several failed sign-ins now runs by itself, as its text says, instead of waiting for a Continue click. If the check cannot finish (the server could not issue one, the network dropped), the page says so and offers **Try again** and **Back**, instead of staying on "Checking…".
+- Sign-in: a refused password sign-in now leaves a log line, `auth.sign-in.refused`, with the reason (`no-profile`, or Supabase Auth's code such as `invalid_credentials` or `email_not_confirmed`). It never contains the email address. The person still sees the one generic message. Troubleshooting is in docs/guides/SUPABASE.md, section 5.
 - The board pack's **Print / Save as PDF** button did nothing in the opened tab since inline scripts were blocked (staging only, never released).
 - The sign-in card and the authenticator set-up text are left-aligned: justified text in a narrow column left wide word gaps.
 - Staging alias: the live preview's hostname is now assigned through the Vercel REST API, scoped to the team. `vercel alias set` (also with `--scope`) failed with "User not found" because it loads the token's user first.

@@ -11,7 +11,7 @@ import type { Deps } from "@/server/types";
 import type { MailMessage } from "@/server/mail";
 import { totpAt } from "@/lib/totp";
 import { toB64u } from "@/lib/webauthn";
-import { safeMessage, upstream } from "@/server/errors";
+import { logSignInRefused, safeMessage, upstream } from "@/server/errors";
 
 /* The production auth API (src/server), run through `handle` exactly as /api does, against in-memory stand-ins for Supabase Auth and Postgres. */
 const ORIGIN = "https://app.example.test";
@@ -615,6 +615,17 @@ describe("failure logging (a 500 can be diagnosed from the function logs, withou
     expect(safeMessage("bad key sb_secret_AbCdEf123 and eyJhbGciOiJIUzI1NiJ9.e30.sig")).toBe("bad key [token] and [token]");
     expect(safeMessage("x".repeat(500))!.length).toBeLessThanOrEqual(160);
     expect(upstream("auth.create-user", { code: "email_exists", status: 422, message: "A user with this email address has already been registered" })).toEqual(expect.objectContaining({ step: "auth.create-user", code: "email_exists", status: 422 }));
+  });
+
+  it("says why a password sign-in was refused, without the email address, and the person still gets the generic answer", async () => {
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    logSignInRefused("auth-refused", { code: "email_not_confirmed", status: 400, message: "Email not confirmed for alex.kim@example.test" });
+    expect(JSON.parse(String(spy.mock.calls[0][0]))).toEqual({ level: "warn", event: "auth.sign-in.refused", reason: "auth-refused", code: "email_not_confirmed", status: 400, message: "Email not confirmed for [email]" });
+    const r = await call("POST", "auth/sign-in", { email: "nobody@example.test", password: "Wrong-password-12" });
+    expect(r.status).toBe(401);
+    const last = JSON.parse(String(spy.mock.calls.at(-1)![0]));
+    expect(last).toEqual({ level: "warn", event: "auth.sign-in.refused", reason: "no-profile" });
+    expect(JSON.stringify(spy.mock.calls)).not.toContain("nobody@example.test");
   });
 
   it("an unexpected bug is logged as internal with its type, not its data", async () => {

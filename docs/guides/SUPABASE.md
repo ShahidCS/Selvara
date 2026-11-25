@@ -345,6 +345,17 @@ Database connection (`GET /api/system/ready`):
 | `db.connect` · `SELF_SIGNED_CERT_IN_CHAIN` or `UNABLE_TO_GET_ISSUER_CERT` | `DATABASE_CA_CERT` is not this project's full certificate text |
 | `db.schema` · `SCHEMA_OUTDATED` | Run the missing migrations in this project |
 
+Sign-in says "email or password is incorrect" for an account you know is right: open Vercel → **Logs** and search for `auth.sign-in.refused`. The line gives the reason and Supabase Auth's code, never the email address:
+
+| `reason` · `code` | Fix |
+|---|---|
+| `no-profile` | The person exists in Supabase Auth but has no Selvara profile: run the profile step of the test-account guide (section 5) for this project |
+| `auth-refused` · `invalid_credentials` | The password is not the one set in **Authentication → Users** for this project. Reset it there (staging), then sign in again |
+| `auth-refused` · `email_not_confirmed` | The user was created without **Auto Confirm User**: open the user in **Authentication → Users** and confirm the email |
+| `auth-refused` · status 401 "Invalid API key" | `SUPABASE_ANON_KEY` is from the other project or truncated |
+
+Each refused sign-in counts as a failure, so after three the page runs a short **Quick check** (proof of work) by itself before the next try. To clear the counters on **staging** while testing, run `delete from public.kv where ns in ('ip', 'lock', 'ipblocks', 'challenge');` in the staging SQL editor. Never in production: there the counters are the protection.
+
 Sign-in answers 409 "not an active member of any company": run section 5b for this person's company, or approve their request to join.
 
 ## 6. Before real customer data
