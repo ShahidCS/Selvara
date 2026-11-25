@@ -241,6 +241,7 @@ The full register, with owners, compensating controls, expiry dates and exit cri
 - Staging deployment end to end: the Vercel build with no secrets, the shipped-output check, the deterministic archive and SBOM, then deploying exactly that checksum-verified archive to Vercel and a smoke test of the live security headers. The token reaches only the deploy step (it shows as `***`).
 - The credential presence check (true/false per credential, never a value) and its fail-fast message.
 - `apply-settings.sh` against the live API, including its fallbacks on a plan without environment protection or rulesets.
+- The live staging preview (2026-11-25): the production build on the staging Supabase project, deployed from `staging`, given its stable hostname (`STAGING_ALIAS`) through the Vercel REST API, the security-header smoke test on that hostname, and an owner sign-in on it. `STAGING_LIVE_ENABLED` must be a repository variable; `vercel alias set` failed with this token ("User not found"), hence the API.
 
 **Found and fixed by the first real runs** (each is why a documented step exists): the Actions allow-list also needs `aquasecurity/setup-trivy`; a manual full-history Gitleaks scan flagged two lists of known-weak passwords (allow-listed by path); artifact attestations are refused for user-owned private repositories (EX-09); and secrets of an environment do not reach a job that calls a reusable workflow, so the deploy is a local composite action called from a job that declares the environment.
 
@@ -249,7 +250,7 @@ The full register, with owners, compensating controls, expiry dates and exit cri
 **Not yet proven:**
 - **The production release path:** `verify-tag.sh` against a real signed tag, the `release.yml` workflow, the `production` environment, and the `publish` job that creates the GitHub Release. Cut a first release from a signed tag and read the run before relying on it.
 - **Build provenance and SBOM attestations, and cosign signing:** both are off (EX-09, EX-06), so `gh attestation verify` does not apply yet.
-- **The staging aliases** (`STAGING_DEMO_ALIAS`, `STAGING_ALIAS`) and the **live staging preview**, which are unused so far.
+- **The demo alias** (`STAGING_DEMO_ALIAS`): not set yet. It uses the same alias step as the live preview, which is proven (above).
 - **Rulesets, branch protection and the production approval step:** GitHub refuses them on this plan (EX-08), so none of their effects are proven.
 - **Commit-signing enforcement,** which depends on those rulesets.
 - **Merging Dependabot pull requests and the weekly scheduled security run.** Dependabot is running (it has opened pull requests for the application's development dependencies), but none has been reviewed or merged through this pipeline yet; the major-version bumps (TypeScript, Tailwind, ESLint) each need their own review.
