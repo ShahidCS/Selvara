@@ -231,7 +231,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
             {pageRows.length === 0 ? (
               <tr><td colSpan={span} className="dt-empty">{/* H2: "no results" only when a search or filter is on; otherwise there is simply nothing yet */}
                 {filtered ? <span>Nothing matches these filters. <button type="button" className="linkbtn inline" onClick={reset}>Clear filters</button></span>
-                  : (p.emptyText || "Nothing here yet.")}</td></tr>
+                  : tab ? "Nothing in this view." : (p.emptyText || "Nothing here yet.")}</td></tr>
             ) : pageRows.map((r) => {
               const id = p.rowKey(r); const on = selected.includes(id);
               return (

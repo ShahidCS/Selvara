@@ -8,7 +8,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 - Shared components, second part of the design brief (docs/architecture/DESIGN_SYSTEM.md):
   - **Dialogs:** a close icon in the title, one footer, and no separate Close button. This removes the extra Close in "Add an authenticator app".
   - **Change role:** uses a new listbox that opens under its field instead of a native menu over the dialog. It lists every role a member can hold, and explains why a role can't be given.
-  - **Empty lists:** they say "nothing yet" instead of "Nothing matches these filters" unless a search or filter is on. The API event stream says "No events yet". A full empty state keeps a sensible height.
+  - **Empty lists:** they say "nothing yet" instead of "Nothing matches these filters" unless a search or filter is on. An empty tab says "Nothing in this view". The API event stream says "No events yet". A full empty state keeps a sensible height.
   - **Forms:** helper text no longer runs into the next label. Section labels have one spacing. Placeholders are lighter and italic. Create a company puts its inputs on one grid row.
   - **AI Assistant settings:** uses one settings-row layout across the full width.
   - **Platform Security:** header badges look the same, and checklist icons and "Planned" badges line up.
