@@ -45,7 +45,7 @@ export function ApiBillingWs() {
     { key: "total", header: "Total", align: "end", value: (i) => i.total, render: (i) => <span className="num">{minorMoney(i.total, i.currency)}</span> },
     { key: "out", header: "Still due", align: "end", value: (i) => i.outstanding, render: (i) => <span className="num">{minorMoney(i.outstanding, i.currency)}</span> },
     { key: "status", header: "Status", value: (i) => i.status, render: (i) => <StatusChip s={i.status} /> },
-    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (i) => (
+    { key: "act", header: "Actions", align: "end", locked: true, render: (i) => (
       <span style={{ whiteSpace: "nowrap" }}>
         {d.canPay && i.outstanding > 0 && (i.status === "Open" || i.status === "Past due") ? <button className="btn btn-ghost sm" aria-label={`Pay invoice ${i.id}`} onClick={() => pay(i)}><Icon name="ext" />Pay</button> : null}
         <button className="btn btn-ghost sm" aria-label={`Download invoice ${i.id}`} onClick={() => download(i)}><Icon name="download" />Download</button>

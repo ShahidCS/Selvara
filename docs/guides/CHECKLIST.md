@@ -36,7 +36,7 @@ Status below is the migration state of each route. "Pending" screens render an e
 | `/admin/billing[/id]` | Billing | `BillingModule` | 4 | Done | [billing](checklist/billing.md) |
 | `/admin/rates` | Exchange Rates & Tax | `RatesModule` | 4 | Done | [rates](checklist/rates.md) |
 | `/admin/mfa` | MFA Resets | `MfaModule` | 4 | Done | [mfa](checklist/mfa.md) |
-| `/admin/adminlog` | Admin Audit Log | `AdminLogModule` | 4 | Done | [adminlog](checklist/adminlog.md) |
+| `/admin/adminlog` | Audit Logs (Admin Console) | `AdminLogModule` | 4 | Done | [adminlog](checklist/adminlog.md) |
 | `/ws/me` | Member workspace (spec board), merged into My Work (`/ws/work` tabs Policies, Account security, Delegation; `/ws/me` opens Policies) | `WorkModule` | 5 | Done | [me](checklist/me.md) |
 | `/admin/elevation` | Elevated access (spec board; simulated, not a control) | `ElevationModule` | 5 | Done | [elevation](checklist/elevation.md) |
 | `/admin/security` | Platform security rules (spec board) | `PlatformSecurityModule` | 5 | Done | [platform-security](checklist/platform-security.md) |

@@ -104,7 +104,7 @@ The site is built by GitHub Actions, not by Vercel, so a `NEXT_PUBLIC_API_MODE` 
 2. GitHub → **Settings** → **Environments** → `production` → **Environment variables** → **Add variable**: name `API_MODE`, value `http`.
 3. Deploy: push the next release tag, or re-run the **Production** job of the latest release (the build runs again with the new value).
 
-What changes: the sign-in page uses your real account (no demo accounts), and only modules with a server API are shown (decision D4). Since v0.2.0 every workspace module has one, so each role sees all the modules its role allows, as in the demonstration; **Your account** is there for everyone. Platform staff get the Admin Console (Customers & Usage, Billing, Elevated Access for super admins, and the Admin Audit Log). To go back to the demonstration, set `API_MODE` to `mock` (or delete it) and deploy again.
+What changes: the sign-in page uses your real account (no demo accounts), and only modules with a server API are shown (decision D4). Since v0.2.0 every workspace module has one, so each role sees all the modules its role allows, as in the demonstration; **Your account** is there for everyone. Platform staff get the Admin Console (Customers & Usage, Billing, Elevated Access for super admins, and the Audit Logs (Admin Console)). To go back to the demonstration, set `API_MODE` to `mock` (or delete it) and deploy again.
 
 ### 4d. File storage: the `evidence` bucket (you, per project; required from v0.2.0)
 
@@ -283,7 +283,7 @@ insert into public.platform_staff (user_id, role, created_ms)
 values ('3f2c9a1e-0000-4000-8000-000000000000', 'super', (extract(epoch from now()) * 1000)::bigint);
 ```
 
-Their first sign-in asks them to add a passkey. Everyone else adds an authenticator app at their first sign-in. From v0.1.11 a platform super admin lands on the Admin Console (Customers & Usage, Elevated Access, Admin Audit Log). Creating, suspending or reactivating a company needs a **second** platform super admin to approve, so create two (each with their own email, passkey and `platform_staff` row). Until then, create companies with `bootstrap_company` (5b). A `support` row instead of `super` gives a read-only Admin Console account.
+Their first sign-in asks them to add a passkey. Everyone else adds an authenticator app at their first sign-in. From v0.1.11 a platform super admin lands on the Admin Console (Customers & Usage, Elevated Access, Audit Logs (Admin Console)). Creating, suspending or reactivating a company needs a **second** platform super admin to approve, so create two (each with their own email, passkey and `platform_staff` row). Until then, create companies with `bootstrap_company` (5b). A `support` row instead of `super` gives a read-only Admin Console account.
 
 **To correct a name** that was stored wrongly: `update public.profiles set person = 'Sam Admin' where email = 'sam.admin@yourcompany.example';` and reload the page.
 

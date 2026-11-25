@@ -60,7 +60,7 @@ function ApiTabs() {
     { key: "last", header: "Last used", value: (k) => k.lastUsed, render: (k) => <span style={{ color: "var(--muted)" }}>{k.lastUsed}{k.uses ? ` · ${k.uses} calls` : ""}</span> },
     ...(API_ON ? [{ key: "expires", header: "Expires", value: (k: Key) => k.expires || "", render: (k: Key) => <span style={{ color: "var(--muted)" }}>{k.expires}</span> }] : []),
     { key: "status", header: "Status", value: (k) => k.status, render: (k) => (k.status === "Active" ? <Chip cls="ok" icon="check">Active</Chip> : k.status === "Pending approval" ? <Chip cls="warn" icon="clock">Pending approval</Chip> : k.status === "Not approved" ? <Chip cls="neutral" icon="x">Not approved</Chip> : k.status === "Approved, not yet issued" ? <Chip cls="warn" icon="clock">Approved, not yet issued</Chip> : k.status === "Expired" ? <Chip cls="neutral" icon="clock">Expired</Chip> : <Chip cls="bad" icon="x">Revoked</Chip>) },
-    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (k) => (manage ? (
+    { key: "act", header: "Actions", align: "end", locked: true, render: (k) => (manage ? (
       <div className="btngrp" style={{ justifyContent: "flex-end" }}>
         {svc.keyRevealable(k.id) ? <button className="btn btn-primary sm" aria-label={`Reveal key ${k.label} once`} onClick={() => L.openModal("Your new API key", (close) => <RevealKeyModal id={k.id} close={close} />)}><Icon name="access" />Show key once</button> : null}
         {k.status === "Active" ? <button className="btn btn-ghost sm" aria-label={`Revoke ${k.label}`} onClick={() => L.openModal("Revoke API key?", (close) => <RevokeKeyForm id={k.id} close={close} />)}><Icon name="x" />Revoke</button> : null}
@@ -73,7 +73,7 @@ function ApiTabs() {
     { key: "sig", header: "Signature", defaultHidden: true, value: () => "HMAC-SHA256", render: () => <span className="num" style={{ whiteSpace: "nowrap" }}>HMAC-SHA256</span> },
     { key: "last", header: "Last delivery", value: (w) => w.lastDelivery || "", render: (w) => <span style={{ color: "var(--muted)" }}>{w.lastDelivery || "—"}{w.failures ? <div style={{ color: "var(--bad-ink)", fontSize: 11.5 }}>{w.failures} failed in a row</div> : null}</span> },
     { key: "status", header: "Status", value: (w) => w.status, render: (w) => (w.status === "Active" ? <Chip cls="ok" icon="check">Active</Chip> : w.status === "Pending approval" ? <Chip cls="warn" icon="clock">Pending approval</Chip> : w.status === "Not approved" ? <Chip cls="neutral" icon="x">Not approved</Chip> : <Chip cls="neutral" icon="dot">Paused</Chip>) },
-    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (w) => (manage ? (
+    { key: "act", header: "Actions", align: "end", locked: true, render: (w) => (manage ? (
       <div className="btngrp" style={{ justifyContent: "flex-end", flexWrap: "nowrap", whiteSpace: "nowrap" }}>
         {w.secretRevealable ? <button className="btn btn-primary sm" aria-label={`Show signing secret of ${w.url} once`} onClick={() => L.openModal("Webhook signing secret", (close) => <RevealSecretModal id={w.id} close={close} />)}><Icon name="access" />Show secret once</button> : null}
         <button className="btn btn-ghost sm" disabled={API_ON ? w.status !== "Active" : w.status !== "Active" && w.status !== "Paused"} title={w.status === "Active" || w.status === "Paused" ? undefined : "Needs approval from a second admin"} aria-label={`Send test event to ${w.url}`} onClick={() => hookTest(w.id)}><Icon name="refresh" />Test</button>
@@ -88,7 +88,7 @@ function ApiTabs() {
     { key: "sched", header: "Schedule", value: (x) => x.schedule, render: (x) => <span style={{ color: "var(--muted)" }}>{x.schedule}</span> },
     { key: "last", header: "Last run", value: (x) => x.last, render: (x) => <span style={{ color: "var(--muted)" }}>{x.last}</span> },
     { key: "result", header: "Result", value: (x) => x.result, render: (x) => <StatusChip s={x.result} /> },
-    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (x) => (manage ? (
+    { key: "act", header: "Actions", align: "end", locked: true, render: (x) => (manage ? (
       <div className="btngrp" style={{ justifyContent: "flex-end", flexWrap: "nowrap", whiteSpace: "nowrap" }}>
         <button className="btn btn-ghost sm" aria-label={`Run ${x.name} now`} onClick={() => testRun(x.id)}><Icon name="refresh" />Run now</button>
         <button className="btn btn-ghost sm" aria-label={`Delete ${x.name}`} title="Delete test" onClick={() => testDelete(x.id)}><Icon name="trash" /></button>

@@ -53,7 +53,7 @@ function Companies({ s }: { s: ElevationState }) {
     { key: "members", header: "Members", value: (c) => c.members, render: (c) => <span className="num">{c.members}</span> },
     { key: "admins", header: "Admins", value: (c) => c.admins, render: (c) => <span className="num">{c.admins}</span> },
     { key: "inv", header: "Open invitations", value: (c) => c.pendingInvites, render: (c) => <span className="num">{c.pendingInvites}</span> },
-    { key: "act", header: "Actions", hideHeader: true, render: (c) => (
+    { key: "act", header: "Actions", render: (c) => (
       <div className="btngrp" style={{ justifyContent: "flex-end", flexWrap: "nowrap" }}>
         {c.admins === 0 && c.pendingInvites > 0 ? <button className="btn btn-ghost sm" disabled={s.locked} title={gate} aria-label={`Email the first admin invitation: ${c.name}`} onClick={() => link(c)}><Icon name="user" />Email first admin</button> : null}
         {c.status === "Active" ? <button className="btn btn-ghost sm" disabled={s.locked} title={gate} aria-label={`Suspend: ${c.name}`} onClick={() => L.openModal(`Suspend ${c.name}`, (close) => <StatusForm c={c} action="suspend" close={close} />)}><Icon name="x" />Suspend</button>

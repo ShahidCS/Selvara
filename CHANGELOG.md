@@ -5,6 +5,12 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ## [Unreleased]
 
 ### Changed
+- Data tables, third part of the design brief:
+  - **Fixed widths:** every column has a fixed width from one shared configuration, so paging, sorting and filtering no longer shift columns (the Audit Log moved between pages).
+  - **Resizing:** you can drag a column edge, or use the arrow keys on it, to resize a column for your session. Widths reset at sign-out.
+  - **Long values:** long values end in an ellipsis, with the full text on hover.
+  - **Actions:** row actions are in a labelled Actions column.
+- **Audit Logs:** "Admin Audit Log" is now "Audit Logs" across the Admin Console. Sign-in and account entries say how the action happened in the Detail column (for example "Signed in with a passkey · Chrome on macOS") instead of repeating the person's name.
 - Shared components, second part of the design brief (docs/architecture/DESIGN_SYSTEM.md):
   - **Dialogs:** a close icon in the title, one footer, and no separate Close button. This removes the extra Close in "Add an authenticator app".
   - **Change role:** uses a new listbox that opens under its field instead of a native menu over the dialog. It lists every role a member can hold, and explains why a role can't be given.

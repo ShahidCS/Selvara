@@ -53,7 +53,7 @@ function TeamTabs() {
     { key: "role", header: "Workspace role", value: (p) => memberRole(p), render: (p) => memberRole(p) },
     { key: "mfa", header: "MFA", value: (p) => (p.mfa ? "Enrolled" : "No MFA"), render: (p) => (p.mfa ? <Chip cls="ok" icon="check">Enrolled</Chip> : <Chip cls="neutral" icon="dot">No MFA</Chip>) },
     { key: "status", header: "Status", value: () => "Active", render: () => <StatusChip s="Active" /> },
-    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (p) => (manage ? (sodReason("nobody changes their own role", p.name)
+    { key: "act", header: "Actions", align: "end", locked: true, render: (p) => (manage ? (sodReason("nobody changes their own role", p.name)
       ? <span style={{ color: "var(--muted)", fontSize: 12, whiteSpace: "nowrap" }}>You<span className="vh">: another admin changes your role</span></span>
       : <button className="btn btn-ghost sm" aria-label={`Change role of ${p.name}`} onClick={() => L.openModal("Change role, " + p.name, (close) => <ChangeRoleForm personId={p.id} close={close} />)}><Icon name="access" />Role</button>) : null) },
   ];

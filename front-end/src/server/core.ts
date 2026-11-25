@@ -145,6 +145,8 @@ async function loadTicket(d: Deps, id: unknown): Promise<Ticket | null> {
 const saveTicket = async (d: Deps, id: string, t: Ticket) => d.store.kvSet("ticket", id, await seal(d.secret, t), MFA.TICKET_MS);
 const device = (r: Req) => { const ua = r.headers["user-agent"] || ""; const b = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "Browser"; const os = /iPhone|iPad/.test(ua) ? "iOS" : /Android/.test(ua) ? "Android" : /Mac OS X/.test(ua) ? "macOS" : /Windows/.test(ua) ? "Windows" : /Linux/.test(ua) ? "Linux" : "an unknown system"; return `${b} on ${os}`; };
 const cookie = (v: string, maxAgeS: number) => `${COOKIE}=${v}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAgeS}`;
+/** I6: the audit Detail says how the person signed in (the Actor column already names them). */
+const SIGN_IN_METHOD: Record<string, string> = { totp: "an authenticator code", enroll: "a newly added authenticator app", passkey: "a passkey" };
 async function finish(d: Deps, r: Req, ticketId: string, t: Ticket, extra: Record<string, unknown> = {}): Promise<Res> {
   await d.store.kvDel("ticket", ticketId); await d.store.kvDel("lock", t.email);
   const rec = await ipRec(d, r.ip); rec.fails = []; await d.store.kvSet("ip", r.ip, rec, IP_POLICY.RESET_MS);
@@ -157,7 +159,7 @@ async function finish(d: Deps, r: Req, ticketId: string, t: Ticket, extra: Recor
   const sid = randomId(32); const now = d.now(); const absolute = POLICY.absoluteHours * 60 * MIN;
   await d.store.insertSession({ idHash: await sha256Hex(sid), userId: p.id, device: device(r), ip: r.ip, createdAt: now, lastSeen: now, expiresAt: now + absolute, tenantId: acc.company?.id ?? null });
   await d.store.kvSet("reauth", await sha256Hex(sid), now, REAUTH_MS);
-  await audit(d, r, actorOf(p, acc), "auth.signed_in", p.person);
+  await audit(d, r, actorOf(p, acc), "auth.signed_in", `Signed in with ${"recoveryLeft" in extra ? "a recovery code" : SIGN_IN_METHOD[t.method] ?? "a second step"} · ${device(r)}`);
   return ok({ roleId: acc.role, who: p.person, person: p.person, company: companyView(acc.company), previous, failedSince, ...extra }, [cookie(sid, absolute / 1000)]);
 }
 /** The signed-in session, person and access, enforcing the idle limit (15 minutes for privileged roles, 30 otherwise), the absolute limit and the
@@ -248,7 +250,7 @@ const passkeyStep: H = async (d, r) => {
   if (reg) {
     if (!t.register || typeof reg.id !== "string" || typeof reg.publicKey !== "string" || !checkRegistration(s(reg.clientDataJSON, 4096), { challenge: t.challenge, origin: d.site.origin })) return wrongSecond(d, r, tid, t);
     await d.store.insertPasskey({ id: s(reg.id, 512), userId: t.userId, publicKey: s(reg.publicKey, 1024), signCount: 0, createdAt: d.now(), label: device(r) });
-    await notify(d, t.userId, `A passkey was added to your account (${device(r)}).`); await audit(d, r, actorOf(p, await accessAtSignIn(d, p.id)), "auth.passkey.added", p.person);
+    await notify(d, t.userId, `A passkey was added to your account (${device(r)}).`); await audit(d, r, actorOf(p, await accessAtSignIn(d, p.id)), "auth.passkey.added", `Passkey added at first sign-in · ${device(r)}`);
     return afterPasskey(d, r, tid, t);
   }
   if (!as) return wrongSecond(d, r, tid, t);
@@ -279,7 +281,7 @@ const sessionInfo: H = async (d, r) => {
 const signOut: H = async (d, r) => {
   const c = await current(d, r);
   if (c) {
-    await d.store.updateSession(c.s.idHash, { revokedAt: d.now(), revokedWhy: "Signed out" }); await audit(d, r, actorOf(c.p, c.a), "auth.signed_out", c.p.person);
+    await d.store.updateSession(c.s.idHash, { revokedAt: d.now(), revokedWhy: "Signed out" }); await audit(d, r, actorOf(c.p, c.a), "auth.signed_out", `Session ended · ${device(r)}`);
     if (c.a.platform) { // signing out ends an elevation or a support session (the company's log records the end of a support session)
       await d.sup.close(c.p.id, "signed out", r.ip, d.now(), entry(d, r, actorOf(c.p, c.a), "platform.support.ended", "signed out"));
       await d.plat.endElevation(c.p.id, d.now(), entry(d, r, actorOf(c.p, c.a), "platform.elevation.ended", "signed out"));
@@ -338,7 +340,7 @@ const resetRequest: H = async (d, r) => {
   if (p && p.status === "Active" && (await allow(d, "acct:" + p.id, "reset", RESET.MAX_PER_HOUR, 60 * MIN))) {
     await d.auth.sendResetEmail(email, `${d.site.origin}/login`);
     await notify(d, p.id, "A password reset was requested for your account. If this was not you, you can ignore it: your password has not changed.");
-    await audit(d, r, actorOf(p, await accessAtSignIn(d, p.id)), "auth.password.reset_requested", p.person);
+    await audit(d, r, actorOf(p, await accessAtSignIn(d, p.id)), "auth.password.reset_requested", "Password reset link requested by email");
   }
   return { status: 202 };
 };
@@ -367,7 +369,7 @@ const resetDo: H = async (d, r) => {
   let ended = 0; for (const x of await d.store.sessionsOf(p.id)) if (!x.revokedAt) { ended++; await d.store.updateSession(x.idHash, { revokedAt: d.now(), revokedWhy: "Password reset" }); }
   await d.store.kvDel("lock", p.email);
   await notify(d, p.id, `Your password was reset${ended ? ` and ${ended} session${ended === 1 ? " was" : "s were"} signed out` : ""}. If this was not you, contact your administrator now.`);
-  await audit(d, r, actorOf(p, await accessAtSignIn(d, p.id)), "auth.password.reset", p.person);
+  await audit(d, r, actorOf(p, await accessAtSignIn(d, p.id)), "auth.password.reset", "Password set with an emailed reset link");
   return ok();
 };
 
@@ -420,13 +422,13 @@ const changePassword = signed(async (d, r, { s: me, p, a }) => {
   await d.auth.setPassword(p.id, next); await d.store.kvSet("reauth", me.idHash, d.now(), REAUTH_MS);
   let ended = 0; for (const x of await d.store.sessionsOf(p.id)) if (!x.revokedAt && x.idHash !== me.idHash) { ended++; await d.store.updateSession(x.idHash, { revokedAt: d.now(), revokedWhy: "Password changed" }); }
   await notify(d, p.id, `Your password was changed${ended ? ` and ${ended} other session${ended === 1 ? " was" : "s were"} signed out` : ""}. If this was not you, reset it now.`);
-  await audit(d, r, actorOf(p, a), "auth.password.changed", p.person); return ok();
+  await audit(d, r, actorOf(p, a), "auth.password.changed", "Password changed after re-entering the current one"); return ok();
 });
 const newCodes = signed(async (d, r, { s: me, p, a }) => {
   if (!(await recentAuth(d, me))) return err(403, "Confirm your password first.");
   if (!(await d.store.kvGet("mfa", p.id))) return err(400, "Add an authenticator app first.");
   const codes = generateRecoveryCodes(MFA.RECOVERY_CODES); await storeRecovery(d, p.id, codes);
-  await notify(d, p.id, "New recovery codes were issued. The old ones no longer work."); await audit(d, r, actorOf(p, a), "recovery.codes.regenerated", p.person);
+  await notify(d, p.id, "New recovery codes were issued. The old ones no longer work."); await audit(d, r, actorOf(p, a), "recovery.codes.regenerated", "New recovery codes issued; earlier codes no longer work");
   return ok({ codes });
 });
 /* Authenticator apps from Your account (owner decision 2026-11-24). Each change needs the password again and a code from an app the person
@@ -451,7 +453,7 @@ const appAdd = signed(async (d, r, { s: me, p, a }) => {
     const left = await redeemRecovery(d, p.id, code); if (left < 0) { await failAuth(d, r, p); return stop(400, "That recovery code is not correct or was already used."); }
     for (const x of apps) await d.auth.removeTotp(p.id, x.id);
     await notify(d, p.id, `A recovery code was used to replace your authenticator app${apps.length === 1 ? "" : "s"}. ${left} recovery code${left === 1 ? "" : "s"} left.`);
-    await audit(d, r, actorOf(p, a), "auth.totp.removed_with_recovery_code", p.person);
+    await audit(d, r, actorOf(p, a), "auth.totp.removed_with_recovery_code", "Authenticator app removed using a recovery code");
     en = { ...(await d.auth.enrollTotp(res, label)), access: res.access, refresh: res.refresh };
   } else if (apps.length) {
     if (!/^\d{6}$/.test(code)) return stop(400, "Enter the 6-digit code from an authenticator app you already use.");
@@ -477,7 +479,7 @@ const appVerify = signed(async (d, r, { s: me, p, a }) => {
   let codes: string[] | undefined;
   if (!(await d.store.recoveryOf(p.id)).some((x) => !x.usedAt)) { codes = generateRecoveryCodes(MFA.RECOVERY_CODES); await storeRecovery(d, p.id, codes); }
   await notify(d, p.id, `An authenticator app ("${t.label}") was ${t.replaces ? "added in place of another one" : "added"}${codes ? " and new recovery codes were issued" : ""}. If this was not you, change your password now.`);
-  await audit(d, r, actorOf(p, a), t.replaces ? "auth.totp.replaced" : "auth.totp.added", p.person);
+  await audit(d, r, actorOf(p, a), t.replaces ? "auth.totp.replaced" : "auth.totp.added", `Authenticator app "${t.label}" ${t.replaces ? "added in place of another" : "added"}${codes ? "; recovery codes issued" : ""}`);
   return ok(codes ? { recoveryCodes: codes } : {});
 });
 const appRemove = signed(async (d, r, { p, a }) => {
@@ -491,12 +493,12 @@ const appRemove = signed(async (d, r, { p, a }) => {
   if (!good) { await failAuth(d, r, p); return err(400, "That code is not correct."); }
   await d.auth.removeTotp(p.id, id);
   await notify(d, p.id, "An authenticator app was removed from your account. If this was not you, change your password now.");
-  await audit(d, r, actorOf(p, a), "auth.totp.removed", p.person); return ok();
+  await audit(d, r, actorOf(p, a), "auth.totp.removed", "Authenticator app removed"); return ok();
 });
 const revokeOthers = signed(async (d, r, { s: me, p, a }) => {
   let n = 0; for (const x of await d.store.sessionsOf(p.id)) if (!x.revokedAt && x.idHash !== me.idHash) { n++; await d.store.updateSession(x.idHash, { revokedAt: d.now(), revokedWhy: "Signed out from another session" }); }
   if (n) await notify(d, p.id, `${n} other session${n === 1 ? " was" : "s were"} signed out from ${device(r)}.`);
-  await audit(d, r, actorOf(p, a), "session.others.revoked", p.person); return ok(n);
+  await audit(d, r, actorOf(p, a), "session.others.revoked", `${n} other session${n === 1 ? "" : "s"} signed out · from ${device(r)}`); return ok(n);
 });
 const passkeyOptions = signed(async (d, r, { s: me, p }) => {
   if (!(await recentAuth(d, me))) return err(403, "Confirm your password first.");
@@ -507,14 +509,14 @@ const passkeyAdd = signed(async (d, r, { s: me, p, a }) => {
   const challenge = await d.store.kvGet<string>("pkadd", me.idHash); await d.store.kvDel("pkadd", me.idHash);
   if (!challenge || !checkRegistration(s(r.body.clientDataJSON, 4096), { challenge, origin: d.site.origin })) return err(400, "That passkey could not be verified.");
   await d.store.insertPasskey({ id: s(r.body.id, 512), userId: p.id, publicKey: s(r.body.publicKey, 1024), signCount: 0, createdAt: d.now(), label: device(r) });
-  await notify(d, p.id, `A passkey was added to your account (${device(r)}).`); await audit(d, r, actorOf(p, a), "auth.passkey.added", p.person); return ok();
+  await notify(d, p.id, `A passkey was added to your account (${device(r)}).`); await audit(d, r, actorOf(p, a), "auth.passkey.added", `Passkey added · ${device(r)}`); return ok();
 });
 const passkeyDelete = signed(async (d, r, { s: me, p, a }) => {
   if (!(await recentAuth(d, me))) return err(403, "Confirm your password first.");
   const keys = await d.store.passkeysOf(p.id); const id = s(r.path[2], 512);
   if (!keys.some((k) => k.id === id)) return err(404, "Passkey not found.");
   if (isSuper(a) && keys.length <= 1) return err(400, "Platform super admins must keep at least one passkey.");
-  await d.store.deletePasskey(id); await notify(d, p.id, "A passkey was removed from your account."); await audit(d, r, actorOf(p, a), "auth.passkey.removed", p.person); return ok();
+  await d.store.deletePasskey(id); await notify(d, p.id, "A passkey was removed from your account."); await audit(d, r, actorOf(p, a), "auth.passkey.removed", "Passkey removed"); return ok();
 });
 
 /** Switches the session to another company the person is an active member of (D1: one company per session). Platform staff reach a company

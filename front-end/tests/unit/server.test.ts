@@ -204,7 +204,11 @@ describe("account endpoints", () => {
     const res = await call("POST", "auth/sign-in/passkey", { ticket: st2.ticket, assertion: { id: kid, authenticatorData: toB64u(ad), clientDataJSON: cdj, signature: toB64u(der) } });
     expect(res.status).toBe(200); expect((res.body as { roleId: string }).roleId).toBe("super");
     expect((await call("POST", "auth/sign-in/verify", { ticket: st2.ticket, code: "123456" })).status).toBe(400); // no code path for super admins
-    expect(store.auditLog.find((e) => e.action === "auth.signed_in" && e.actor === "Dana Whitfield")!.space).toBe("admin");
+    const signedIn = store.auditLog.find((e) => e.action === "auth.signed_in" && e.actor === "Dana Whitfield")!;
+    expect(signedIn.space).toBe("admin");
+    // I6: the Detail says how, never repeats the actor's name
+    expect(signedIn.target).toMatch(/^Signed in with a passkey · Chrome on /);
+    expect(store.auditLog.filter((e) => e.actor === "Dana Whitfield").every((e) => e.target !== "Dana Whitfield")).toBe(true);
   });
 });
 

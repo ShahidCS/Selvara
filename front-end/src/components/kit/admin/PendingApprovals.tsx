@@ -18,7 +18,7 @@ function DecideForm({ a, ok, run, close }: { a: Approval; ok: boolean; run: (id:
   return (
     <>
       <p style={{ margin: "0 0 10px" }}>{a.title}</p>
-      <p className="field help" style={{ margin: "0 0 10px" }}>Requested by {a.requestedBy}{a.ticket ? ", ticket " + a.ticket : ""}. Your decision and reason are written to the admin audit log.</p>
+      <p className="field help" style={{ margin: "0 0 10px" }}>Requested by {a.requestedBy}{a.ticket ? ", ticket " + a.ticket : ""}. Your decision and reason are written to Audit Logs.</p>
       <div className="field"><label htmlFor="apReason">Reason (at least {APPROVAL_REASON_MIN} characters)</label><textarea className="input" id="apReason" data-focus maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} /></div>
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className={"btn " + (ok ? "btn-primary" : "btn-danger")} disabled={short} onClick={go}>{ok ? "Approve" : "Reject"}</button></LayerFoot>
     </>

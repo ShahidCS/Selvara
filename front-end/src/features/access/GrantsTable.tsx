@@ -22,7 +22,7 @@ const COLS: DTColumn<Grant>[] = [
 /** Grants register shared by Access > Account inventory and People > Access grants. */
 export function GrantsTable() {
   const L = useLayer(); const role = useApp((s) => s.role); const act = API_ON && canActOnAccess(role);
-  const cols: DTColumn<Grant>[] = act ? [...COLS, { key: "act", header: "Actions", hideHeader: true, render: (a) => <button className="btn btn-ghost sm" aria-label={`Revoke ${a.user} → ${a.system}`} onClick={() => L.openModal("Revoke access", (close) => <RevokeGrantForm grant={a} close={close} />)}><Icon name="x" />Revoke</button> }] : COLS;
+  const cols: DTColumn<Grant>[] = act ? [...COLS, { key: "act", header: "Actions", render: (a) => <button className="btn btn-ghost sm" aria-label={`Revoke ${a.user} → ${a.system}`} onClick={() => L.openModal("Revoke access", (close) => <RevokeGrantForm grant={a} close={close} />)}><Icon name="x" />Revoke</button> }] : COLS;
   const systems = Array.from(new Set<string>(DATA.access.map((a: Grant) => String(a.system)))).sort();
   const statuses = Array.from(new Set<string>(DATA.access.map((a: Grant) => String(a.status)))).sort();
   return (

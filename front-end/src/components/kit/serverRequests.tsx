@@ -37,7 +37,7 @@ export function RequestsTable({ id, load, decide, note }: { id: string; load: ()
     { key: "status", header: "Status", value: (a) => a.status, render: (a) => chip(a.status) },
     { key: "when", header: "Requested", value: (a) => a.createdAt, render: (a) => <span className="num">{utcMin(a.createdAt)}</span> },
     { key: "dec", header: "Decided by", value: (a) => a.votes.map((x) => x.by).join(", "), render: (a) => a.votes.map((x) => x.by).join(", ") || (a.reason ? `Rejected: ${a.reason}` : "") },
-    { key: "act", header: "Actions", hideHeader: true, render: (a) => (a.status !== "Pending" ? null : a.mine ? (
+    { key: "act", header: "Actions", render: (a) => (a.status !== "Pending" ? null : a.mine ? (
       <button className="btn btn-ghost sm" aria-label={`Withdraw: ${a.title}`} onClick={() => withdraw(a)}><Icon name="x" />Withdraw</button>
     ) : a.block ? <span className="field help" style={{ margin: 0 }}>{a.block}</span> : (
       <div className="btngrp" style={{ justifyContent: "flex-end", flexWrap: "nowrap" }}>
