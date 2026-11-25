@@ -216,7 +216,7 @@ The `staging` branch deploys a **demo** preview always, and a **live** preview (
 
 1. Run sections 2, 3, 4b, 4d (and 4h for email, in sandbox or test mode) against the `selvara-staging` project.
 2. Vercel → Project → Settings → Environment Variables: give every variable from sections 4 and 4b to 4h the **staging** project's values, with only **Preview** ticked. Set `SITE_URL` to the live preview's address, `https://` plus `STAGING_ALIAS`; that origin is checked on every write and is the passkey relying party. Preview values reach every preview deployment, the demo one too, which does not use them.
-3. GitHub → Settings → Environments → `staging` → Variables: `STAGING_ALIAS` (the hostname, assigned to the Vercel project as a domain) and `STAGING_LIVE_ENABLED` = `true`.
+3. GitHub → Settings → Environments → `staging` → Variables: `STAGING_ALIAS` (the hostname, assigned to the Vercel project as a domain). Then GitHub → Settings → Secrets and variables → Actions → **Variables** tab → **Repository variables**: `STAGING_LIVE_ENABLED` = `true`. It must be a repository variable: the live job checks it before entering the `staging` environment, so a value stored on the environment is never seen and the job stays skipped.
 4. Move the staging branch (docs/security/PIPELINE.md, "Staging branch and previews") and open the live preview: sign in with a staging account from section 5.
 
 Run each new migration on staging **before** production, then test the release on the live preview before tagging it.
