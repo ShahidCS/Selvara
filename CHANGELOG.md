@@ -12,6 +12,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ### Fixed
 - The sign-in card and the authenticator set-up text are left-aligned: justified text in a narrow column left wide word gaps.
+- Docs: `STAGING_LIVE_ENABLED` is a **repository** variable (PIPELINE.md, SUPABASE.md section 4i said the `staging` environment, where the live job's `if` cannot see it).
 
 ## [0.3.1] - 2026-11-24
 
