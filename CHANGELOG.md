@@ -13,7 +13,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ### Fixed
 - The sign-in card and the authenticator set-up text are left-aligned: justified text in a narrow column left wide word gaps.
 - Staging alias: the live preview's hostname is now assigned through the Vercel REST API, scoped to the team. `vercel alias set` (also with `--scope`) failed with "User not found" because it loads the token's user first.
-- Docs: PIPELINE.md records the live staging preview as proven (deploy, alias, smoke test, owner sign-in); only the demo alias is left unset.
+- Docs: PIPELINE.md records the live staging preview, the production release path (v0.3.1) and the `staging-protection` ruleset as proven; only the demo alias is left unset. `main` protection, tag protection and the production approval step are still not applied (EX-08 status note: the repository is public, so they can be).
 - Docs: `STAGING_LIVE_ENABLED` is a **repository** variable (PIPELINE.md, SUPABASE.md section 4i said the `staging` environment, where the live job's `if` cannot see it).
 
 ## [0.3.1] - 2026-11-24
