@@ -10,6 +10,12 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 - README screenshots: sign-in, first-sign-in authenticator set-up and Your account are now from the production build (synthetic people); the Admin Console screenshots are replaced by company admin ones (Team & Rules, approvals waiting).
 - Docs: README and CONTROLS no longer say most modules are browser-only; EX-04 records the 2026-11-24 re-assessment of the Vercel CLI advisories.
 
+### Added
+- Docs: SUPABASE.md section 4h-R, the Resend email set-up (domain, DNS, three scoped keys, Vercel and Supabase settings, staging test, RoPA). Pending: the company domain has to be bought first.
+
+### Security
+- CSP: production `script-src` is `'self'` only; `'unsafe-inline'` is gone (EX-05 closed). Production builds use webpack (`next build --webpack`), which emits no inline scripts; the dev server keeps it. New e2e checks: no CSP violation and the app starts on five pages; the deploy smoke test fails on inline scripts.
+
 ### Fixed
 - The sign-in card and the authenticator set-up text are left-aligned: justified text in a narrow column left wide word gaps.
 - Staging alias: the live preview's hostname is now assigned through the Vercel REST API, scoped to the team. `vercel alias set` (also with `--scope`) failed with "User not found" because it loads the token's user first.
