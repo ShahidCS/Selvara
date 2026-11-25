@@ -137,11 +137,11 @@ All screenshots use synthetic data (v0.3.1, 24 Nov 2026). The workspace screens 
 ### Experience
 - Light, dark and auto themes; collapsible sidebar with rail flyouts; command palette (`Ctrl/Cmd + K`); responsive down to phone width with a bottom tab bar; keyboard-operable with focus-trapped dialogs, arrow-key tabs and a skip link. WCAG 2.2 AA is the target, checked with axe in the end-to-end suite.
 - **Guided tours** of every page, in bubbles that never cover the fields they describe; each person chooses first visit only, again after updates, or off.
-- **Consistent layout**: cards sized to their content, full-width justified text, one empty-state style and one helper-text size across all screens.
+- **Consistent layout**: one set of design tokens and shared components (KPI strip, card grid, tables, dialogs, forms); left-aligned, unhyphenated text; one empty-state style across all screens.
 
 ## Standards, regulations and frameworks covered
 
-Selvara ships a catalogue of **25 standards, regulations and frameworks** with roughly **1,200 modelled requirements** and a shared control library mapped across them. "Covered" means: a catalogue entry, requirement-level scoring from the status of mapped controls, control mapping, N/A justification and a gap export. It does **not** mean certification, a regulator's acceptance, legal advice, or a substitute for the text of the standard or law.
+Selvara ships a catalogue of **28 standards, regulations and frameworks** with roughly **1,900 modelled requirements** and a shared control library mapped across them. "Covered" means: a catalogue entry, requirement-level scoring from the status of mapped controls, control mapping, N/A justification and a gap export. It does **not** mean certification, a regulator's acceptance, legal advice, or a substitute for the text of the standard or law.
 
 Status below was researched on **2026-11-08**. Several items changed recently, so check the official text before relying on a date.
 
@@ -179,6 +179,8 @@ Status below was researched on **2026-11-08**. Several items changed recently, s
 | SBP Enterprise Technology Governance and Risk Management Framework | State Bank of Pakistan | BPRD Circular 05/2017 | 60 |
 | SBP AML/CFT/CPF Regulations | State Bank of Pakistan | BPRD Circular 05/2020 as amended | 7 |
 | PECA 2016 | Government of Pakistan | Cybercrime statute, amended 2025 | 46 |
+| PTA Critical Telecom Data and Infrastructure Security Regulations (CTDISR) 2025 | Pakistan Telecommunication Authority | S.R.O. of 29 Oct 2025 | 349 |
+| UAE National Information Assurance Framework (NIAF) | UAE Supreme Council for National Security (NESA) | 2014 | 36 |
 
 ### United States frameworks
 
@@ -188,6 +190,7 @@ Status below was researched on **2026-11-08**. Several items changed recently, s
 | NIST CSF 2.0 | NIST | February 2024 | 106 |
 | NIST SP 800-207 Zero Trust Architecture | NIST | August 2020 | 35 |
 | NIST SP 800-37 Risk Management Framework | NIST | Revision 2 | 47 |
+| NIST SP 800-53 Security and Privacy Controls | NIST | Revision 5 | 298 |
 
 ### Financial crime
 
@@ -197,7 +200,7 @@ Status below was researched on **2026-11-08**. Several items changed recently, s
 
 **Add your own.** The "Add a regulation, standard or guideline" flow loads templates (NIS2, CIS Controls v8.1, HIPAA Security Rule, SAMA CSF) or pasted requirements and matches each line to control domains by keyword. These are starting points, not full catalogues.
 
-**Be aware of uneven depth.** The requirement count shows how much of a framework is modelled, not how much of it exists. DORA (289), UAE IA (188) and ISO/IEC 27001 (123) are modelled in depth, while ISO 22301 (6), ISO/IEC 27701 (8) and SOC 2 (11) are summaries. Requirement titles are paraphrased (licensed standard text is not reproduced) and control mappings are draft content that needs review by qualified compliance staff.
+**Be aware of uneven depth.** The requirement count shows how much of a framework is modelled, not how much of it exists. PTA CTDISR (349), NIST SP 800-53 (298), DORA (289), UAE IA (188) and ISO/IEC 27001 (123) are modelled in depth, while ISO 22301 (6), ISO/IEC 27701 (8) and SOC 2 (11) are summaries. Requirement titles are paraphrased (licensed standard text is not reproduced) and control mappings are draft content that needs review by qualified compliance staff.
 
 Per-framework detail, official issuers, status notes, sources, naming accuracy and frameworks not yet covered are in [`docs/architecture/FRAMEWORKS.md`](docs/architecture/FRAMEWORKS.md). Most sources there are secondary (law-firm and certification-body pages), so it marks what is not verified.
 
