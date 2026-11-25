@@ -88,7 +88,7 @@ export function UsersTab({ cid }: { cid: string }) {
           { label: "Suspend", icon: "alert", disabled: gate.locked, title: gate.title, run: suspendMany },
           { label: "Export", icon: "download", run: exportMany },
         ]}
-        rowActions={rowActions} emptyText="No users match. Adjust the search or filters." />
+        rowActions={rowActions} emptyText="No users yet." />
     </>
   );
 }

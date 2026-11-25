@@ -266,9 +266,11 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 .btn-secondary:hover{background:var(--surface-2);border-color:var(--muted)}
 .btn-ghost{background:none;color:var(--ink-2)}
 .btn-ghost:hover{background:var(--surface-2);color:var(--ink)}
-.btn-danger{background:var(--surface);color:var(--bad-ink);border-color:var(--line-2)}
+.btn-danger{background:var(--surface);color:var(--bad-ink);border-color:color-mix(in srgb,var(--bad-ink) 45%,var(--line-2));font-weight:600}
 .btn-danger:hover{background:var(--bad-bg);border-color:var(--bad-ink)}
-.btn[disabled]{opacity:.5;cursor:not-allowed}
+/* E4: one disabled look for every button kind: greyed text and border, no colour of its kind, so an enabled button never looks disabled */
+.btn[disabled]{opacity:.55;cursor:not-allowed;color:var(--muted);border-color:var(--line);box-shadow:none}
+.btn-primary[disabled]{color:var(--surface);background:var(--muted)}
 /* no pointer-events:none: a disabled button still shows its title (why it is blocked) on hover; it ignores clicks by itself */
 .btn[disabled]:hover{filter:none}
 .btn .spin{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:999px;animation:spin .7s linear infinite}
@@ -302,7 +304,7 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 /* a field the form marked invalid: red edge (the error text beside it carries the words, so not colour alone) */
 .input[aria-invalid="true"],.select[aria-invalid="true"],textarea[aria-invalid="true"]{border-color:var(--bad-ink)}
 .input[aria-invalid="true"]:focus,.select[aria-invalid="true"]:focus,textarea[aria-invalid="true"]:focus{box-shadow:0 0 0 3px var(--bad-bg)}
-.input::placeholder{color:var(--faint)}
+.input::placeholder,textarea::placeholder{color:var(--faint);opacity:1;font-style:italic} /* F4: a placeholder never reads as a value */
 .input[readonly]{background:var(--surface-2);color:var(--muted);cursor:default}
 .linkbtn{font:inherit;background:none;border:0;padding:0;cursor:pointer;color:var(--accent-ink)}
 /* a link inside running text needs a cue besides colour (WCAG 1.4.1) */
@@ -514,7 +516,8 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .modal .mbox{position:relative;z-index:85;width:min(560px,96vw);max-height:86vh;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-modal);box-shadow:var(--shadow-lg);display:flex;flex-direction:column;transform:translateY(8px) scale(.98);transition:transform .32s cubic-bezier(.22,1,.36,1)}
 .modal .mbox.mbox-wide{width:min(780px,96vw)}
 .modal.on .mbox{transform:none}
-.modal .m-head{padding:18px 20px 6px} .modal .m-head h3{font-size:17px;font-weight:600}
+.modal .m-head{padding:14px 12px 6px 20px;display:flex;align-items:center;gap:10px} .modal .m-head h3{font-size:17px;font-weight:600;flex:1 1 auto;min-width:0}
+.modal .m-foot[hidden]{display:none}
 .modal .m-body{padding:10px 20px 6px;overflow:auto}
 .modal .m-foot{padding:14px 20px;display:flex;gap:8px;justify-content:flex-end}
 
@@ -553,7 +556,8 @@ table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
 .meta-grid{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px 16px;font-size:13px}
 .meta-grid dt{color:var(--muted)} .meta-grid dd{margin:0;color:var(--ink);font-weight:500;text-align:right;min-width:0;overflow-wrap:anywhere}
 .meta-grid.lstart dd{text-align:left}
-.sectitle{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:4px 0 8px}
+.sectitle{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:var(--space-5) 0 var(--space-2)}
+.sectitle:first-child{margin-top:0} /* F3: one spacing above and below every section label */
 .hr{height:1px;background:var(--line);margin:14px 0}
 .tag{appearance:none;-webkit-appearance:none;font-size:11px;color:var(--muted);background:transparent;border:1px solid var(--line-2);border-radius:5px;padding:1px 6px;font-weight:500;white-space:nowrap;line-height:1.5}
 .tag svg{width:12px;height:12px;vertical-align:-2px;margin-inline-end:4px}
@@ -1290,6 +1294,7 @@ form:not(.rec-form):not([style*="gap"])>.field+*,form:not(.rec-form):not([style*
 .cgrid{--cols:3;display:flex;flex-wrap:wrap;gap:var(--grid-gap);align-items:stretch;min-width:0}
 .cgrid[data-cols="2"]{--cols:2} .cgrid[data-cols="4"]{--cols:4}
 :root{--panel-max:400px}
+.cgrid>.span-all{flex-basis:100%}
 .cgrid[data-capped]>.card>.c-body{max-height:var(--panel-max);overflow:auto}
 /* a control row at the top of a card body (a period switch), so the card header keeps its one height */
 .c-toolbar{display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:center;margin-bottom:var(--space-3)}
@@ -1299,3 +1304,63 @@ form:not(.rec-form):not([style*="gap"])>.field+*,form:not(.rec-form):not([style*
 
 /* ---------- E1, E2: focus rings for the keyboard only; one selected style for tabs ---------- */
 :focus:not(:focus-visible){outline:none}
+
+/* A section heading on the page (a group of cards without a card around them) and the card footer where a card's action always sits (C5). */
+.sec-h{font-size:15px;font-weight:600;letter-spacing:-.01em;margin:0 0 var(--space-3)}
+.card>.c-foot{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-2);padding:var(--space-3) var(--card-pad);border-top:1px solid var(--line)}
+.card>.c-foot .field.help{margin:0}
+
+/* H1, H3: one empty state (icon, title, one line, optional action). A full empty state inside a card keeps a sensible height, so a page that
+   holds only an empty state still looks intentional. */
+.card>.c-body>.empty:not(.compact),.card>.c-body>div>.empty:not(.compact){min-height:220px}
+
+/* G1: Listbox (components/ui/Controls.tsx). The list opens in the flow under its field, never over the dialog. */
+.lb{display:flex;flex-direction:column;gap:var(--space-1);min-width:0}
+.lb-btn{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);text-align:start;cursor:pointer;width:100%}
+.lb-v{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-chev{width:16px;height:16px;flex:0 0 auto;color:var(--muted)}
+.lb-btn[aria-expanded="true"] .lb-chev{transform:rotate(180deg)}
+.lb-list{list-style:none;margin:0;padding:var(--space-1);border:1px solid var(--line-2);border-radius:var(--radius-control);background:var(--surface);box-shadow:var(--shadow-sm);max-height:260px;overflow:auto}
+.lb-list:focus{outline:none}
+.lb-list:focus-visible{box-shadow:0 0 0 3px var(--accent-weak)}
+.lb-list [role="option"]{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:var(--radius-chip);cursor:pointer;font-size:14px}
+.lb-list [role="option"][data-active]{background:var(--surface-2)}
+.lb-list [role="option"][aria-selected="true"]{font-weight:600}
+.lb-list [role="option"][aria-disabled="true"]{cursor:not-allowed;color:var(--muted)}
+.lb-why{font-size:12px;color:var(--muted);font-weight:400}
+
+/* ---------- F1-F3: forms ----------
+   A field is label -> input -> helper text. Helper text never runs into the next label or section: it keeps --rhythm-help below it.
+   .form-row lays inputs of one row on one grid (equal columns that wrap together); .form-stack spaces a form's blocks; .form-acts holds the
+   form's buttons, primary last. Textareas take the full width of their column. */
+.field.help+:is(.field,.sectitle,.form-row,.form-acts,form,section,.card){margin-top:var(--rhythm-help)}
+.field .help+.field{margin-top:var(--rhythm-help)}
+.field textarea,.field .textarea{width:100%;box-sizing:border-box}
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:var(--space-3);align-items:start}
+.form-row>.field{margin:0;min-width:0}
+.form-stack{display:flex;flex-direction:column;gap:var(--space-2)}
+.form-stack>.form-acts{margin-top:var(--space-2)}
+.form-acts{display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:center}
+
+/* E3: one badge for counts in card headers (.tag), whatever the card; status uses Chip (ok, warn, bad, neutral) and "Planned" uses .tag. */
+.card>.c-head .tag{font-size:11.5px;padding:2px 8px;border-radius:999px;color:var(--ink-2);background:var(--surface-2);border-color:var(--line)}
+/* C7: a checklist of rules: icon, text and status in three aligned columns; two columns of rows when there is room. */
+.checklist{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(380px,100%),1fr));gap:var(--space-2) var(--space-5)}
+.checklist li{display:grid;grid-template-columns:18px minmax(0,1fr) auto;column-gap:var(--space-2);align-items:start;font-size:13px;line-height:1.5}
+.checklist .cl-i{color:var(--ok-ink);padding-top:2px}
+.checklist li[data-planned] .cl-i{color:var(--muted)}
+.checklist .cl-s{justify-self:end}
+
+/* F5, D4: settings rows fill their container; long descriptions keep the readable line length; the control column has one width and sits
+   level with the title, status first and the action under it. */
+.set-list{display:flex;flex-direction:column}
+.set-list>*+*{margin-top:var(--space-3)}
+.set-row{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:var(--space-2) var(--space-5);align-items:start;padding-block:var(--space-3);border-bottom:1px solid var(--line)}
+.set-row+.set-row{margin-top:0}
+.set-t{font-weight:600;color:var(--ink)}
+.set-txt{display:flex;flex-direction:column;gap:var(--rhythm-heading);min-width:0}
+.set-txt p{margin:0;max-width:var(--text-max)}
+.set-ctl{display:flex;flex-direction:column;align-items:flex-end;gap:var(--space-2);min-width:0}
+@container content (max-width:640px){.set-row{grid-template-columns:minmax(0,1fr)}.set-ctl{align-items:flex-start}}
+/* a quiet note box inside a card (never a card inside a card) */
+.note{padding:var(--space-3);border-radius:var(--radius-control);background:var(--surface-2);font-size:12.5px;color:var(--ink-2);line-height:1.5}

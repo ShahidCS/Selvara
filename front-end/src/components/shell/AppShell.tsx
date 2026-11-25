@@ -139,7 +139,7 @@ function Frame({ children }: { children: ReactNode }) {
         ) : null}
         {!known ? (
           <div className="page"><Empty icon="alert" title="Page not found" action={<button className="btn btn-primary" onClick={() => go(home)}>Back to {homeLabel}</button>}>That route doesn&apos;t exist or has moved.</Empty></div>
-        ) : !confirmed || (s.hydrated && !allowed) ? null : route.space === "ws" && SETTINGS_KEYS.includes(route.mod) ? <SettingsFrame mod={route.mod}>{children}</SettingsFrame> : children}
+        ) : !confirmed || (s.hydrated && !allowed) ? null : (route.space === "ws" && SETTINGS_KEYS.includes(route.mod)) || route.mod === "auth" ? <SettingsFrame mod={route.mod}>{children}</SettingsFrame> : children}
       </main>
       <TabBar />
       <div id="scrim-sb" onClick={() => appStore.set({ mobOpen: false })} />

@@ -80,6 +80,16 @@ export function Page({ mod, title, sub, acts, back, status, eyebrow, children }:
 export function CardGrid({ cols = 3, capped, label, tour, children }: { cols?: 2 | 3 | 4; capped?: boolean; label?: string; tour?: string; children: ReactNode }) {
   return <div className="cgrid" data-cols={cols} data-capped={capped ? "" : undefined} role={label ? "group" : undefined} aria-label={label} data-tour={tour}>{children}</div>;
 }
+/** F5: one settings row. Title and description on the left; the control column on the right, at a fixed width and aligned to the title,
+ *  holding the current status first and the action under it. On a narrow screen the control goes under the text. */
+export function SettingsRow({ title, control, children, id }: { title: string; control: ReactNode; children?: ReactNode; id?: string }) {
+  return (
+    <div className="set-row" role="group" aria-labelledby={id}>
+      <div className="set-txt"><div className="set-t" id={id}>{title}</div>{children}</div>
+      <div className="set-ctl">{control}</div>
+    </div>
+  );
+}
 /** An empty list or panel: icon, title and one line. `compact` is the one-line form inside a card or under a short note. */
 export function Empty({ icon = "search", title, children, action, compact }: { icon?: string; title: string; children?: ReactNode; action?: ReactNode; compact?: boolean }) {
   if (compact) return <div className="empty compact" role="status"><div className="ei"><Icon name={icon} /></div><div><h4>{title}</h4>{children ? <p>{children}</p> : null}</div>{action}</div>;

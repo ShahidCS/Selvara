@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Listbox } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { sodMessage } from "@/lib/approvalFlow";
@@ -44,7 +45,9 @@ export function ChangeRoleForm({ personId, close }: { personId: string; close: (
   return (
     <>
       <p style={{ margin: "0 0 8px" }}>Current role of <b>{p.name}</b>: {memberRole(p)}.</p>
-      <div className="field"><label htmlFor="cr-role">New role</label><select className="select" id="cr-role" data-focus value={role} onChange={(e) => setRole(e.target.value)}>{svc.USER_ROLES.map((r) => <option key={r}>{r}</option>)}</select></div>
+      <div className="field"><label htmlFor="cr-role">New role</label>
+        <Listbox id="cr-role" label="New role" value={role} onChange={setRole}
+          options={[...svc.USER_ROLES.map((r) => ({ value: r as string, label: r as string })), ...((svc.USER_ROLES as readonly string[]).includes(memberRole(p)) ? [] : [{ value: memberRole(p), label: memberRole(p), disabled: "Current role. It cannot be given by a role change." }])]} /></div>
       {svc.isPrivilegedRole(role) ? <p className="field help" role="status">Granting a privileged role needs approval from a different admin. You cannot change your own role.</p> : null}
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={submit}>{svc.isPrivilegedRole(role) ? "Request role change" : "Change role"}</button></LayerFoot>
     </>

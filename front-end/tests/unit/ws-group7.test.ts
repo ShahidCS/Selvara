@@ -225,7 +225,7 @@ describe("integrations on the server", () => {
     expect((await idata(t.casey.cookie)).approvals.filter((a) => a.status === "Pending").length).toBe(0);
     // a provider whose platform credentials are missing cannot be started
     d.intEnv = { ...d.intEnv, google: undefined };
-    expect(body<{ error: string }>(await call("POST", "ws/integrations/google/start", {}, t.jordan.cookie)).error).toMatch(/has not set up/);
+    expect(body<{ error: string }>(await call("POST", "ws/integrations/google/start", {}, t.jordan.cookie)).error).toBe("This connector isn't available yet. Contact your platform administrator.");
   });
 
 });

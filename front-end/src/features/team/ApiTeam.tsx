@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Chip, DataTable, Empty, Icon, Page, Segmented, StatusChip, type DTColumn, Avatar } from "@/components/ui";
-import { useLayer } from "@/hooks/useLayer";
+import { Chip, DataTable, Empty, Icon, Listbox, Page, Segmented, StatusChip, type DTColumn, Avatar } from "@/components/ui";
+import { LayerFoot, useLayer } from "@/hooks/useLayer";
 import { CUSTOM_BOUNDS, LOCKOUT, type LockoutPreset } from "@/lib/accountSecurity";
 import { apiMessage, notSentText, RequestsTable, utcMin } from "@/components/kit/serverRequests";
-import { ASSIGNABLE_ROLES, isPrivilegedRole, ROLE_LABEL } from "@/lib/rules";
+import { ASSIGNABLE_ROLES, isAssignableRole, isPrivilegedRole, ROLE_LABEL } from "@/lib/rules";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import * as svc from "@/services/team";
 import { ApiSupportAccess } from "./ApiSupportAccess";
@@ -76,15 +76,17 @@ function RoleForm({ m, close }: { m: svc.MemberRow; close: () => void }) {
   return (
     <>
       <div className="field"><label htmlFor="rf-role">Workspace role</label>
-        <select className="input" id="rf-role" data-focus value={role} onChange={(e) => { setRole(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby="rf-help rf-err">
-          {ASSIGNABLE_ROLES.map((r) => <option key={r} value={r}>{roleName(r)}</option>)}
-        </select></div>
+        {/* G1: the shared listbox opens under the field, never over the dialog. G3: every role a member can hold is listed; one that cannot be
+            assigned here (a Trust Center visitor joins by request, not by role change) shows why. */}
+        <Listbox id="rf-role" label="Workspace role" value={role} onChange={(v) => { setRole(v); setErr(""); }} invalid={!!err} describedBy="rf-help rf-err"
+          options={[...ASSIGNABLE_ROLES.map((r) => ({ value: r as string, label: roleName(r) })),
+            ...(isAssignableRole(m.role) ? [] : [{ value: m.role, label: roleName(m.role), disabled: "Current role. It cannot be given by a role change: the person joins this way through a Trust Center request." }])]} /></div>
       <p className="field help" id="rf-help">{isPrivilegedRole(role) ? "Admin and owner roles need a second admin's approval. The change applies when they approve." : "Applies at once. Recorded in the audit log with your name."}</p>
       <p className="field help" id="rf-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
-      <div className="btngrp" style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12 }}>
+      <LayerFoot>
         <button className="btn btn-secondary" onClick={close}>Cancel</button>
         <button className="btn btn-primary" disabled={busy || role === m.role} onClick={go}>{isPrivilegedRole(role) ? "Request change" : "Change role"}</button>
-      </div>
+      </LayerFoot>
     </>
   );
 }

@@ -23,7 +23,7 @@ test("issues register: KPI strip, status tabs with counts, filter chips, clear f
   await expect(rowsOf(p)).toHaveCount(openN);
   // an empty tab says so instead of showing a blank table
   await tabs.getByRole("tab", { name: /^Closed/ }).click();
-  if (Number((await tabs.getByRole("tab", { name: /^Closed/ }).innerText()).match(/\d+/)![0]) === 0) await expect(p.getByText("Nothing matches these filters.")).toBeVisible();
+  if (Number((await tabs.getByRole("tab", { name: /^Closed/ }).innerText()).match(/\d+/)![0]) === 0) await expect(p.getByText("Nothing in this view.")).toBeVisible(); // a tab is a view, not a filter (H2)
 
   // a severity filter chip opens a listbox; choosing an option narrows the list; Clear filters restores it
   await tabs.getByRole("tab", { name: /^All/ }).click();

@@ -59,6 +59,7 @@ export interface DataTableProps<T> {
   sizes?: number[];
   /** Adds "Export selected" (CSV of the visible columns that have a `value`). */
   exportName?: string;
+  /** Shown when the list itself is empty (no search or filter on): say what will appear here, e.g. "No events yet". */
   emptyText?: string;
   /** Human name of a row for the "Select …" and "Actions for …" labels (a person's name rather than a user id). Defaults to `rowKey`. */
   rowLabel?: (row: T) => string;
@@ -228,7 +229,9 @@ export function DataTable<T>(p: DataTableProps<T>) {
           </thead>
           <tbody>
             {pageRows.length === 0 ? (
-              <tr><td colSpan={span} className="dt-empty">{p.emptyText || "Nothing matches these filters."}</td></tr>
+              <tr><td colSpan={span} className="dt-empty">{/* H2: "no results" only when a search or filter is on; otherwise there is simply nothing yet */}
+                {filtered ? <span>Nothing matches these filters. <button type="button" className="linkbtn inline" onClick={reset}>Clear filters</button></span>
+                  : tab ? "Nothing in this view." : (p.emptyText || "Nothing here yet.")}</td></tr>
             ) : pageRows.map((r) => {
               const id = p.rowKey(r); const on = selected.includes(id);
               return (

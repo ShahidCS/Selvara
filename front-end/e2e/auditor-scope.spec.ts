@@ -42,7 +42,7 @@ test("an auditor sees only what management shared with their engagement", async 
   await expect(rows(p, "Evidence")).toHaveCount(1);
   await expect(rows(p, "Evidence").first()).toContainText("EV-204");
   await nextPush(p, "/ws/policies");
-  await expect(rows(p, "Policies")).toHaveText(["Nothing matches these filters."]); // nothing shared
+  await expect(rows(p, "Policies")).toHaveText(["Nothing here yet."]); // nothing shared (H2: no search or filter is on)
 
   // the engagement lists the shared items read-only, linked to their records
   await nextPush(p, "/ws/audits/AUD-01");

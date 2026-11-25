@@ -3,7 +3,7 @@
    with the values Selvara generated for this company (AWS external id, Okta public key); connecting is tested, then approved by a second
    admin. The server enforces every rule; these screens explain and ask. */
 import { useEffect, useRef, useState } from "react";
-import { Chip, DataTable, Empty, Icon, KpiStrip, KpiTile, Page, type DTColumn } from "@/components/ui";
+import { CardGrid, Chip, DataTable, Empty, Icon, KpiStrip, KpiTile, Page, type DTColumn } from "@/components/ui";
 import { useLayer } from "@/hooks/useLayer";
 import { DATA } from "@/lib/data";
 import { useG7, type G7Provider } from "@/lib/g7";
@@ -64,7 +64,7 @@ function ConnectionList() {
   ];
   return (
     <Page mod="integrations" acts={live.length ? <button className="btn btn-secondary" data-tour="integrations-sync" onClick={syncAll}><Icon name="refresh" />Sync all</button> : undefined}>
-      <div className="scroll" style={{ flex: "1 1 auto" }}><div style={{ display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
+      <div className="scroll">
         <KpiStrip label="Integration summary">
           <KpiTile label="Connected" value={live.length} caption={`of ${providers.length} connectors`} />
           <KpiTile label="Needing attention" value={live.filter((c: Conn) => c.health !== "Healthy").length} delta={live.some((c: Conn) => c.health !== "Healthy") ? { tone: "watch", text: "Check health" } : { tone: "good", text: "All healthy" }} caption="Connections" />
@@ -72,17 +72,27 @@ function ConnectionList() {
           <KpiTile label="Access" value="Read-only" delta={{ tone: "good", text: "Least privilege" }} caption="Nothing is written back" />
         </KpiStrip>
         <ApprovalsPanel prefix="integration." title="Connection approvals (second admin)" />
-        <div className="card" data-tour="integrations-connectors"><div className="c-head"><h3>Connectors</h3></div><div className="c-body" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12 }}>
-          {providers.map((p) => (
-            <div key={p.id} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span className="strong">{p.name}</span><span className="tag">{p.type}</span></div>
-              <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.45, flex: "1 1 auto" }}>{p.scope}</div>
-              {p.ready ? <p className="field help" style={{ margin: 0 }}>{p.ready}</p>
-                : p.active && p.id !== "aws" ? <Chip cls="ok" icon="check">Set up</Chip>
-                : <button className="btn btn-secondary sm" style={{ alignSelf: "flex-start" }} aria-label={p.id === "aws" && p.active ? "Add another AWS account" : `Set up ${p.name}`} onClick={() => start(p)}><Icon name="plus" />{p.id === "aws" && p.active ? "Add another AWS account" : "Set up"}</button>}
-            </div>
-          ))}
-        </div></div>
+        {/* C1, C5, C6: one level of cards, in the shared grid; each card ends in the same footer with its action or, when the connector is not
+            available, the same button disabled and the reason under it (J2: no platform setup details). */}
+        <section aria-labelledby="int-conn-h" data-tour="integrations-connectors">
+          <h2 className="sec-h" id="int-conn-h">Connectors</h2>
+          <CardGrid cols={3}>
+            {providers.map((p) => {
+              const again = p.id === "aws" && p.active;
+              return (
+                <article key={p.id} className="card" aria-labelledby={`int-${p.id}`}>
+                  <div className="c-head"><h3 id={`int-${p.id}`}>{p.name}</h3><div className="r"><span className="tag">{p.type}</span></div></div>
+                  <div className="c-body"><p>{p.scope}</p></div>
+                  <div className="c-foot">
+                    {p.active && !again ? <Chip cls="ok" icon="check">Set up</Chip>
+                      : <button className="btn btn-secondary sm" disabled={!!p.ready} aria-describedby={p.ready ? `int-${p.id}-why` : undefined} aria-label={again ? "Add another AWS account" : `Set up ${p.name}`} onClick={() => start(p)}><Icon name="plus" />{again ? "Add another AWS account" : "Set up"}</button>}
+                    {p.ready ? <p className="field help" id={`int-${p.id}-why`}>{p.ready}</p> : null}
+                  </div>
+                </article>
+              );
+            })}
+          </CardGrid>
+        </section>
         <div className="card" data-tour="integrations-table"><div className="c-head"><h3>Your connections</h3></div><div className="c-body flush" style={{ padding: 0 }}>
           {connections.length ? <DataTable<Conn> id="integration-connections" label="Connections" rows={connections} rowKey={(c) => c.id} columns={cols} searchText={(c) => `${c.label} ${c.name}`} onOpen={(c) => go(`${LIST}/${encodeURIComponent(c.id)}`)} exportName="integrations" />
             : <Empty icon="ext" title="No connections yet">Set up a connector above. Each one is read-only and is approved by a second admin before it reads anything.</Empty>}
@@ -91,7 +101,7 @@ function ConnectionList() {
           <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: "var(--ink-2)", display: "flex", flexDirection: "column", gap: 3 }}>
             {runs.slice(0, 10).map((r: Conn) => <li key={r.id}><span className="num">{r.when}</span> {connections.find((c: Conn) => c.id === r.conn)?.label ?? r.conn}: {r.ok ? `${r.pass} pass, ${r.fail} fail, ${r.needs} need data` : `failed: ${r.error}`} ({r.by})</li>)}
           </ul></div></div> : null}
-      </div></div>
+      </div>
     </Page>
   );
 }
