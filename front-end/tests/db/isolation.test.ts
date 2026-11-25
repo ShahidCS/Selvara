@@ -15,6 +15,7 @@ import { PgDirectory } from "@/server/directory";
 import { PgPlatform } from "@/server/platform";
 import { PgSupport } from "@/server/support";
 import { PgHelpDesk } from "@/server/helpdesk";
+import { PgCspReports } from "@/server/cspReport";
 import { PgWsStore, WsConflict, WsRefused, type Actor } from "@/server/ws/store";
 import { MemoryStore } from "@/server/memory";
 import type { AuditRow } from "@/server/types";
@@ -672,6 +673,31 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
       expect((await desk.closeMine(A, alex, q.id, at + 3, e(alex, A)))?.status).toBe("Closed");
       expect(await code(app.tx(ctxA(), (q2) => q2.query("insert into support_messages (question_id, author_id, author_name, staff, body, at_ms) values ($1, $2, 'Alex Kim', false, 'After closing', $3)", [q.id, alex, at + 4])))).toBe("42501");
       expect((await desk.mine(A, alex))[0].messages.length).toBe(3);
+    });
+  });
+
+  describe("CSP violation reports (0012)", () => {
+    it("anyone adds only through csp_report_add, which counts and caps; only platform staff read; nobody writes the table directly", async () => {
+      const csp = new PgCspReports(app); const at = Date.now();
+      const e = { directive: "script-src-elem", blocked: "inline", page: "/ws/overview", source: "/_next/static/chunks/app.js", line: 3 };
+      expect(await csp.add(e, at)).toBe("stored");
+      expect(await csp.add(e, at + 1)).toBe("counted");
+      // read: platform staff with the flag only; not a company member, not staff without the flag, not anonymous
+      expect(await csp.list(drew)).toMatchObject([{ ...e, hits: 2, firstAt: at, lastAt: at + 1 }]);
+      expect(await app.tx(ctxA(), (q) => q.query("select id from csp_reports"))).toEqual([]);
+      expect(await app.tx({ tenantId: null, userId: drew }, (q) => q.query("select id from csp_reports"))).toEqual([]);
+      expect(await app.tx({ tenantId: null, userId: null }, (q) => q.query("select id from csp_reports"))).toEqual([]);
+      // no direct insert, update or delete, for anyone
+      expect(await code(app.tx({ tenantId: null, userId: null }, (q) => q.query("insert into csp_reports (directive, blocked, page, source, line, first_ms, last_ms) values ('img-src', 'data', '/', '', 0, $1, $1)", [at])))).toBe("42501");
+      expect(await code(app.tx({ tenantId: null, userId: drew, platform: true }, (q) => q.query("update csp_reports set hits = 0")))).toBe("42501");
+      expect(await code(app.tx({ tenantId: null, userId: drew, platform: true }, (q) => q.query("delete from csp_reports")))).toBe("42501");
+      // the checks hold even through the function: a malformed directive or page is refused
+      expect(await code(csp.add({ ...e, directive: "Script Src" }, at))).not.toBe("ok");
+      expect(await code(csp.add({ ...e, page: "https://elsewhere.example.test/" }, at))).not.toBe("ok");
+      // rows not seen for 30 days are removed on the next report
+      await csp.add({ ...e, line: 4 }, at + 31 * 86_400_000);
+      expect((await csp.list(drew)).map((r) => r.line)).toEqual([4]);
+      await admin.query("delete from public.csp_reports");
     });
   });
 

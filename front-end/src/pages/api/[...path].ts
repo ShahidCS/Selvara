@@ -10,7 +10,7 @@ import { EVIDENCE_FILE_MAX } from "@/lib/rulesWs";
 export const config = { api: { bodyParser: false }, maxDuration: 60 };
 const JSON_MAX = 16 * 1024;
 /** Adding a framework carries up to 300 requirement lines of 200 characters; a risk register import up to 5,000 converted rows. */
-const LARGE_JSON: Record<string, number> = { "POST ws/frameworks": 96 * 1024, "POST ws/risks/import": 1024 * 1024 };
+const LARGE_JSON: Record<string, number> = { "POST ws/frameworks": 96 * 1024, "POST ws/risks/import": 1024 * 1024, /* browsers' CSP reports, smaller than the default */ "POST csp-report": 8 * 1024 };
 const parseCookies = (h: string | undefined) => Object.fromEntries((h || "").split(";").map((c) => c.trim().split("=")).filter((x) => x.length === 2 && x[0]).map(([k, v]) => [k, decodeURIComponent(v)]));
 async function readBody(req: NextApiRequest, max: number): Promise<Buffer | null> {
   const parts: Buffer[] = []; let n = 0;
@@ -36,7 +36,8 @@ export default async function api(req: NextApiRequest, res: NextApiResponse) {
     if (upload) { raw = new Uint8Array(buf); body = { name: String(req.query.name ?? "").slice(0, 200) }; }
     else if (hook) raw = new Uint8Array(buf);
     else if (buf.length) {
-      try { const v = JSON.parse(buf.toString("utf8")); body = v && typeof v === "object" && !Array.isArray(v) ? v : {}; }
+      // A JSON array is accepted only from browsers' CSP reports (Reporting API), passed on as { reports: [...] }.
+      try { const v = JSON.parse(buf.toString("utf8")); body = Array.isArray(v) ? (path.join("/") === "csp-report" ? { reports: v } : {}) : v && typeof v === "object" ? v : {}; }
       catch { res.status(400).json({ error: "Send valid JSON." }); return; }
     }
   }

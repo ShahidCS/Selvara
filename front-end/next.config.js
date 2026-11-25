@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const isDev = process.env.NODE_ENV !== "production";
+/* CSP violation reports go to the server (POST /api/csp-report, migration 0012), so only the production build (API mode http) asks for
+ * them; the demonstration build has no server to receive them. */
+const reporting = process.env.NEXT_PUBLIC_API_MODE === "http" && !isDev;
 let apiOrigin = "";
 try { if (process.env.NEXT_PUBLIC_API_BASE_URL) apiOrigin = new URL(process.env.NEXT_PUBLIC_API_BASE_URL).origin; } catch { /* invalid URL: ignored, connect-src stays 'self' */ }
 
@@ -24,6 +27,7 @@ const csp = [
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
+  ...(reporting ? ["report-uri /api/csp-report", "report-to csp"] : []), // report-uri for Firefox and Safari, report-to for Chromium
 ].join("; ");
 
 /* Permissions-Policy: every powerful browser feature is off, except passkeys (WebAuthn, platform super admins) and copying
@@ -51,6 +55,7 @@ module.exports = {
         // Other sites cannot load this site's files (scripts, fonts, API answers) into their pages.
         { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
         { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
+        ...(reporting ? [{ key: "Reporting-Endpoints", value: 'csp="/api/csp-report"' }] : []),
         { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
       ],
     }];

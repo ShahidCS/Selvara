@@ -362,7 +362,7 @@ Selvara/
 ├── SECURITY.md               vulnerability reporting policy
 ├── .github/                  workflows, pipeline scripts, rulesets, CODEOWNERS, Dependabot configuration
 ├── docs/                     architecture/ (including backend-v2/), guides/, security/ documentation and README screenshots (see docs/ORGANIZATION.md)
-├── supabase/migrations/      database schema, row level security and functions (0001 to 0011)
+├── supabase/migrations/      database schema, row level security and functions (0001 to 0012)
 └── front-end/                Next.js application (web front-end and its server API)
     ├── src/
     │   ├── pages/            routes: /ws, /admin, /auth, /help, /login, /trust, /vendor-portal, /api

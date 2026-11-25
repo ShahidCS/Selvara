@@ -12,6 +12,7 @@ Status: living document. Generated code needs technical, security and management
 | V12 files | `validateUpload` (ext allow-list, size), `safeFileName` | `lib/security.ts` |
 | CSV injection | `csvCell` prefixes `= + - @ tab CR` | `lib/format.ts` |
 | V14 headers | CSP (`script-src 'self'`), X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, COOP, CORP, X-Permitted-Cross-Domain-Policies, HSTS; Clear-Site-Data on sign-out | `next.config.js`, `src/server/core.ts` |
+| V14 / V7 CSP monitoring | Browsers report blocked scripts and styles to `/api/csp-report`; reduced, counted and kept 30 days for platform staff (HDR-02) | `src/server/cspReport.ts`, migration 0012 |
 | V8.2 client storage | Only role/theme/collapsed UI preferences in localStorage | `lib/store.ts` |
 | V7 logging | Hash-chained workspace log (tamper-evidence demo) | `lib/audit.ts` |
 | Dialog a11y / focus | Focus trap, Escape, focus restore | `LayerProvider.tsx` |
