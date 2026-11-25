@@ -125,7 +125,7 @@ This register lists every security control in Selvara, where it is enforced, wha
 
 | ID | Control | Enforced in | Evidence |
 |---|---|---|---|
-| HDR-01 | Security headers: CSP (frame-ancestors), X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, COOP, HSTS. Exception EX-05: `script-src 'unsafe-inline'` until a nonce CSP | `front-end/next.config.js`, `front-end/vercel.json` | e2e `headers.spec.ts`; deployment smoke test `.github/scripts/smoke-headers.sh` |
+| HDR-01 | Security headers: CSP (frame-ancestors), X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, COOP, HSTS. `script-src 'self'` only in production (webpack build, no inline scripts; EX-05 closed 2026-11-25); `style-src` keeps `'unsafe-inline'` | `front-end/next.config.js`, `front-end/vercel.json` | e2e `headers.spec.ts` (header, plus a real browser on 5 pages: app starts, no CSP violation); deployment smoke test `.github/scripts/smoke-headers.sh` (fails on inline scripts) |
 | PIPE-01 | Typecheck, lint (0 warnings), unit tests, build, end-to-end suite block merge and deploy | `ci.yml` | every pull request's checks |
 | PIPE-02 | Static analysis (CodeQL, High/Critical fail), Trivy, ZAP baseline against the built app | `security.yml`, `.github/scripts/check-sarif.mjs`, `zap-gate.mjs` | pull request checks |
 | PIPE-03 | Dependency audit (High and above), dependency review, licence policy, OSV report; Dependabot manages versions | `ci.yml`, `security.yml`, `.github/license-policy.json` | pull request checks |

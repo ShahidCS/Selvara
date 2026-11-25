@@ -10,7 +10,7 @@ Review the whole register at least quarterly and whenever a "Review when" trigge
 | EX-02 | LGPL-3.0 `@img/sharp-*` binaries in the lockfile | @ShahidCS | 2027-05-09 |
 | EX-03 | CC-BY-4.0 `caniuse-lite` data | @ShahidCS | 2027-05-09 |
 | EX-04 | Known advisories in the pinned Vercel CLI tree | @ShahidCS | 2026-12-18 (picomatch), 2027-02-09 (the rest), and each CLI release |
-| EX-05 | CSP `script-src 'unsafe-inline'` | @ShahidCS | Before production traffic |
+| EX-05 | CSP `script-src 'unsafe-inline'` | @ShahidCS | **Closed 2026-11-25** (webpack build, `script-src 'self'`) |
 | EX-06 | Public Sigstore signing disabled | @ShahidCS | Repository visibility decision |
 | EX-07 | No GitHub Advanced Security (private repository, current plan) | @ShahidCS | If the repository moves to an organisation with Advanced Security, or becomes public |
 | EX-08 | No environment approval gate and no rulesets (private repository, free plan) | @ShahidCS | When the account is upgraded (GitHub Pro or Team), or the repository becomes public |
@@ -115,6 +115,12 @@ static deployment cannot supply. **Controls.** The rest of the CSP is strict (`d
 `frame-ancestors 'none'`, `object-src 'none'`), no user HTML is rendered unescaped, and the smoke test asserts the
 header on every deploy. **Exit.** Before production traffic, serve through a runtime with nonce support or hash the
 bootstrap scripts.
+
+**Closed 2026-11-25.** Only Turbopack's runtime bootstrap was an inline executable script (`__NEXT_DATA__` is JSON and
+never runs). Production builds now use webpack (`next build --webpack`), which emits none, so production `script-src`
+is `'self'` alone; no nonce and no dynamic rendering needed, pages stay static. Only the local dev server (Turbopack)
+keeps `'unsafe-inline'`. Enforced by e2e `headers.spec.ts` (header check, and a real browser on five pages: the app
+starts and no CSP violation is reported; a Turbopack build was confirmed to fail it) and by the deploy smoke test.
 
 ## EX-06 Public Sigstore signing disabled
 
