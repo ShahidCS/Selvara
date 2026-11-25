@@ -15,6 +15,8 @@ for (const path of ["/", "/auth", "/vendor-portal", "/ws/overview", "/admin/cust
     expect(csp).not.toMatch(/script-src[^;]*'unsafe-eval'/);
     expect(csp, "no inline scripts allowed (EX-05 closed)").not.toMatch(/script-src[^;]*'unsafe-inline'/);
     expect(csp).toMatch(/script-src 'self'(;|$)/);
+    expect(csp, "no inline styles allowed").not.toMatch(/style-src[^;]*'unsafe-inline'/);
+    expect(csp).toMatch(/style-src 'self'(;|$)/);
     expect(csp).not.toMatch(/(^|[ ;])\*([ ;]|$)/);
     expect(h["x-content-type-options"]).toBe("nosniff");
     expect(h["x-frame-options"]).toBe("DENY");

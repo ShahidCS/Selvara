@@ -14,10 +14,13 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 - Docs: SUPABASE.md section 4h-R, the Resend email set-up (domain, DNS, three scoped keys, Vercel and Supabase settings, staging test, RoPA). Pending: the company domain has to be bought first.
 
 ### Security
+- CSP: production `style-src` is `'self'` only; `'unsafe-inline'` is gone from the whole policy. The server-rendered HTML carries no inline style or script, and the build fails if it ever does (`front-end/scripts/check-html.mjs`). The sign-in, vendor portal and public Trust Center pages now render in the browser, like the workspace. The board pack tab gets its styles and print button from the app; the downloaded file is unchanged.
+
 - More security headers: Cross-Origin-Resource-Policy `same-origin` (other sites cannot load this site's files), X-Permitted-Cross-Domain-Policies `none`, CSP `frame-src 'none'`, `worker-src 'self'`, `manifest-src 'self'`, and a Permissions-Policy that turns off every powerful browser feature except passkeys and clipboard copy. Signing out sends `Clear-Site-Data: "cache", "storage"`, so a shared computer keeps nothing of the session (the theme choice resets). e2e and the deploy smoke test check them.
 - CSP: production `script-src` is `'self'` only; `'unsafe-inline'` is gone (EX-05 closed). Production builds use webpack (`next build --webpack`), which emits no inline scripts; the dev server keeps it. New e2e checks: no CSP violation and the app starts on five pages; the deploy smoke test fails on inline scripts.
 
 ### Fixed
+- The board pack's **Print / Save as PDF** button did nothing in the opened tab since inline scripts were blocked (staging only, never released).
 - The sign-in card and the authenticator set-up text are left-aligned: justified text in a narrow column left wide word gaps.
 - Staging alias: the live preview's hostname is now assigned through the Vercel REST API, scoped to the team. `vercel alias set` (also with `--scope`) failed with "User not found" because it loads the token's user first.
 - Docs: PIPELINE.md records the live staging preview, the production release path (v0.3.1), and the `staging-protection`, `main-protection` and `release-tags` rulesets as proven; EX-08 status note (repository public, rulesets applied, production approval set and confirmed at the next release).

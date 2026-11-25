@@ -8,11 +8,12 @@ try { if (process.env.NEXT_PUBLIC_API_BASE_URL) apiOrigin = new URL(process.env.
  * script-src is 'self' alone in production (EX-05 closed). Turbopack, used by `next dev`, adds an inline runtime bootstrap,
  * so the dev server alone keeps 'unsafe-inline' (and 'unsafe-eval' for React's dev tooling). e2e/headers.spec.ts fails if a
  * production page carries 'unsafe-inline' in script-src or the browser reports a CSP violation.
- * Styles stay inline in many places (kept from the prototype): style-src keeps 'unsafe-inline'. */
+ * style-src is 'self' alone too: React style props are applied by the browser after the page loads (CSP allows that), and
+ * the server-rendered HTML carries no style attribute or <style> element (scripts/check-html.mjs fails the build otherwise). */
 const csp = [
   "default-src 'self'",
   `script-src 'self'${isDev ? " 'unsafe-inline' 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
+  `style-src 'self'${isDev ? " 'unsafe-inline'" : ""}`,
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
   `connect-src 'self'${apiOrigin ? " " + apiOrigin : ""}${isDev ? " ws:" : ""}`,

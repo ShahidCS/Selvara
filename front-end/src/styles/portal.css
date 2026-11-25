@@ -1251,3 +1251,12 @@ form:not(.rec-form):not([style*="gap"])>.field+*,form:not(.rec-form):not([style*
 .seg[role="tablist"]{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
 .seg[role="tablist"]::-webkit-scrollbar{display:none}
 .seg[role="tablist"] button{white-space:nowrap;flex:0 0 auto}
+
+/* ---- Server-rendered markup carries no style attributes (CSP style-src 'self', docs/security/EXCEPTIONS.md). Elements that
+   appear in the first HTML of a page are styled here; React may still set styles after the page loads (allowed by CSP). ---- */
+#standalone{height:100dvh;overflow:auto;background:var(--bg)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(6px);background:var(--bg-inverse);color:var(--text-inverse);
+  font-size:13px;font-weight:500;padding:10px 16px;border-radius:10px;box-shadow:var(--shadow-lg);z-index:120;opacity:0;
+  transition:opacity .2s,transform .2s;pointer-events:none;display:flex;align-items:center;gap:9px;max-width:min(92vw,520px)}
+#toast[data-on]{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast[data-action]{pointer-events:auto}

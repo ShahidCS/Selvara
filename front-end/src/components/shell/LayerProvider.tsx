@@ -252,11 +252,9 @@ export function LayerProvider({ children }: { children: ReactNode }) {
         {layer?.kind === "popover" && <Popover l={layer} close={closeLayer} />}
         {layer?.kind === "palette" && <Palette close={closeLayer} />}
       </div>
-      <div id="toast" role="status" aria-live="polite" data-tone={toastMsg?.tone} style={{
-        position: "fixed", left: "50%", bottom: 24, transform: `translateX(-50%) translateY(${toastOn ? 0 : 6}px)`, background: "var(--bg-inverse)", color: "var(--text-inverse)",
-        fontSize: 13, fontWeight: 500, padding: "10px 16px", borderRadius: 10, boxShadow: "var(--shadow-lg)", zIndex: 120, opacity: toastOn ? 1 : 0,
-        transition: "opacity .2s, transform .2s", pointerEvents: toastOn && toastMsg?.action ? "auto" : "none", display: "flex", alignItems: "center", gap: 9, maxWidth: "min(92vw,520px)",
-      }} onMouseEnter={toastMsg?.action ? holdToast : undefined} onMouseLeave={toastMsg?.action ? releaseToast : undefined}
+      {/* Styled by #toast in portal.css (no style attribute: it is in every server-rendered page, CSP style-src 'self'). */}
+      <div id="toast" role="status" aria-live="polite" data-tone={toastMsg?.tone} data-on={toastOn ? "" : undefined}
+        data-action={toastOn && toastMsg?.action ? "" : undefined} onMouseEnter={toastMsg?.action ? holdToast : undefined} onMouseLeave={toastMsg?.action ? releaseToast : undefined}
         onFocus={toastMsg?.action ? holdToast : undefined} onBlur={toastMsg?.action ? releaseToast : undefined}>
         {toastMsg?.tone === "ok" ? (
           <svg key={toastMsg.k} className="tcheck" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true" style={{ color: "var(--ok-ink-inverse)" }}>
