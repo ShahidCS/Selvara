@@ -379,3 +379,18 @@ Secondary sources (used only where marked "secondary"): certification-body and c
 Limits: direct fetches of official hosts failed in this environment, so every status above reflects search-result excerpts. Re-check dates and edition numbers against the issuer before external publication, and have qualified compliance or legal staff review this document.
 
 Researched 2026-11-08
+
+## Reinstated from the design-board source (November 2026)
+
+Three entries came back from the original design-board source (`GRC_Unified_Compliance_Dashboard.html`), with their groups, requirements and
+control mappings exactly as there. Issuer, edition and jurisdiction are as recorded in that source; confirm against the official text before
+relying on them.
+
+| Catalogue entry | Issuer (as in the source) | Edition (as in the source) | Requirements modelled |
+|---|---|---|---|
+| PTA Critical Telecom Data and Infrastructure Security Regulations (CTDISR) 2025 | Pakistan Telecommunication Authority | S.R.O. of 29 Oct 2025 | 349 |
+| NIST SP 800-53 Security and Privacy Controls | NIST | Revision 5 | 298 |
+| UAE National Information Assurance Framework (NIAF) | UAE Supreme Council for National Security (NESA) | 2014 | 36 |
+
+The full reconciliation of both original sources against the app, and the open review items, are in
+[FRAMEWORK_RECONCILIATION.md](FRAMEWORK_RECONCILIATION.md).

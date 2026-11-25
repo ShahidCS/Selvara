@@ -236,7 +236,7 @@ describe("cross-check fixes", () => {
   it("custom controls never take a library id; export entries are built by the server; vendors get no member list", async () => {
     const jordan = await member("jordan@acme.example", "admin", "Jordan Avery");
     const grace = await member("grace@acme.example", "vendor", "Grace Lin");
-    expect(body<{ id: string }>(await call("POST", "ws/controls", { title: "Restore drills", domain: "Business Continuity" }, jordan.cookie)).id).toBe("BC-2"); // BC-1 is a library control
+    expect(body<{ id: string }>(await call("POST", "ws/controls", { title: "Restore drills", domain: "Business Continuity" }, jordan.cookie)).id).toBe("BC-4"); // BC-1 to BC-3 are library controls
     await call("POST", "ws/exports", { action: "controls.soa.exported", target: "999999 controls" }, jordan.cookie);
     expect(log("controls.soa.exported")[0].target).toBe("1 controls");
     expect((await call("POST", "ws/exports", { action: "framework.gap.exported", target: "<script>" }, jordan.cookie)).status).toBe(400);

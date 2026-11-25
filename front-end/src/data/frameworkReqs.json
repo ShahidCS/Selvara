@@ -8466,5 +8466,4277 @@
     "Staff receive role-appropriate AML/CFT training."
    ]
   ]
+ },
+ "nist80053": {
+  "g": [
+   [
+    "AC",
+    "Access Control"
+   ],
+   [
+    "AT",
+    "Awareness and Training"
+   ],
+   [
+    "AU",
+    "Audit and Accountability"
+   ],
+   [
+    "CA",
+    "Assessment, Authorization, and Monitoring"
+   ],
+   [
+    "CM",
+    "Configuration Management"
+   ],
+   [
+    "CP",
+    "Contingency Planning"
+   ],
+   [
+    "IA",
+    "Identification and Authentication"
+   ],
+   [
+    "IR",
+    "Incident Response"
+   ],
+   [
+    "MA",
+    "Maintenance"
+   ],
+   [
+    "MP",
+    "Media Protection"
+   ],
+   [
+    "PE",
+    "Physical and Environmental Protection"
+   ],
+   [
+    "PL",
+    "Planning"
+   ],
+   [
+    "PM",
+    "Program Management"
+   ],
+   [
+    "PS",
+    "Personnel Security"
+   ],
+   [
+    "PT",
+    "Personally Identifiable Information Processing and Transparency"
+   ],
+   [
+    "RA",
+    "Risk Assessment"
+   ],
+   [
+    "SA",
+    "System and Services Acquisition"
+   ],
+   [
+    "SC",
+    "System and Communications Protection"
+   ],
+   [
+    "SI",
+    "System and Information Integrity"
+   ],
+   [
+    "SR",
+    "Supply Chain Risk Management"
+   ]
+  ],
+  "r": [
+   [
+    "AC-1",
+    "Policy and Procedures",
+    "AC",
+    "Set, approve and periodically review an access control policy and procedures."
+   ],
+   [
+    "AC-2",
+    "Account Management",
+    "AC",
+    "Manage the full lifecycle of system accounts, from approval and creation to review and removal."
+   ],
+   [
+    "AC-3",
+    "Access Enforcement",
+    "AC",
+    "Enforce approved authorisations for every access to information and system resources."
+   ],
+   [
+    "AC-4",
+    "Information Flow Enforcement",
+    "AC",
+    "Control how information is allowed to flow within and between systems."
+   ],
+   [
+    "AC-5",
+    "Separation of Duties",
+    "AC",
+    "Separate duties so no single person can misuse a system without collusion."
+   ],
+   [
+    "AC-6",
+    "Least Privilege",
+    "AC",
+    "Give users and processes only the access they need for their tasks."
+   ],
+   [
+    "AC-7",
+    "Unsuccessful Logon Attempts",
+    "AC",
+    "Limit consecutive failed logon attempts and lock or delay the account when exceeded."
+   ],
+   [
+    "AC-8",
+    "System Use Notification",
+    "AC",
+    "Show an approved system use banner before granting access."
+   ],
+   [
+    "AC-9",
+    "Previous Logon Notification",
+    "AC",
+    "Tell users about their previous logon on successful logon."
+   ],
+   [
+    "AC-10",
+    "Concurrent Session Control",
+    "AC",
+    "Limit the number of concurrent sessions per account."
+   ],
+   [
+    "AC-11",
+    "Device Lock",
+    "AC",
+    "Lock the device after inactivity and require re-authentication to unlock."
+   ],
+   [
+    "AC-12",
+    "Session Termination",
+    "AC",
+    "End user sessions automatically after defined conditions such as inactivity."
+   ],
+   [
+    "AC-14",
+    "Permitted Actions without Identification or Authentication",
+    "AC",
+    "Define and document which actions are allowed without logging in."
+   ],
+   [
+    "AC-16",
+    "Security and Privacy Attributes",
+    "AC",
+    "Attach and maintain security and privacy attributes (labels) on information."
+   ],
+   [
+    "AC-17",
+    "Remote Access",
+    "AC",
+    "Authorise, configure and monitor each type of remote access."
+   ],
+   [
+    "AC-18",
+    "Wireless Access",
+    "AC",
+    "Set usage rules for wireless access and authorise it before connection."
+   ],
+   [
+    "AC-19",
+    "Access Control for Mobile Devices",
+    "AC",
+    "Set configuration and connection rules for mobile devices and authorise their use."
+   ],
+   [
+    "AC-20",
+    "Use of External Systems",
+    "AC",
+    "Set terms for using external systems to access or process organisational information."
+   ],
+   [
+    "AC-21",
+    "Information Sharing",
+    "AC",
+    "Help users decide whether sharing information with a partner is permitted."
+   ],
+   [
+    "AC-22",
+    "Publicly Accessible Content",
+    "AC",
+    "Control who may post information publicly and review content for non-public data."
+   ],
+   [
+    "AC-23",
+    "Data Mining Protection",
+    "AC",
+    "Detect and protect data stores against unauthorised data mining."
+   ],
+   [
+    "AC-24",
+    "Access Control Decisions",
+    "AC",
+    "Make sure access control decisions are applied for each access request."
+   ],
+   [
+    "AC-25",
+    "Reference Monitor",
+    "AC",
+    "Use a tamper-proof, always-invoked reference monitor to enforce access policy."
+   ],
+   [
+    "AT-1",
+    "Policy and Procedures",
+    "AT",
+    "Set, approve and review an awareness and training policy and procedures."
+   ],
+   [
+    "AT-2",
+    "Literacy Training and Awareness",
+    "AT",
+    "Give all users security and privacy literacy training and ongoing awareness."
+   ],
+   [
+    "AT-3",
+    "Role-based Training",
+    "AT",
+    "Give role-based security and privacy training before duties and periodically."
+   ],
+   [
+    "AT-4",
+    "Training Records",
+    "AT",
+    "Keep records of individual security and privacy training."
+   ],
+   [
+    "AT-6",
+    "Training Feedback",
+    "AT",
+    "Collect feedback on training results to improve the programme."
+   ],
+   [
+    "AU-1",
+    "Policy and Procedures",
+    "AU",
+    "Set, approve and review an audit and accountability policy and procedures."
+   ],
+   [
+    "AU-2",
+    "Event Logging",
+    "AU",
+    "Decide which event types systems must log and review the list periodically."
+   ],
+   [
+    "AU-3",
+    "Content of Audit Records",
+    "AU",
+    "Make audit records include what, when, where, source, outcome and identity."
+   ],
+   [
+    "AU-4",
+    "Audit Log Storage Capacity",
+    "AU",
+    "Allocate enough storage for audit logs to meet retention needs."
+   ],
+   [
+    "AU-5",
+    "Response to Audit Logging Process Failures",
+    "AU",
+    "Alert and act when audit logging fails."
+   ],
+   [
+    "AU-6",
+    "Audit Record Review, Analysis, and Reporting",
+    "AU",
+    "Review and analyse audit records for unusual activity and report findings."
+   ],
+   [
+    "AU-7",
+    "Audit Record Reduction and Report Generation",
+    "AU",
+    "Provide tools to reduce audit data and generate reports on demand."
+   ],
+   [
+    "AU-8",
+    "Time Stamps",
+    "AU",
+    "Timestamp audit records using synchronised internal clocks."
+   ],
+   [
+    "AU-9",
+    "Protection of Audit Information",
+    "AU",
+    "Protect audit logs and tools from unauthorised access, change and deletion."
+   ],
+   [
+    "AU-10",
+    "Non-repudiation",
+    "AU",
+    "Provide proof that a person performed a specific action."
+   ],
+   [
+    "AU-11",
+    "Audit Record Retention",
+    "AU",
+    "Keep audit records for the defined retention period."
+   ],
+   [
+    "AU-12",
+    "Audit Record Generation",
+    "AU",
+    "Enable systems to generate the defined audit records."
+   ],
+   [
+    "AU-13",
+    "Monitoring for Information Disclosure",
+    "AU",
+    "Monitor open sources for unauthorised disclosure of organisational information."
+   ],
+   [
+    "AU-14",
+    "Session Audit",
+    "AU",
+    "Allow authorised users to record and view user sessions."
+   ],
+   [
+    "AU-16",
+    "Cross-organizational Audit Logging",
+    "AU",
+    "Coordinate audit logging methods when information crosses organisations."
+   ],
+   [
+    "CA-1",
+    "Policy and Procedures",
+    "CA",
+    "Set, approve and review an assessment, authorisation and monitoring policy."
+   ],
+   [
+    "CA-2",
+    "Control Assessments",
+    "CA",
+    "Plan and carry out control assessments and report results."
+   ],
+   [
+    "CA-3",
+    "Information Exchange",
+    "CA",
+    "Approve and document information exchanges with other systems."
+   ],
+   [
+    "CA-5",
+    "Plan of Action and Milestones",
+    "CA",
+    "Keep a plan of action and milestones for fixing control weaknesses."
+   ],
+   [
+    "CA-6",
+    "Authorization",
+    "CA",
+    "Have a senior official authorise the system before operation and keep it current."
+   ],
+   [
+    "CA-7",
+    "Continuous Monitoring",
+    "CA",
+    "Run continuous monitoring of controls and security posture."
+   ],
+   [
+    "CA-8",
+    "Penetration Testing",
+    "CA",
+    "Perform penetration testing on systems or components."
+   ],
+   [
+    "CA-9",
+    "Internal System Connections",
+    "CA",
+    "Authorise and document internal connections between system components."
+   ],
+   [
+    "CM-1",
+    "Policy and Procedures",
+    "CM",
+    "Set, approve and review a configuration management policy and procedures."
+   ],
+   [
+    "CM-2",
+    "Baseline Configuration",
+    "CM",
+    "Develop, document and maintain a baseline configuration for each system."
+   ],
+   [
+    "CM-3",
+    "Configuration Change Control",
+    "CM",
+    "Control, review, approve, test and record configuration changes."
+   ],
+   [
+    "CM-4",
+    "Impact Analyses",
+    "CM",
+    "Analyse the security and privacy impact of changes before making them."
+   ],
+   [
+    "CM-5",
+    "Access Restrictions for Change",
+    "CM",
+    "Restrict who can make changes to systems."
+   ],
+   [
+    "CM-6",
+    "Configuration Settings",
+    "CM",
+    "Set and enforce secure configuration settings and record exceptions."
+   ],
+   [
+    "CM-7",
+    "Least Functionality",
+    "CM",
+    "Disable unneeded functions, ports, protocols, software and services."
+   ],
+   [
+    "CM-8",
+    "System Component Inventory",
+    "CM",
+    "Keep an accurate inventory of system components."
+   ],
+   [
+    "CM-9",
+    "Configuration Management Plan",
+    "CM",
+    "Document and implement a configuration management plan."
+   ],
+   [
+    "CM-10",
+    "Software Usage Restrictions",
+    "CM",
+    "Use software in line with licences and restrict peer-to-peer file sharing."
+   ],
+   [
+    "CM-11",
+    "User-installed Software",
+    "CM",
+    "Control and monitor software installed by users."
+   ],
+   [
+    "CM-12",
+    "Information Location",
+    "CM",
+    "Identify and document where information is processed and stored."
+   ],
+   [
+    "CM-13",
+    "Data Action Mapping",
+    "CM",
+    "Map the data actions applied to personal information in the system."
+   ],
+   [
+    "CM-14",
+    "Signed Components",
+    "CM",
+    "Prevent installation of software and firmware not signed with approved certificates."
+   ],
+   [
+    "CP-1",
+    "Policy and Procedures",
+    "CP",
+    "Set, approve and review a contingency planning policy and procedures."
+   ],
+   [
+    "CP-2",
+    "Contingency Plan",
+    "CP",
+    "Develop, approve and maintain a system contingency plan."
+   ],
+   [
+    "CP-3",
+    "Contingency Training",
+    "CP",
+    "Train staff on their contingency roles."
+   ],
+   [
+    "CP-4",
+    "Contingency Plan Testing",
+    "CP",
+    "Test the contingency plan and act on results."
+   ],
+   [
+    "CP-6",
+    "Alternate Storage Site",
+    "CP",
+    "Set up an alternate storage site for backups."
+   ],
+   [
+    "CP-7",
+    "Alternate Processing Site",
+    "CP",
+    "Set up an alternate processing site to resume operations."
+   ],
+   [
+    "CP-8",
+    "Telecommunications Services",
+    "CP",
+    "Arrange alternate telecommunications services for essential functions."
+   ],
+   [
+    "CP-9",
+    "System Backup",
+    "CP",
+    "Back up user, system and documentation data and protect the backups."
+   ],
+   [
+    "CP-10",
+    "System Recovery and Reconstitution",
+    "CP",
+    "Recover and reconstitute the system to a known state after disruption."
+   ],
+   [
+    "CP-11",
+    "Alternate Communications Protocols",
+    "CP",
+    "Provide alternative communications protocols to maintain operations."
+   ],
+   [
+    "CP-12",
+    "Safe Mode",
+    "CP",
+    "Enter a defined safe mode of operation when set conditions occur."
+   ],
+   [
+    "CP-13",
+    "Alternative Security Mechanisms",
+    "CP",
+    "Provide alternative security mechanisms when primary ones are unavailable."
+   ],
+   [
+    "IA-1",
+    "Policy and Procedures",
+    "IA",
+    "Set, approve and review an identification and authentication policy."
+   ],
+   [
+    "IA-2",
+    "Identification and Authentication (Organizational Users)",
+    "IA",
+    "Uniquely identify and authenticate organisational users."
+   ],
+   [
+    "IA-3",
+    "Device Identification and Authentication",
+    "IA",
+    "Identify and authenticate devices before connecting them."
+   ],
+   [
+    "IA-4",
+    "Identifier Management",
+    "IA",
+    "Manage the assignment, reuse and disabling of identifiers."
+   ],
+   [
+    "IA-5",
+    "Authenticator Management",
+    "IA",
+    "Manage authenticators such as passwords, tokens and certificates through their lifecycle."
+   ],
+   [
+    "IA-6",
+    "Authentication Feedback",
+    "IA",
+    "Hide authentication information while it is being entered."
+   ],
+   [
+    "IA-7",
+    "Cryptographic Module Authentication",
+    "IA",
+    "Authenticate to cryptographic modules using approved mechanisms."
+   ],
+   [
+    "IA-8",
+    "Identification and Authentication (Non-organizational Users)",
+    "IA",
+    "Uniquely identify and authenticate non-organisational users."
+   ],
+   [
+    "IA-9",
+    "Service Identification and Authentication",
+    "IA",
+    "Identify and authenticate services before communicating with them."
+   ],
+   [
+    "IA-10",
+    "Adaptive Authentication",
+    "IA",
+    "Require extra authentication in defined higher-risk situations."
+   ],
+   [
+    "IA-11",
+    "Re-authentication",
+    "IA",
+    "Require users to re-authenticate in defined circumstances."
+   ],
+   [
+    "IA-12",
+    "Identity Proofing",
+    "IA",
+    "Verify the identity of users before issuing credentials."
+   ],
+   [
+    "IR-1",
+    "Policy and Procedures",
+    "IR",
+    "Set, approve and review an incident response policy and procedures."
+   ],
+   [
+    "IR-2",
+    "Incident Response Training",
+    "IR",
+    "Train users on their incident response roles."
+   ],
+   [
+    "IR-3",
+    "Incident Response Testing",
+    "IR",
+    "Test incident response capability to check effectiveness."
+   ],
+   [
+    "IR-4",
+    "Incident Handling",
+    "IR",
+    "Handle incidents through preparation, detection, containment, eradication and recovery."
+   ],
+   [
+    "IR-5",
+    "Incident Monitoring",
+    "IR",
+    "Track and document incidents."
+   ],
+   [
+    "IR-6",
+    "Incident Reporting",
+    "IR",
+    "Report suspected incidents internally and to the right authorities."
+   ],
+   [
+    "IR-7",
+    "Incident Response Assistance",
+    "IR",
+    "Provide a support resource that helps users handle and report incidents."
+   ],
+   [
+    "IR-8",
+    "Incident Response Plan",
+    "IR",
+    "Develop, approve and maintain an incident response plan."
+   ],
+   [
+    "IR-9",
+    "Information Spillage Response",
+    "IR",
+    "Respond to information spills into unauthorised systems."
+   ],
+   [
+    "MA-1",
+    "Policy and Procedures",
+    "MA",
+    "Set, approve and review a system maintenance policy and procedures."
+   ],
+   [
+    "MA-2",
+    "Controlled Maintenance",
+    "MA",
+    "Schedule, approve, perform and record maintenance on system components."
+   ],
+   [
+    "MA-3",
+    "Maintenance Tools",
+    "MA",
+    "Approve, control and monitor the use of maintenance tools."
+   ],
+   [
+    "MA-4",
+    "Nonlocal Maintenance",
+    "MA",
+    "Approve, strongly authenticate and monitor remote maintenance sessions."
+   ],
+   [
+    "MA-5",
+    "Maintenance Personnel",
+    "MA",
+    "Authorise maintenance personnel and supervise those without access."
+   ],
+   [
+    "MA-6",
+    "Timely Maintenance",
+    "MA",
+    "Get maintenance support and spare parts within defined timeframes."
+   ],
+   [
+    "MA-7",
+    "Field Maintenance",
+    "MA",
+    "Restrict maintenance on defined systems to trusted maintenance facilities."
+   ],
+   [
+    "MP-1",
+    "Policy and Procedures",
+    "MP",
+    "Set, approve and review a media protection policy and procedures."
+   ],
+   [
+    "MP-2",
+    "Media Access",
+    "MP",
+    "Restrict access to digital and non-digital media."
+   ],
+   [
+    "MP-3",
+    "Media Marking",
+    "MP",
+    "Mark media with distribution limits and handling caveats."
+   ],
+   [
+    "MP-4",
+    "Media Storage",
+    "MP",
+    "Physically control and securely store media."
+   ],
+   [
+    "MP-5",
+    "Media Transport",
+    "MP",
+    "Protect and control media during transport outside controlled areas."
+   ],
+   [
+    "MP-6",
+    "Media Sanitization",
+    "MP",
+    "Sanitise media before disposal, release or reuse."
+   ],
+   [
+    "MP-7",
+    "Media Use",
+    "MP",
+    "Restrict or prohibit use of certain media types on systems."
+   ],
+   [
+    "MP-8",
+    "Media Downgrading",
+    "MP",
+    "Establish a process to downgrade media and its information."
+   ],
+   [
+    "PE-1",
+    "Policy and Procedures",
+    "PE",
+    "Set, approve and review a physical and environmental protection policy."
+   ],
+   [
+    "PE-2",
+    "Physical Access Authorizations",
+    "PE",
+    "Approve and periodically review who may physically access facilities."
+   ],
+   [
+    "PE-3",
+    "Physical Access Control",
+    "PE",
+    "Enforce physical access authorisations at entry and exit points."
+   ],
+   [
+    "PE-4",
+    "Access Control for Transmission",
+    "PE",
+    "Control physical access to transmission and distribution lines."
+   ],
+   [
+    "PE-5",
+    "Access Control for Output Devices",
+    "PE",
+    "Control physical access to output devices such as printers."
+   ],
+   [
+    "PE-6",
+    "Monitoring Physical Access",
+    "PE",
+    "Monitor physical access to facilities and respond to incidents."
+   ],
+   [
+    "PE-8",
+    "Visitor Access Records",
+    "PE",
+    "Keep and review visitor access records."
+   ],
+   [
+    "PE-9",
+    "Power Equipment and Cabling",
+    "PE",
+    "Protect power equipment and cabling from damage."
+   ],
+   [
+    "PE-10",
+    "Emergency Shutoff",
+    "PE",
+    "Provide the ability to shut off power in an emergency."
+   ],
+   [
+    "PE-11",
+    "Emergency Power",
+    "PE",
+    "Provide backup power for orderly shutdown or continued operation."
+   ],
+   [
+    "PE-12",
+    "Emergency Lighting",
+    "PE",
+    "Provide automatic emergency lighting."
+   ],
+   [
+    "PE-13",
+    "Fire Protection",
+    "PE",
+    "Provide fire detection and suppression systems."
+   ],
+   [
+    "PE-14",
+    "Environmental Controls",
+    "PE",
+    "Maintain and monitor temperature and humidity in facilities."
+   ],
+   [
+    "PE-15",
+    "Water Damage Protection",
+    "PE",
+    "Protect systems from water damage with accessible shutoff valves."
+   ],
+   [
+    "PE-16",
+    "Delivery and Removal",
+    "PE",
+    "Authorise and control items entering and leaving facilities."
+   ],
+   [
+    "PE-17",
+    "Alternate Work Site",
+    "PE",
+    "Apply security controls at alternate work sites."
+   ],
+   [
+    "PE-18",
+    "Location of System Components",
+    "PE",
+    "Place system components to reduce physical and environmental risk."
+   ],
+   [
+    "PE-19",
+    "Information Leakage",
+    "PE",
+    "Protect systems from information leakage through electromagnetic signals."
+   ],
+   [
+    "PE-20",
+    "Asset Monitoring and Tracking",
+    "PE",
+    "Track and monitor the location and movement of defined assets."
+   ],
+   [
+    "PE-21",
+    "Electromagnetic Pulse Protection",
+    "PE",
+    "Protect defined systems against electromagnetic pulse damage."
+   ],
+   [
+    "PE-22",
+    "Component Marking",
+    "PE",
+    "Mark hardware components with their security impact or classification."
+   ],
+   [
+    "PE-23",
+    "Facility Location",
+    "PE",
+    "Consider physical and environmental hazards when choosing facility locations."
+   ],
+   [
+    "PL-1",
+    "Policy and Procedures",
+    "PL",
+    "Set, approve and review a planning policy and procedures."
+   ],
+   [
+    "PL-2",
+    "System Security and Privacy Plans",
+    "PL",
+    "Develop and maintain system security and privacy plans."
+   ],
+   [
+    "PL-4",
+    "Rules of Behavior",
+    "PL",
+    "Define rules of behaviour and get users to acknowledge them."
+   ],
+   [
+    "PL-7",
+    "Concept of Operations",
+    "PL",
+    "Develop a concept of operations describing how the system will operate securely."
+   ],
+   [
+    "PL-8",
+    "Security and Privacy Architectures",
+    "PL",
+    "Develop security and privacy architectures for the system."
+   ],
+   [
+    "PL-9",
+    "Central Management",
+    "PL",
+    "Manage defined controls and processes centrally."
+   ],
+   [
+    "PL-10",
+    "Baseline Selection",
+    "PL",
+    "Select the control baseline for the system."
+   ],
+   [
+    "PL-11",
+    "Baseline Tailoring",
+    "PL",
+    "Tailor the selected control baseline to the organisation's needs."
+   ],
+   [
+    "PM-1",
+    "Information Security Program Plan",
+    "PM",
+    "Develop and maintain an organisation-wide information security programme plan."
+   ],
+   [
+    "PM-2",
+    "Information Security Program Leadership Role",
+    "PM",
+    "Appoint a senior information security officer to lead the programme."
+   ],
+   [
+    "PM-3",
+    "Information Security and Privacy Resources",
+    "PM",
+    "Include resources for security and privacy programmes in budgets."
+   ],
+   [
+    "PM-4",
+    "Plan of Action and Milestones Process",
+    "PM",
+    "Run a process to keep plans of action and milestones current."
+   ],
+   [
+    "PM-5",
+    "System Inventory",
+    "PM",
+    "Maintain an inventory of organisational systems."
+   ],
+   [
+    "PM-6",
+    "Measures of Performance",
+    "PM",
+    "Develop, monitor and report security and privacy performance measures."
+   ],
+   [
+    "PM-7",
+    "Enterprise Architecture",
+    "PM",
+    "Maintain an enterprise architecture that includes security and privacy."
+   ],
+   [
+    "PM-8",
+    "Critical Infrastructure Plan",
+    "PM",
+    "Address critical infrastructure protection in the security and privacy plans."
+   ],
+   [
+    "PM-9",
+    "Risk Management Strategy",
+    "PM",
+    "Develop and implement an organisation-wide risk management strategy."
+   ],
+   [
+    "PM-10",
+    "Authorization Process",
+    "PM",
+    "Manage the security and privacy authorisation process."
+   ],
+   [
+    "PM-11",
+    "Mission and Business Process Definition",
+    "PM",
+    "Define mission and business processes with their security and privacy needs."
+   ],
+   [
+    "PM-12",
+    "Insider Threat Program",
+    "PM",
+    "Run an insider threat programme with a cross-discipline team."
+   ],
+   [
+    "PM-13",
+    "Security and Privacy Workforce",
+    "PM",
+    "Build a security and privacy workforce development programme."
+   ],
+   [
+    "PM-14",
+    "Testing, Training, and Monitoring",
+    "PM",
+    "Plan and coordinate security and privacy testing, training and monitoring."
+   ],
+   [
+    "PM-15",
+    "Security and Privacy Groups and Associations",
+    "PM",
+    "Maintain contact with security and privacy groups and associations."
+   ],
+   [
+    "PM-16",
+    "Threat Awareness Program",
+    "PM",
+    "Run a threat awareness programme with cross-organisation information sharing."
+   ],
+   [
+    "PM-17",
+    "Protecting Controlled Unclassified Information on External Systems",
+    "PM",
+    "Protect controlled unclassified information processed on external systems."
+   ],
+   [
+    "PM-18",
+    "Privacy Program Plan",
+    "PM",
+    "Develop and maintain an organisation-wide privacy programme plan."
+   ],
+   [
+    "PM-19",
+    "Privacy Program Leadership Role",
+    "PM",
+    "Appoint a senior agency official for privacy to lead the privacy programme."
+   ],
+   [
+    "PM-20",
+    "Dissemination of Privacy Program Information",
+    "PM",
+    "Publish information about the privacy programme and practices."
+   ],
+   [
+    "PM-21",
+    "Accounting of Disclosures",
+    "PM",
+    "Keep an accurate accounting of disclosures of personal information."
+   ],
+   [
+    "PM-22",
+    "Personally Identifiable Information Quality Management",
+    "PM",
+    "Ensure personal information is accurate, relevant, timely and complete."
+   ],
+   [
+    "PM-23",
+    "Data Governance Body",
+    "PM",
+    "Establish a data governance body."
+   ],
+   [
+    "PM-24",
+    "Data Integrity Board",
+    "PM",
+    "Establish a data integrity board to oversee computer matching agreements."
+   ],
+   [
+    "PM-25",
+    "Minimization of Personally Identifiable Information Used in Testing, Training, and Research",
+    "PM",
+    "Minimise personal information used in testing, training and research."
+   ],
+   [
+    "PM-26",
+    "Complaint Management",
+    "PM",
+    "Handle privacy complaints, concerns and questions promptly."
+   ],
+   [
+    "PM-27",
+    "Privacy Reporting",
+    "PM",
+    "Produce privacy reports for oversight bodies."
+   ],
+   [
+    "PM-28",
+    "Risk Framing",
+    "PM",
+    "Define risk assumptions, constraints, tolerances and priorities."
+   ],
+   [
+    "PM-29",
+    "Risk Management Program Leadership Roles",
+    "PM",
+    "Appoint a senior accountable official for risk management."
+   ],
+   [
+    "PM-30",
+    "Supply Chain Risk Management Strategy",
+    "PM",
+    "Develop an organisation-wide supply chain risk management strategy."
+   ],
+   [
+    "PM-31",
+    "Continuous Monitoring Strategy",
+    "PM",
+    "Develop an organisation-wide continuous monitoring strategy."
+   ],
+   [
+    "PM-32",
+    "Purposing",
+    "PM",
+    "Confirm that critical systems and services are used only for their intended purpose."
+   ],
+   [
+    "PS-1",
+    "Policy and Procedures",
+    "PS",
+    "Set, approve and review a personnel security policy and procedures."
+   ],
+   [
+    "PS-2",
+    "Position Risk Designation",
+    "PS",
+    "Assign a risk designation to every position and review it periodically."
+   ],
+   [
+    "PS-3",
+    "Personnel Screening",
+    "PS",
+    "Screen individuals before granting access and rescreen when required."
+   ],
+   [
+    "PS-4",
+    "Personnel Termination",
+    "PS",
+    "On termination, revoke access, retrieve assets and conduct exit interviews."
+   ],
+   [
+    "PS-5",
+    "Personnel Transfer",
+    "PS",
+    "Review and adjust access when staff move to a new role."
+   ],
+   [
+    "PS-6",
+    "Access Agreements",
+    "PS",
+    "Have users sign access agreements before granting access."
+   ],
+   [
+    "PS-7",
+    "External Personnel Security",
+    "PS",
+    "Set and monitor security requirements for external personnel."
+   ],
+   [
+    "PS-8",
+    "Personnel Sanctions",
+    "PS",
+    "Apply a formal sanctions process for staff who breach security policies."
+   ],
+   [
+    "PS-9",
+    "Position Descriptions",
+    "PS",
+    "Include security and privacy roles in position descriptions."
+   ],
+   [
+    "PT-1",
+    "Policy and Procedures",
+    "PT",
+    "Set, approve and review a PII processing and transparency policy."
+   ],
+   [
+    "PT-2",
+    "Authority to Process Personally Identifiable Information",
+    "PT",
+    "Identify the legal authority to process personal information and limit processing to it."
+   ],
+   [
+    "PT-3",
+    "Personally Identifiable Information Processing Purposes",
+    "PT",
+    "Define and document the purposes for processing personal information."
+   ],
+   [
+    "PT-4",
+    "Consent",
+    "PT",
+    "Obtain individuals' consent for processing where required."
+   ],
+   [
+    "PT-5",
+    "Privacy Notice",
+    "PT",
+    "Give individuals clear privacy notices."
+   ],
+   [
+    "PT-6",
+    "System of Records Notice",
+    "PT",
+    "Publish system of records notices where required by law."
+   ],
+   [
+    "PT-7",
+    "Specific Categories of Personally Identifiable Information",
+    "PT",
+    "Apply extra conditions to processing special categories of personal information."
+   ],
+   [
+    "PT-8",
+    "Computer Matching Requirements",
+    "PT",
+    "Meet legal requirements when performing computer matching programmes."
+   ],
+   [
+    "RA-1",
+    "Policy and Procedures",
+    "RA",
+    "Set, approve and review a risk assessment policy and procedures."
+   ],
+   [
+    "RA-2",
+    "Security Categorization",
+    "RA",
+    "Categorise systems and information by impact level."
+   ],
+   [
+    "RA-3",
+    "Risk Assessment",
+    "RA",
+    "Assess risk to systems and operations and update the assessment."
+   ],
+   [
+    "RA-5",
+    "Vulnerability Monitoring and Scanning",
+    "RA",
+    "Scan for vulnerabilities and remediate them in line with risk."
+   ],
+   [
+    "RA-6",
+    "Technical Surveillance Countermeasures Survey",
+    "RA",
+    "Carry out technical surveillance countermeasure surveys."
+   ],
+   [
+    "RA-7",
+    "Risk Response",
+    "RA",
+    "Respond to findings from assessments, monitoring and audits."
+   ],
+   [
+    "RA-8",
+    "Privacy Impact Assessments",
+    "RA",
+    "Conduct privacy impact assessments for systems handling personal information."
+   ],
+   [
+    "RA-9",
+    "Criticality Analysis",
+    "RA",
+    "Identify critical system components and functions."
+   ],
+   [
+    "RA-10",
+    "Threat Hunting",
+    "RA",
+    "Establish a threat hunting capability to find threats that evade controls."
+   ],
+   [
+    "SA-1",
+    "Policy and Procedures",
+    "SA",
+    "Set, approve and review a system and services acquisition policy."
+   ],
+   [
+    "SA-2",
+    "Allocation of Resources",
+    "SA",
+    "Plan and budget the resources needed to protect systems."
+   ],
+   [
+    "SA-3",
+    "System Development Life Cycle",
+    "SA",
+    "Manage systems using a development life cycle that includes security and privacy."
+   ],
+   [
+    "SA-4",
+    "Acquisition Process",
+    "SA",
+    "Include security and privacy requirements in acquisition contracts."
+   ],
+   [
+    "SA-5",
+    "System Documentation",
+    "SA",
+    "Obtain and protect administrator and user documentation for the system."
+   ],
+   [
+    "SA-8",
+    "Security and Privacy Engineering Principles",
+    "SA",
+    "Apply security and privacy engineering principles to system design."
+   ],
+   [
+    "SA-9",
+    "External System Services",
+    "SA",
+    "Require external service providers to meet security requirements and monitor them."
+   ],
+   [
+    "SA-10",
+    "Developer Configuration Management",
+    "SA",
+    "Require developers to manage configuration of the system during development."
+   ],
+   [
+    "SA-11",
+    "Developer Testing and Evaluation",
+    "SA",
+    "Require developers to test and evaluate security and privacy controls."
+   ],
+   [
+    "SA-15",
+    "Development Process, Standards, and Tools",
+    "SA",
+    "Require a documented development process, standards and tools."
+   ],
+   [
+    "SA-16",
+    "Developer-provided Training",
+    "SA",
+    "Require developers to provide training on security functions."
+   ],
+   [
+    "SA-17",
+    "Developer Security and Privacy Architecture and Design",
+    "SA",
+    "Require developers to produce a security and privacy architecture and design."
+   ],
+   [
+    "SA-20",
+    "Customized Development of Critical Components",
+    "SA",
+    "Re-implement or custom-develop critical components."
+   ],
+   [
+    "SA-21",
+    "Developer Screening",
+    "SA",
+    "Require developers to have the right access and pass screening."
+   ],
+   [
+    "SA-22",
+    "Unsupported System Components",
+    "SA",
+    "Replace components that are no longer supported by vendors."
+   ],
+   [
+    "SA-23",
+    "Specialization",
+    "SA",
+    "Use specialisation to harden critical systems."
+   ],
+   [
+    "SC-1",
+    "Policy and Procedures",
+    "SC",
+    "Set, approve and review a system and communications protection policy."
+   ],
+   [
+    "SC-2",
+    "Separation of System and User Functionality",
+    "SC",
+    "Separate user functions from system management functions."
+   ],
+   [
+    "SC-3",
+    "Security Function Isolation",
+    "SC",
+    "Isolate security functions from non-security functions."
+   ],
+   [
+    "SC-4",
+    "Information in Shared System Resources",
+    "SC",
+    "Prevent unintended information transfer through shared resources."
+   ],
+   [
+    "SC-5",
+    "Denial-of-service Protection",
+    "SC",
+    "Protect against or limit the effects of denial-of-service events."
+   ],
+   [
+    "SC-6",
+    "Resource Availability",
+    "SC",
+    "Protect resource availability with priorities and quotas."
+   ],
+   [
+    "SC-7",
+    "Boundary Protection",
+    "SC",
+    "Monitor and control communications at external and key internal boundaries."
+   ],
+   [
+    "SC-8",
+    "Transmission Confidentiality and Integrity",
+    "SC",
+    "Protect the confidentiality and integrity of transmitted information."
+   ],
+   [
+    "SC-10",
+    "Network Disconnect",
+    "SC",
+    "Terminate network connections at session end or after inactivity."
+   ],
+   [
+    "SC-11",
+    "Trusted Path",
+    "SC",
+    "Provide a trusted communications path for authentication and other functions."
+   ],
+   [
+    "SC-12",
+    "Cryptographic Key Establishment and Management",
+    "SC",
+    "Establish and manage cryptographic keys."
+   ],
+   [
+    "SC-13",
+    "Cryptographic Protection",
+    "SC",
+    "Use approved types of cryptography where required."
+   ],
+   [
+    "SC-15",
+    "Collaborative Computing Devices and Applications",
+    "SC",
+    "Prohibit remote activation of collaborative devices and show when in use."
+   ],
+   [
+    "SC-16",
+    "Transmission of Security and Privacy Attributes",
+    "SC",
+    "Keep security and privacy attributes attached to information when exchanged."
+   ],
+   [
+    "SC-17",
+    "Public Key Infrastructure Certificates",
+    "SC",
+    "Issue public key certificates under a certificate policy or from approved providers."
+   ],
+   [
+    "SC-18",
+    "Mobile Code",
+    "SC",
+    "Define acceptable mobile code and control its use."
+   ],
+   [
+    "SC-20",
+    "Secure Name/Address Resolution Service (Authoritative Source)",
+    "SC",
+    "Provide authenticated, integrity-protected responses for authoritative DNS."
+   ],
+   [
+    "SC-21",
+    "Secure Name/Address Resolution Service (Recursive or Caching Resolver)",
+    "SC",
+    "Validate DNS responses from authoritative sources."
+   ],
+   [
+    "SC-22",
+    "Architecture and Provisioning for Name/Address Resolution Service",
+    "SC",
+    "Make DNS services fault-tolerant with internal and external role separation."
+   ],
+   [
+    "SC-23",
+    "Session Authenticity",
+    "SC",
+    "Protect the authenticity of communication sessions."
+   ],
+   [
+    "SC-24",
+    "Fail in Known State",
+    "SC",
+    "Make systems fail into a known secure state."
+   ],
+   [
+    "SC-25",
+    "Thin Nodes",
+    "SC",
+    "Use minimal-functionality, minimal-storage components (thin nodes)."
+   ],
+   [
+    "SC-26",
+    "Decoys",
+    "SC",
+    "Use decoys to attract and analyse attacks."
+   ],
+   [
+    "SC-27",
+    "Platform-independent Applications",
+    "SC",
+    "Use platform-independent applications."
+   ],
+   [
+    "SC-28",
+    "Protection of Information at Rest",
+    "SC",
+    "Protect information at rest."
+   ],
+   [
+    "SC-29",
+    "Heterogeneity",
+    "SC",
+    "Use diverse technologies to reduce common-mode attack impact."
+   ],
+   [
+    "SC-30",
+    "Concealment and Misdirection",
+    "SC",
+    "Use concealment and misdirection techniques to confuse attackers."
+   ],
+   [
+    "SC-31",
+    "Covert Channel Analysis",
+    "SC",
+    "Analyse covert channels that could leak information."
+   ],
+   [
+    "SC-32",
+    "System Partitioning",
+    "SC",
+    "Partition the system into separate physical or logical domains."
+   ],
+   [
+    "SC-34",
+    "Non-modifiable Executable Programs",
+    "SC",
+    "Load and run operating systems and applications from read-only media."
+   ],
+   [
+    "SC-35",
+    "External Malicious Code Identification",
+    "SC",
+    "Identify malicious code from external sources such as malicious sites."
+   ],
+   [
+    "SC-36",
+    "Distributed Processing and Storage",
+    "SC",
+    "Distribute processing and storage across locations."
+   ],
+   [
+    "SC-37",
+    "Out-of-band Channels",
+    "SC",
+    "Use out-of-band channels to deliver defined information or devices."
+   ],
+   [
+    "SC-38",
+    "Operations Security",
+    "SC",
+    "Apply operations security safeguards to protect key information."
+   ],
+   [
+    "SC-39",
+    "Process Isolation",
+    "SC",
+    "Run each system process in its own execution domain."
+   ],
+   [
+    "SC-40",
+    "Wireless Link Protection",
+    "SC",
+    "Protect wireless links from signal parameter attacks."
+   ],
+   [
+    "SC-41",
+    "Port and I/O Device Access",
+    "SC",
+    "Disable or remove unneeded ports and I/O devices."
+   ],
+   [
+    "SC-42",
+    "Sensor Capability and Data",
+    "SC",
+    "Prevent remote activation of sensors and control data they collect."
+   ],
+   [
+    "SC-43",
+    "Usage Restrictions",
+    "SC",
+    "Set usage restrictions for components that could cause damage."
+   ],
+   [
+    "SC-44",
+    "Detonation Chambers",
+    "SC",
+    "Use detonation chambers to analyse suspicious content safely."
+   ],
+   [
+    "SC-45",
+    "System Time Synchronization",
+    "SC",
+    "Synchronise system clocks within and between systems."
+   ],
+   [
+    "SC-46",
+    "Cross Domain Policy Enforcement",
+    "SC",
+    "Enforce policy for data crossing between security domains."
+   ],
+   [
+    "SC-47",
+    "Alternate Communications Paths",
+    "SC",
+    "Establish alternate communications paths for command and control."
+   ],
+   [
+    "SC-48",
+    "Sensor Relocation",
+    "SC",
+    "Relocate sensors and monitoring capabilities in response to conditions."
+   ],
+   [
+    "SC-49",
+    "Hardware-enforced Separation and Policy Enforcement",
+    "SC",
+    "Use hardware-enforced separation to enforce security policy."
+   ],
+   [
+    "SC-50",
+    "Software-enforced Separation and Policy Enforcement",
+    "SC",
+    "Use software-enforced separation to enforce security policy."
+   ],
+   [
+    "SC-51",
+    "Hardware-based Protection",
+    "SC",
+    "Use hardware-based write protection for firmware."
+   ],
+   [
+    "SI-1",
+    "Policy and Procedures",
+    "SI",
+    "Set, approve and review a system and information integrity policy."
+   ],
+   [
+    "SI-2",
+    "Flaw Remediation",
+    "SI",
+    "Identify, report and correct system flaws promptly."
+   ],
+   [
+    "SI-3",
+    "Malicious Code Protection",
+    "SI",
+    "Deploy and update malicious code protection at entry and exit points."
+   ],
+   [
+    "SI-4",
+    "System Monitoring",
+    "SI",
+    "Monitor systems to detect attacks and unauthorised activity."
+   ],
+   [
+    "SI-5",
+    "Security Alerts, Advisories, and Directives",
+    "SI",
+    "Receive security alerts and advisories and act on them."
+   ],
+   [
+    "SI-6",
+    "Security and Privacy Function Verification",
+    "SI",
+    "Verify that security and privacy functions operate correctly."
+   ],
+   [
+    "SI-7",
+    "Software, Firmware, and Information Integrity",
+    "SI",
+    "Use integrity checks to detect unauthorised changes to software and information."
+   ],
+   [
+    "SI-8",
+    "Spam Protection",
+    "SI",
+    "Protect against unsolicited messages (spam) at entry points."
+   ],
+   [
+    "SI-10",
+    "Information Input Validation",
+    "SI",
+    "Check the validity of information inputs."
+   ],
+   [
+    "SI-11",
+    "Error Handling",
+    "SI",
+    "Handle errors without revealing information useful to attackers."
+   ],
+   [
+    "SI-12",
+    "Information Management and Retention",
+    "SI",
+    "Manage and retain information in line with laws and policies."
+   ],
+   [
+    "SI-13",
+    "Predictable Failure Prevention",
+    "SI",
+    "Predict and prevent component failures."
+   ],
+   [
+    "SI-14",
+    "Non-persistence",
+    "SI",
+    "Use non-persistent components refreshed to a known state."
+   ],
+   [
+    "SI-15",
+    "Information Output Filtering",
+    "SI",
+    "Validate information output from software against expected content."
+   ],
+   [
+    "SI-16",
+    "Memory Protection",
+    "SI",
+    "Protect system memory from unauthorised code execution."
+   ],
+   [
+    "SI-17",
+    "Fail-safe Procedures",
+    "SI",
+    "Define fail-safe procedures for defined failure conditions."
+   ],
+   [
+    "SI-18",
+    "Personally Identifiable Information Quality Operations",
+    "SI",
+    "Check and correct the accuracy of personal information."
+   ],
+   [
+    "SI-19",
+    "De-identification",
+    "SI",
+    "Remove identifying elements from data sets where they are not needed."
+   ],
+   [
+    "SI-20",
+    "Tainting",
+    "SI",
+    "Embed tainted data to detect exfiltration of information."
+   ],
+   [
+    "SI-21",
+    "Information Refresh",
+    "SI",
+    "Refresh information at defined frequencies or generate it on demand."
+   ],
+   [
+    "SI-22",
+    "Information Diversity",
+    "SI",
+    "Identify and use alternative sources of information for critical functions."
+   ],
+   [
+    "SI-23",
+    "Information Fragmentation",
+    "SI",
+    "Fragment information across systems to reduce compromise impact."
+   ],
+   [
+    "SR-1",
+    "Policy and Procedures",
+    "SR",
+    "Set, approve and review a supply chain risk management policy."
+   ],
+   [
+    "SR-2",
+    "Supply Chain Risk Management Plan",
+    "SR",
+    "Develop a plan to manage supply chain risks."
+   ],
+   [
+    "SR-3",
+    "Supply Chain Controls and Processes",
+    "SR",
+    "Implement processes and controls to address supply chain weaknesses."
+   ],
+   [
+    "SR-4",
+    "Provenance",
+    "SR",
+    "Document and monitor the provenance of components."
+   ],
+   [
+    "SR-5",
+    "Acquisition Strategies, Tools, and Methods",
+    "SR",
+    "Use acquisition strategies and methods to reduce supply chain risk."
+   ],
+   [
+    "SR-6",
+    "Supplier Assessments and Reviews",
+    "SR",
+    "Assess and review suppliers and their supply chains."
+   ],
+   [
+    "SR-7",
+    "Supply Chain Operations Security",
+    "SR",
+    "Protect supply chain information through operations security."
+   ],
+   [
+    "SR-8",
+    "Notification Agreements",
+    "SR",
+    "Agree with suppliers on notification of supply chain compromises."
+   ],
+   [
+    "SR-9",
+    "Tamper Resistance and Detection",
+    "SR",
+    "Implement tamper resistance and detection for systems and components."
+   ],
+   [
+    "SR-10",
+    "Inspection of Systems or Components",
+    "SR",
+    "Inspect systems and components for tampering."
+   ],
+   [
+    "SR-11",
+    "Component Authenticity",
+    "SR",
+    "Detect and prevent counterfeit components."
+   ],
+   [
+    "SR-12",
+    "Component Disposal",
+    "SR",
+    "Dispose of components securely."
+   ]
+  ]
+ },
+ "uaeniaf": {
+  "g": [
+   [
+    "1",
+    "Introduction: Principles, Context and Applicability"
+   ],
+   [
+    "3",
+    "Entity Context"
+   ],
+   [
+    "4",
+    "Sector and National Contexts"
+   ],
+   [
+    "5",
+    "Information Sharing"
+   ],
+   [
+    "6",
+    "UAE Standards"
+   ],
+   [
+    "7",
+    "National IA Governance"
+   ]
+  ],
+  "r": [
+   [
+    "1.2.1",
+    "Confidentiality",
+    "1",
+    "Ensure information is accessible only to authorized parties and protected from intentional or accidental disclosure."
+   ],
+   [
+    "1.2.2",
+    "Integrity",
+    "1",
+    "Ensure changes to information cannot be made without detection."
+   ],
+   [
+    "1.2.3",
+    "Availability",
+    "1",
+    "Ensure information assets (data, systems, facilities, networks) are accessible and usable when needed."
+   ],
+   [
+    "1.2.4",
+    "Authentication",
+    "1",
+    "Validate claimed identities against stored credential information."
+   ],
+   [
+    "1.2.5",
+    "Non-repudiation",
+    "1",
+    "Provide proof of origin so senders and recipients cannot deny sending or receiving communications."
+   ],
+   [
+    "1.4",
+    "Sector and National IA Context (stakeholder roles)",
+    "1",
+    "Entities apply the NIAF and maintain the entity IA context; sector regulators and NESA maintain sector and national context."
+   ],
+   [
+    "1.5",
+    "Applicability of UAE NIAF",
+    "1",
+    "Mandatory for UAE government entities and entities NESA designates as critical; voluntary but recommended for all others."
+   ],
+   [
+    "3.1",
+    "Risk Assessment",
+    "3",
+    "Apply a systematic, repeatable risk assessment approach aligned to the National Cyber Security Risk Management Framework."
+   ],
+   [
+    "3.1.1",
+    "Asset Inventory",
+    "3",
+    "Understand the information assets (hardware, software, databases) owned or controlled, for as-is and to-be architectures."
+   ],
+   [
+    "3.1.2",
+    "Business Impact Analysis",
+    "3",
+    "Evaluate the impact of a breach or interruption of each information asset and the functions it supports."
+   ],
+   [
+    "3.1.3",
+    "Vulnerability Assessment",
+    "3",
+    "Evaluate threat exposure of key information assets and the likelihood of vulnerabilities being exploited."
+   ],
+   [
+    "3.2",
+    "Integrated Security",
+    "3",
+    "Document how assessed risks are mitigated through an integrated set of controls selected on a cost-benefit basis."
+   ],
+   [
+    "3.2.1",
+    "Logical Security",
+    "3",
+    "Define logical security controls (e.g. firewalls, encryption, anti-virus, identity management) for information assets."
+   ],
+   [
+    "3.2.2",
+    "Physical Security",
+    "3",
+    "Define physical security controls (e.g. locks, perimeter fencing, fire alarms) for information assets."
+   ],
+   [
+    "3.2.3",
+    "Personnel Security",
+    "3",
+    "Define personnel security controls (e.g. background checks, return of assets after employment)."
+   ],
+   [
+    "3.3",
+    "Incident Management",
+    "3",
+    "Monitor information assets, identify and manage incidents, and escalate using the NESA national incident management capability."
+   ],
+   [
+    "3.3.1",
+    "Situational Awareness",
+    "3",
+    "Monitor own information assets and environment, detect internal incidents and use external threat and warning information."
+   ],
+   [
+    "3.3.2",
+    "Entity Incident Response",
+    "3",
+    "Develop an internal incident response capability meeting the minimums of the national incident management framework."
+   ],
+   [
+    "3.3.3",
+    "Escalation to Sector and National Levels",
+    "3",
+    "Maintain processes and channels to escalate significant incidents to sector and national levels per the NESA framework."
+   ],
+   [
+    "3.4",
+    "Business Continuity",
+    "3",
+    "Identify the most crucial information assets and keep critical business functions available during significant incidents."
+   ],
+   [
+    "3.4.1",
+    "Continuity Planning",
+    "3",
+    "Develop and regularly test a plan for continuing critical services and operations under adverse conditions."
+   ],
+   [
+    "3.4.2",
+    "Disaster Recovery",
+    "3",
+    "Maintain an internal disaster recovery plan for rapid recovery of critical information assets."
+   ],
+   [
+    "3.4.3",
+    "Return to Steady State",
+    "3",
+    "Define a business resumption plan to return critical information assets to normal service after disruption."
+   ],
+   [
+    "4.1",
+    "Sector/National Risk Assessment",
+    "4",
+    "Operators identify assets supporting critical national services and feed risk results into sector and national views (CIIP Policy)."
+   ],
+   [
+    "4.2",
+    "UAE National Cybersecurity Capabilities",
+    "4",
+    "Use national cybersecurity capabilities NESA provides where it determines they are needed (e.g. monitoring, clearances, threat data)."
+   ],
+   [
+    "4.3",
+    "Sector and National Situational Awareness",
+    "4",
+    "Share predefined information with sector and national stakeholders before, during and after significant incidents."
+   ],
+   [
+    "4.4",
+    "Continuity of Critical National Services",
+    "4",
+    "Ensure continuity of critical national services relying on own infrastructure; reflect national RPO/RTO and reporting requirements."
+   ],
+   [
+    "5",
+    "Information Sharing",
+    "5",
+    "Participate in the national information-sharing capability (warnings, advice, incident reporting) per the National Information-Sharing Policy."
+   ],
+   [
+    "6.1",
+    "Common Standards",
+    "6",
+    "Government and NESA-designated critical entities must demonstrate compliance with the Common Standards (UAE IA Standards)."
+   ],
+   [
+    "6.2",
+    "Sector-specific Standards",
+    "6",
+    "Implement sector-specific standards and regulator technical guidelines issued with NESA for the entity's sector."
+   ],
+   [
+    "6.3",
+    "Service and Product-specific Standards",
+    "6",
+    "Apply service- or product-specific standards where NESA issues them for services or products in use."
+   ],
+   [
+    "6.4",
+    "Certification",
+    "6",
+    "Undergo certification against UAE IA Standards where NESA requires stringent verification of compliance."
+   ],
+   [
+    "6.5",
+    "Information Assurance Technical Forums",
+    "6",
+    "Engage in NESA Information Assurance Technical Forums to share lessons and raise implementation concerns."
+   ],
+   [
+    "7",
+    "National IA Governance (reporting to NESA)",
+    "7",
+    "Meet the UAE NIAF Governance Model expectations, including stakeholder reporting requirements to NESA."
+   ],
+   [
+    "7.1",
+    "Stakeholder Interaction with NESA (Liaison Officer)",
+    "7",
+    "Designate a named Liaison Officer, give NESA their contact details, and inform NESA before replacing or substituting them."
+   ],
+   [
+    "7.2",
+    "Compliance Monitoring",
+    "7",
+    "Support NESA compliance monitoring: self-assessments, evidence requests, commissioned security tests and possible intervention."
+   ]
+  ]
+ },
+ "ctdisr": {
+  "g": [
+   [
+    "II",
+    "Information Security Management and Governance"
+   ],
+   [
+    "III",
+    "Asset Management"
+   ],
+   [
+    "IV",
+    "Information Security Risk Management"
+   ],
+   [
+    "V",
+    "Incident Management"
+   ],
+   [
+    "VI",
+    "Access Control"
+   ],
+   [
+    "VII",
+    "Operation, Systems and Communication Management"
+   ],
+   [
+    "VIII",
+    "Business Continuity Planning and Disaster Recovery"
+   ],
+   [
+    "IX",
+    "Information Systems Acquisition, Development and Management"
+   ],
+   [
+    "X",
+    "Environmental and Physical Security"
+   ],
+   [
+    "XI",
+    "Cloud Security"
+   ],
+   [
+    "XII",
+    "Roles and Responsibilities of Human Resource Department"
+   ],
+   [
+    "XIII",
+    "Information Security Assurance, Compliance and Audit"
+   ],
+   [
+    "XIV",
+    "Regulatory Oversight and Enforcement"
+   ]
+  ],
+  "r": [
+   [
+    "Reg.4(1)",
+    "Define and document information security roles and responsibilities",
+    "II",
+    "Define and document, roles and responsibilities related to information security to ensure clarity in individual roles, accountability, segregation of duties, and to prevent any conflict of interest."
+   ],
+   [
+    "Reg.4(2)",
+    "Define minimum roles for CEO, CISO and other key positions/teams",
+    "II",
+    "Define and maintain security roles for at least the CEO, CISO and other listed positions and teams."
+   ],
+   [
+    "Reg.5(1)",
+    "Constitute a CEO-chaired Information Security Steering Committee (ISSC)",
+    "II",
+    "Form an ISSC chaired by the CEO with the COO, CIO, CTO, CISO, Head of Compliance and other functional heads."
+   ],
+   [
+    "Reg.5(2)",
+    "ISSC roles: oversee CTDISR implementation, reviews and policy approval",
+    "II",
+    "The ISSC supervises CTDISR implementation, reviews control effectiveness and approves and oversees security policies."
+   ],
+   [
+    "Reg.6(1)",
+    "Maintain an organization-wide Information Security Policy",
+    "II",
+    "Develop, approve, disseminate and maintain an organization-wide Information Security Policy setting out the fundamental principles for safeguarding all information and organizational assets."
+   ],
+   [
+    "Reg.6(2)",
+    "ISSC approval, publication and accessibility of the policy",
+    "II",
+    "Have the policy approved by the ISSC, communicated to employees and relevant external parties, and kept accessible."
+   ],
+   [
+    "Reg.6(3)",
+    "Review the Information Security Policy at least annually",
+    "II",
+    "Ensure that the Information Security Policy is subject to a formal review at least once a year, or earlier where organizational, technological, or regulatory changes so require."
+   ],
+   [
+    "Reg.7(1)",
+    "Maintain technical and operational information security policies",
+    "II",
+    "Develop, approve, disseminate, and maintain a comprehensive set of technical and operational information security policies."
+   ],
+   [
+    "Reg.7(2)",
+    "Supplement policies with detailed procedures and guidelines",
+    "II",
+    "Supplement its technical and operational policies with detailed procedures and guidelines specifying the implementation mechanisms of such policies."
+   ],
+   [
+    "Reg.7(3)",
+    "Review and approve security policies at least annually",
+    "II",
+    "Ensure that its information security related policies are formally reviewed and approved at least once a year, or earlier where circumstances so require, to ensure their continued effectiveness in..."
+   ],
+   [
+    "Reg.7(4)",
+    "Report policy deviations and violations to the CISO and ISSC",
+    "II",
+    "Any deviations, violations, or non-compliance with the approved information security policies shall be promptly reported to the CISO and the ISSC for review and corrective action."
+   ],
+   [
+    "Reg.8(1)",
+    "Run a continuous, role-based security awareness program",
+    "II",
+    "Design, develop and implement a continuous and regular information security awareness program, structured in accordance with job functions and organizational divisions, comprising targeted..."
+   ],
+   [
+    "Reg.8(2)",
+    "Basic security training for all personnel, including induction",
+    "II",
+    "Ensure that all personnel are provided with basic information security training and awareness covering information security principles and the organization’s policy requirements."
+   ],
+   [
+    "Reg.8(3)",
+    "At least bi-annual training for staff running the security program",
+    "II",
+    "Organize periodic, but not less than bi-annual, information security training sessions for employees engaged in the implementation of the information security program or management system within..."
+   ],
+   [
+    "Reg.8(4)",
+    "Maintain security awareness materials",
+    "II",
+    "Prepare and maintain information security awareness materials designed to educate users on organizational security policies, highlight security risks associated with business operations, and..."
+   ],
+   [
+    "Reg.8(5)",
+    "Run annual security awareness surveys",
+    "II",
+    "Conduct security awareness surveys on regular basis (at least once in a year) to evaluate the effectiveness of training, measure the level of awareness amongst personnel and relevant external..."
+   ],
+   [
+    "Reg.8(6)",
+    "Keep training and attendance records for at least two years",
+    "II",
+    "Maintain documented records of all information security training and awareness sessions, including attendance records for a minimum of two (2) years, together with details of content or agenda..."
+   ],
+   [
+    "Reg.8(7)",
+    "Determine appropriate training delivery modes",
+    "II",
+    "Determine the appropriate mode of delivery for training (including but not limited to classroom sessions, online training, or software-based tools), taking into account the specific requirements..."
+   ],
+   [
+    "Reg.8(8)",
+    "Promote security awareness to the public via website and portals",
+    "II",
+    "Utilize its website, public portals, programs and initiatives to promote information security awareness amongst the general public and relevant stakeholders."
+   ],
+   [
+    "Reg.9(1)",
+    "NDAs for employees and external parties, reviewed every two years",
+    "II",
+    "Prepare and implement a non-disclosure or confidentiality agreement to be executed by all employees and relevant external parties."
+   ],
+   [
+    "Reg.9(2)",
+    "Make personnel aware of confidentiality obligations",
+    "II",
+    "Ensure that all personnel are educated and made aware of their obligations of confidentiality, including the risks and potential impact of information leakage—whether written, verbal, or otherwise..."
+   ],
+   [
+    "Reg.10(1)",
+    "Maintain contact list of emergency services and authorities (e.g. nTCERT)",
+    "II",
+    "Identify, compile, and maintain an updated contact list of emergency services (e.g., Police, Fire Brigade) and other relevant authorities (e.g., nTCERT), to ensure prompt engagement in the event..."
+   ],
+   [
+    "Reg.10(2)",
+    "Participate in security forums and special interest groups",
+    "II",
+    "Maintain active interactions with, and where appropriate, obtain membership in recognized information security forums, associations, and interest groups for the purpose of remaining informed of..."
+   ],
+   [
+    "Reg.11(1)",
+    "Maintain an Asset Management Policy and supporting procedures",
+    "III",
+    "Develop, approve, disseminate, and maintain an organization-wide Asset Management Policy, along with supporting procedures and frameworks, in alignment with ISO/IEC 27001 and ISO/IEC 27002 etc."
+   ],
+   [
+    "Reg.11(2)",
+    "Maintain a register of all assets including CII",
+    "III",
+    "Document, and maintain a comprehensive register of all assets, including Critical Information Infrastructure (CII), covering information, data, and associated information processing / operational..."
+   ],
+   [
+    "Reg.11(3)",
+    "Capture mandatory attributes in the asset register",
+    "III",
+    "Record identification, classification, ownership, location and other mandatory attributes for each asset."
+   ],
+   [
+    "Reg.11(4)",
+    "Identify CII and apply administrative, technical and physical controls",
+    "III",
+    "Identify and establish CII as part of its Asset Management Procedures, ensuring the implementation of appropriate administrative, technical, and physical security controls to safeguard its..."
+   ],
+   [
+    "Reg.11(5)",
+    "Review and reconcile the asset register at least annually",
+    "III",
+    "Asset Register shall be reviewed, reconciled, and updated at regular intervals (at least annually, or upon significant changes), and shall remain subject to internal audits and regulatory..."
+   ],
+   [
+    "Reg.12(1)",
+    "Assign an owner/custodian to every information asset",
+    "III",
+    "Incorporate the principle of asset ownership/custodianship within its asset management register and information management practices."
+   ],
+   [
+    "Reg.12(2)",
+    "Asset owners ensure proper classification",
+    "III",
+    "The designated owner of information and assets shall be responsible for ensuring that assets are properly classified in accordance with their sensitivity and criticality."
+   ],
+   [
+    "Reg.12(3)",
+    "Asset owners define access controls and review access periodically",
+    "III",
+    "The designated owner shall further be responsible for defining appropriate access controls for the information and assets and ensuring that access rights are periodically reviewed in line with the..."
+   ],
+   [
+    "Reg.12(4)",
+    "Custodians perform day-to-day handling and safeguarding",
+    "III",
+    "The designated custodian shall be responsible for carrying out day-to-day operational tasks related to the management, handling, and safeguarding of the information and assets."
+   ],
+   [
+    "Reg.13(1)",
+    "Maintain an Asset Classification Policy and procedures",
+    "III",
+    "Develop, approve, disseminate, and maintain Asset Classification Policy and related procedures."
+   ],
+   [
+    "Reg.13(2)",
+    "Define and implement an information/asset classification scheme",
+    "III",
+    "Define and implement an information classification scheme/process and asset classification to be used within the organization based on information and assets criticality, sensitivity, value, and..."
+   ],
+   [
+    "Reg.13(3)",
+    "Classify assets as Critical, High, Medium or Low",
+    "III",
+    "Assets shall be classified as Critical, High, Medium, and Low."
+   ],
+   [
+    "Reg.14(1)",
+    "Labeling and handling controls per classification level",
+    "III",
+    "Establish, approve, implement, and maintain labeling and handling controls for all assets, whether physical, digital or otherwise, in accordance with the classification levels prescribed under..."
+   ],
+   [
+    "Reg.14(2)",
+    "Documented labeling and handling procedures",
+    "III",
+    "Develop, disseminate, and maintain documented procedures for the labeling and handling of assets, consistent with international best practices including ISO/IEC 27001, ISO/IEC 27002, NIST..."
+   ],
+   [
+    "Reg.14(3)",
+    "Ensure awareness of and compliance with labeling/handling procedures",
+    "III",
+    "The Licensee shall ensure that all personnel, contractors, and external parties having access to such assets are made aware of and comply with the labeling and handling procedures, and that..."
+   ],
+   [
+    "Reg.15(1)",
+    "Documented procedures for secure disposal of critical information and assets",
+    "III",
+    "Establish, approve, implement, and maintain documented procedures for the secure disposal of critical information and assets, including but not limited to physical, digital, logical media or..."
+   ],
+   [
+    "Reg.15(2)",
+    "Apply sanitization techniques before disposal",
+    "III",
+    "Prior to disposal, the Licensee shall identify, document, and implement appropriate safety and security measures, including but not limited to overwriting, zeroization, degaussing, shredding..."
+   ],
+   [
+    "Reg.15(3)",
+    "Designate owner/custodian to authorize and supervise disposal",
+    "III",
+    "The Licensee shall designate owner and custodian responsible for authorizing and supervising the disposal of assets and shall ensure that disposal activities are conducted in accordance with..."
+   ],
+   [
+    "Reg.15(4)",
+    "Keep auditable disposal records available to the Authority",
+    "III",
+    "The Licensee shall maintain complete and auditable records of all disposal activities, particularly those involving classified or critical information and assets, in line with the approved..."
+   ],
+   [
+    "Reg.15(5)",
+    "Bind outsourced disposal providers to disposal procedures",
+    "III",
+    "Where disposal is outsourced to external parties, including but not limited to vendors, contractors, and service providers, the Licensee shall ensure, through binding contractual arrangements and..."
+   ],
+   [
+    "Reg.16(1)",
+    "Maintain an enforceable Acceptable Use Policy",
+    "III",
+    "Establish, approve, implement, and maintain an Acceptable Use Policy (AUP), which shall set out clear binding and enforceable rules governing the authorized use of the Licensee’s assets, including..."
+   ],
+   [
+    "Reg.17(1)",
+    "Maintain an organization-wide Risk Management Policy",
+    "IV",
+    "Develop, approve, disseminate, and maintain a comprehensive organization-wide Risk Management Policy, and associated procedures or framework to identify and manage both internal and external party..."
+   ],
+   [
+    "Reg.17(2)",
+    "Establish a formal risk assessment methodology (ISO 27005/31000, NIST)",
+    "IV",
+    "Establish, approve, implement, and maintain a formal Risk Assessment Methodology, consistent with the requirements of the organization’s risk management policy and internationally recognized..."
+   ],
+   [
+    "Reg.17(3)",
+    "Minimum content of the risk assessment methodology",
+    "IV",
+    "Define roles, assessment frequency, risk criteria and the other minimum elements in the methodology."
+   ],
+   [
+    "Reg.18(1)",
+    "Conduct periodic and change-driven risk assessments",
+    "IV",
+    "Conduct, update, and maintain comprehensive Risk Assessments in accordance with its formally approved Risk Assessment Methodology developed under Regulation 17 of these Regulations."
+   ],
+   [
+    "Reg.18(2)",
+    "Perform risk analysis and prioritize using a risk matrix",
+    "IV",
+    "Perform detailed Risk Analysis to identify threats, vulnerabilities, and potential impacts on assets, systems, networks, and CII. Risks shall be prioritized using a documented risk matrix, based..."
+   ],
+   [
+    "Reg.18(3)",
+    "Define acceptable risk, residual risk and tolerances",
+    "IV",
+    "Determine and explicitly define acceptable risks, calculate residual risks and tolerances in line with its approved Risk Assessment Methodology, organizational risk appetite, and regulatory..."
+   ],
+   [
+    "Reg.18(4)",
+    "Document assessments; ISSC approval for High/Critical risks",
+    "IV",
+    "Document each risk assessment fully; High or Critical risks need explicit ISSC review and approval."
+   ],
+   [
+    "Reg.18(5)",
+    "Submit risk assessment records to the Authority on request",
+    "IV",
+    "The Authority may, at its discretion, require submission of a Licensee’s Risk Assessment records, including treatment plans for high and critical risks, for review and compliance verification."
+   ],
+   [
+    "Reg.19(1)",
+    "Maintain a Risk Treatment and Mitigation Plan",
+    "IV",
+    "Develop, approve, document, and maintain a Risk Treatment and Mitigation Plan, consistent with its approved Risk Assessment Methodology under Regulation 17 to address risks identified under..."
+   ],
+   [
+    "Reg.19(2)",
+    "Select appropriate risk treatment strategies",
+    "IV",
+    "Determine and adopt appropriate risk treatment strategies, including but not limited to risk mitigation, risk avoidance, risk transfer and risk acceptance, based on the nature, impact, and..."
+   ],
+   [
+    "Reg.19(3)",
+    "ISSC prior approval of Critical and High risk treatment plans",
+    "IV",
+    "All Critical and High risk treatment plans and associated security controls shall require prior authorization and approval by the Licensee’s ISSC."
+   ],
+   [
+    "Reg.19(4)",
+    "Risk owners accountable for implementing treatment",
+    "IV",
+    "The designated Risk Owner shall be accountable for ensuring the implementation of the approved risk treatment measures, in accordance with organizational policies and regulatory requirements."
+   ],
+   [
+    "Reg.19(5)",
+    "Review and test effectiveness of mitigation controls",
+    "IV",
+    "The Licensee shall establish processes to periodically review, test, and monitor the effectiveness of the implemented mitigation controls."
+   ],
+   [
+    "Reg.19(6)",
+    "Submit treatment plans and apply additional measures directed by PTA",
+    "IV",
+    "Submit risk treatment plans and control evidence to PTA on request and apply any additional measures it directs."
+   ],
+   [
+    "Reg.20(1)",
+    "Document untreated and residual risks with justification",
+    "IV",
+    "Formally document all risks that remain untreated or partially treated, including Critical, High, Medium, and residual risks, with appropriate justification, consistent with the approved Risk..."
+   ],
+   [
+    "Reg.20(2)",
+    "No acceptance of Critical/High risk without ISSC approval",
+    "IV",
+    "No risk categorized as Critical or High may be accepted without prior review and formal approval of the ISSC (or equivalent governance body)."
+   ],
+   [
+    "Reg.21(1)",
+    "Assess information security risks from third parties",
+    "IV",
+    "Identify, document, and assess information security risks arising from relationships with third parties, including but not limited to customers, franchises, retailers, external service providers..."
+   ],
+   [
+    "Reg.21(2)",
+    "Include mandatory security provisions in third-party contracts",
+    "IV",
+    "Develop and enforce formal agreements or contracts with all relevant external parties, incorporating mandatory information security provisions that safeguard the confidentiality, integrity, and..."
+   ],
+   [
+    "Reg.21(3)",
+    "NDAs with external providers before access",
+    "IV",
+    "Ensure that all external service providers, contractors, and vendors execute formal Non-Disclosure Agreements (NDAs) prior to obtaining access to any sensitive information, systems, or facilities..."
+   ],
+   [
+    "Reg.21(4)",
+    "Hold providers contractually accountable for breaches and supply-chain failures",
+    "IV",
+    "External service providers shall be held contractually accountable for any security breaches, data loss, or service disruptions resulting from deficiencies in their supply chain or failure to..."
+   ],
+   [
+    "Reg.21(5)",
+    "External providers implement controls suited to the service",
+    "IV",
+    "Each external service provider shall implement and maintain security controls relevant to the nature and sensitivity of the services rendered."
+   ],
+   [
+    "Reg.21(6)",
+    "Monitor, review and audit third-party services",
+    "IV",
+    "Monitor, review, and audit on a regular basis the services and related deliverables provided by external parties, to ensure continued compliance with contractual and regulatory obligations."
+   ],
+   [
+    "Reg.21(7)",
+    "Vendor and supply chain security due diligence and compliance",
+    "IV",
+    "Ensure that all equipment, software, and services procured from third parties comply with these Regulations and any security requirements issued by the Authority"
+   ],
+   [
+    "Reg.21(8)",
+    "Comply with PTA restrictions on equipment, software or services",
+    "IV",
+    "Do not procure or use equipment, software or services that PTA restricts or prohibits on national security grounds."
+   ],
+   [
+    "Reg.22(1)",
+    "Maintain Incident Management Policy and Procedures",
+    "V",
+    "Develop, approve, disseminate, and maintain documented Incident Management Policy and Procedures covering the detection, reporting, handling, mitigation, and recovery of information security..."
+   ],
+   [
+    "Reg.22(2)",
+    "Structured incident procedure: categorization, severity and timelines",
+    "V",
+    "Categorize incidents by severity with response and resolution timelines, and define handling steps."
+   ],
+   [
+    "Reg.22(3)",
+    "Establish a competent Incident Response Team",
+    "V",
+    "Establish and maintain a competent Incident Response Team (IRT) responsible for managing information security incidents."
+   ],
+   [
+    "Reg.22(4)",
+    "Specialized training and certification for IRT members",
+    "V",
+    "Ensure that all IRT members receive specialized training, professional certification, periodic awareness sessions, and continuous professional development necessary for the effective handling of..."
+   ],
+   [
+    "Reg.22(5)",
+    "Test incident management through simulations and tabletop exercises",
+    "V",
+    "Develop, maintain, and periodically execute test procedures, simulations, or tabletop exercises to verify the effectiveness of its incident management processes."
+   ],
+   [
+    "Reg.23(1)",
+    "Documented incident reporting and escalation procedure to the Authority",
+    "V",
+    "Establish, implement, and maintain a documented Incident Reporting and Escalation Procedure to ensure the timely notification and escalation of Critical and High severity information security..."
+   ],
+   [
+    "Reg.23(2)",
+    "Mandatory incident reporting by all employees and users",
+    "V",
+    "All employees, contractors, external party service providers, or other authorized users who access or process the Licensee’s information, whether IT or non-IT, shall be under a mandatory..."
+   ],
+   [
+    "Reg.23(3)",
+    "Report Critical/High incidents to PTA within 24 hours via nTSOC/nTCERT",
+    "V",
+    "Report Critical and High severity incidents or data breaches to PTA within 24 hours of detection via nTSOC/nTCERT."
+   ],
+   [
+    "Reg.23(4)",
+    "Preliminary notification must allow assessment of scale and impact",
+    "V",
+    "Ensure that preliminary notification contains sufficient information to enable the Authority and nTCERT to assess the potential scale, impact, and urgency of the incident."
+   ],
+   [
+    "Reg.23(5)",
+    "Submit comprehensive incident report within five working days",
+    "V",
+    "Further to the preliminary report, the Licensee shall submit a comprehensive incident report to the Authority (through nTCERT) within five (5) working days of the initial notification."
+   ],
+   [
+    "Reg.23(6)",
+    "Provide logs, traffic records and data to support investigation",
+    "V",
+    "In the event of a security incident or data breach, the Licensee shall make available without undue delay all relevant data, system logs, traffic records, and related information required by the..."
+   ],
+   [
+    "Reg.23(7)",
+    "Facilitate PTA/nTCERT inspections and forensic investigations",
+    "V",
+    "The Authority, through nTCERT or its designated representatives or its certifieded third party audit firms, may conduct remote or on-site evaluations, inspections, or forensic investigations at..."
+   ],
+   [
+    "Reg.24(1)",
+    "Evidence gathering and preservation procedure",
+    "V",
+    "Define and implement a process to identify, collect, retain and preserve all evidences related to information security incidents."
+   ],
+   [
+    "Reg.24(2)",
+    "Cover digital, physical and documentary evidence",
+    "V",
+    "Cover network and system logs, configuration and access records, media and other digital, physical and documentary evidence."
+   ],
+   [
+    "Reg.24(3)",
+    "Evidence collected only by authorized, trained personnel",
+    "V",
+    "Evidence collection shall only be carried out by authorized and trained personnel within the Licensee’s Information Security or Incident Response Team, duly designated for such function."
+   ],
+   [
+    "Reg.24(4)",
+    "Retain incident evidence for at least three years",
+    "V",
+    "All evidences relating to information security incidents shall be securely retained for a period of not less than three (3) years, or such longer period as may be directed by the Authority."
+   ],
+   [
+    "Reg.24(5)",
+    "Ensure hosting and cloud providers support evidence preservation",
+    "V",
+    "Where a Licensee’s systems or services are hosted on third-party Data Centers or Cloud Service Providers (IaaS, PaaS, SaaS), the Licensee shall ensure through contractual and technical..."
+   ],
+   [
+    "Reg.25(1)",
+    "Maintain a centralized incident repository",
+    "V",
+    "Establish, maintain, and regularly update a centralized repository for the recording and management of all information security incidents, whether IT or non-IT in nature."
+   ],
+   [
+    "Reg.25(2)",
+    "Maintain a threat intelligence repository",
+    "V",
+    "Develop and maintain a Threat Intelligence Repository to collect, analyze, and disseminate intelligence regarding cybersecurity incidents, attack patterns, vulnerabilities, and emerging threats."
+   ],
+   [
+    "Reg.25(3)",
+    "Submit threat intelligence and incident trends to PTA via nTCERT",
+    "V",
+    "Ensure timely submission of relevant threat intelligence reports, incident trends, and vulnerability information to the Authority through nTCERT in the format and frequency as may be prescribed by..."
+   ],
+   [
+    "Reg.26(1)",
+    "Maintain an Access Control Policy",
+    "VI",
+    "Develop, approve, disseminate, and periodically review an Access Control Policy that establishes the principles, objectives, and requirements governing access to all organizational information..."
+   ],
+   [
+    "Reg.26(2)",
+    "Detailed access control procedures for approval, review and revocation",
+    "VI",
+    "Develop, implement, disseminate, and maintain detailed Access Control Procedures providing technical and operational guidance including but not limited to authentication and authorization..."
+   ],
+   [
+    "Reg.26(3)",
+    "Central repository of access control configurations and approvals",
+    "VI",
+    "Establish and maintain a secure, centralized repository containing records of all access control configurations, authorizations, changes, and approvals."
+   ],
+   [
+    "Reg.27(1)",
+    "User access control: registration, de-registration and privilege management",
+    "VI",
+    "Document, and implement formal procedures for user registration, de- registration, modification, disabling, and removal of access privileges, including role changes and terminations."
+   ],
+   [
+    "Reg.27(2)",
+    "Network access control procedure and enforcement",
+    "VI",
+    "Maintain a Network Access Control procedure defining accessible networks and a formal authorization process."
+   ],
+   [
+    "Reg.27(3)",
+    "Operating system access control based on least privilege and zero trust",
+    "VI",
+    "Implement and maintain robust OS access controls to ensure the confidentiality, integrity, and availability of information systems, in accordance with the principle of least privilege and the Zero..."
+   ],
+   [
+    "Reg.27(4)",
+    "Application access control based on roles and approval",
+    "VI",
+    "Grant application access strictly by job need and approval, with role-based enforcement in the application."
+   ],
+   [
+    "Reg.27(5)",
+    "Remote access security policy and SOPs",
+    "VI",
+    "Develop, disseminate, and periodically update a Remote Access Security Policy, covering both remote working and remote system connectivity."
+   ],
+   [
+    "Reg.27(6)",
+    "Mobile computing security policy",
+    "VI",
+    "Develop, disseminate, and periodically review a Mobile Computing Security Policy, covering the acceptable and secure use of mobile devices, laptops, tablets, smartphones, and related communication..."
+   ],
+   [
+    "Reg.27(7)",
+    "Wireless network access policy and controls",
+    "VI",
+    "Develop, disseminate, implement, and periodically review a Wireless Network Access Policy governing the secure deployment, configuration, and use of wireless access technologies within the..."
+   ],
+   [
+    "Reg.28(1)",
+    "Physical access control policy and procedure",
+    "VI",
+    "Develop, disseminate, implement, and periodically review a Physical Access Control Policy addressing the organization’s requirements for securing all facilities, including but not limited to..."
+   ],
+   [
+    "Reg.28(2)",
+    "Physical security controls at entry and exit points",
+    "VI",
+    "Establish and enforce appropriate physical security controls at all entry and exit points of its facilities, ensuring that access is restricted to duly authorized personnel only."
+   ],
+   [
+    "Reg.29(1)",
+    "No visitor or third-party access without prior authorization",
+    "VI",
+    "Ensure that no visitor, contractor, vendor, or external party service provider is granted physical or logical access to organizational facilities, information systems, or data assets without..."
+   ],
+   [
+    "Reg.29(2)",
+    "Log visitor and third-party physical and logical access",
+    "VI",
+    "Establish and maintain comprehensive logs of all logical and physical access granted to visitors or third parties, including the identity of the individual, purpose of access, areas/systems..."
+   ],
+   [
+    "Reg.29(3)",
+    "Prevent unauthorized entry to sensitive and delivery areas",
+    "VI",
+    "Implement strict security measures to prevent unauthorized entry to sensitive areas, including but not limited to information processing facilities, delivery and loading areas, maintenance entry..."
+   ],
+   [
+    "Reg.29(4)",
+    "Escort and supervise visitors in restricted zones",
+    "VI",
+    "Visitors and external service providers shall be continuously escorted and supervised when granted access to classified or restricted areas, including but not limited to Orange Zones and Red..."
+   ],
+   [
+    "Reg.29(5)",
+    "Third parties bound by security policy and held liable for violations",
+    "VI",
+    "All external parties, contractors, or outsourced personnel granted access to facilities or systems shall be required to comply with the Licensee’s Information Security Policy, physical access..."
+   ],
+   [
+    "Reg.30(1)",
+    "Document Control Policy covering classification, handling and retention",
+    "VI",
+    "Develop, approve, disseminate, implement, and periodically review Document Control Policy that clearly defines classification levels, handling requirements, and retention periods for various..."
+   ],
+   [
+    "Reg.30(2)",
+    "Protect critical documents against loss, damage and unauthorized access",
+    "VI",
+    "Implement appropriate administrative, technical, and physical security controls to ensure that all critical documents, whether in hard copy or electronic format, including records, files..."
+   ],
+   [
+    "Reg.30(3)",
+    "Secure archiving and records management system",
+    "VI",
+    "Maintain a secure archiving and records management system (electronic or physical) ensuring integrity, authenticity, and availability of records throughout their prescribed retention period."
+   ],
+   [
+    "Reg.30(4)",
+    "Secure disposal of documents with disposal records",
+    "VI",
+    "Establish and enforce procedures for the secure disposal or destruction of documents and records, whether hard copy or electronic, in a manner that prevents unauthorized recovery or reconstruction."
+   ],
+   [
+    "Reg.31(1)",
+    "Audit trails in all systems handling critical data",
+    "VI",
+    "Ensure that all information systems, services, applications, and platforms handling critical data incorporate comprehensive audit trail mechanisms, sufficient to record, retain, and reconstruct..."
+   ],
+   [
+    "Reg.31(2)",
+    "Tamper-proof logs of logical and physical access",
+    "VI",
+    "Maintain complete, accurate, and tamper-proof logs of all logical and physical access to critical systems, databases, network resources, and secure facilities."
+   ],
+   [
+    "Reg.31(3)",
+    "Retain access logs for at least one year",
+    "VI",
+    "All logs shall be retained for a minimum of one (1) year or such longer period as may be prescribed by the Authority."
+   ],
+   [
+    "Reg.31(4)",
+    "Review access control lists at least bi-annually or quarterly",
+    "VI",
+    "Conduct a formal review of logical and physical access control lists at least once biannually or quarterly, or at such intervals as directed by the Authority."
+   ],
+   [
+    "Reg.32(1)",
+    "Technology and operations capacity management",
+    "VII",
+    "Develop, approve, disseminate and maintain a documented Capacity Management Policy, setting out the principles, objectives, and procedures for ensuring adequate capacity of information processing..."
+   ],
+   [
+    "Reg.32(2)",
+    "Documented operating procedures (SOPs)",
+    "VII",
+    "Develop maintain, and periodically review Standard Operating Procedures (SOPs) governing the functioning of all information processing systems, including details of inputs, outputs, processes, and..."
+   ],
+   [
+    "Reg.32(3)",
+    "Change and configuration management policy and process",
+    "VII",
+    "Develop, approve, disseminate, and enforce a Change Management Policy, assigning clear roles and responsibilities across business, IT, systems’ operations and security functions."
+   ],
+   [
+    "Reg.32(4)",
+    "Segregation of duties for critical functions",
+    "VII",
+    "Establish and maintain documented controls for segregation of duties, ensuring that no single individual has unilateral authority over critical functions, processes, or assets, thereby mitigating..."
+   ],
+   [
+    "Reg.32(5)",
+    "Separate development, test and production environments",
+    "VII",
+    "Segregate development, testing, and production environments, ensuring that unauthorized or untested changes cannot adversely affect live systems."
+   ],
+   [
+    "Reg.32(6)",
+    "Information systems deployment with baseline security controls",
+    "VII",
+    "Develop, approve, disseminate and maintain a documented policy and procedure for the acquisition, deployment and upgrade of information systems, mandating baseline security controls prior to..."
+   ],
+   [
+    "Reg.33(1)",
+    "Insider threat management policy and program",
+    "VII",
+    "Maintain an Insider Threat Management Policy and program to detect, deter and respond to misuse of access to CI/CII."
+   ],
+   [
+    "Reg.33(2)",
+    "Enforce role-based access control",
+    "VII",
+    "Enforce Role-Based Access Control (RBAC), ensuring that individuals are granted access solely to the data, systems, and resources necessary for the performance of their official duties, in..."
+   ],
+   [
+    "Reg.33(3)",
+    "Treat unauthorized disclosure of subscriber data/CI as a serious violation",
+    "VII",
+    "Treat any unauthorized disclosure, sale, transfer, or misuse of subscriber data or operational CI, including but not limited to Call/ IP Detail Records (C/IP-DRs), location data, Personally..."
+   ],
+   [
+    "Reg.33(4)",
+    "Whistleblower protection mechanism",
+    "VII",
+    "Establish a Whistleblower Protection Mechanism to encourage internal reporting of suspicious activity, insider threat behavior, or data breaches."
+   ],
+   [
+    "Reg.33(5)",
+    "Tamper-proof logging of all access to CI repositories",
+    "VII",
+    "Ensure that all access to CI repositories, including retrieval, modification, deletion, or export, shall be logged in a tamper-proof, immutable format."
+   ],
+   [
+    "Reg.33(6)",
+    "Background verification and awareness for sensitive roles",
+    "VII",
+    "Conduct thorough pre-employment and ongoing background verification of employees assigned to sensitive roles, including verification of employment history, criminal records, and other relevant checks."
+   ],
+   [
+    "Reg.33(7)",
+    "External parties bound by the same security obligations as staff",
+    "VII",
+    "Ensure that all external vendors, contractors, and service providers accessing CII, equipment, or data are contractually bound to comply with the same security obligations imposed on internal..."
+   ],
+   [
+    "Reg.33(8)",
+    "Submit an Annual Insider Threat Compliance Report to the Authority",
+    "VII",
+    "Submit an annual report to PTA on detected insider threat incidents, actions taken and monitoring outcomes."
+   ],
+   [
+    "Reg.34(1)",
+    "Malware Protection Policy",
+    "VII",
+    "Develop, approve, disseminate, implement, and periodically update a Malware Protection Policy prescribing preventive, detective, and recovery measures against malware and related malicious code..."
+   ],
+   [
+    "Reg.34(2)",
+    "Malware awareness and training",
+    "VII",
+    "Conduct periodic awareness and training programs for employees, contractors, and other authorized users on the significance of malware protection and adherence to established security protocols."
+   ],
+   [
+    "Reg.34(3)",
+    "Deploy organization-wide anti-malware controls",
+    "VII",
+    "Deploy organization-wide technical controls, (systems and software) for malware scanning, detection, removal, and repair to ensure protection of information systems and telecommunication..."
+   ],
+   [
+    "Reg.34(4)",
+    "Implement EDR or equivalent host monitoring",
+    "VII",
+    "Ensure implementation of Endpoint Detection and Response (EDR) or equivalent mechanisms to enable host-level monitoring, attribution, and timely response to malware- related incidents."
+   ],
+   [
+    "Reg.34(5)",
+    "Periodic and real-time malware scanning",
+    "VII",
+    "Perform periodic scans of all information systems and ensure real-time scanning of files obtained from external sources at the time of download, access, execution, or transfer."
+   ],
+   [
+    "Reg.34(6)",
+    "Automate anti-malware configuration and updates",
+    "VII",
+    "Automate the anti-virus/anti-malware software configurations, updates and operations among all users and employees."
+   ],
+   [
+    "Reg.34(7)",
+    "Channels for malware threat intelligence",
+    "VII",
+    "Establish and maintain reliable channels for receiving, analyzing, and disseminating timely intelligence on newly identified malware threats, vulnerabilities, and remediation techniques."
+   ],
+   [
+    "Reg.34(8)",
+    "Continuity and recovery procedures for malware attacks",
+    "VII",
+    "Develop and implement proper continuity and recovery plans/ procedures to recover from malware attacks."
+   ],
+   [
+    "Reg.35(1)",
+    "Network Security Policy and documented processes",
+    "VII",
+    "Develop, approve, implement, and maintain a Network Security Policy that includes documented processes for managing and controlling network, critical business information systems, and external..."
+   ],
+   [
+    "Reg.35(2)",
+    "Synchronize network device clocks with UTC",
+    "VII",
+    "Ensure clock synchronization across all networking devices with a trusted reference source (e.g., Coordinated Universal Time – UTC), in accordance with Telecommunication System Clock Time and Data..."
+   ],
+   [
+    "Reg.35(3)",
+    "Protect information in transit against interception and modification",
+    "VII",
+    "Implement adequate security controls to ensure the confidentiality, integrity, and availability of information in transit within internal networks and across external connections, and to prevent..."
+   ],
+   [
+    "Reg.35(4)",
+    "Terminate inactive network sessions automatically",
+    "VII",
+    "Network connections associated with inactive communication sessions shall be terminated automatically after a defined period of inactivity, as specified in the Licensee’s security policy."
+   ],
+   [
+    "Reg.35(5)",
+    "Deploy anti-DDoS safeguards",
+    "VII",
+    "Deploy appropriate safeguards, including state-of-the-art anti-distributed denial of service (DDoS) solutions, to ensure high levels of network and service availability and to mitigate risks of..."
+   ],
+   [
+    "Reg.35(6)",
+    "Route traffic through secure web-content filters",
+    "VII",
+    "Monitor inbound and outbound traffic, ensuring that all traffic passes through secure web-content filters that protect against phishing, malware, and access to known malicious domains."
+   ],
+   [
+    "Reg.35(7)",
+    "Monitor outbound traffic for exfiltration and PII leakage",
+    "VII",
+    "Outbound communication shall be monitored for unauthorized encrypted data exfiltration, anomalous traffic patterns, and potential leakage of Personally Identifiable Information (PII)."
+   ],
+   [
+    "Reg.35(8)",
+    "Deny-all, permit-by-exception; NGFW and SS7 firewalls",
+    "VII",
+    "Configure network devices deny-all, permit-by-exception, with Next Generation Firewalls and SS7 firewalls where applicable."
+   ],
+   [
+    "Reg.35(9)",
+    "Implement DNSSEC for authoritative DNS zones",
+    "VII",
+    "Implement Domain Name System Security (DNSSEC) for all authoritative DNS zones to prevent spoofing and ensure authenticity of DNS responses."
+   ],
+   [
+    "Reg.35(10)",
+    "Route local internet traffic through local IXPs",
+    "VII",
+    "All local internet traffic shall be routed through local Internet Exchange Points (IXPs) to reduce latency and security risks."
+   ],
+   [
+    "Reg.35(11)",
+    "At least 40% IPv6 traffic, rising 10% yearly",
+    "VII",
+    "A minimum of 40% of total network traffic must utilize the IPv6 protocol to ensure compatibility and enhance security within the year of issuance of these Regulations."
+   ],
+   [
+    "Reg.35(12)",
+    "Submit bi-annual IPv6 progress reports to the Authority",
+    "VII",
+    "Report the IPv6 traffic share, challenges and remedial measures to the Authority twice a year."
+   ],
+   [
+    "Reg.35(13)",
+    "Implement RPKI to authenticate BGP announcements",
+    "VII",
+    "Implement Resource Public Key Infrastructure (RPKI) to secure IP address space and prevent route hijacking by authenticating Border Gateway Protocol (BGP) announcements."
+   ],
+   [
+    "Reg.35(14)",
+    "Enforce BGP route filtering and session monitoring",
+    "VII",
+    "Enforce BGP route filtering, prefix-list validation, and session monitoring to prevent route leaks, hijacks, and other routing anomalies."
+   ],
+   [
+    "Reg.35(15)",
+    "Maintain protected network documentation",
+    "VII",
+    "Maintain updated documentation of all network devices, interconnections, and IP configurations."
+   ],
+   [
+    "Reg.35(16)",
+    "Tamper-proof network security logs retained one year",
+    "VII",
+    "Apply robust logging and monitoring procedures to record all network security activities, ensuring logs are tamper-proof and retained for a minimum of one (1) year or as directed by the Authority."
+   ],
+   [
+    "Reg.35(17)",
+    "Security requirements and SLAs for managed network services",
+    "VII",
+    "Define minimum security and compliance requirements, including service levels, for all outsourced or managed network/security services, and shall incorporate these obligations into contractual..."
+   ],
+   [
+    "Reg.35(18)",
+    "Monitor users, devices and traffic for threats",
+    "VII",
+    "Ensure ongoing monitoring of users, devices, and traffic on its network, with particular focus on threats, malware, and anomalous activity, to strengthen its security posture and prevent data..."
+   ],
+   [
+    "Reg.36(1)",
+    "Information Exchange Policy for internal and external exchanges",
+    "VII",
+    "Maintain a policy and procedures governing internal and external information exchange across all communication modes."
+   ],
+   [
+    "Reg.36(2)",
+    "Formal agreements for information exchange with external parties",
+    "VII",
+    "Use written agreements that set confidentiality, liability, data protection and responsibility terms for external exchanges."
+   ],
+   [
+    "Reg.36(3)",
+    "Security controls for exchange via physical media",
+    "VII",
+    "Apply adequate security controls to ensure safe information exchange specifically while exchanging information through physical media such as labeling and liability, etc."
+   ],
+   [
+    "Reg.36(4)",
+    "Technical, physical and administrative controls for secure exchange",
+    "VII",
+    "Apply encryption, secure media handling, liability allocation and other controls to information exchanges."
+   ],
+   [
+    "Reg.37(1)",
+    "Electronic messaging and email policy",
+    "VII",
+    "Develop, approve, disseminate and maintain an Electronic/Information Messaging/Email Policy."
+   ],
+   [
+    "Reg.37(2)",
+    "Protect messaging with encryption and redundancy",
+    "VII",
+    "Implement appropriate technical and organizational measures to ensure the confidentiality, integrity, and availability of electronic/information messaging and emails, including encryption in..."
+   ],
+   [
+    "Reg.37(3)",
+    "Append approved legal disclaimer to outgoing emails",
+    "VII",
+    "Implement and enforce a mechanism requiring that all outgoing electronic/information messages/emails be automatically appended with a mandatory legal disclaimer, approved by the Licensee’s legal..."
+   ],
+   [
+    "Reg.37(4)",
+    "MFA and valid certificates for external email access",
+    "VII",
+    "Deploy advanced authentication mechanisms, including but not limited to multi- factor authentication (MFA), for secure access to email and messaging systems from public, untrusted, or external..."
+   ],
+   [
+    "Reg.37(5)",
+    "Email security gateway, SPF, DKIM and DMARC",
+    "VII",
+    "Deploy and update email security gateways, anti-malware/anti-phishing filters, SPF, DKIM and DMARC."
+   ],
+   [
+    "Reg.37(6)",
+    "Non-repudiation for messaging via digital signatures",
+    "VII",
+    "Implement non-repudiation mechanisms utilizing advanced encryption technologies, including but not limited to digital signatures, certificate-based identity verification, and audit trails..."
+   ],
+   [
+    "Reg.38(1)",
+    "Storage Media Management Policy",
+    "VII",
+    "Develop, approve, implement, and maintain a documented Storage Media Management Policy governing the lifecycle of all physical and electronic media containing information, including but not..."
+   ],
+   [
+    "Reg.38(2)",
+    "Protect, encrypt and control transport of storage media",
+    "VII",
+    "Protect storage media against unauthorized access, loss or theft, encrypt sensitive data, and control media transport."
+   ],
+   [
+    "Reg.39(1)",
+    "Enable, review and protect audit logs on all systems",
+    "VII",
+    "Enable and maintain audit logs for all information processing systems and applications."
+   ],
+   [
+    "Reg.39(2)",
+    "Define monitoring requirements by system criticality",
+    "VII",
+    "Define and enforce monitoring requirements for all information systems and applications in accordance with their criticality, sensitivity, and business impact."
+   ],
+   [
+    "Reg.39(3)",
+    "Enable fault logging on all systems",
+    "VII",
+    "Enable and maintain fault logging for all systems, including but not limited to networks, applications, servers, and databases, to capture and address system errors, failures, and anomalies."
+   ],
+   [
+    "Reg.39(4)",
+    "Deploy SIEM and automated monitoring",
+    "VII",
+    "Deploy automated monitoring mechanisms, including but not limited to a Security Information and Event Management (SIEM) system, to detect and respond to unauthorized or malicious activities..."
+   ],
+   [
+    "Reg.39(5)",
+    "Generate, store and review event logs",
+    "VII",
+    "Ensure that event logs covering user activities, system exceptions, operational faults, and cybersecurity incidents are generated, securely stored, and subject to regular review for timely..."
+   ],
+   [
+    "Reg.39(6)",
+    "Implement customized SIEM use cases",
+    "VII",
+    "Implement a comprehensive set of customized SIEM use cases to enable proactive detection, correlation, and response to security threats affecting telecommunication and critical information..."
+   ],
+   [
+    "Reg.39(7)",
+    "Minimum SIEM use-case threat categories",
+    "VII",
+    "SIEM use cases must cover at least PII breaches, malware/ransomware, DDoS, insider threats, privilege escalation and other listed threats."
+   ],
+   [
+    "Reg.39(8)",
+    "Aggregate and correlate logs from all system levels",
+    "VII",
+    "Aggregate, correlate and analyze logs from networks, applications, servers and databases to identify attack methods and targets."
+   ],
+   [
+    "Reg.39(9)",
+    "Protect log files against alteration and deletion",
+    "VII",
+    "Ensure that logging systems and log files are protected against unauthorized alteration, deletion, renaming, or manipulation of log contents, including dates and timestamps."
+   ],
+   [
+    "Reg.39(10)",
+    "Retain logging information for at least one year",
+    "VII",
+    "All logging information shall be maintained for a minimum retention period of one (1) year, or as directed by the Authority."
+   ],
+   [
+    "Reg.39(11)",
+    "Synchronize system time with an authoritative UTC source",
+    "VII",
+    "All information processing systems and applications shall implement time synchronization with an authoritative and accurate source, such as Coordinated Universal Time (UTC), in accordance with..."
+   ],
+   [
+    "Reg.40(1)",
+    "Integrate SIEM with nTSOC; send critical/high alerts in real time",
+    "VII",
+    "Integrate the SIEM with nTSOC and transmit all critical and high severity alerts in real time."
+   ],
+   [
+    "Reg.40(2)",
+    "Alert types defined as critical and high severity for nTSOC",
+    "VII",
+    "Treat intrusion events, malware including zero-days, VPN access from abroad and other listed events as critical/high alerts."
+   ],
+   [
+    "Reg.40(3)",
+    "Forward security system logs (DLP, EDR, firewall, IDS, anti-DDoS) to nTSOC",
+    "VII",
+    "Ensure that logs generated by all deployed security systems, including but not limited to Data Loss Prevention (DLP) solutions, Endpoint Detection and Response (EDR), firewalls, intrusion..."
+   ],
+   [
+    "Reg.40(4)",
+    "Notify nTSOC 24 hours before planned maintenance affecting monitoring",
+    "VII",
+    "Where planned maintenance activities may affect the availability of alerts, log visibility, or security monitoring, the Licensee shall notify nTSOC at least twenty-four (24) hours in advance."
+   ],
+   [
+    "Reg.40(5)",
+    "Report unplanned SIEM-to-nTSOC outages immediately",
+    "VII",
+    "Any unplanned technical outage impacting SIEM-to-nTSOC integration, or the Licensee’s ability to generate or forward alerts, shall be reported to nTSOC immediately upon discovery, together with..."
+   ],
+   [
+    "Reg.40(6)",
+    "Weekly review of SIEM-to-nTSOC integration",
+    "VII",
+    "Conduct periodic reviews and technical assessments (Weekly) of its SIEM-to-nTSOC integration, to verify the accuracy of log forwarding, in order to ensure continued effectiveness and compliance."
+   ],
+   [
+    "Reg.40(7)",
+    "Support nTSOC compliance checks and additional use cases",
+    "VII",
+    "Support nTSOC compliance checks, add use cases it requires, and submit evidence of implementation and visibility."
+   ],
+   [
+    "Reg.40(8)",
+    "Retain logs and alerts forwarded to nTSOC for 12 months",
+    "VII",
+    "Ensure the integrity, confidentiality, and preservation of all logs and alert data forwarded to nTSOC. Such data shall be retained for a minimum period of twelve (12) months, or as directed by the..."
+   ],
+   [
+    "Reg.40(9)",
+    "Encrypted channels for SIEM-to-nTSOC transmission",
+    "VII",
+    "All data transmissions between a Licensee’s SIEM solution and nTSOC shall be conducted exclusively over secure, encrypted communication channels, in accordance with industry best practices and..."
+   ],
+   [
+    "Reg.41(1)",
+    "Data Center Security Policy",
+    "VII",
+    "Develop, approve, implement, and periodically update a comprehensive Data Center Security Policy."
+   ],
+   [
+    "Reg.41(2)",
+    "Multi-factor authentication for data center access",
+    "VII",
+    "Require at least two distinct authentication factors for all data center access."
+   ],
+   [
+    "Reg.41(3)",
+    "Register of persons authorized to access the data center",
+    "VII",
+    "Maintain an up-to-date register of all authorized persons having logical or physical access to the data center, together with documented approval records and justifications for such access."
+   ],
+   [
+    "Reg.41(4)",
+    "Log and review data center entries and exits",
+    "VII",
+    "Ensure that all entries and exits from the data center are logged with the date, time, identity of the individual, and purpose of visit."
+   ],
+   [
+    "Reg.41(5)",
+    "Approve and record data center asset installation and moves",
+    "VII",
+    "Any installation, modification, or relocation of data center assets shall be formally approved, documented, and maintained as part of the Licensee’s official records."
+   ],
+   [
+    "Reg.41(6)",
+    "Full CCTV coverage with 30-day retention and secondary-site backup",
+    "VII",
+    "Cover data centers fully with CCTV, retain recordings for at least 30 days and back them up in real time to a secondary site."
+   ],
+   [
+    "Reg.41(7)",
+    "Back up CCTV footage at a separate location for 30 days",
+    "VII",
+    "CCTV footage shall be securely backed up and preserved at a separate physical or logical location for no less than thirty (30) days."
+   ],
+   [
+    "Reg.41(8)",
+    "Fire suppression, temperature monitoring and cooling in data centers",
+    "VII",
+    "Equip all data centers with adequate fire suppression systems, temperature monitoring sensors, and cooling mechanisms, in accordance with international best practices."
+   ],
+   [
+    "Reg.41(9)",
+    "Segregate, label and secure power and data cables",
+    "VII",
+    "Power and data cables shall be properly segregated, labeled, and secured in a manner preventing interference or accidental disruption."
+   ],
+   [
+    "Reg.41(10)",
+    "Place power distribution panels at a safe distance",
+    "VII",
+    "Power distribution panels shall be placed at a reasonable and safe distance from other racks and equipment, ensuring segregation for safety and reliability."
+   ],
+   [
+    "Reg.41(11)",
+    "Clearly marked emergency exits in data centers",
+    "VII",
+    "Each data center shall be equipped with at least one clearly marked emergency exit."
+   ],
+   [
+    "Reg.41(12)",
+    "Data center emergency response procedures",
+    "VII",
+    "Define and implement documented procedures for responding to emergencies within the data center, including but not limited to fire, flooding, electrical hazards, and security breaches."
+   ],
+   [
+    "Reg.41(13)",
+    "Data center tier rating to recognized standards notified to PTA",
+    "VII",
+    "Comply with and preferably obtain a tier rating against a recognized standard (e.g. TIA, Uptime) and notify it to PTA."
+   ],
+   [
+    "Reg.42(1)",
+    "Protect and encrypt CII data at rest and in transit",
+    "VII",
+    "Ensure the protection of Critical Information Infrastructure (CII) against loss, destruction, alteration, unauthorized access, and unauthorized disclosure."
+   ],
+   [
+    "Reg.42(2)",
+    "Data Privacy Policy and protection of PII and sensitive data",
+    "VII",
+    "Develop, approve, disseminate, and maintain a comprehensive Data Privacy Policy covering the collection, processing, retention, transmission, disposal and protection of PII of its customers..."
+   ],
+   [
+    "Reg.42(3)",
+    "Data leakage prevention measures",
+    "VII",
+    "Establish, implement, and maintain adequate technical and organizational measures to prevent, detect, and mitigate unauthorized disclosure, transmission, or exfiltration of sensitive information..."
+   ],
+   [
+    "Reg.42(4)",
+    "Data Backup Policy aligned with license conditions",
+    "VII",
+    "Develop, approve, and maintain a comprehensive Data Backup Policy that governs the backup, retention, and recovery of organizational data, software, and systems."
+   ],
+   [
+    "Reg.42(5)",
+    "Test backup restoration at least every six months (quarterly preferred)",
+    "VII",
+    "Test restoration of backups and storage media at least quarterly and never less than every six months."
+   ],
+   [
+    "Reg.42(6)",
+    "Redundancy of information processing facilities",
+    "VII",
+    "Identify, document, and maintain the requirements for availability, continuity, and resilience of its business services and information systems in line with license conditions, these Regulations..."
+   ],
+   [
+    "Reg.43(1)",
+    "Vulnerability and Patch Management Policy",
+    "VII",
+    "Develop, approve, disseminate, and maintain a documented Vulnerability and Patch Management Policy."
+   ],
+   [
+    "Reg.43(2)",
+    "Annual VA/PT and secure code reviews",
+    "VII",
+    "Run VA/PT on telecom infrastructure, systems and applications at least yearly and secure code reviews of all applications."
+   ],
+   [
+    "Reg.43(3)",
+    "Classify vulnerabilities and remediate within 30 days",
+    "VII",
+    "All identified vulnerabilities shall be classified based on severity (e.g., critical, high, medium, low) and remediated within 30 days of identification and maintain documented records of..."
+   ],
+   [
+    "Reg.44(1)",
+    "Documentation standard for mandatory documents",
+    "VII",
+    "Develop, implement, disseminate, and maintain a documentation standard, governing the creation, maintenance, revision, distribution, and protection of all mandatory documentation required under..."
+   ],
+   [
+    "Reg.44(2)",
+    "Minimum document control metadata",
+    "VII",
+    "Include title, version, dates, author, reviewers, approver and revision history in every controlled document."
+   ],
+   [
+    "Reg.44(3)",
+    "Formal change control for official documents",
+    "VII",
+    "Any modification to official documentation shall be subject to a formal change-control process, requiring review, approval by the designated authority, and proper logging in the revision history."
+   ],
+   [
+    "Reg.44(4)",
+    "Controlled distribution and withdrawal of obsolete documents",
+    "VII",
+    "Ensure that controlled documents are distributed only to authorized personnel, and that outdated versions are withdrawn promptly to prevent misuse or confusion."
+   ],
+   [
+    "Reg.45(1)",
+    "Business Continuity Policy",
+    "VIII",
+    "Develop, approve, implement, disseminate, and maintain a Business Continuity Policy appropriate to the purpose, size, and complexity of its operations."
+   ],
+   [
+    "Reg.45(2)",
+    "Assign business continuity roles and responsibilities",
+    "VIII",
+    "Assign specific roles, responsibilities, and authorities for implementing and maintaining business continuity measures."
+   ],
+   [
+    "Reg.46(1)",
+    "Conduct a documented BIA including RTO/RPO and dependencies",
+    "VIII",
+    "Identify critical services and processes, risks, RTOs/RPOs and dependencies on people, facilities, systems and vendors."
+   ],
+   [
+    "Reg.46(2)",
+    "Review the BIA at least annually",
+    "VIII",
+    "BIA shall be reviewed at least annually, or when there are significant operational or environmental changes to identify threats and vulnerabilities that may disrupt business operations, including..."
+   ],
+   [
+    "Reg.47(1)",
+    "Establish a Business Continuity Planning Committee",
+    "VIII",
+    "Establish a Business Continuity Planning Committee (BCPC) comprised of the respective Heads of Departments (HODs), or their designated representatives."
+   ],
+   [
+    "Reg.47(2)",
+    "Develop a comprehensive BIA-based BCP",
+    "VIII",
+    "Base the BCP on the BIA and include purpose, scope, activation criteria, escalation and step-by-step recovery procedures."
+   ],
+   [
+    "Reg.47(3)",
+    "BCP covers resilience, alternate processing and communications",
+    "VIII",
+    "Address resilience, alternative processing, recovery capability, responsibilities and internal/external communications in the BCP."
+   ],
+   [
+    "Reg.47(4)",
+    "Business continuity process minimizes disruption and enables recovery",
+    "VIII",
+    "Minimize disruption to critical functions, keep essential services running and recover normal operations promptly."
+   ],
+   [
+    "Reg.48(1)",
+    "Disaster Recovery Plan for critical systems",
+    "VIII",
+    "Develop, approve, implement, disseminate, and maintain a Disaster Recovery Plan (DRP) for the identified critical systems and applications, ensuring timely restoration of essential services in the..."
+   ],
+   [
+    "Reg.48(2)",
+    "Select appropriate DR strategy (hot/warm/cold/cloud)",
+    "VIII",
+    "Determine, document, and implement the appropriate disaster recovery scheme or strategy (hot site, warm site, cold site, cloud-based recovery, or hybrid solutions etc.) commensurate with the..."
+   ],
+   [
+    "Reg.48(3)",
+    "Test the DRP at least every 12 months",
+    "VIII",
+    "Conduct periodic testing, simulation, and exercises of the DRP at intervals not exceeding twelve (12) months, or at such shorter intervals as directed by the Authority."
+   ],
+   [
+    "Reg.48(4)",
+    "Geographically separate disaster recovery sites",
+    "VIII",
+    "Establish and maintain one or more geographically separate Disaster Recovery Sites (DRS) to ensure resilience and continuity of critical business and information services during major disruptions."
+   ],
+   [
+    "Reg.49(1)",
+    "Test and validate the BCP at least every 12 months",
+    "VIII",
+    "Ensure that its BCP is maintained as a living document and is subject to comprehensive testing and validation at least once every twelve (12) months, or at such intervals as may otherwise be..."
+   ],
+   [
+    "Reg.49(2)",
+    "Regular cyber security drills and simulations for CII",
+    "VIII",
+    "Run regular cyber security drills and simulations for CII in line with emerging threats, and document the results."
+   ],
+   [
+    "Reg.50(1)",
+    "Information Systems Acquisition and Development Policy",
+    "IX",
+    "Develop, approve, disseminate and maintain a documented Information Systems Acquisition and Development Policy setting out the organization’s requirements, responsibilities, and controls to ensure..."
+   ],
+   [
+    "Reg.50(2)",
+    "Follow a secure SDLC for application development and deployment",
+    "IX",
+    "Adhere to a Secure Software Development Life Cycle (SSDLC) framework, mandating the integration of appropriate security controls at all phases of the software development process, including but..."
+   ],
+   [
+    "Reg.51(1)",
+    "Define security requirements in business cases, RFPs and contracts",
+    "IX",
+    "Define and document information security requirements in all business cases, requests for proposals (RFPs), contracts, and internal work requests pertaining to the procurement, acquisition, or..."
+   ],
+   [
+    "Reg.51(2)",
+    "Formal design documents incorporating security requirements",
+    "IX",
+    "Develop, approve and maintain formal information systems design documents that explicitly incorporate security requirements across all relevant platforms, including but not limited to operating..."
+   ],
+   [
+    "Reg.51(3)",
+    "Secure coding standards (OWASP, CWE)",
+    "IX",
+    "Develop secure coding standards for the development of all information systems, software, mobile applications, and web applications."
+   ],
+   [
+    "Reg.51(4)",
+    "Comprehensive security architecture for information systems",
+    "IX",
+    "Design document, and implement comprehensive security architecture for the acquisition, development, deployment, and operation of information systems."
+   ],
+   [
+    "Reg.51(5)",
+    "Formal configuration management across the lifecycle",
+    "IX",
+    "Implement a formal configuration management process applicable throughout the design, development, implementation, testing, deployment, and operational phases of information systems."
+   ],
+   [
+    "Reg.52(1)",
+    "Validate accuracy and integrity of data inputs",
+    "IX",
+    "Conduct formal validation and testing to ensure the accuracy, completeness, and integrity of data inputs within all information systems and applications."
+   ],
+   [
+    "Reg.52(2)",
+    "Processing validation checks to detect integrity loss",
+    "IX",
+    "Identify validation checks, exception handling, and verification mechanisms into information systems and applications to detect, prevent, and record any loss of data integrity during processing."
+   ],
+   [
+    "Reg.52(3)",
+    "Validate accuracy and completeness of outputs",
+    "IX",
+    "Conduct systematic testing and validation procedures to ensure that the outputs of information systems and applications remain accurate, complete, and consistent with the intended inputs and..."
+   ],
+   [
+    "Reg.53(1)",
+    "Control test data; mask production data used for testing",
+    "IX",
+    "Establish and implement formal security controls governing the generation, use, and disposal of testing data within information systems and applications."
+   ],
+   [
+    "Reg.53(2)",
+    "Strict access control to source code",
+    "IX",
+    "Restrict source code access by role and need-to-know, keep audit trails and protect code repositories."
+   ],
+   [
+    "Reg.54(1)",
+    "Test and validate all changes before migration to production",
+    "IX",
+    "Ensure that all changes to information systems and applications are systematically tested, validated, and verified to confirm operational stability, security compliance, and continuity of service..."
+   ],
+   [
+    "Reg.54(2)",
+    "Version control, regression testing and rollback for software changes",
+    "IX",
+    "Use version control, rollback, compatibility and regression testing, and document all software changes."
+   ],
+   [
+    "Reg.54(3)",
+    "Prevent information leakage across development and production environments",
+    "IX",
+    "Enforce adequate controls to prevent unauthorized disclosure, transfer, or leakage of information, whether in development, testing, staging, or production environments."
+   ],
+   [
+    "Reg.54(4)",
+    "Contractual and technical safeguards for outsourced development",
+    "IX",
+    "Bind outsourced developers by contract and technical safeguards covering source code repositories and compliance."
+   ],
+   [
+    "Reg.55(1)",
+    "VAPT and source code review before and after deployment",
+    "IX",
+    "Conduct thorough security testing, including vulnerability assessment and penetration testing (VAPT) as well as source code review before and after the deployments or acquisition."
+   ],
+   [
+    "Reg.55(2)",
+    "No production deployment without mandatory security testing",
+    "IX",
+    "No system, or software developed in-house or procured from an external party shall be deployed into production until it has undergone mandatory vulnerability assessments, penetration and testing..."
+   ],
+   [
+    "Reg.55(3)",
+    "Remediate findings; written acceptance of residual risk by CISO/CEO",
+    "IX",
+    "Ensure that findings from such assessments are documented, remediated, and verified prior to approval for deployment, and that residual risks are formally accepted by CISO/CEO in writing."
+   ],
+   [
+    "Reg.56(1)",
+    "Deployment only after testing and remediation of high-risk defects",
+    "IX",
+    "Deploy to production only after functional, performance and security testing and closure of high-risk defects."
+   ],
+   [
+    "Reg.56(2)",
+    "Mandatory security sign-off before deployment",
+    "IX",
+    "Formally verify and certify that security controls work before any production deployment."
+   ],
+   [
+    "Reg.56(3)",
+    "Deployments by authorized staff, with rollback and logging",
+    "IX",
+    "Ensure deployments are done by authorized staff under approved procedures with rollback, and are logged."
+   ],
+   [
+    "Reg.57(1)",
+    "Cryptographic Policy and Key Management Procedure",
+    "IX",
+    "Maintain a Cryptographic Policy and Key Management Procedure governing the use of cryptography across processes."
+   ],
+   [
+    "Reg.57(2)",
+    "Key lifecycle per NIST/ISO 11770 and national standards",
+    "IX",
+    "Generate, store, distribute, rotate and retire keys per NIST, ISO/IEC 11770 and national (PSQCA) standards."
+   ],
+   [
+    "Reg.58(1)",
+    "Environmental and Physical Threats Protection Policy",
+    "X",
+    "Maintain a policy defining minimum safety and environmental protection requirements for facilities and data centers."
+   ],
+   [
+    "Reg.58(2)",
+    "Procedures for fire, climate, power and physical safeguards",
+    "X",
+    "Document procedures for fire detection and suppression, climate control, power backup and other physical safeguards."
+   ],
+   [
+    "Reg.59(1)",
+    "Protect facilities against fire, flood and earthquake",
+    "X",
+    "Implement adequate protection controls against environmental threats, such as fire, floods, earthquakes, etc."
+   ],
+   [
+    "Reg.59(2)",
+    "Monitor humidity and temperature with automated alarms",
+    "X",
+    "Define and continuously monitor humidity and temperature levels within all information processing facilities, server rooms, and data centers to ensure compliance with industry-recognized..."
+   ],
+   [
+    "Reg.59(3)",
+    "Fire detection and suitable suppression systems",
+    "X",
+    "Deploy fire detection with early warning and suitable suppression (e.g. clean agent systems in data centers)."
+   ],
+   [
+    "Reg.59(4)",
+    "Water leakage monitoring",
+    "X",
+    "Implement proper control for monitoring water leakage at the organization’s premises and information processing facilities."
+   ],
+   [
+    "Reg.60(1)",
+    "Physical security of offices, data centers and working areas",
+    "X",
+    "Implement adequate physical security controls over offices, data centers, and other working areas, commensurate with their criticality and sensitivity, to prevent unauthorized physical access..."
+   ],
+   [
+    "Reg.60(2)",
+    "Clear Desk and Clear Screen Policy",
+    "X",
+    "Enforce a Clear Desk and Clear Screen Policy covering desks, working areas and electronic devices."
+   ],
+   [
+    "Reg.60(3)",
+    "Control delivery bays and loading areas",
+    "X",
+    "Implement appropriate access control and monitoring mechanisms at delivery bays, loading areas, and other physical entry/exit points where a risk of unauthorized access exist."
+   ],
+   [
+    "Reg.61(1)",
+    "Equipment Handling and Maintenance Policy",
+    "X",
+    "Develop, approve, disseminate, and maintain an Equipment Handling and Maintenance Policy governing the lawful and secure use, handling, storage, maintenance, movement, and disposal of information..."
+   ],
+   [
+    "Reg.61(2)",
+    "Install equipment in secure, protected locations",
+    "X",
+    "Ensure that all information systems and related assets are installed and operated in secure, access-controlled, and environmentally protected locations, commensurate with their criticality and..."
+   ],
+   [
+    "Reg.61(3)",
+    "Protect power equipment and cabling",
+    "X",
+    "Implement physical and technical safeguards to protect power equipment and cabling supporting information processing facilities from damage, interference, or unauthorized tampering, consistent..."
+   ],
+   [
+    "Reg.61(4)",
+    "Deploy UPS or equivalent power continuity",
+    "X",
+    "Deploy uninterruptible power supply (UPS) systems or equivalent mechanisms to ensure operational continuity and resilience against power interruptions, in accordance with industry best practices..."
+   ],
+   [
+    "Reg.61(5)",
+    "Preventive and corrective maintenance procedures",
+    "X",
+    "Establish documented preventive and corrective maintenance procedures for all information processing facilities, ensuring that security controls remain effective during maintenance activities, in..."
+   ],
+   [
+    "Reg.61(6)",
+    "Security of off-site equipment",
+    "X",
+    "Implement robust security controls over information processing equipment and facilities located or transported offsite, including their movement, storage, and handling, ensuring that..."
+   ],
+   [
+    "Reg.61(7)",
+    "Secure disposal or reuse of devices and media",
+    "X",
+    "Establish and implement documented procedures for the secure disposal or reuse of devices, media, or information processing facilities."
+   ],
+   [
+    "Reg.62(1)",
+    "Protect cables against interception, interference and damage",
+    "X",
+    "Ensure that all cables used for the transmission of power, data, or other information services are protected against interception, interference, unauthorized access, or physical damage."
+   ],
+   [
+    "Reg.62(2)",
+    "Install power and telecom lines underground or protected",
+    "X",
+    "Power and telecommunications lines entering into or within information processing facilities shall be installed underground."
+   ],
+   [
+    "Reg.62(3)",
+    "Segregate power and data cables",
+    "X",
+    "Ensure the segregation of power supply cables from data communication cables in order to minimize risks of electromagnetic interference, service disruption, or compromise to information integrity."
+   ],
+   [
+    "Reg.62(4)",
+    "Label cables at both ends",
+    "X",
+    "All cables shall be clearly and permanently labeled at both ends with sufficient source and destination details to facilitate physical identification, routine inspection, maintenance, and..."
+   ],
+   [
+    "Reg.63(1)",
+    "Periodically test environmental and physical controls",
+    "X",
+    "Conduct regular and periodic testing, evaluation, and assessment of all environmental and physical protection controls implemented within its facilities."
+   ],
+   [
+    "Reg.63(2)",
+    "Keep physical control test records for one year",
+    "X",
+    "Maintain comprehensive records of all testing, assessment, and evaluation activities, including the methodology used, results obtained, identified deficiencies, and corrective actions taken."
+   ],
+   [
+    "Reg.64(1)",
+    "Cloud Security Policy",
+    "XI",
+    "Develop, approve, disseminate and maintain a documented Cloud Security Policy that defines the organizational requirements for the acquisition and management of cloud services."
+   ],
+   [
+    "Reg.64(2)",
+    "Cloud Security Procedures",
+    "XI",
+    "Develop, disseminate and maintain Cloud Security Procedures that provide detailed implementation guidelines for establishing, maintaining, and securing the cloud service environment in accordance..."
+   ],
+   [
+    "Reg.64(3)",
+    "Periodic review of cloud security policy and procedures",
+    "XI",
+    "Conduct periodic reviews of the Cloud Security Policy and Procedures to ensure their continued adequacy, suitability, and effectiveness."
+   ],
+   [
+    "Reg.64(4)",
+    "Periodic cloud security risk assessments (SaaS, PaaS, IaaS)",
+    "XI",
+    "Perform periodic Cloud Security Risk Assessments to address organizational requirements and risks associated with the use of cloud computing models, including but not limited to..."
+   ],
+   [
+    "Reg.65(1)",
+    "Keep critical information with CSPs inside Pakistan, incl. backups and DR",
+    "XI",
+    "Ensure that any critical information handled or stored with a Cloud Service Provider (CSP) remains within the geographical boundaries of Pakistan."
+   ],
+   [
+    "Reg.65(2)",
+    "Communicate data handling controls to the CSP",
+    "XI",
+    "Define, document, and communicate the required security controls to the CSP for handling data in compliance with these Regulations and organizational policies."
+   ],
+   [
+    "Reg.65(3)",
+    "CSP implements controls per cloud architecture and deployment model",
+    "XI",
+    "Ensure that adequate cloud security controls, as approved by the organization, are implemented by the CSP according to the defined cloud architecture and deployment model."
+   ],
+   [
+    "Reg.65(4)",
+    "CSP agreements: no data ownership and minimum security clauses",
+    "XI",
+    "Ensure, through formal agreements, that the CSP has no ownership rights over the stored data, irrespective of format or storage medium."
+   ],
+   [
+    "Reg.65(5)",
+    "Data portability, continuity and avoidance of vendor lock-in",
+    "XI",
+    "Ensure that CSP has adequate measures and processes to support data migration, data portability and to avoid vendor lock-in whenever the Licensee chooses to migrate data or services to another..."
+   ],
+   [
+    "Reg.65(6)",
+    "Periodic review or audit of CSP compliance",
+    "XI",
+    "Conduct periodic review or audit to verify CSP’s compliance with contractual obligations, cloud security policies, and applicable regulatory requirements."
+   ],
+   [
+    "Reg.65(7)",
+    "IaaS/data center contracts: secure deletion and related requirements",
+    "XI",
+    "Ensure that contractual agreements explicitly require the secure deletion, sanitization, or destruction of all Licensee data and related assets upon service termination, expiration, or at the..."
+   ],
+   [
+    "Reg.66(1)",
+    "Define security roles of employees and external personnel",
+    "XII",
+    "Define, document, and communicate the roles and responsibilities of all employees, external party personnel in accordance with the organization’s overarching Information Security Policy."
+   ],
+   [
+    "Reg.66(2)",
+    "Pre-employment screening and background verification",
+    "XII",
+    "Conduct thorough screening and background verification such as police character certificates etc."
+   ],
+   [
+    "Reg.66(3)",
+    "Security obligations in employment contracts, acknowledged in writing",
+    "XII",
+    "Ensure that employment contracts, engagement letters, or agreements clearly define the information security obligations and responsibilities of employees, contractors, and outsourced personnel."
+   ],
+   [
+    "Reg.66(4)",
+    "Security awareness in induction for new hires and contractors",
+    "XII",
+    "Incorporate Information Security Awareness training as an integral part of the induction program for all newly hired employees, contractors, and outsourced personnel, ensuring awareness of the..."
+   ],
+   [
+    "Reg.67(1)",
+    "Heads of Departments enforce security policy compliance",
+    "XII",
+    "Ensure that the Heads of Departments (HODs) are responsible for enforcing compliance by employees, contractors, and outsourced personnel with the organization’s information security policies..."
+   ],
+   [
+    "Reg.67(2)",
+    "Documented disciplinary framework for security violations",
+    "XII",
+    "Define, implement, and maintain a documented Disciplinary Framework applicable to employees, contractors, and outsourced personnel who violate information security policies and procedures."
+   ],
+   [
+    "Reg.67(3)",
+    "Periodic role-based security training",
+    "XII",
+    "Provide periodic and role-based information security awareness and training to all employees, contractors, and outsourced personnel to ensure continuous compliance with the organization’s..."
+   ],
+   [
+    "Reg.68(1)",
+    "Promptly revoke access on termination",
+    "XII",
+    "Ensure that, upon termination, resignation, or completion of the contract of employees, external party personnel, all access rights to information systems, applications, and facilities are..."
+   ],
+   [
+    "Reg.68(2)",
+    "Notify leavers of continuing confidentiality obligations",
+    "XII",
+    "Formally notify employees, external party personnel of their continuing obligations under confidentiality agreements, employment contracts, and applicable information security policies upon..."
+   ],
+   [
+    "Reg.68(3)",
+    "Return of organization assets by departing personnel",
+    "XII",
+    "All departing employees, contractors, and outsourced personnel to return organization-owned assets, including computing devices, storage media, keys, and any confidential or sensitive information..."
+   ],
+   [
+    "Reg.68(4)",
+    "Keep records of revocations, returns and post-employment obligations",
+    "XII",
+    "Maintain records of all access revocations, asset returns, and post-employment confidentiality obligations for audit and regulatory compliance purposes."
+   ],
+   [
+    "Reg.69(1)",
+    "Define information security KPIs",
+    "XIII",
+    "Develop, document, and implement a set of Information Security Key Performance Indicators (KPIs) that reflect the effectiveness and performance of the organization’s implemented information..."
+   ],
+   [
+    "Reg.69(2)",
+    "ISSC approval of security KPIs",
+    "XIII",
+    "Obtain formal approval of the defined Information Security KPIs from the Licensee’s ISSC to ensure alignment with organizational objectives and regulatory requirements."
+   ],
+   [
+    "Reg.69(3)",
+    "Review KPI results for gaps and improvement",
+    "XIII",
+    "Review KPI results to evaluate control effectiveness, identify gaps and drive continual improvement."
+   ],
+   [
+    "Reg.69(4)",
+    "Keep records of KPI definitions, assessments and actions",
+    "XIII",
+    "Maintain records of KPI definitions, approvals, assessments, and actions taken to address identified gaps for audit, compliance, and regulatory verification purposes."
+   ],
+   [
+    "Reg.70(1)",
+    "Comply with applicable national laws, regulations and standards",
+    "XIII",
+    "Comply with the Pakistan Telecommunication Act 1996, CERT Rules 2023 and other applicable laws, regulations and standards."
+   ],
+   [
+    "Reg.70(2)",
+    "Align security practices with international standards",
+    "XIII",
+    "Adopt and implement information security practices in alignment with internationally recognized standards, where applicable, to ensure consistent, auditable, and secure operations."
+   ],
+   [
+    "Reg.70(3)",
+    "Periodically review compliance and address gaps",
+    "XIII",
+    "Periodically review their policies, procedures, and operations to confirm ongoing compliance with the above legal, regulatory, and standardization requirements and address any gaps or deviations..."
+   ],
+   [
+    "Reg.71(1)",
+    "Intellectual Property Rights Policy",
+    "XIII",
+    "Develop, disseminate, and maintain a documented Intellectual Property Rights (IPR) Policy that clearly defines the organization’s legal obligations regarding the use, handling, and management of..."
+   ],
+   [
+    "Reg.71(2)",
+    "Comply with IPR laws and software licenses",
+    "XIII",
+    "Ensure strict compliance with all applicable IPR laws, regulations, and contractual obligations, including software license agreements, patents, copyrights, and any other proprietary rights."
+   ],
+   [
+    "Reg.71(3)",
+    "Prohibit unauthorized copies of licensed software",
+    "XIII",
+    "Employees, contractors, and outsourced personnel shall be prohibited from copying, distributing, or using unauthorized copies of copyrighted, licensed, or proprietary software, applications."
+   ],
+   [
+    "Reg.71(4)",
+    "Maintain approved software whitelist",
+    "XIII",
+    "Maintain an up-to-date list of approved/whitelisted software authorized for use within the organization."
+   ],
+   [
+    "Reg.71(5)",
+    "Monitor and audit IPR compliance",
+    "XIII",
+    "Implement monitoring and audit mechanisms to ensure ongoing compliance with IPR obligations and take corrective action in cases of violation."
+   ],
+   [
+    "Reg.72(1)",
+    "Periodically verify adherence to security policies",
+    "XIII",
+    "Establish and maintain a process for periodic verification of adherence to the organization’s documented information security policies, procedures, and standards, ensuring all controls are..."
+   ],
+   [
+    "Reg.72(2)",
+    "Regular security audits and VAPT of critical systems",
+    "XIII",
+    "Conduct regular security audits and technical assessments, including but not limited to Vulnerability Assessment and Penetration Testing (VAPT), on all critical information systems and applications."
+   ],
+   [
+    "Reg.72(3)",
+    "Report cybersecurity posture and remediation status to management",
+    "XIII",
+    "Prepare and submit periodic reports to the management, detailing the organization’s cybersecurity posture, results of technical reviews, identified vulnerabilities or non- compliance, and the..."
+   ],
+   [
+    "Reg.73(1)",
+    "Annual internal audit of CTDISR compliance",
+    "XIII",
+    "Plan, schedule, and conduct periodic internal audits, with a minimum frequency of once annually, across all organizational functions."
+   ],
+   [
+    "Reg.73(2)",
+    "Present internal audit findings to the ISSC",
+    "XIII",
+    "Document and present the audit findings, including any non-compliance, risks, or vulnerabilities identified, along with actionable recommendations, to the Information Security Steering Committee..."
+   ],
+   [
+    "Reg.73(3)",
+    "Track and verify closure of internal audit findings",
+    "XIII",
+    "Implement a mechanism to monitor and coordinate with relevant organizational functions to ensure timely and effective remediation of all issues identified during the internal audit, and to verify..."
+   ],
+   [
+    "Reg.74(1)",
+    "Annual audit by a PTA-certified third-party audit firm",
+    "XIII",
+    "Engage a PTA- certified independent Third-Party Audit Firm to conduct a comprehensive cyber security audit/inspection of the Licensee’s cybersecurity measures and information security management..."
+   ],
+   [
+    "Reg.74(2)",
+    "Submit third-party audit report to PTA by 28 February each year",
+    "XIII",
+    "Submit final Third Party Audit Report to the Authority by 28th February each year, demonstrating compliance with these Regulations."
+   ],
+   [
+    "Reg.74(3)",
+    "Implement audit corrective actions within 30 days",
+    "XIII",
+    "Implement all corrective actions identified in the audit report within thirty (30) days of receipt of the report, and maintain documented evidence of such actions for regulatory review."
+   ],
+   [
+    "Reg.74(4)",
+    "Additional third-party audit after major incidents or changes",
+    "XIII",
+    "Commission an additional third-party audit after a significant security incident or a substantial change to critical infrastructure."
+   ],
+   [
+    "Reg.74(5)",
+    "Conduct audits and corrective measures per PTA regulations and standards",
+    "XIII",
+    "Ensure that the third-party audit and subsequent corrective measures are conducted in accordance with PTA Regulations, international standards, and industry best practices, maintaining..."
+   ],
+   [
+    "Reg.75(1)",
+    "Maintain an integrated information security dashboard",
+    "XIII",
+    "Develop and maintain an integrated information security dashboard, or incorporate the functionality into an existing organizational performance measurement system, to consolidate critical..."
+   ],
+   [
+    "Reg.75(2)",
+    "Dashboard shows posture, audit findings, actions and residual risks",
+    "XIII",
+    "The dashboard shall present the organization’s current cyber resilience posture, summarize findings from audits or assessments, track corrective actions implemented, and highlight any residual risks."
+   ],
+   [
+    "Reg.75(3)",
+    "Dashboard aggregates KPIs for ISSC review",
+    "XIII",
+    "The dashboard shall aggregate all measurable information security Key Performance Indicators (KPIs) and facilitate periodic review and monitoring by the Information Security Steering Committee and..."
+   ],
+   [
+    "Reg.77(2)",
+    "Adhere to PTA directives, notifications, SOPs and orders",
+    "XIV",
+    "Ensure full adherence to such directives, notifications, SOPs, and orders, and shall take all necessary measures to implement the requirements in accordance with the Authority’s instructions."
+   ],
+   [
+    "Reg.78(1)",
+    "Educate customers about cybersecurity risks",
+    "XIV",
+    "Take all possible and necessary measures to educate and inform its customers regarding cybersecurity risks and threats, including measures to prevent unauthorized access, data breaches, and other..."
+   ],
+   [
+    "Reg.78(2)",
+    "Customer awareness programs for safe use of telecom services",
+    "XIV",
+    "Develop, implement, and maintain customer awareness programs, campaigns, or initiatives that promote safe and secure use of telecommunication services and technologies."
+   ],
+   [
+    "Reg.78(3)",
+    "Monitor effectiveness of customer awareness and keep records",
+    "XIV",
+    "Periodically monitor the effectiveness of such awareness initiatives and maintain records of actions taken to demonstrate compliance to the Authority upon request."
+   ],
+   [
+    "Reg.79(2)",
+    "Obtain third-party audits only from PTA-certified firms",
+    "XIV",
+    "Obtain third-party cybersecurity audits only from PTA-certified audit firms."
+   ],
+   [
+    "Reg.79(3)",
+    "Use audit firms of the category matching the license class",
+    "XIV",
+    "Upon completion of the certification and scrutiny process, licensees shall engage only those audit firms that meet the category requirements corresponding to their license classification, or a..."
+   ],
+   [
+    "Reg.79(6)",
+    "Audit firms keep identified vulnerabilities confidential",
+    "XIV",
+    "Any third-party audit firm engaged by a licensee shall maintain strict confidentiality of all identified vulnerabilities, weaknesses, or security issues in the licensee’s systems."
+   ],
+   [
+    "Reg.80(1)",
+    "Give PTA officers full access during inspections and audits",
+    "XIV",
+    "Give PTA authorized officers full access to systems, information, personnel and premises during inspections and audits."
+   ],
+   [
+    "Reg.80(2)",
+    "Submit requested documentation (policies, designs, registers) to PTA",
+    "XIV",
+    "Submit, upon request, all relevant documentation, including but not limited to security policies and procedures, high-level and low-level system designs (HLD/LLD), asset registers, risk registers..."
+   ],
+   [
+    "Reg.80(3)",
+    "Submitted documentation must be complete, accurate and current",
+    "XIV",
+    "All documentation submitted to the Authority shall be complete, accurate, current, and maintained in accordance with these Regulations."
+   ],
+   [
+    "Reg.80(5)",
+    "Implement corrective measures within 30 days of PTA audit report",
+    "XIV",
+    "The Licensee shall implement all corrective measures or submit a remedial action plan within thirty (30) calendar days from the receipt of PTA’s Audit report, along with corresponding compliance..."
+   ],
+   [
+    "Reg.81(1)",
+    "Submit security reports to the Authority as required",
+    "XIV",
+    "Submit all reports, including but not limited to security policies, incident reports, and security review reports, to the Authority upon completion of the relevant activity, event, or as otherwise..."
+   ],
+   [
+    "Reg.81(2)",
+    "Notify PTA of data breach or CII damage within 24 hours",
+    "XIV",
+    "Notify the Authority within 24 hours of detecting a data breach or damage to CII."
+   ],
+   [
+    "Reg.81(3)",
+    "Give PTA access to security monitoring reports and logs",
+    "XIV",
+    "Provide the Authority with access to all reports, logs, and outputs generated by security monitoring systems, in accordance with guidelines issued by the Authority."
+   ],
+   [
+    "Reg.81(4)",
+    "Annual CEO-signed service and data declaration (Annex-A)",
+    "XIV",
+    "Submit a detailed report in the official format (as per Annex-A), duly signed by the Chief Executive Officer (CEO), Managing Director (MD), or an authorized C- level officer, on an annual basis..."
+   ],
+   [
+    "Reg.81(5)",
+    "Accountability for accuracy and timeliness of reports",
+    "XIV",
+    "Remain fully accountable for the accuracy, completeness, and timeliness of the submitted reports and related documentation, and shall maintain records to substantiate the reported information."
+   ],
+   [
+    "Reg.82(1)",
+    "Keep subscriber information strictly confidential",
+    "XIV",
+    "Notwithstanding any other law in force, every Licensee shall ensure strict confidentiality of all information disclosed by subscribers in connection with the provisions of these Regulations."
+   ],
+   [
+    "Reg.82(2)",
+    "Disclose subscriber information only by law, consent or PTA direction",
+    "XIV",
+    "Subscriber Information shall not be disclosed to any external party except as required under law, regulation, or with the explicit consent of the subscriber, or as directed by the Authority."
+   ],
+   [
+    "Reg.82(3)",
+    "Safeguards against unauthorized access to subscriber information",
+    "XIV",
+    "Implement appropriate administrative, technical, and physical safeguards to prevent unauthorized access, disclosure, modification, or loss of subscriber information."
+   ],
+   [
+    "Reg.82(4)",
+    "Keep records demonstrating subscriber data safeguards",
+    "XIV",
+    "Remain fully accountable for compliance with confidentiality obligations and shall maintain records demonstrating measures taken to safeguard subscriber information."
+   ],
+   [
+    "Reg.83(1)",
+    "Store and process CII data within Pakistan",
+    "XIV",
+    "All Critical Information Infrastructure (CII) data shall be stored and processed within the territory of Pakistan, unless explicitly approved otherwise by the Authority."
+   ],
+   [
+    "Reg.83(2)",
+    "Prior PTA approval for cross-border data transfers",
+    "XIV",
+    "Where cross-border transfer of data is necessary, the Licensee shall obtain prior written approval of the Authority, and shall ensure that such transfer is subject to equivalent safeguards as..."
+   ],
+   [
+    "Reg.83(3)",
+    "Security vetting of foreign hosting or processing arrangements",
+    "XIV",
+    "Any arrangement involving foreign entities for hosting, storage, or processing of CII shall be subject to security vetting and approval by the Authority and other designated agencies."
+   ],
+   [
+    "Reg.84(1)",
+    "Apply additional security measures for emerging technologies (5G, IoT, AI)",
+    "XIV",
+    "Each Licensee deploying emerging technologies, including but not limited to 5G/6G networks, Internet of Things (IoT), Machine-to-Machine (M2M) communications, cloud services, LLM/AI applications..."
+   ],
+   [
+    "Reg.84(2)",
+    "Submit security impact assessment before deploying emerging technologies",
+    "XIV",
+    "Prior to deployment of such technologies, Licensees shall submit a security impact assessment to the Authority, outlining risks, mitigation measures, and safeguards to protect CII."
+   ],
+   [
+    "Reg.85(1)",
+    "Make systems and interfaces accessible (e.g. WCAG)",
+    "XIV",
+    "Ensure that all Information systems, applications, websites, platforms, and customer interfaces under its control are accessible to Persons with Disabilities, in conformity with internationally..."
+   ],
+   [
+    "Reg.85(2)",
+    "No design that excludes or discriminates against any segment of society",
+    "XIV",
+    "No Licensee shall design, deploy, or operate any system, service, authentication mechanism, or critical telecommunications infrastructure in a manner that excludes, discriminates against, or..."
+   ],
+   [
+    "Reg.86(1)",
+    "Designate a C-level CISO responsible for compliance and PTA liaison",
+    "XIV",
+    "Designate a Chief Information Security Officer (CISO) or equivalent officer at C-level, who shall be responsible for ensuring compliance with these Regulations and for coordinating with the..."
+   ],
+   [
+    "Reg.86(2)",
+    "Board/ISSC oversight of cybersecurity risk and resources",
+    "XIV",
+    "The Board or equivalent body (e.g. ISSC) oversees cybersecurity risk and ensures adequate resources, policies and monitoring."
+   ],
+   [
+    "Annex-A",
+    "Service and Data Management Declaration Table (annual, CEO-signed)",
+    "XIV",
+    "List every service with legal basis, databases, data types, security controls and retention period; submit annually and on service start or end."
+   ]
+  ]
  }
 }
