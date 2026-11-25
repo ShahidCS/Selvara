@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Children, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 
 /** Toggle switch (`role="switch"`). The label is always visible text; the state is also written (On or Off) so it never rests on position or colour alone. */
 export function Switch({ checked, onChange, label, id, disabled, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; id?: string; disabled?: boolean; hint?: string }) {
@@ -48,9 +48,10 @@ export interface ListboxOption { value: string; label: string; /** Shown but not
 /** G1: the shared single-choice list, for use in modals and forms instead of a native <select>. The list opens in the page flow directly
  *  under the field, so it never covers the dialog's title or content. Keyboard: Enter, Space or ArrowDown opens; ArrowUp/ArrowDown, Home and
  *  End move; Enter or Space chooses; Esc or Tab closes (Esc does not close the dialog while the list is open). A disabled option shows why. */
-export function Listbox({ id, label, value, options, onChange, describedBy, invalid }: { id: string; label: string; value: string; options: ListboxOption[]; onChange: (v: string) => void; describedBy?: string; invalid?: boolean }) {
+export function Listbox({ id, label, value, options, onChange, describedBy, invalid, disabled, className, title, focusFirst, placeholder }: { id: string; /** Accessible name. Leave out when a <label htmlFor={id}> names the field (SelectList does). */ label?: string; value: string; options: ListboxOption[]; onChange: (v: string) => void; describedBy?: string; invalid?: boolean; disabled?: boolean; className?: string; title?: string; /** data-focus: the dialog focuses this field first. */ focusFirst?: boolean; placeholder?: string }) {
   const [open, setOpen] = useState(false);
-  const cur = Math.max(0, options.findIndex((o) => o.value === value));
+  const found = options.findIndex((o) => o.value === value);
+  const cur = Math.max(0, found);
   const [act, setAct] = useState(cur);
   const btn = useRef<HTMLButtonElement>(null); const list = useRef<HTMLUListElement>(null);
   useEffect(() => { if (open) list.current?.focus(); }, [open]);
@@ -68,15 +69,16 @@ export function Listbox({ id, label, value, options, onChange, describedBy, inva
     else if (e.key === "Escape") { e.preventDefault(); close(); }
     else if (e.key === "Tab") close(false);
   };
-  const chosen = options[cur];
+  const chosen = found >= 0 ? options[found] : null;
+  const shown = chosen?.label || placeholder || "";
   return (
     <div className="lb" data-lb-open={open ? "" : undefined}>
-      <button ref={btn} type="button" id={id} className={`input lb-btn${invalid ? " bad" : ""}`} aria-haspopup="listbox" aria-expanded={open} aria-controls={`${id}-list`} aria-label={`${label}: ${chosen?.label ?? ""}`}
-        aria-describedby={describedBy} onClick={() => (open ? close() : show())} onKeyDown={onBtnKey}>
-        <span className="lb-v">{chosen?.label ?? ""}</span><svg className="lb-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
+      <button ref={btn} type="button" id={id} className={`input lb-btn${invalid ? " bad" : ""}${className ? " " + className : ""}`} aria-haspopup="listbox" aria-expanded={open} aria-controls={`${id}-list`} aria-label={label ? `${label}: ${shown}` : undefined}
+        aria-describedby={describedBy} disabled={disabled} title={title} data-focus={focusFirst ? "" : undefined} onClick={() => (open ? close() : show())} onKeyDown={onBtnKey}>
+        <span className="lb-v">{shown}</span><svg className="lb-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
       </button>
       {open ? (
-        <ul ref={list} id={`${id}-list`} className="lb-list" role="listbox" aria-label={label} tabIndex={-1} aria-activedescendant={`${id}-o${act}`} onKeyDown={onListKey} onBlur={(e) => { if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) setOpen(false); }}>
+        <ul ref={list} id={`${id}-list`} className="lb-list" role="listbox" aria-label={label} aria-labelledby={label ? undefined : id} tabIndex={-1} aria-activedescendant={`${id}-o${act}`} onKeyDown={onListKey} onBlur={(e) => { if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) setOpen(false); }}>
           {options.map((o, i) => (
             <li key={o.value} id={`${id}-o${i}`} role="option" aria-selected={o.value === value} aria-disabled={o.disabled ? true : undefined} data-active={i === act ? "" : undefined}
               onMouseDown={(e) => e.preventDefault()} onClick={() => pick(i)} onMouseEnter={() => !o.disabled && setAct(i)}>
@@ -87,4 +89,22 @@ export function Listbox({ id, label, value, options, onChange, describedBy, inva
       ) : null}
     </div>
   );
+}
+
+/** G1: drop-in for a native <select> inside dialogs: the same props (value, onChange with e.target.value, id, disabled, aria-describedby) and
+ *  the same <option> children, rendered as the shared Listbox, so the list opens under the field and never covers the dialog. Name it with a
+ *  <label htmlFor={id}> as before. Each <option>'s value (or its text) and disabled are kept. */
+type OptEl = { props: { value?: string | number; children?: ReactNode; disabled?: boolean } };
+const textOf = (n: ReactNode): string => (n === null || n === undefined || typeof n === "boolean" ? "" : Array.isArray(n) ? n.map(textOf).join("") : typeof n === "object" ? textOf((n as { props?: { children?: ReactNode } }).props?.children) : String(n));
+export function SelectList({ id, value, onChange, children, disabled, className, title, "aria-describedby": describedBy, "aria-label": ariaLabel, "aria-invalid": invalid, "data-focus": focus }: {
+  id: string; value: string | number; onChange?: (e: { target: { value: string } }) => void; children: ReactNode; disabled?: boolean; className?: string; title?: string;
+  "aria-describedby"?: string; "aria-label"?: string; "aria-invalid"?: boolean | "true" | "false"; "data-focus"?: boolean | string;
+}) {
+  const options: ListboxOption[] = Children.toArray(children).flatMap((c) => {
+    const el = c as unknown as OptEl; if (!el || typeof el !== "object" || !("props" in el)) return [];
+    const label = textOf(el.props.children);
+    return [{ value: el.props.value !== undefined ? String(el.props.value) : label, label: label || "—", disabled: el.props.disabled ? "Not available" : undefined }];
+  });
+  return <Listbox id={id} label={ariaLabel} value={String(value)} options={options} disabled={disabled} className={className} title={title} describedBy={describedBy}
+    invalid={invalid === true || invalid === "true"} focusFirst={focus !== undefined && focus !== false} onChange={(v) => onChange?.({ target: { value: v } })} />;
 }

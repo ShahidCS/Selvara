@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Chip, DataTable, Empty, Icon, Page, StatusChip, type DTColumn } from "@/components/ui";
+import { Chip, DataTable, Empty, Icon, Page, StatusChip, type DTColumn, SelectList } from "@/components/ui";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { ServerElevationBanner, useServerElevation, ELEVATE_TEXT } from "@/components/kit/admin/ServerElevation";
 import { apiMessage, RequestsTable, utcMin } from "@/components/kit/serverRequests";
@@ -95,12 +95,12 @@ function RequestForm({ d, a, close }: { d: Data; a: Admin; close: () => void }) 
         ))}
       </fieldset>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 8 }}>
-        <div className="field"><label htmlFor="mr-reason">Reason</label><select className="select" id="mr-reason" value={reason} onChange={(e) => setReason(e.target.value)}>{d.reasons.map((x) => <option key={x}>{x}</option>)}</select></div>
+        <div className="field"><label htmlFor="mr-reason">Reason</label><SelectList className="select" id="mr-reason" value={reason} onChange={(e) => setReason(e.target.value)}>{d.reasons.map((x) => <option key={x}>{x}</option>)}</SelectList></div>
         <div className="field"><label htmlFor="mr-ticket">Ticket reference</label><input className="input" id="mr-ticket" maxLength={20} placeholder="SEC-1234" autoComplete="off" spellCheck={false} value={ticket} onChange={(e) => setTicket(e.target.value)} /></div>
       </div>
       <div className="field"><label htmlFor="mr-details">What you verified (at least 10 characters)</label><textarea className="input" id="mr-details" rows={2} maxLength={300} value={details} onChange={(e) => setDetails(e.target.value)} /></div>
       <div className="field"><label htmlFor="mr-named">Named second approver</label>
-        <select className="select" id="mr-named" value={named} onChange={(e) => setNamed(e.target.value)} disabled={!approvers.length}>{approvers.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
+        <SelectList className="select" id="mr-named" value={named} onChange={(e) => setNamed(e.target.value)} disabled={!approvers.length}>{approvers.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</SelectList>
         <span className="help">{approvers.length ? "A platform super admin other than you and the person being reset. The request expires in 24 hours." : "No eligible approver."}</span></div>
       <p className="field help" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" disabled={busy || !approvers.length} onClick={go}><Icon name="shieldcheck" />Request reset</button></LayerFoot>

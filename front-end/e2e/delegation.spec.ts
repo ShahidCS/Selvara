@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect, type Page } from "@playwright/test";
-import { gotoModule, nextPush, openAs, switchTo } from "./helpers";
+import { gotoModule, nextPush, openAs, pickOption, switchTo } from "./helpers";
 
 /* Phase 5, step 2: delegation of a named approver slot. One session throughout, because delegations and policies live in memory. */
 const card = (p: Page) => p.getByRole("region", { name: "Delegate your approvals" });
@@ -17,7 +17,7 @@ test("an admin delegates the approver slot; the delegate approves a policy on th
   await expect(p).toHaveURL(/\/ws\/policies\/P-[\w-]+$/);
   const url = new URL(p.url()).pathname;
   await p.getByRole("button", { name: "Submit for review" }).click();
-  await p.getByLabel(/^Named approver/).selectOption("Jordan Avery");
+  await pickOption(p, /^Named approver/, "Jordan Avery");
   await p.getByRole("dialog").getByRole("button", { name: "Submit for review" }).click();
   await expect(p.getByText("Jordan Avery (Company Admin)")).toBeVisible();
 
@@ -73,7 +73,7 @@ test("a delegation can be ended by the delegator, and then the delegate can no l
   await p.getByRole("button", { name: "Create policy" }).click();
   const url = new URL(p.url()).pathname;
   await p.getByRole("button", { name: "Submit for review" }).click();
-  await p.getByLabel(/^Named approver/).selectOption("Jordan Avery");
+  await pickOption(p, /^Named approver/, "Jordan Avery");
   await p.getByRole("dialog").getByRole("button", { name: "Submit for review" }).click();
   await switchTo(p, "Jordan Avery");
   await nextPush(p, "/ws/work?tab=delegation");

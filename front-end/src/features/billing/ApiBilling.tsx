@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
-import { Chip, DataTable, Empty, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn, type DTRowAction } from "@/components/ui";
+import { Chip, DataTable, Empty, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn, type DTRowAction, SelectList } from "@/components/ui";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { ReasonTicket, reasonTicketOk } from "@/components/kit/admin/ReasonTicket";
 import { ELEVATE_TEXT, ServerElevationBanner, useServerElevation } from "@/components/kit/admin/ServerElevation";
@@ -267,7 +267,7 @@ function AccountForm({ b, acc, close }: { b: api.Billing; acc?: api.Account; clo
   };
   if (!acc && !choices.length) return <><p style={{ marginTop: 0 }}>Every active company already has a billing account.</p><LayerFoot><button className="btn btn-secondary" onClick={close}>Close</button></LayerFoot></>;
   const sel = (id: string, label: string, val: string, opts: [string, string][], on: (v: string) => void, disabled = false) => (
-    <div className="field"><label htmlFor={id}>{label}</label><select className="select" id={id} value={val} disabled={disabled} onChange={(e) => on(e.target.value)}>{opts.map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select></div>
+    <div className="field"><label htmlFor={id}>{label}</label><SelectList className="select" id={id} value={val} disabled={disabled} onChange={(e) => on(e.target.value)}>{opts.map(([k, t]) => <option key={k} value={k}>{t}</option>)}</SelectList></div>
   );
   return (
     <>

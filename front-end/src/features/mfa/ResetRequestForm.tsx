@@ -1,3 +1,4 @@
+import { SelectList } from "@/components/ui";
 import { Fragment, useState } from "react";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { useLayer } from "@/hooks/useLayer";
@@ -46,12 +47,12 @@ function ResetFormBody({ intro, facts, approvers, submit, close }: {
       <div className="sectitle">Request details</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div className="grid2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(200px, 100%), 1fr))", gap: 12 }}>
-          <div className="field"><label htmlFor="mfaReason">Reason</label><select className="select" id="mfaReason" value={reason} onChange={(e) => setReason(e.target.value)}>{svc.MFA_REASONS.map((x) => <option key={x}>{x}</option>)}</select></div>
+          <div className="field"><label htmlFor="mfaReason">Reason</label><SelectList className="select" id="mfaReason" value={reason} onChange={(e) => setReason(e.target.value)}>{svc.MFA_REASONS.map((x) => <option key={x}>{x}</option>)}</SelectList></div>
           <div className="field"><label htmlFor="mfaTicket">Ticket reference</label><input className="input" id="mfaTicket" maxLength={20} placeholder="SEC-1234" value={ticket} onChange={(e) => setTicket(e.target.value)} autoComplete="off" spellCheck={false} /></div>
         </div>
         <div className="field"><label htmlFor="mfaText">Reason details (at least 10 characters)</label><textarea className="input" id="mfaText" rows={2} maxLength={300} value={text} onChange={(e) => setText(e.target.value)} /></div>
         <div className="field"><label htmlFor="mfaApprover">Named second approver</label>
-          <select className="select" id="mfaApprover" value={approver} onChange={(e) => setApprover(e.target.value)} disabled={!approvers.length}>{approvers.map((x) => <option key={x}>{x}</option>)}</select>
+          <SelectList className="select" id="mfaApprover" value={approver} onChange={(e) => setApprover(e.target.value)} disabled={!approvers.length}>{approvers.map((x) => <option key={x}>{x}</option>)}</SelectList>
           {!approvers.length ? <span className="help">No eligible approver (not you, not the subject).</span> : <span className="help">Cannot be you or the person being reset. The request expires in {SOD.MFA_RESET_REQUEST_TTL_H} hours.</span>}
         </div>
       </div>

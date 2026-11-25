@@ -1,3 +1,4 @@
+import { SelectList } from "@/components/ui";
 import { useState } from "react";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { useLayer } from "@/hooks/useLayer";
@@ -36,7 +37,7 @@ export function RateEditForm({ code, close }: { code: string; close: () => void 
     <>
       <div className={cls("eCur")} style={{ marginBottom: 12 }}><label htmlFor="eCur">Currency</label><input className="input" id="eCur" data-focus maxLength={8} autoComplete="off" {...inv("eCur")} value={cur} onChange={(e) => { setCur(e.target.value); setErr(null); }} />{msg("eCur")}</div>
       <div className={cls("eRate")} style={{ marginBottom: 12 }}><label htmlFor="eRate">Exchange rate (per 1 USD)</label><input className="input" id="eRate" type="number" step="0.0001" min={0} inputMode="decimal" {...inv("eRate")} value={rate} onChange={(e) => { setRate(e.target.value); setErr(null); }} />{msg("eRate")}</div>
-      <div className={cls("eTaxType")} style={{ marginBottom: 12 }}><label htmlFor="eTaxType">Tax type</label><select className="select" id="eTaxType" {...inv("eTaxType")} value={type} onChange={(e) => { setType(e.target.value); setErr(null); }}>{svc.TAX_TYPES.map((x) => <option key={x}>{x}</option>)}</select>{msg("eTaxType")}</div>
+      <div className={cls("eTaxType")} style={{ marginBottom: 12 }}><label htmlFor="eTaxType">Tax type</label><SelectList className="select" id="eTaxType" {...inv("eTaxType")} value={type} onChange={(e) => { setType(e.target.value); setErr(null); }}>{svc.TAX_TYPES.map((x) => <option key={x}>{x}</option>)}</SelectList>{msg("eTaxType")}</div>
       <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div className={cls("eTaxRate")}><label htmlFor="eTaxRate">Tax rate (%)</label><input className="input" id="eTaxRate" type="number" step="0.5" min={0} max={svc.MAX_TAX} inputMode="decimal" {...inv("eTaxRate")} value={tax} onChange={(e) => { setTax(e.target.value); setErr(null); }} />{msg("eTaxRate")}</div>
         <div className="field"><label htmlFor="eEff">Effective date</label><input className="input" id="eEff" type="date" value={eff} onChange={(e) => setEff(e.target.value)} /></div>

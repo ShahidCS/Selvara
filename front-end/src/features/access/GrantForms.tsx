@@ -1,3 +1,4 @@
+import { SelectList } from "@/components/ui";
 import { useState } from "react";
 import { MemberSelect, myMemberId, useMembers } from "@/components/kit/MemberSelect";
 import { useLayer } from "@/hooks/useLayer";
@@ -22,7 +23,7 @@ export function RecordGrantForm({ close }: { close: () => void }) {
     <>
       <MemberSelect id="rg-user" label="Person" value={userId} onChange={setWho} />
       <div className="field"><label htmlFor="rg-sys">System</label><input className="input" id="rg-sys" maxLength={100} value={system} onChange={(e) => { setSystem(e.target.value); setErr(""); }} /></div>
-      <div className="field"><label htmlFor="rg-lvl">Level</label><select className="select" id="rg-lvl" value={level} onChange={(e) => setLevel(e.target.value)}>{ACCESS_LEVELS.map((x) => <option key={x}>{x}</option>)}</select></div>
+      <div className="field"><label htmlFor="rg-lvl">Level</label><SelectList className="select" id="rg-lvl" value={level} onChange={(e) => setLevel(e.target.value)}>{ACCESS_LEVELS.map((x) => <option key={x}>{x}</option>)}</SelectList></div>
       <div className="field"><label htmlFor="rg-why">Where you found it (at least 10 characters)</label><textarea className="input" id="rg-why" rows={2} maxLength={300} value={reason} onChange={(e) => { setReason(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby="rg-err" /></div>
       <p className="field help" id="rg-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
       <Foot close={close} busy={busy} label="Record access" onClick={save} />

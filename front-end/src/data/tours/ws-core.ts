@@ -50,6 +50,7 @@ export const TOURS: Tours = {
       { target: '[data-tour="frameworks-table"]', title: "Find and open a framework", body: "Search, switch kind with the tabs or filter by region. Click a row to see its requirements: each is met when every control mapped to it passes." },
       { target: '[data-tour="frameworks-scope"]', title: "Bring it into scope", body: "Bring in adds a framework to your readiness figures; Take out removes it. Snooze pauses it without scoring it as due." },
       { target: '[data-tour="frameworks-add"]', title: "Add your own", body: "Add framework lets you add your own framework or a regulation: paste its requirements, one per line." },
+      { target: '[data-tour="frameworks-draft"]', title: "Drafts until reviewed", body: "Mappings and applicability decisions are drafts until qualified compliance staff have reviewed them." },
     ],
   },
   controls: {

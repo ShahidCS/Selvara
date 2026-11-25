@@ -1,6 +1,6 @@
 import { API_ON } from "@/lib/rbac";
 import { useState } from "react";
-import { Empty, Icon } from "@/components/ui";
+import { Empty, Icon, SelectList } from "@/components/ui";
 import { useLayer, LayerFoot } from "@/hooks/useLayer";
 import { DATA } from "@/lib/data";
 import { bumpData, useData } from "@/lib/store";
@@ -31,7 +31,7 @@ export function OffboardForm({ id, close }: { id: string; close: () => void }) {
         <li style={{ display: "flex", gap: 6, alignItems: "center" }}><Icon name="check" style={{ color: "var(--ok-ink)" }} />Revoke {grants} access grant{grants === 1 ? "" : "s"}</li>
         <li style={{ display: "flex", gap: 6, alignItems: "center" }}><Icon name="check" style={{ color: "var(--ok-ink)" }} />{API_ON ? "Return the device (your IT team; no device integration is connected)" : "Reclaim device and wipe"}</li>
       </ul>
-      <div className="field"><label htmlFor="ob-xfer">Transfer owned items to</label><select className="select" id="ob-xfer" data-focus value={target} onChange={(e) => setXfer(e.target.value)}>{others.map((x) => <option key={x.id}>{x.name}</option>)}</select></div>
+      <div className="field"><label htmlFor="ob-xfer">Transfer owned items to</label><SelectList className="select" id="ob-xfer" data-focus value={target} onChange={(e) => setXfer(e.target.value)}>{others.map((x) => <option key={x.id}>{x.name}</option>)}</SelectList></div>
       {priv ? <p className="field help" role="status">This person holds privileged access. A second admin or owner (not you) must approve before offboarding completes.</p> : null}
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-danger" onClick={submit}>{priv ? "Request offboarding" : "Complete offboarding"}</button></LayerFoot>
     </>

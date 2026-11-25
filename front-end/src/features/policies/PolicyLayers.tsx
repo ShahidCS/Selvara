@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { Icon } from "@/components/ui";
+import { Icon, SelectList } from "@/components/ui";
 import { LayerFoot } from "@/hooks/useLayer";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
@@ -58,7 +58,7 @@ export function SubmitForm({ id, L }: { id: string; L: LayerApi }) {
       <div>
         <p style={{ margin: "0 0 8px" }}>Name the person who will approve and publish this version. Eligible: admin or owner role, and not the author or a last editor.</p>
         {opts.length ? (
-          <div className="field"><label htmlFor="pol-appr">Named approver <Req /></label><select className="select" id="pol-appr" data-focus value={name} onChange={(e) => setName(e.target.value)}>{opts.map((o) => <option key={o.name} value={o.name}>{o.name} ({o.roleName})</option>)}</select></div>
+          <div className="field"><label htmlFor="pol-appr">Named approver <Req /></label><SelectList className="select" id="pol-appr" data-focus value={name} onChange={(e) => setName(e.target.value)}>{opts.map((o) => <option key={o.name} value={o.name}>{o.name} ({o.roleName})</option>)}</SelectList></div>
         ) : <p className="errmsg" role="alert"><Icon name="alert" /><span>No eligible approver: every admin or owner is the author or a last editor.</span></p>}
       </div>
       <LayerFoot><button className="btn btn-secondary" onClick={L.closeLayer}>Cancel</button><button className="btn btn-primary" disabled={!opts.length} onClick={submit}>Submit for review</button></LayerFoot>
@@ -78,7 +78,7 @@ export function ReassignForm({ id, L }: { id: string; L: LayerApi }) {
   return (
     <>
       <div style={stack}>
-        <div className="field"><label htmlFor="pol-succ">Successor <Req /></label><select className="select" id="pol-succ" data-focus value={name} onChange={(e) => setName(e.target.value)}>{opts.map((o) => <option key={o.name} value={o.name}>{o.name} ({o.roleName})</option>)}</select></div>
+        <div className="field"><label htmlFor="pol-succ">Successor <Req /></label><SelectList className="select" id="pol-succ" data-focus value={name} onChange={(e) => setName(e.target.value)}>{opts.map((o) => <option key={o.name} value={o.name}>{o.name} ({o.roleName})</option>)}</SelectList></div>
         <div className="field"><label htmlFor="pol-rs">Reason (role change, leaver, restructure) <Req /></label><textarea className="input" id="pol-rs" rows={2} maxLength={500} style={{ resize: "vertical" }} value={reason} onChange={(e) => { setReason(e.target.value); if (err) setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "pol-rs-err" : "pol-rs-help"} />
           <FieldErr id="pol-rs-err" t={err} /></div>
         <p className="field help" id="pol-rs-help">The previous owner loses edit rights immediately. Recorded in the change log and audit log.</p>
@@ -100,7 +100,7 @@ function MapControlForm({ id, L }: { id: string; L: LayerApi }) {
   };
   return (
     <>
-      {ctrls.length ? <div className="field"><label htmlFor="pm-ctrl">Control</label><select className="select" id="pm-ctrl" data-focus value={v} onChange={(e) => setV(e.target.value)}>{ctrls.map((c) => <option key={c.id} value={c.id}>{c.title ? `${c.id} · ${c.title}` : c.id}</option>)}</select></div>
+      {ctrls.length ? <div className="field"><label htmlFor="pm-ctrl">Control</label><SelectList className="select" id="pm-ctrl" data-focus value={v} onChange={(e) => setV(e.target.value)}>{ctrls.map((c) => <option key={c.id} value={c.id}>{c.title ? `${c.id} · ${c.title}` : c.id}</option>)}</SelectList></div>
         : <p style={{ margin: 0 }}>Every control is already mapped to this policy.</p>}
       <LayerFoot><button className="btn btn-secondary" onClick={L.closeLayer}>Cancel</button><button className="btn btn-primary" disabled={!ctrls.length} onClick={submit}>Map</button></LayerFoot>
     </>

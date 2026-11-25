@@ -1,4 +1,4 @@
-import { Empty } from "@/components/ui";
+import { Empty, SelectList } from "@/components/ui";
 import { useState } from "react";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { useLayer } from "@/hooks/useLayer";
@@ -36,8 +36,8 @@ export function UserForm({ cid, uid, close }: { cid: string; uid?: string; close
       <div className={"field" + (err?.f === "email" ? " err" : "")}><label htmlFor="uf-email">Email <span aria-hidden="true" style={{ color: "var(--bad-ink)" }}>*</span></label><input className="input" id="uf-email" type="email" placeholder="name@company.example" maxLength={254} autoComplete="off" required aria-required="true" aria-invalid={err?.f === "email"} aria-describedby={err?.f === "email" ? "uf-err" : undefined} value={email} onChange={(x) => { setEmail(x.target.value); setErr(null); }} />
         {err?.f === "email" ? <span className="help" id="uf-err" role="alert" style={{ color: "var(--bad-ink)" }}>{err.m}</span> : null}</div>
       <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <div className="field"><label htmlFor="uf-role">Role</label><select className="select" id="uf-role" value={role} onChange={(x) => setRole(x.target.value)}>{svc.USER_ROLES.map((r) => <option key={r}>{r}</option>)}</select></div>
-        <div className="field"><label htmlFor="uf-country">Country</label><select className="select" id="uf-country" value={country} onChange={(x) => setCountry(x.target.value)}>{countries.map((c) => <option key={c}>{c}</option>)}</select></div>
+        <div className="field"><label htmlFor="uf-role">Role</label><SelectList className="select" id="uf-role" value={role} onChange={(x) => setRole(x.target.value)}>{svc.USER_ROLES.map((r) => <option key={r}>{r}</option>)}</SelectList></div>
+        <div className="field"><label htmlFor="uf-country">Country</label><SelectList className="select" id="uf-country" value={country} onChange={(x) => setCountry(x.target.value)}>{countries.map((c) => <option key={c}>{c}</option>)}</SelectList></div>
       </div>
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={save} disabled={gate.locked} title={gate.title}>{uid ? "Save changes" : "Add user"}</button></LayerFoot>
     </>
@@ -58,7 +58,7 @@ function RoleForm({ cid, uid, close }: { cid: string; uid: string; close: () => 
   };
   return (
     <>
-      <div className="field"><label htmlFor="uf-role2">Role</label><select className="select" id="uf-role2" value={role} onChange={(x) => setRole(x.target.value)}>{svc.USER_ROLES.map((r) => <option key={r}>{r}</option>)}</select></div>
+      <div className="field"><label htmlFor="uf-role2">Role</label><SelectList className="select" id="uf-role2" value={role} onChange={(x) => setRole(x.target.value)}>{svc.USER_ROLES.map((r) => <option key={r}>{r}</option>)}</SelectList></div>
       <p className="field help">Role changes take effect at the user&apos;s next sign-in and are written to the audit log.</p>
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={go} disabled={gate.locked} title={gate.title}>Update role</button></LayerFoot>
     </>

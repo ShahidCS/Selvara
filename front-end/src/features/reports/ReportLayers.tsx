@@ -1,3 +1,4 @@
+import { SelectList } from "@/components/ui";
 import { useState } from "react";
 import { LayerFoot } from "@/hooks/useLayer";
 import type { LayerApi } from "@/components/shell/LayerProvider";
@@ -31,9 +32,9 @@ export function ScheduleForm({ L, initial }: { L: LayerApi; /** Preselects this 
   return (
     <>
       <div>
-        <div className="field"><label htmlFor="rs-name">Report pack</label><select className="select" id="rs-name" value={name} onChange={(e) => setName(e.target.value)}>{DATA.reports.map((r) => <option key={r.name}>{r.name}</option>)}</select></div>
+        <div className="field"><label htmlFor="rs-name">Report pack</label><SelectList className="select" id="rs-name" value={name} onChange={(e) => setName(e.target.value)}>{DATA.reports.map((r) => <option key={r.name}>{r.name}</option>)}</SelectList></div>
         <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div className="field"><label htmlFor="rs-freq">Frequency</label><select className="select" id="rs-freq" value={freq} onChange={(e) => setFreq(e.target.value)}>{REPORT_FREQ.map((f) => <option key={f}>{f}</option>)}</select></div>
+          <div className="field"><label htmlFor="rs-freq">Frequency</label><SelectList className="select" id="rs-freq" value={freq} onChange={(e) => setFreq(e.target.value)}>{REPORT_FREQ.map((f) => <option key={f}>{f}</option>)}</SelectList></div>
           {/* one field for when it is sent: "Send on" for a fixed frequency, "Custom schedule" for Custom, none for On demand */}
           {freq === "Custom" ? <div className="field" id="rs-custom-wrap"><label htmlFor="rs-custom">Custom schedule</label><input className="input" id="rs-custom" maxLength={120} placeholder="e.g. Every 6 weeks" value={custom} onChange={(e) => setCustom(e.target.value)} /></div>
             : freq === "On demand" ? null

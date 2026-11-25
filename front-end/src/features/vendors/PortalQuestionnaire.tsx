@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Chip, Icon, StatusChip, Empty } from "@/components/ui";
+import { Chip, Icon, StatusChip, Empty, SelectList } from "@/components/ui";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { apiMessage } from "@/components/kit/serverRequests";
 import { useLayer } from "@/hooks/useLayer";
@@ -35,10 +35,10 @@ export function SendQuestionnaire({ vendorId, mail, contacts, close }: { vendorI
       {how === "email" ? (
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10 }}>
           <div className="field"><label htmlFor="sq-email">Contact&apos;s work email</label><input className="input" id="sq-email" data-focus type="email" maxLength={254} autoComplete="off" value={email} onChange={(e) => { setEmail(e.target.value); setErr(""); }} /></div>
-          <div className="field"><label htmlFor="sq-due">Due in</label><select className="select" id="sq-due" value={due} onChange={(e) => setDue(e.target.value)}>{["7", "14", "21", "30", "45"].map((x) => <option key={x} value={x}>{x} days</option>)}</select></div>
+          <div className="field"><label htmlFor="sq-due">Due in</label><SelectList className="select" id="sq-due" value={due} onChange={(e) => setDue(e.target.value)}>{["7", "14", "21", "30", "45"].map((x) => <option key={x} value={x}>{x} days</option>)}</SelectList></div>
         </div>
       ) : contacts.length ? (
-        <div className="field"><label htmlFor="sq-contact">Vendor contact</label><select className="select" id="sq-contact" value={contact} onChange={(e) => setContact(e.target.value)}>{contacts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+        <div className="field"><label htmlFor="sq-contact">Vendor contact</label><SelectList className="select" id="sq-contact" value={contact} onChange={(e) => setContact(e.target.value)}>{contacts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</SelectList></div>
       ) : <Empty compact icon="team" title="No member has the Vendor role yet">Invite the vendor&apos;s contact in Team &amp; Rules with the Vendor role first.</Empty>}
       <p className="field help" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" disabled={busy || (how === "member" && !contacts.length)} onClick={go}>Send</button></LayerFoot>

@@ -6,7 +6,7 @@ import { Ib, Lb, RISK_CATS, RISK_TREATS } from "@/lib/risk";
 import { API_ON } from "@/lib/rbac";
 import { MemberSelect, myMemberId, useMembers } from "@/components/kit/MemberSelect";
 import { bumpData, setModState } from "@/lib/store";
-import { Icon } from "@/components/ui";
+import { Icon, SelectList } from "@/components/ui";
 import { PrefillBanner, usePrefilled } from "@/components/kit/PrefillBanner";
 import * as svc from "@/features/risk/services/risks";
 import { K_SEL, K_TAB } from "./nav";
@@ -49,21 +49,21 @@ export function AddRiskForm({ close }: { close: () => void }) {
           <p className="errmsg" id="rk-err" role="alert" style={{ margin: "4px 0 0", display: err ? "flex" : "none" }}><Icon name="alert" /><span>Risk title is required.</span></p></div>
         <div className={pf.cls("desc")}><label htmlFor="rk-desc">Description{pf.tag("desc")}</label><textarea className="input" id="rk-desc" rows={2} maxLength={1000} style={{ resize: "vertical" }} value={desc} onChange={(e) => { setDesc(e.target.value); pf.clear("desc"); }} /></div>
         <div className="grid2" style={grid2}>
-          <div className={pf.cls("cat")}><label htmlFor="rk-cat">Category{pf.tag("cat")}</label><select className="select" id="rk-cat" value={cat} onChange={(e) => { setCat(e.target.value); pf.clear("cat"); }}>{RISK_CATS.map((c) => <option key={c}>{c}</option>)}</select></div>
+          <div className={pf.cls("cat")}><label htmlFor="rk-cat">Category{pf.tag("cat")}</label><SelectList className="select" id="rk-cat" value={cat} onChange={(e) => { setCat(e.target.value); pf.clear("cat"); }}>{RISK_CATS.map((c) => <option key={c}>{c}</option>)}</SelectList></div>
           {API_ON ? <MemberSelect id="rk-owner" value={ownerId || myMemberId(members)} onChange={setOwnerId} />
             : <div className="field"><label htmlFor="rk-owner">Owner</label><input className="input" id="rk-owner" maxLength={100} value={owner} onChange={(e) => setOwner(e.target.value)} /></div>}
         </div>
         <div className="sectitle" style={{ margin: "4px 0 -4px" }}>Inherent (before controls)</div>
         <div className="grid2" style={grid2}>
-          <div className={pf.cls("l")}><label htmlFor="rk-l">Likelihood{pf.tag("l")}</label><select className="select" id="rk-l" value={l} onChange={num(setL, "l")}><ScaleOpts /></select></div>
-          <div className={pf.cls("i")}><label htmlFor="rk-i">Impact{pf.tag("i")}</label><select className="select" id="rk-i" value={i} onChange={num(setI, "i")}><ImpactOpts /></select></div>
+          <div className={pf.cls("l")}><label htmlFor="rk-l">Likelihood{pf.tag("l")}</label><SelectList className="select" id="rk-l" value={l} onChange={num(setL, "l")}><ScaleOpts /></SelectList></div>
+          <div className={pf.cls("i")}><label htmlFor="rk-i">Impact{pf.tag("i")}</label><SelectList className="select" id="rk-i" value={i} onChange={num(setI, "i")}><ImpactOpts /></SelectList></div>
         </div>
         <div className="sectitle" style={{ margin: "4px 0 -4px" }}>Residual (after treatment)</div>
         <div className="grid2" style={grid2}>
-          <div className={pf.cls("rl")}><label htmlFor="rk-rl">Likelihood{pf.tag("rl")}</label><select className="select" id="rk-rl" value={rl} onChange={num(setRl, "rl")}><ScaleOpts /></select></div>
-          <div className={pf.cls("ri")}><label htmlFor="rk-ri">Impact{pf.tag("ri")}</label><select className="select" id="rk-ri" value={ri} onChange={num(setRi, "ri")}><ImpactOpts /></select></div>
+          <div className={pf.cls("rl")}><label htmlFor="rk-rl">Likelihood{pf.tag("rl")}</label><SelectList className="select" id="rk-rl" value={rl} onChange={num(setRl, "rl")}><ScaleOpts /></SelectList></div>
+          <div className={pf.cls("ri")}><label htmlFor="rk-ri">Impact{pf.tag("ri")}</label><SelectList className="select" id="rk-ri" value={ri} onChange={num(setRi, "ri")}><ImpactOpts /></SelectList></div>
         </div>
-        <div className={pf.cls("treat")}><label htmlFor="rk-treat">Treatment decision{pf.tag("treat")}</label><select className="select" id="rk-treat" value={treat} onChange={(e) => { setTreat(e.target.value); pf.clear("treat"); }}>{RISK_TREATS.map((t) => <option key={t}>{t}</option>)}</select></div>
+        <div className={pf.cls("treat")}><label htmlFor="rk-treat">Treatment decision{pf.tag("treat")}</label><SelectList className="select" id="rk-treat" value={treat} onChange={(e) => { setTreat(e.target.value); pf.clear("treat"); }}>{RISK_TREATS.map((t) => <option key={t}>{t}</option>)}</SelectList></div>
         <p className="field help">Current score starts between inherent and residual; adjust it in the risk detail. New risks enter as Draft.</p>
       </div>
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" onClick={save}>Add as draft</button></LayerFoot>

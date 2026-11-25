@@ -1,3 +1,4 @@
+import { SelectList } from "@/components/ui";
 import { API_ON } from "@/lib/rbac";
 import { MemberSelect, myMemberId, useMembers } from "@/components/kit/MemberSelect";
 import { useState } from "react";
@@ -74,7 +75,7 @@ function TextForm({ L, label, confirm, help, min, sevs, recLabel, run }: {
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {help ? <p style={{ margin: "0 0 8px" }}>{help}</p> : null}
         <div className="field"><label htmlFor="at-text">{label} <Req /></label><textarea className="input" id="at-text" data-focus rows={3} maxLength={500} style={{ resize: "vertical" }} value={text} onChange={(e) => setText(e.target.value)} aria-invalid={!!err} /></div>
-        {sevs ? <div className="field"><label htmlFor="at-sev">Severity</label><select className="select" id="at-sev" value={sev} onChange={(e) => setSev(e.target.value)}>{sevs.map((x) => <option key={x}>{x}</option>)}</select></div> : null}
+        {sevs ? <div className="field"><label htmlFor="at-sev">Severity</label><SelectList className="select" id="at-sev" value={sev} onChange={(e) => setSev(e.target.value)}>{sevs.map((x) => <option key={x}>{x}</option>)}</SelectList></div> : null}
         {recLabel ? <div className="field"><label htmlFor="at-rec">{recLabel}</label><input className="input" id="at-rec" maxLength={500} value={rec} onChange={(e) => setRec(e.target.value)} /></div> : null}
         <p className="field help" role="alert" style={errStyle(!!err)}>{err}</p>
       </div>

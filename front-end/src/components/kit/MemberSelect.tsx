@@ -1,3 +1,4 @@
+import { SelectList } from "@/components/ui";
 /* Production owner and assignee picker: the company's active members from the server (services/ws.ts). The server checks the choice again;
    a person is identified by their member id, never by a typed name. */
 import { useSyncExternalStore } from "react";
@@ -12,10 +13,10 @@ export function MemberSelect({ id, value, onChange, label = "Owner", help }: { i
   const ms = useMembers();
   return (
     <div className="field"><label htmlFor={id}>{label}</label>
-      <select className="select" id={id} value={value} onChange={(e) => onChange(e.target.value)} aria-describedby={help ? id + "-help" : undefined}>
+      <SelectList className="select" id={id} value={value} onChange={(e) => onChange(e.target.value)} aria-describedby={help ? id + "-help" : undefined}>
         {ms.length ? null : <option value="">Loading members…</option>}
         {ms.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-      </select>
+      </SelectList>
       {help ? <p className="field help" id={id + "-help"}>{help}</p> : null}
     </div>
   );

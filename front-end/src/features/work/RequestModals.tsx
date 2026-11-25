@@ -1,3 +1,4 @@
+import { SelectList } from "@/components/ui";
 import { API_ON, modAllowed } from "@/lib/rbac";
 import { uiMessage } from "@/lib/grcSod";
 import { wsPost } from "@/services/ws";
@@ -40,7 +41,7 @@ export function AccessRequestForm({ close }: { close: () => void }) {
         <div className={err ? "field err" : "field"}><label htmlFor="arq-sys">System <Req /></label><input className="input" id="arq-sys" data-focus placeholder="e.g. Analytics warehouse" value={sys} onChange={(e) => setSys(e.target.value)} aria-invalid={err} aria-describedby={err ? "arq-err" : undefined} />
           {err ? <p className="field help" id="arq-err" role="alert" style={{ color: "var(--bad-ink)" }}>Enter the system you need access to.</p> : null}</div>
         <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div className="field"><label htmlFor="arq-lvl">Level</label><select className="select" id="arq-lvl" value={lvl} onChange={(e) => setLvl(e.target.value)}>{accessSvc.LEVELS.map((x) => <option key={x}>{x}</option>)}</select></div>
+          <div className="field"><label htmlFor="arq-lvl">Level</label><SelectList className="select" id="arq-lvl" value={lvl} onChange={(e) => setLvl(e.target.value)}>{accessSvc.LEVELS.map((x) => <option key={x}>{x}</option>)}</SelectList></div>
           <div className="field"><label htmlFor="arq-user">User</label><input className="input" id="arq-user" value={user} readOnly={employee} maxLength={100} onChange={(e) => setUser(e.target.value)} />{employee ? <span className="help">Employees can request access for themselves only.</span> : null}</div>
         </div>
         <div className="field"><label htmlFor="arq-reason">Reason</label><input className="input" id="arq-reason" maxLength={300} placeholder={lvl === "Admin" ? "Required for Admin: why is this access needed?" : "Why is this access needed?"} value={reason} onChange={(e) => setReason(e.target.value)} /></div>
@@ -75,7 +76,7 @@ export function VendorRequestForm({ close }: { close: () => void }) {
         {err.name ? <p className="field help" id="vr-name-err" role="alert" style={{ color: "var(--bad-ink)" }}>Enter the vendor name.</p> : null}</div>
       <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div className="field"><label htmlFor="vr-cat">Category</label><input className="input" id="vr-cat" maxLength={60} placeholder="e.g. Analytics" value={cat} onChange={(e) => setCat(e.target.value)} /></div>
-        <div className="field"><label htmlFor="vr-crit">Business criticality</label><select className="select" id="vr-crit" value={crit} onChange={(e) => setCrit(e.target.value)}><option>Critical</option><option>Medium</option><option>Low</option></select></div>
+        <div className="field"><label htmlFor="vr-crit">Business criticality</label><SelectList className="select" id="vr-crit" value={crit} onChange={(e) => setCrit(e.target.value)}><option>Critical</option><option>Medium</option><option>Low</option></SelectList></div>
       </div>
       <div className={err.reason ? "field err" : "field"}><label htmlFor="vr-reason">What will it be used for? <Req /></label><input className="input" id="vr-reason" maxLength={500} placeholder="e.g. Marketing attribution" value={reason} onChange={(e) => setReason(e.target.value)} aria-invalid={err.reason} aria-describedby={err.reason ? "vr-reason-err" : undefined} />
         {err.reason ? <p className="field help" id="vr-reason-err" role="alert" style={{ color: "var(--bad-ink)" }}>Say what the vendor will be used for.</p> : null}</div>

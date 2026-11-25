@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { LayerFoot } from "@/components/shell/LayerProvider";
-import { Chip, Icon } from "@/components/ui";
+import { Chip, Icon, SelectList } from "@/components/ui";
 import { bumpData } from "@/lib/store";
 import { safeFileName, validateUpload } from "@/lib/security";
 import { SodError } from "@/lib/sod";
@@ -157,11 +157,11 @@ export function ImportWizard({ L, onDone }: { L: LayerApi; onDone?: () => void }
                     <tr key={f.k} style={{ borderTop: "1px solid var(--line)" }}>
                       <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}><span className="strong" style={{ fontSize: 13 }}>{f.label}</span>{f.req ? <> <span style={{ color: "var(--bad-ink)" }}>*</span></> : null}</td>
                       <td style={{ padding: "7px 10px" }}>
-                        <select className="select" aria-label={`Column for ${f.label}`} style={{ width: "100%", minWidth: 150 }} value={ci}
+                        <SelectList id={`iw-col-${f.k}`} aria-label={`Column for ${f.label}`} value={ci}
                           onChange={(e) => { const v = +e.target.value; setMap({ ...map, [f.k]: Number.isInteger(v) && v >= -1 && v < grid.headers.length ? v : -1 }); }}>
                           <option value={-1}>Not in file</option>
                           {grid.headers.map((h, idx) => <option key={idx} value={idx}>{h}</option>)}
-                        </select>
+                        </SelectList>
                       </td>
                       <td style={{ padding: "7px 10px", fontSize: 12, color: "var(--muted)", maxWidth: 170, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {ci >= 0 ? (sampleV.slice(0, 40) || <span style={{ color: "var(--faint)" }}>(empty)</span>) : "—"}

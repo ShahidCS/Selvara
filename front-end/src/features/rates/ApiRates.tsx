@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn } from "@/components/ui";
+import { Chip, DataTable, Icon, KpiStrip, KpiTile, Page, StatusChip, type DTColumn, SelectList } from "@/components/ui";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { ReasonTicket, reasonTicketOk } from "@/components/kit/admin/ReasonTicket";
 import { ELEVATE_TEXT, ServerElevationBanner, useServerElevation } from "@/components/kit/admin/ServerElevation";
@@ -112,7 +112,7 @@ function OverrideForm({ r, close }: { r: Rate; close: () => void }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div className="field"><label htmlFor="ov-cur">Currency</label><input className="input num" id="ov-cur" data-focus maxLength={3} value={f.currency} onChange={(e) => set("currency", e.target.value.toUpperCase())} /></div>
         <div className="field"><label htmlFor="ov-rate">Rate per 1 USD</label><input className="input num" id="ov-rate" type="number" min={0} step="0.000001" inputMode="decimal" value={f.rate} onChange={(e) => set("rate", e.target.value)} /></div>
-        <div className="field"><label htmlFor="ov-tt">Tax type</label><select className="select" id="ov-tt" value={f.taxType} onChange={(e) => set("taxType", e.target.value)}>{TAX_TYPES.map((t) => <option key={t}>{t}</option>)}</select></div>
+        <div className="field"><label htmlFor="ov-tt">Tax type</label><SelectList className="select" id="ov-tt" value={f.taxType} onChange={(e) => set("taxType", e.target.value)}>{TAX_TYPES.map((t) => <option key={t}>{t}</option>)}</SelectList></div>
         <div className="field"><label htmlFor="ov-tr">Tax rate (%)</label><input className="input num" id="ov-tr" type="number" min={0} max={100} step="0.01" inputMode="decimal" value={f.taxRate} onChange={(e) => set("taxRate", e.target.value)} /></div>
       </div>
       <div className="field"><label htmlFor="ov-eff">Tax rate applies from</label><input className="input num" id="ov-eff" type="date" value={f.taxEffective} onChange={(e) => set("taxEffective", e.target.value)} style={{ width: 180 }} /></div>

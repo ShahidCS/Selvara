@@ -85,3 +85,9 @@ export async function enabledButtons(page: Page, re: RegExp): Promise<string[]> 
 }
 
 export const pathOf = (page: Page) => new URL(page.url()).pathname;
+
+/** G1: choose an option in the shared listbox that dialogs use instead of a native <select> (selectOption only works on <select>). */
+export async function pickOption(scope: Page, label: string | RegExp, option: string | RegExp) {
+  await scope.getByLabel(label).click();
+  await scope.getByRole("option", { name: option }).click();
+}
