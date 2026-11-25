@@ -14,6 +14,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 - Docs: SUPABASE.md section 4h-R, the Resend email set-up (domain, DNS, three scoped keys, Vercel and Supabase settings, staging test, RoPA). Pending: the company domain has to be bought first.
 
 ### Security
+- More security headers: Cross-Origin-Resource-Policy `same-origin` (other sites cannot load this site's files), X-Permitted-Cross-Domain-Policies `none`, CSP `frame-src 'none'`, `worker-src 'self'`, `manifest-src 'self'`, and a Permissions-Policy that turns off every powerful browser feature except passkeys and clipboard copy. Signing out sends `Clear-Site-Data: "cache", "storage"`, so a shared computer keeps nothing of the session (the theme choice resets). e2e and the deploy smoke test check them.
 - CSP: production `script-src` is `'self'` only; `'unsafe-inline'` is gone (EX-05 closed). Production builds use webpack (`next build --webpack`), which emits no inline scripts; the dev server keeps it. New e2e checks: no CSP violation and the app starts on five pages; the deploy smoke test fails on inline scripts.
 
 ### Fixed

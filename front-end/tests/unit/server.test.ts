@@ -102,7 +102,9 @@ describe("sign-in with MFA", () => {
     const adm = await account("jordan@company.example", "admin", "Jordan Avery");
     clock += 16 * 60_000; expect((await call("GET", "auth/session", {}, { cookie: adm.cookie })).status).toBe(401);
     const b = await signIn("alex.kim@company.example");
-    expect((await call("POST", "auth/sign-out", {}, { cookie: cookieOf(b) })).cookies![0]).toMatch(/Max-Age=0/);
+    const out = await call("POST", "auth/sign-out", {}, { cookie: cookieOf(b) });
+    expect(out.cookies![0]).toMatch(/Max-Age=0/);
+    expect(out.headers?.["Clear-Site-Data"], "browser cache and storage cleared at sign-out").toBe('"cache", "storage"');
     expect((await call("GET", "auth/session", {}, { cookie: cookieOf(b) })).status).toBe(401);
     const raw = [...store.kv.entries()].filter(([k]) => k.startsWith("ticket|")).map(([, v]) => String(v.v));
     expect(raw.every((x) => !x.includes("access"))).toBe(true);
