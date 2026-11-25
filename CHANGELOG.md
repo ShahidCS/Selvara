@@ -11,6 +11,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 - Docs: README and CONTROLS no longer say most modules are browser-only; EX-04 records the 2026-11-24 re-assessment of the Vercel CLI advisories.
 
 ### Added
+- CSP violation reporting (production build): browsers report what the content security policy blocked to `POST /api/csp-report`; the server keeps a reduced, counted form for 30 days (no person, address or code sample) and platform staff see it in the Admin Console under Platform Security, "Blocked by the content security policy". **Deploy note: run migration `0012_csp_reports.sql` first** (schema version 12; the server refuses an older database), on staging before the staging deploy.
 - Docs: SUPABASE.md section 4h-R, the Resend email set-up (domain, DNS, three scoped keys, Vercel and Supabase settings, staging test, RoPA). Pending: the company domain has to be bought first.
 
 ### Security

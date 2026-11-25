@@ -24,6 +24,7 @@ import { v1Routes } from "./ws/apikeys";
 import { admin8Routes, stripeWebhook } from "./admin8";
 import { logFailure } from "./errors";
 import { guardBody, ResponseLeak } from "./responseGuard";
+import { CSP_PER_HOUR, rawReports, reduceReport } from "./cspReport";
 import type { Company, Lockout, Log, Outcome } from "./directory";
 import type { Deps, Profile, SessionRow } from "./types";
 
@@ -663,6 +664,19 @@ const inviteAction = admin(async (d, r, c) => {
   return v ? ok(await inviteOut(d, r, c, i.email, i.role, token, v.expiresAt)) : err(409, "This invitation is no longer pending.");
 });
 
+/** CSP violation reports from browsers (cspReport.ts, migration 0012). No sign-in and no origin check (the browser sends them on its own);
+ *  at most CSP_PER_HOUR requests an hour from one address are looked at. Always 204: a sender learns nothing, and nothing is echoed. */
+const cspIn: H = async (d, r) => {
+  if (!d.csp || !(await allow(d, r.ip, "csp", CSP_PER_HOUR, 60 * MIN))) return ok();
+  for (const raw of rawReports(r.body)) {
+    const e = reduceReport(raw, d.site.origin); if (!e) continue;
+    try { if ((await d.csp.add(e, d.now())) === "full") break; } catch (x) { logFailure("POST csp-report", x, r.headers["x-vercel-id"]); break; }
+  }
+  return ok();
+};
+/** Platform staff: the reduced CSP reports of the last 30 days (Admin Console, Platform Security). */
+const cspList = signed(async (d, r, c) => (c.a.platform ? ok({ reports: d.csp ? await d.csp.list(c.p.id) : [] }) : err(403, "Not permitted.")));
+
 /** Method + path -> handler. Paths are relative to /api. */
 export const ROUTES: Record<string, H> = {
   "POST auth/challenge": challenge, "POST auth/sign-in": signIn, "POST auth/sign-in/verify": verify, "POST auth/sign-in/passkey": passkeyStep,
@@ -673,6 +687,7 @@ export const ROUTES: Record<string, H> = {
   "GET team/join-requests": joinList, "POST team/join-requests/:id/:decision": joinDecide, "POST team/settings": lockoutSet, "GET team/settings": lockoutGet,
   "POST team/members/:id/role": roleChange, "GET team/approvals": approvalList, "POST team/approvals/:id/:decision": approvalDecide,
   "GET team/invitations": inviteList, "POST team/invitations": inviteCreate, "POST team/invitations/:id/:action": inviteAction,
+  "POST csp-report": cspIn, "GET admin/security/csp-reports": cspList,
 };
 const helperEntry = (d: Deps, r: Req, p: Profile, a: Access, action: string, target: string) => entry(d, r, actorOf(p, a), action, target);
 Object.assign(ROUTES, adminRoutes({ signed, entry: helperEntry, randomId, sha256Hex }), supportRoutes({ signed, companyAdmin: admin, entry: helperEntry }));
@@ -684,6 +699,8 @@ Object.assign(ROUTES, admin8Routes({ signed, entry: helperEntry }), { "POST bill
 const WEBHOOK_ROUTES = new Set(["POST billing/stripe/webhook"]);
 /** The company API (/api/v1): authenticated by an API key in the Authorization header, never by the session cookie, so the cross-site check does not apply. */
 const KEY_ROUTES = new Set(["POST v1/events", "POST billing/stripe/webhook"]);
+/** Browser reports (CSP): no origin check, and the browser's own content types instead of JSON. */
+const REPORT_ROUTES = new Set(["POST csp-report"]);
 /** Routes that take raw bytes (application/octet-stream) instead of JSON: evidence file uploads (pages/api/[...path].ts reads them). */
 export const RAW_ROUTES = new Set(["POST ws/evidence/:id/files", "POST ws/kb-docs", "POST ws/trust/resources/:id/file", "POST vendor-portal/files/:q"]);
 
@@ -701,11 +718,15 @@ export async function handle(d: Deps, r: Req): Promise<Res> {
   const found = match(r.method, r.path); if (!found) return err(404, "Not found.");
   const [key, h] = found;
   if (r.method !== "GET") {
-    if (!KEY_ROUTES.has(key) && r.headers.origin !== d.site.origin) return err(403, "Cross-site request refused.");
-    const raw = RAW_ROUTES.has(key); const hook = WEBHOOK_ROUTES.has(key);
-    if (hook) { if (!r.raw || !/^application\/json/.test(r.headers["content-type"] || "")) return err(415, "Send JSON."); }
-    else if (raw ? !r.raw || r.headers["content-type"] !== "application/octet-stream" : !/^application\/json/.test(r.headers["content-type"] || "")) return err(415, raw ? "Send the file's bytes." : "Send JSON.");
-    if (!raw && !hook && r.raw) return err(415, "Send JSON.");
+    if (REPORT_ROUTES.has(key)) {
+      if (r.raw || !/^application\/(csp-report|reports\+json)/.test(r.headers["content-type"] || "")) return err(415, "Send a CSP report.");
+    } else {
+      if (!KEY_ROUTES.has(key) && r.headers.origin !== d.site.origin) return err(403, "Cross-site request refused.");
+      const raw = RAW_ROUTES.has(key); const hook = WEBHOOK_ROUTES.has(key);
+      if (hook) { if (!r.raw || !/^application\/json/.test(r.headers["content-type"] || "")) return err(415, "Send JSON."); }
+      else if (raw ? !r.raw || r.headers["content-type"] !== "application/octet-stream" : !/^application\/json/.test(r.headers["content-type"] || "")) return err(415, raw ? "Send the file's bytes." : "Send JSON.");
+      if (!raw && !hook && r.raw) return err(415, "Send JSON.");
+    }
   }
   // The person sees a generic message; the function log gets the route pattern, the failing step and Supabase's code (errors.ts), never values.
   let out: Res;
