@@ -4,7 +4,7 @@ import { apiMessage, utcMin } from "@/components/kit/serverRequests";
 import { useData } from "@/lib/store";
 import * as svc from "@/services/platform";
 
-/* Admin Audit Log in production (slice 3a): the platform's own entries (no company), newest first, with the database's SHA-256 chain checked
+/* Audit Logs (Admin Console) in production (slice 3a): the platform's own entries (no company), newest first, with the database's SHA-256 chain checked
    on every load. Each company's own log stays in that company's workspace. */
 export function ApiAdminLog() {
   const v = useData();

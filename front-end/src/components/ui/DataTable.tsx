@@ -1,4 +1,5 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from "react";
+import { ACTIONS_W, CHECKBOX_W, COLUMN_WIDTHS, COL_DEFAULT, COL_MAX, COL_MIN, saveSessionWidth, sessionWidths } from "@/lib/columnWidths";
 import { useLayer } from "@/hooks/useLayer";
 import { useModState } from "@/lib/store";
 import { downloadText } from "@/lib/format";
@@ -27,6 +28,8 @@ export interface DTColumn<T> {
   nowrap?: boolean;
   /** R13: a muted second line under the cell (a linked control, a role, a size). */
   sub?: (row: T) => ReactNode;
+  /** I2: default width in px; otherwise COLUMN_WIDTHS[key] (lib/columnWidths.ts); otherwise an equal share of what is left. */
+  width?: number;
 }
 export interface DTTab<T> { key: string; label: string; match: (row: T) => boolean }
 export interface DTFilter<T> {
@@ -102,6 +105,30 @@ export function DataTable<T>(p: DataTableProps<T>) {
 
   const cols = p.columns.filter((c) => !st.hidden.includes(c.key) && !(c.emptyWhen && p.rows.length > 0 && p.rows.every(c.emptyWhen)));
   const tab = p.tabs?.find((t) => t.key === st.tab) || null;
+  // I2, I3: fixed column widths (session overrides, then the column's own, then the shared defaults); the rest share what is left
+  const [colW, setColW] = useState<Record<string, number>>({});
+  useEffect(() => { setColW(sessionWidths(p.id)); }, [p.id]); // eslint-disable-line react-hooks/set-state-in-effect -- read this session's widths once, in the browser
+  const baseOf = (c: DTColumn<T>) => c.width ?? COLUMN_WIDTHS[c.key] ?? COL_DEFAULT;
+  // The table is as wide as its container (spare room shared in proportion) or as wide as its columns, whichever is more; a wider table
+  // scrolls inside its container. Measured in pixels: a percentage width resolves against the wrong box inside the page's flex layout.
+  const wrapRef = useRef<HTMLDivElement>(null); const [wrapW, setWrapW] = useState(0);
+  useEffect(() => {
+    const el = wrapRef.current; if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => setWrapW(el.clientWidth)); ro.observe(el); return () => ro.disconnect();
+  }, []);
+  // When the default widths do not fit, they shrink together (to 70% at most); only a table that still does not fit scrolls. A column the
+  // person resized keeps exactly their width. Depends only on the container and the configuration, so paging and sorting never move it.
+  const fixedW = (p.bulk?.length || p.exportName ? CHECKBOX_W : 0) + (p.rowActions ? ACTIONS_W : 0); // the checkbox column shows when rows can be selected
+  // the Actions column keeps its width: its buttons are never squeezed or clipped
+  const keeps = (c: DTColumn<T>) => c.key === "act" || colW[c.key] !== undefined;
+  const keptW = fixedW + cols.filter(keeps).reduce((a, c) => a + (colW[c.key] ?? baseOf(c)), 0);
+  const scalable = cols.filter((c) => !keeps(c)).reduce((a, c) => a + baseOf(c), 0);
+  const scale = wrapW && scalable && scalable + keptW > wrapW ? Math.max(0.7, (wrapW - keptW) / scalable) : 1;
+  const widthOf = (c: DTColumn<T>) => colW[c.key] ?? (keeps(c) ? baseOf(c) : Math.floor(baseOf(c) * scale));
+  const resizeTo = (key: string, px: number, save: boolean) => {
+    const w = Math.round(Math.min(COL_MAX, Math.max(COL_MIN, px)));
+    setColW((m) => ({ ...m, [key]: w })); if (save) saveSessionWidth(p.id, key, w);
+  };
   const valueOf = (key: string) => { const c = p.columns.find((x) => x.key === key); return c?.sortBy || c?.value; };
   const rows = queryRows(p.rows, { tab, search: p.searchText ? { q: st.q || "", text: p.searchText } : null, filters: (p.filters || []).map((f) => ({ key: f.key, get: f.get, test: f.test ? (r: T, want: string) => f.test!(r, want) : undefined })), state: st, value: valueOf });
   const info = pageInfo(rows.length, st.page, st.size);
@@ -205,8 +232,13 @@ export function DataTable<T>(p: DataTableProps<T>) {
         <button className="icon-btn" aria-label="Columns" aria-haspopup="menu" onClick={(e) => L.popover(e, (close) => <ColumnsMenu id={p.id} cols={p.columns} sizes={sizes} close={close} />, { label: "Columns" })}><Icon name="rows" /></button></span>
       </div>
 
-      <div className="tbl-wrap">
-        <table className="tbl" aria-label={p.label}>
+      <div className="tbl-wrap" ref={wrapRef}>
+        <table className="tbl dt-fixed" aria-label={p.label} style={{ width: Math.max(wrapW, fixedW + cols.reduce((a, c) => a + widthOf(c), 0)) || undefined }}>
+          <colgroup>
+            {selectable ? <col style={{ width: CHECKBOX_W }} /> : null}
+            {cols.map((c) => <col key={c.key} style={{ width: widthOf(c) }} />)}
+            {p.rowActions ? <col style={{ width: ACTIONS_W }} /> : null}
+          </colgroup>
           <thead>
             <tr>
               {selectable ? (
@@ -221,10 +253,11 @@ export function DataTable<T>(p: DataTableProps<T>) {
                         {c.header}<Icon name="chevd" className={`th-car${s ? " on" : ""}${s === "asc" ? " up" : ""}`} />
                       </button>
                     ) : c.hideHeader ? <span className="vh">{c.header}</span> : c.header}
+                    <ColResizer header={c.header} width={widthOf(c)} onResize={(px, save) => resizeTo(c.key, px, save)} />
                   </th>
                 );
               })}
-              {p.rowActions ? <th scope="col" className="r dt-act"><span className="vh">Actions</span></th> : null}
+              {p.rowActions ? <th scope="col" className="r dt-act">Actions</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -238,7 +271,7 @@ export function DataTable<T>(p: DataTableProps<T>) {
                 <tr key={id} className={`${p.onOpen ? "clickable" : ""}${on ? " sel" : ""}`}
                   tabIndex={p.onOpen ? 0 : undefined} onClick={(e) => onRowClick(e, r)} onKeyDown={(e) => onRowKey(e, r)}>
                   {selectable ? <td className="dt-cb"><input type="checkbox" aria-label={`Select ${nameOf(r)}`} checked={on} onChange={() => patch({ selected: toggleOne(id, selected) })} /></td> : null}
-                  {cols.map((c) => <td key={c.key} className={[c.align === "end" ? "r" : "", c.nowrap ? "nw" : ""].filter(Boolean).join(" ") || undefined}>{subOf(c, r)}</td>)}
+                  {cols.map((c) => { const t = c.value ? String(c.value(r)) : undefined; return <td key={c.key} className={[c.align === "end" ? "r" : "", c.nowrap ? "nw" : ""].filter(Boolean).join(" ") || undefined}><div className={c.key === "act" ? "dt-c dt-c-act" : "dt-c"} title={c.key === "act" ? undefined : t}>{subOf(c, r)}</div></td>; })}
                   {p.rowActions ? <td className="r dt-act"><button className="icon-btn" aria-label={`Actions for ${nameOf(r)}`} aria-haspopup="menu" onClick={(e) => rowMenu(e, r)}><Icon name="more" /></button></td> : null}
                 </tr>
               );
@@ -273,4 +306,25 @@ export function DataTable<T>(p: DataTableProps<T>) {
       ) : null}
     </div>
   );
+}
+
+/** I3: the handle on a column's right edge. Drag it, or focus it and use ArrowLeft and ArrowRight (16 px a step), to resize the column for
+ *  this session. A focusable separator, as WAI-ARIA describes for a window splitter. */
+function ColResizer({ header, width, onResize }: { header: string; width: number; onResize: (px: number, save: boolean) => void }) {
+  const start = useRef<{ x: number; w: number } | null>(null);
+  const down = (e: RPointerEvent<HTMLSpanElement>) => {
+    e.preventDefault(); e.stopPropagation();
+    const th = e.currentTarget.parentElement as HTMLElement;
+    start.current = { x: e.clientX, w: th.getBoundingClientRect().width }; e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const move = (e: RPointerEvent<HTMLSpanElement>) => { if (start.current) onResize(start.current.w + e.clientX - start.current.x, false); };
+  const up = (e: RPointerEvent<HTMLSpanElement>) => { if (!start.current) return; onResize(start.current.w + e.clientX - start.current.x, true); start.current = null; };
+  const key = (e: RKeyboardEvent<HTMLSpanElement>) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault(); e.stopPropagation();
+    const th = e.currentTarget.parentElement as HTMLElement;
+    onResize(th.getBoundingClientRect().width + (e.key === "ArrowRight" ? 16 : -16), true);
+  };
+  return <span className="col-rs" role="separator" aria-orientation="vertical" aria-label={`Resize column ${header}`} aria-valuenow={Math.round(width)} aria-valuemin={COL_MIN} aria-valuemax={COL_MAX} tabIndex={0}
+    onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={() => { start.current = null; }} onKeyDown={key} onClick={(e) => e.stopPropagation()} />;
 }

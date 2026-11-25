@@ -28,7 +28,7 @@ export function ApiSupportSessions() {
     { key: "reason", header: "Their reason", value: (g) => g.reason, render: (g) => g.reason },
     { key: "by", header: "Given by", value: (g) => g.grantedBy, render: (g) => g.grantedBy },
     { key: "exp", header: "Grant ends", value: (g) => g.expiresAt, render: (g) => <span className="num">{utcMin(g.expiresAt)}</span> },
-    { key: "act", header: "Actions", hideHeader: true, render: (g) => <button className="btn btn-ghost sm" aria-label={`Open a support session: ${g.name}`} onClick={() => L.openModal(`Support session, ${g.name}`, (close) => <OpenForm g={g} close={close} />)}><Icon name="access" />Open session</button> },
+    { key: "act", header: "Actions", render: (g) => <button className="btn btn-ghost sm" aria-label={`Open a support session: ${g.name}`} onClick={() => L.openModal(`Support session, ${g.name}`, (close) => <OpenForm g={g} close={close} />)}><Icon name="access" />Open session</button> },
   ];
   return (
     <>

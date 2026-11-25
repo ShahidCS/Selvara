@@ -60,7 +60,7 @@ function ConnectionList() {
     { key: "status", header: "Status", value: (c) => `${c.status} ${c.health}`, render: (c) => <HealthOf c={c} /> },
     { key: "checks", header: "Checks", value: (c) => c.checks.length, render: (c) => (c.checks.length ? <span className="num">{c.checks.filter((x: Conn) => x.result === "Pass").length} pass · {c.checks.filter((x: Conn) => x.result === "Fail").length} fail</span> : <span style={{ color: "var(--faint)" }}>—</span>) },
     { key: "last", header: "Last sync", value: (c) => c.lastSync, render: (c) => <span style={{ color: "var(--muted)" }}>{c.lastSync}</span> },
-    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: () => <Icon name="chevron" /> },
+    { key: "act", header: "Actions", align: "end", locked: true, render: () => <Icon name="chevron" /> },
   ];
   return (
     <Page mod="integrations" acts={live.length ? <button className="btn btn-secondary" data-tour="integrations-sync" onClick={syncAll}><Icon name="refresh" />Sync all</button> : undefined}>

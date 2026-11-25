@@ -49,7 +49,7 @@ function Members() {
     { key: "role", header: "Workspace role", value: (m) => roleName(m.role), render: (m) => roleName(m.role) },
     { key: "status", header: "Status", value: (m) => m.status, render: (m) => (m.status === "Pending" ? <Chip cls="warn" icon="clock">Pending</Chip> : <StatusChip s={m.status} />) },
     { key: "since", header: "Since", value: (m) => m.since, render: (m) => <span className="num">{utc(m.since)}</span> },
-    { key: "act", header: "Actions", hideHeader: true, render: (m) => (m.status === "Active" && !m.me ? <button className="btn btn-ghost sm" aria-label={`Change role: ${m.name}`} onClick={() => L.openModal(`Change role, ${m.name}`, (close) => <RoleForm m={m} close={close} />)}><Icon name="edit" />Change role</button> : null) },
+    { key: "act", header: "Actions", render: (m) => (m.status === "Active" && !m.me ? <button className="btn btn-ghost sm" aria-label={`Change role: ${m.name}`} onClick={() => L.openModal(`Change role, ${m.name}`, (close) => <RoleForm m={m} close={close} />)}><Icon name="edit" />Change role</button> : null) },
   ];
   return (
     <>
@@ -118,7 +118,7 @@ function Invitations() {
     { key: "status", header: "Status", value: (i) => i.status, render: (i) => chip(i.status) },
     { key: "by", header: "Invited by", value: (i) => i.invitedBy, render: (i) => i.invitedBy },
     { key: "exp", header: "Expires", value: (i) => i.expiresAt, render: (i) => <span className="num">{utcMin(i.expiresAt)}</span> },
-    { key: "act", header: "Actions", hideHeader: true, render: (i) => (i.status === "Pending" ? (
+    { key: "act", header: "Actions", render: (i) => (i.status === "Pending" ? (
       <div className="btngrp" style={{ justifyContent: "flex-end" }}>
         <button className="btn btn-ghost sm" aria-label={`${i.linkAt ? "Send again" : "Send invitation"}: ${i.email}`} onClick={() => newLink(i)}><Icon name="refresh" />{i.linkAt ? "Send again" : "Send invitation"}</button>
         <button className="btn btn-ghost sm" aria-label={`Revoke: ${i.email}`} onClick={() => revoke(i)}><Icon name="x" />Revoke</button>

@@ -21,9 +21,9 @@ test("admin: the admin log is a table with a chain summary", async ({ browser },
   const p = s.page;
   await gotoModule(p, "/admin/adminlog");
   await expect(p.getByRole("group", { name: "Admin log summary" })).toContainText("Intact");
-  await expect(p.getByRole("table", { name: "Admin audit log", exact: true })).toBeVisible();
+  await expect(p.getByRole("table", { name: "Platform audit log", exact: true })).toBeVisible();
   await p.getByRole("tab", { name: "Chain integrity" }).click();
-  await expect(p.getByRole("table", { name: "Admin audit log", exact: true })).toHaveCount(0);
+  await expect(p.getByRole("table", { name: "Platform audit log", exact: true })).toHaveCount(0);
   expect(s.errors).toEqual([]);
   await s.close();
 });

@@ -1364,3 +1364,18 @@ form:not(.rec-form):not([style*="gap"])>.field+*,form:not(.rec-form):not([style*
 @container content (max-width:640px){.set-row{grid-template-columns:minmax(0,1fr)}.set-ctl{align-items:flex-start}}
 /* a quiet note box inside a card (never a card inside a card) */
 .note{padding:var(--space-3);border-radius:var(--radius-control);background:var(--surface-2);font-size:12.5px;color:var(--ink-2);line-height:1.5}
+
+/* ---------- I2-I5: data tables ----------
+   Fixed layout with <col> widths (lib/columnWidths.ts), so paging, sorting and filtering never move a column. Each header has a resize handle
+   on its right edge. Cell content stays on one line and ends in an ellipsis; the full value is in the tooltip. A wide table scrolls inside its
+   own container. Row actions sit in the labelled Actions column. */
+.tbl.dt-fixed{table-layout:fixed} /* its width is set in pixels by DataTable */
+.tbl.dt-fixed td .dt-c{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.tbl.dt-fixed td .dt-c>*{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.tbl.dt-fixed th.dt-act{font-size:inherit}
+.col-rs{position:absolute;top:0;bottom:0;inset-inline-end:0;width:8px;cursor:col-resize;z-index:2;touch-action:none}
+.col-rs::after{content:"";position:absolute;inset-block:25%;inset-inline-end:0;width:1px;background:var(--line-2);opacity:0;transition:opacity .15s}
+th:hover .col-rs::after,.col-rs:focus-visible::after{opacity:1}
+.col-rs:focus-visible{outline:2px solid var(--ring);outline-offset:-2px}
+.row-acts{display:flex;gap:var(--space-1);justify-content:flex-end;align-items:center}
+.tbl.dt-fixed td .dt-c.dt-c-act,.tbl.dt-fixed td .dt-c.dt-c-act>*{overflow:visible;text-overflow:clip}

@@ -64,36 +64,32 @@ function FrameworksList() {
   const snoozed = frameworks.filter((f) => fwSnoozed(f.id)).length;
 
   const cols: DTColumn<Fw>[] = [
-    { key: "name", header: "Name", value: (f) => f.name, locked: true, render: (f) => {
+    { key: "name", header: "Name", width: 190, value: (f) => f.name, locked: true, render: (f) => {
       const cat = FRAMEWORK_REQS[f.id];
       return (<>
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}><span className="strong">{f.name}</span><Chip cls={f.kind === "Regulation" ? "info" : "neutral"}>{f.kind}</Chip></div>
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{cat ? cat.r.length + " requirements, " : ""}{f.mapped} mapped controls{f.audit ? ", " + f.audit : ""}</div>
       </>);
     } },
-    { key: "region", header: "Region", value: (f) => f.region || "-", render: (f) => f.region || "-" },
-    { key: "ready", header: "Readiness", value: (f) => pctOf(f), render: (f) => {
+    { key: "region", header: "Region", width: 80, value: (f) => f.region || "-", render: (f) => f.region || "-" },
+    { key: "ready", header: "Readiness", width: 170, value: (f) => pctOf(f), render: (f) => {
       const p = pctOf(f);
-      return (<div style={{ minWidth: 200 }}>
+      return (<div>
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}><FwSegsBar fwId={f.id} />{fwAssessed(f.id) ? <span className="num" style={{ fontSize: 13, fontWeight: 600, color: readinessTone(p), width: 38, textAlign: "right" }}>{p}%</span> : <span className="num" title={NOT_ASSESSED} aria-label={NOT_ASSESSED} style={{ fontSize: 13, color: "var(--muted)", width: 38, textAlign: "right" }}>—</span>}</div>
         <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3 }}>{fwLegend(f.id)}</div>
       </div>);
     } },
-    { key: "status", header: "Status", value: (f) => (fwSnoozed(f.id) ? "Snoozed" : "Active"), render: (f) => {
-      const sn = fwSnoozed(f.id);
-      return (<div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-        <Chip cls={sn ? "neutral" : "ok"} icon={sn ? "clock" : "check"}>{sn ? "Snoozed" : "Active"}</Chip>
+    { key: "status", header: "Status", width: 100, value: (f) => (fwSnoozed(f.id) ? "Snoozed" : "Active"), render: (f) => { const sn = fwSnoozed(f.id); return <Chip cls={sn ? "neutral" : "ok"} icon={sn ? "clock" : "check"}>{sn ? "Snoozed" : "Active"}</Chip>; } },
+    { key: "scope", header: "Scope", width: 120, value: (f) => (fwScopeIn(f.id) ? "In scope" : "Out of scope"), render: (f) => { const on = fwScopeIn(f.id); return <Chip cls={on ? "ok" : "neutral"} icon={on ? "check" : "dot"}>{on ? "In scope" : "Out of scope"}</Chip>; } },
+    // I5: every row action in the labelled Actions column, in the same order on every row
+    { key: "act", header: "Actions", align: "end", locked: true, width: admin ? 250 : 100, render: (f) => {
+      const sn = fwSnoozed(f.id); const on = fwScopeIn(f.id);
+      return (<div className="row-acts">
         {admin ? <button className="btn btn-ghost sm" aria-label={`${f.name}: ${sn ? "snoozed. Resume" : "active. Snooze"}`} onClick={() => toggleSnooze(f)}>{sn ? "Resume" : "Snooze"}</button> : null}
-      </div>);
-    } },
-    { key: "scope", header: "Scope", value: (f) => (fwScopeIn(f.id) ? "In scope" : "Out of scope"), render: (f) => {
-      const on = fwScopeIn(f.id);
-      return (<div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-        <Chip cls={on ? "ok" : "neutral"} icon={on ? "check" : "dot"}>{on ? "In scope" : "Out of scope"}</Chip>
         {admin ? <button className="btn btn-ghost sm" aria-label={`${f.name}: ${on ? "in scope. Take out of scope" : "out of scope. Bring into scope"}`} data-tour="frameworks-scope" aria-pressed={on} onClick={() => toggleScope(f)}>{on ? "Take out" : "Bring in"}</button> : null}
+        <button className="btn btn-ghost sm" aria-label={`Details for ${f.name}`} onClick={() => open(f.id)}>Details</button>
       </div>);
     } },
-    { key: "act", header: "Details", hideHeader: true, align: "end", locked: true, render: (f) => <button className="btn btn-ghost sm" aria-label={`Details for ${f.name}`} onClick={() => open(f.id)}>Details</button> },
   ];
 
   return (

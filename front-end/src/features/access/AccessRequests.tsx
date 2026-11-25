@@ -37,7 +37,7 @@ export function AccessRequests({ canAct }: { canAct: boolean }) {
         </>
       );
     } },
-    { key: "act", header: "Decision", hideHeader: true, align: "end", locked: true, render: (r) => {
+    { key: "act", header: "Actions", align: "end", locked: true, render: (r) => {
       const why = r.status === "Pending" && canAct ? svc.whyCannotDecideRequest(r) : null;
       return r.status === "Pending" ? (canAct ? (
         <div className="btngrp" style={{ justifyContent: "flex-end" }}>

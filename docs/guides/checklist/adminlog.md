@@ -1,4 +1,4 @@
-# Admin Audit Log (Phase 4)
+# Audit Logs (Admin Console) (Phase 4)
 
 | Source feature | Source lines | React file | Status | Notes |
 |---|---|---|---|---|

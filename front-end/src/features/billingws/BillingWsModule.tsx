@@ -48,7 +48,7 @@ function BillingOverview() {
     { key: "period", header: "Period", value: (iv) => iv.period, render: (iv) => <span style={{ color: "var(--muted)" }}>{iv.period}</span> },
     { key: "amount", header: "Amount", value: (iv) => iv.amount, align: "end", render: (iv) => <span className="num">{money(iv.amount)}</span> },
     { key: "status", header: "Status", value: (iv) => iv.status, render: (iv) => <StatusChip s={iv.status} /> },
-    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (iv) => <button className="btn btn-ghost sm" aria-label={`Download invoice ${iv.id}`} onClick={() => download(iv.id)}><Icon name="download" />Download</button> },
+    { key: "act", header: "Actions", align: "end", locked: true, render: (iv) => <button className="btn btn-ghost sm" aria-label={`Download invoice ${iv.id}`} onClick={() => download(iv.id)}><Icon name="download" />Download</button> },
   ];
   return (
     <Page mod="billingws" acts={manage ? <button className="btn btn-secondary" data-tour="billingws-plan" onClick={openPlan}>Manage plan</button> : undefined}>

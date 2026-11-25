@@ -6,6 +6,7 @@
    - Demo accounts: one shared synthetic account per persona, ONLY in mock mode, documented in README.md. Limited: labelled as demo everywhere, a
      one-hour session, the second step shows its own code on screen, and the shared password cannot be changed or reset.
    Passwords are compared as salted SHA-256 hashes here; the server uses a slow KDF (Argon2id). Rules: docs/security/SOD_MATRIX.md section 12. */
+import { clearSessionWidths } from "./columnWidths";
 import { nameBlock } from "./rules";
 import { ROLES, roleOf, setSessionPerson } from "./rbac";
 import { newSecret, otpauthUri, verifyTotp } from "./totp";
@@ -286,7 +287,7 @@ export function signOut(audit = true) {
   if (elevationActive()) endElevation("ended", "on sign-out"); // privileged access never outlives the session
   if (audit && appStore.get().signedIn) logAuth("auth.signed_out");
   endCurrentSession(); clearRecentAuth(); setWelcome(null);
-  setSessionPerson(null);
+  setSessionPerson(null); clearSessionWidths(); // I3: resized table columns last for one session only
   appStore.set({ signedIn: false, who: null, groupsOpen: {} }); persist();
 }
 /** Re-applies the signed-in person after a page load (called once the persisted state is read). A session ended elsewhere (sign out other sessions,

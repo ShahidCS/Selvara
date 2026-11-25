@@ -35,7 +35,7 @@ export function ApiSupportAccess() {
     { key: "when", header: "Given", value: (g) => g.createdAt, render: (g) => <span className="num">{utcMin(g.createdAt)}</span> },
     { key: "exp", header: "Ends", value: (g) => g.revokedAt ?? g.expiresAt, render: (g) => <span className="num">{utcMin(g.revokedAt ?? g.expiresAt)}</span> },
     { key: "status", header: "Status", value: (g) => g.status, render: (g) => chip(g.status) },
-    { key: "act", header: "Actions", hideHeader: true, render: (g) => (g.status === "Live" ? <button className="btn btn-ghost sm" aria-label={`Revoke support access: ${g.reason}`} onClick={() => revoke(g)}><Icon name="x" />Revoke now</button> : null) },
+    { key: "act", header: "Actions", render: (g) => (g.status === "Live" ? <button className="btn btn-ghost sm" aria-label={`Revoke support access: ${g.reason}`} onClick={() => revoke(g)}><Icon name="x" />Revoke now</button> : null) },
   ];
   const logCols: DTColumn<svc.SupportLogLine>[] = [
     { key: "at", header: "When", value: (x) => x.at, locked: true, render: (x) => <span className="num">{utcMin(x.at)}</span> },

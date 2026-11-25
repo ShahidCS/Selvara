@@ -99,7 +99,7 @@ function DemoAdminLogModule() {
             : view === "ropa" ? <RopaRegister entries={ADMIN_AUDIT} intro="Record of Processing Activities under GDPR Article 30. Each admin and workspace event is tagged to one of these activities. Synthetic sample — confirm with the DPO before relying on it." />
             : view === "exp" ? <AdminExportsView onGenerate={doPackage} can={can} />
             : (
-              <DataTable<Entry> id="admin-log" label="Admin audit log" rows={rows} rowKey={(l) => String(l.seq)} columns={cols} searchText={(l) => `${l.actor} ${l.action} ${l.object} ${l.ip} ${l.role}`} filters={filters} exportName="admin-audit-log" onOpen={openEntry} />
+              <DataTable<Entry> id="admin-log" label="Platform audit log" rows={rows} rowKey={(l) => String(l.seq)} columns={cols} searchText={(l) => `${l.actor} ${l.action} ${l.object} ${l.ip} ${l.role}`} filters={filters} exportName="admin-audit-log" onOpen={openEntry} />
             )}
         </div>
       </div>

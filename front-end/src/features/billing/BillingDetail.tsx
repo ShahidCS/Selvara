@@ -103,7 +103,7 @@ function VoidConfirm({ invId, name, locked, title, close, run }: { invId: string
   return (
     <>
       <p style={{ margin: "0 0 8px" }}>Void <b className="num">{invId}</b> for {name}? The invoice is cancelled and can no longer be paid, credited or refunded.</p>
-      <p className="field help" style={{ margin: 0 }}>It stays in the invoice history, and the void is written to the admin audit log.</p>
+      <p className="field help" style={{ margin: 0 }}>It stays in the invoice history, and the void is written to the Admin Console Audit Logs.</p>
       <LayerFoot><button className="btn btn-secondary" data-focus onClick={close}>Keep invoice</button><button className="btn btn-danger" disabled={locked} title={title} onClick={run}><Icon name="x" />Void invoice</button></LayerFoot>
     </>
   );

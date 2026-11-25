@@ -183,7 +183,7 @@
      ],
      [
       "adminlog",
-      "Admin Audit Log",
+      "Audit Logs",
       "log"
      ],
      [
@@ -318,7 +318,7 @@
    "Reset multi-factor auth for customer admins, four-eyes approval"
   ],
   "adminlog": [
-   "Admin Audit Log",
+   "Audit Logs",
    "Immutable record of platform administrator actions"
   ],
   "me": [

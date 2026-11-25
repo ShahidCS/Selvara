@@ -54,12 +54,12 @@ export const TOURS: Tours = {
       { target: '[data-tour="mfa-admins"]', title: "Request a reset", body: "Find the admin and request a reset from their row. Confirm all three identity checks, pick a reason, add a ticket and name the second approver." },
       { title: "The named approver decides", body: "Only the named platform super admin approves or rejects a reset, never the requester or the person being reset. The requester can withdraw it." },
       { target: '[data-tour="mfa-views"], [data-tour="mfa-history"]', title: "Requests and history", body: "Open requests wait for the named approver. Decided, withdrawn and expired resets stay in the history." },
-      { target: '[data-tour="mfa-log"]', title: "Check the audit trail", body: "Every request and decision is recorded. Open the Admin Audit Log to review them." },
+      { target: '[data-tour="mfa-log"]', title: "Check the audit trail", body: "Every request and decision is recorded. Open Audit Logs to review them." },
     ],
   },
   adminlog: {
     version: 1,
-    title: "Admin audit log",
+    title: "Audit Logs",
     steps: [
       { target: H1, title: "What administrators did", body: "An append-only record of platform administrator actions. Entries are never edited or deleted." },
       { target: KPIS, title: "Log at a glance", body: "Shows the number of entries, whether the hash chain is intact, the tenants touched and the latest event." },
@@ -88,7 +88,7 @@ export const TOURS: Tours = {
       { target: ELEV, title: "Read-only until you elevate", body: "Lifting a block needs an elevated session. Support accounts can see the blocks but not lift them." },
       { target: '[data-tour="security-blocks"]', title: "Blocked sign-in addresses", body: "Addresses blocked after repeated failed sign-ins. Every block ends on its own; only an elevated super admin can lift one early, with a reason." },
       { target: '[data-tour="security-rules"]', title: "Security rules", body: "The password, authentication and privileged-access rules for every tenant and for this console. They are read-only." },
-      { title: "Lifts are recorded", body: "Each lifted block is recorded in the audit log with your reason. Review it under Admin Audit Log." },
+      { title: "Lifts are recorded", body: "Each lifted block is recorded in the audit log with your reason. Review it under Audit Logs." },
     ],
   },
 };

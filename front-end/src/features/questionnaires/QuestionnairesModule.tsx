@@ -57,7 +57,7 @@ function QuestionnairesList() {
     ...(narrow ? [] : [{ key: "a", header: "Answer", value: (a: Answer) => a.a, render: (a: Answer) => <span style={{ display: "block", maxWidth: 340, color: "var(--muted)" }}>{a.a}</span> }]),
     { key: "verified", header: "Verified", value: (a) => (a.verified ? "Verified" : "Unverified"), render: (a) => (a.verified ? <Chip cls="ok" icon="check">Verified</Chip> : <Chip cls="warn" icon="clock">Unverified</Chip>) },
     { key: "uses", header: "Uses", value: (a) => a.uses, align: "end", render: (a) => <span className="num">{a.uses}</span> },
-    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (a) => {
+    { key: "act", header: "Actions", align: "end", locked: true, render: (a) => {
       const i = ANSWER_LIB.indexOf(a);
       if (a.verified) return <span style={{ fontSize: 11.5, color: "var(--muted)" }}>{a.verifiedBy ? "by " + a.verifiedBy : ""}</span>;
       const why = svc.verifyBlockReason(a);

@@ -74,7 +74,7 @@ export function AgentsTab({ manage }: { manage: boolean }) {
     { key: "autonomy", header: "Autonomy", value: (a) => a.autonomy, render: (a) => autonomyCell(a) },
     { key: "last", header: "Last run", value: (a) => a.last, render: (a) => <span style={{ color: "var(--muted)" }}>{a.last}</span> },
     { key: "status", header: "Status", value: (a) => a.status, render: (a) => (a.status === "Active" ? <Chip cls="ok" icon="check">Active</Chip> : a.status === "Pending approval" ? <Chip cls="warn" icon="clock">Pending approval</Chip> : <Chip cls="neutral" icon="dot">Paused</Chip>) },
-    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (a) => actionsCell(a) },
+    { key: "act", header: "Actions", align: "end", locked: true, render: (a) => actionsCell(a) },
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -226,7 +226,7 @@ export function RunLogTab({ manage }: { manage: boolean }) {
     { key: "agent", header: "Agent", value: (r) => r.agent, locked: true, render: (r) => <span className="strong">{r.agent}{r.requestedBy ? <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 400 }}>run by {r.requestedBy}</div> : null}</span> },
     { key: "change", header: "Proposed change", value: (r) => r.change, render: (r) => r.change },
     { key: "decision", header: "Decision", value: (r) => r.decision, render: (r) => (<>{r.decision === "Waiting" ? <Chip cls="warn" icon="clock">Waiting</Chip> : r.decision === "Rejected" || r.decision === REJECTED_AFTER ? <Chip cls="bad" icon="x">{r.decision}</Chip> : r.decision === "Blocked" ? <Chip cls="bad" icon="alert">Blocked (personal data)</Chip> : r.decision === "No change" ? <Chip cls="neutral" icon="dot">No change</Chip> : <Chip cls="ok" icon="check">{r.decision}</Chip>}{r.decidedBy ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>by {r.decidedBy}</div> : null}</>) },
-    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (r) => {
+    { key: "act", header: "Actions", align: "end", locked: true, render: (r) => {
       if (manage && r.decision === "Auto-applied") return <button className="btn btn-ghost sm" aria-label={`Reject applied change: ${r.change}`} onClick={() => flag(r)}><Icon name="x" />Reject applied change</button>;
       const why = manage && r.decision === "Waiting" ? svc.runBlockReason(r) : null;
       return manage && r.decision === "Waiting" ? (
@@ -268,7 +268,7 @@ export function McpTab({ manage }: { manage: boolean }) {
     { key: "tools", header: "Tools", value: (s) => s.tools, render: (s) => <span className="num">{s.tools}</span> },
     { key: "access", header: "Access", value: (s) => s.access, render: (s) => s.access },
     { key: "status", header: "Status", value: (s) => s.status, render: (s) => (s.status === "Granted" ? <Chip cls="ok" icon="check">Granted</Chip> : s.pendingApproval ? <Chip cls="warn" icon="clock">Grant requested</Chip> : <Chip cls="neutral" icon="dot">Revoked</Chip>) },
-    { key: "act", header: "Actions", hideHeader: true, align: "end", locked: true, render: (s) => (manage ? <button className="btn btn-ghost sm" aria-label={`${s.status === "Granted" ? "Revoke" : "Request grant for"} ${s.server}`} onClick={() => toggle(svc.ASST.mcp.indexOf(s))}>{s.status === "Granted" ? "Revoke" : "Request grant"}</button> : null) },
+    { key: "act", header: "Actions", align: "end", locked: true, render: (s) => (manage ? <button className="btn btn-ghost sm" aria-label={`${s.status === "Granted" ? "Revoke" : "Request grant for"} ${s.server}`} onClick={() => toggle(svc.ASST.mcp.indexOf(s))}>{s.status === "Granted" ? "Revoke" : "Request grant"}</button> : null) },
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

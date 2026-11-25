@@ -36,7 +36,7 @@ function DemoRates() {
         {r.status === "Held" && r.reason ? <span style={{ fontSize: 12, color: "var(--muted)", maxWidth: "36ch" }}>{r.reason}</span> : null}
       </div>
     ) },
-    { key: "act", header: "Actions", hideHeader: true, locked: true, align: "end", render: (r) => {
+    { key: "act", header: "Actions", locked: true, align: "end", render: (r) => {
       const why = gate.title || (pending.has(r.code) ? "A request is already pending" : undefined);
       return (
         <span style={{ whiteSpace: "nowrap" }}>
