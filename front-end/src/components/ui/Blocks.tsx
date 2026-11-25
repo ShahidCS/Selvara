@@ -72,6 +72,14 @@ export function Page({ mod, title, sub, acts, back, status, eyebrow, children }:
     </PageActsSlot.Provider>
   );
 }
+/** C1-C4: the one grid for side-by-side cards (dashboard panels, connector cards, account cards, settings sections). Up to `cols` cards per
+ *  row, all one width, with the shared gap; cards in a row stretch to the same height; a short last row grows to fill the width, so no card
+ *  is left alone beside an empty gap. Below the narrowest card width (--card-min) it wraps to fewer columns. */
+/** `capped` (dashboard panels): each card body stops at --panel-max and scrolls inside, so one long list cannot stretch the whole row and leave
+ *  its neighbours mostly blank (C4). */
+export function CardGrid({ cols = 3, capped, label, tour, children }: { cols?: 2 | 3 | 4; capped?: boolean; label?: string; tour?: string; children: ReactNode }) {
+  return <div className="cgrid" data-cols={cols} data-capped={capped ? "" : undefined} role={label ? "group" : undefined} aria-label={label} data-tour={tour}>{children}</div>;
+}
 /** An empty list or panel: icon, title and one line. `compact` is the one-line form inside a card or under a short note. */
 export function Empty({ icon = "search", title, children, action, compact }: { icon?: string; title: string; children?: ReactNode; action?: ReactNode; compact?: boolean }) {
   if (compact) return <div className="empty compact" role="status"><div className="ei"><Icon name={icon} /></div><div><h4>{title}</h4>{children ? <p>{children}</p> : null}</div>{action}</div>;

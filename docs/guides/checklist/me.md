@@ -6,7 +6,7 @@ Source: board `member-workspace` (template.html, script1.js) and `docs/architect
 
 | Board feature | Gap | React file | Status | Notes |
 |---|---|---|---|---|
-| Greeting "Good morning, {first name}" + "N open tasks · M policies to acknowledge" | 4.1 | `MeModule.tsx` | Done | First name of the current persona (`getMe()`); counts are live |
+| Greeting "Good Morning, {first name}" (from the local hour; "Hello" before 05:00) + "N open tasks · M policies to acknowledge" | 4.1 | `MeModule.tsx` | Done | First name of the current persona (`getMe()`); counts are live |
 | "Member access." banner (verbatim copy) | 4.1 | `MeModule.tsx` | Done | `.banner.info` |
 | My tasks (Review / Acknowledge / Training / Reply, due, overdue red, action button, "Completed"/"Done") | 4.G1 | `me/MyTasks.tsx`, `lib/me.ts`, `data/meSeed.json` | Done | Acknowledge tasks complete when the policy is acknowledged; others are marked done in `useModState`. Training is a toast stub (4.G5) |
 | My remarks (policy, section, text, "Owner to review by", Open/Overdue) | 4.G2 | `me/MyRemarks.tsx` | Done (read-only) | No way to add a remark here, as in the board |

@@ -3,7 +3,7 @@ import { Chip, DonutChart, Empty, Icon, KpiStrip, KpiTile, Page, ReqStatusPill, 
 import { ANNEXA, DATA, FRAMEWORK_REQS, annexCovered, controlsForFw } from "@/lib/data";
 import { useModState, setModState } from "@/lib/store";
 import {
-  REQ_PAGE, REQ_ST, fwCanAdmin, fwEdits, fwGroupMap, fwGroupStat, fwReqControls, fwScore, fwSnoozed, reqStatus,
+  REQ_PAGE, REQ_ST, NOT_ASSESSED, fwAssessed, fwCanAdmin, fwEdits, fwGroupMap, fwGroupStat, fwReqControls, fwScore, fwSnoozed, reqStatus,
 } from "@/lib/frameworks";
 import { csvCell, downloadText } from "@/lib/format";
 import { uiMessage } from "@/lib/grcSod";
@@ -29,7 +29,7 @@ export function FwDetail({ fwId }: { fwId: string }) {
   const [limit, setLimit] = useModState("fw.limit", REQ_PAGE);
   const back = { href: "/ws/frameworks", label: "Frameworks" };
   if (!f) return <Page title="Framework not found" back={back}><Empty icon="frameworks" title="No such framework">There is no framework with the ID &ldquo;{fwId}&rdquo; in the library.</Empty></Page>;
-  const cat = FRAMEWORK_REQS[f.id]; const sc = cat ? fwScore(f.id) : null; const p = sc ? sc.pct : f.pct;
+  const cat = FRAMEWORK_REQS[f.id]; const sc = cat ? fwScore(f.id) : null; const p = sc ? sc.pct : f.pct; const ok = fwAssessed(f.id);
   const ctrls = controlsForFw(f.id).filter((c) => inAuditorScope("controls", c.id));
   const passing = ctrls.filter((c) => c.status === "Pass").length, needs = ctrls.filter((c) => c.status !== "Pass").length;
   const gm = fwGroupMap(f.id);
@@ -55,14 +55,14 @@ export function FwDetail({ fwId }: { fwId: string }) {
     </>}>
       <div className="scroll rec-scroll" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <KpiStrip label="Framework summary">
-        <KpiTile label="Readiness" value={p + "%"} caption={sc ? `${sc.impl} of ${sc.total} applicable requirements met` : undefined} />
+        <KpiTile label="Readiness" value={ok ? p + "%" : "—"} caption={!ok ? `Not assessed: none of ${sc ? sc.total : 0} requirements assessed yet` : sc ? `${sc.impl} of ${sc.total} applicable requirements met` : undefined} />
         <KpiTile label="Mapped controls" value={ctrls.length} caption={`${passing} passing, ${needs} need evidence`} />
         <KpiTile label="Open gaps" value={sc ? sc.cnt["Not met"] + sc.cnt["Not assessed"] : f.gaps} delta={(sc ? sc.cnt["Not met"] + sc.cnt["Not assessed"] : f.gaps) ? { tone: "watch", text: "To close" } : { tone: "good", text: "None" }} caption={sc ? `${sc.cnt["Not met"]} not met, ${sc.cnt["Not assessed"]} not assessed` : "Requirements to close"} />
         <KpiTile label="Next audit" value={auditDate(f.audit) ?? "Not set"} caption={f.audit || "No audit milestone recorded"} />
       </KpiStrip>
       {sc ? (
         <section className="card"><div className="c-head"><h3>Requirement status</h3></div><div className="c-body" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 24, alignItems: "center" }}>
-          <DonutChart title="Requirements by status" segments={REQ_ST.map((k) => ({ label: k, value: sc.cnt[k], tone: REQ_TONE[k] }))} center={p + "%"} centerSub="ready" />
+          <DonutChart title="Requirements by status" segments={REQ_ST.map((k) => ({ label: k, value: sc.cnt[k], tone: REQ_TONE[k] }))} center={ok ? p + "%" : "—"} centerSub={ok ? "ready" : NOT_ASSESSED.toLowerCase()} />
           <p className="field help" style={{ margin: 0 }}>Each requirement is scored from the status of its mapped controls. Readiness counts met requirements out of those that apply, so &ldquo;Not applicable&rdquo; is left out of the percentage.</p>
         </div></section>
       ) : null}
@@ -124,8 +124,8 @@ function ReqPane({ fwId, reqF, setReqF, rq, setRq, grp, setGrp, limit, setLimit 
   return (
     <section className="card"><div className="c-head"><h3>Requirements</h3><div className="r" id="fwReqCount"><span className="tag">{list.length}{list.length !== cat.r.length ? " of " + cat.r.length : ""}</span></div></div>
       <div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 10, minHeight: 0 }}>
-        <div id="fwChips" className="btngrp" style={{ flexWrap: "wrap" }}>
-          {chips.map((c) => <button key={c[0]} className="fchip" aria-pressed={reqF === c[0]} onClick={() => { setReqF(c[0]); setLimit(REQ_PAGE); }}>{c[1]} <span className="tag" style={{ marginLeft: 3 }}>{c[2]}</span></button>)}
+        <div id="fwChips" className="tabs" role="tablist" aria-label="Requirement status">
+          {chips.map((c) => <button key={c[0]} type="button" className="tab" role="tab" aria-selected={reqF === c[0]} onClick={() => { setReqF(c[0]); setLimit(REQ_PAGE); }}>{c[1]} <span className="tag">{c[2]}</span></button>)}
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
           <label className="field" style={{ flex: "1 1 220px", margin: 0 }}><span className="flab">Search requirements (id, title, guidance)</span>

@@ -288,7 +288,7 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 /* a tab strip that is cut off shows a soft edge on the right (only while there is more to scroll; same local/scroll pattern as .tbl-wrap) */
 .tabs{background:linear-gradient(to left,var(--surface-2) 16px,rgba(0,0,0,0)) right center/40px 100% no-repeat local,radial-gradient(farthest-side at 100% 50%,rgba(0,0,0,.18),rgba(0,0,0,0)) right center/12px 100% no-repeat scroll,var(--surface-2)}
 .tabs::-webkit-scrollbar{display:none}
-.card>.c-head>.tabs{margin:7px 0}
+.card>.c-head>.tabs{margin:0}
 .tab{border:0;background:none;cursor:pointer;color:var(--muted);font-size:13px;font-weight:500;letter-spacing:-.005em;padding:5px 11px;border-radius:var(--radius-chip);white-space:nowrap;line-height:1;min-height:28px;display:inline-flex;align-items:center;gap:7px}
 .tab:hover{color:var(--ink)}
 .tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm)}
@@ -374,7 +374,7 @@ textarea.input{height:auto;padding:9px 11px;resize:vertical;min-height:72px}
 .dot{width:8px;height:8px;border-radius:999px;flex:0 0 auto}
 
 /* ============================ CONTENT LAYOUT ============================ */
-.page{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding:16px 20px 18px;gap:14px;overflow-y:auto}
+.page{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding:16px 20px 18px;gap:var(--section-gap);overflow-y:auto}
 /* Layout rule (wave A), applied at the root: a block in a page column, or in a scrolling column, keeps its height. A card used to shrink when the
    page was full (cards are min-height:0), which squashed it to its header and left nothing to scroll. Now the column scrolls instead. Regions built
    to fill the rest of the page keep shrinking and scroll inside: a `.scroll` region, a `.panels` or `.split` grid (with a floor so they stay usable),
@@ -389,11 +389,11 @@ textarea.input{height:auto;padding:9px 11px;resize:vertical;min-height:72px}
 .page-head .acts{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .panels{flex:0 0 auto;min-height:0;display:grid;gap:14px} /* the grid no longer fills the window; cards side by side share the height of the tallest in their row (owner review, 2026-11-24) */
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
-.card>.c-head{flex:0 0 auto;display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
+.card>.c-head{flex:0 0 auto;display:flex;align-items:center;flex-wrap:wrap;gap:10px;min-height:var(--card-head-h);padding:var(--space-2) var(--space-4);border-bottom:1px solid var(--line);box-sizing:border-box}
 .card>.c-head h3{font-size:14px;font-weight:600;letter-spacing:-.01em}
 .card>.c-head .sub{font-size:12px;color:var(--muted)}
 .card>.c-head .r{margin-left:auto;display:flex;gap:8px;align-items:center}
-.card>.c-body{flex:1 1 auto;min-height:0;overflow:auto;padding:16px}
+.card>.c-body{flex:1 1 auto;min-height:0;overflow:auto;padding:var(--card-pad)}
 .card>.c-body.flush{padding:0}
 .scroll{overflow:auto;scrollbar-gutter:stable;min-height:0}
 .scroll::-webkit-scrollbar{width:10px;height:10px}
@@ -824,18 +824,22 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .kpi-tile{position:relative;padding-block:var(--tile-y,16px);display:flex;flex-direction:column;gap:6px;min-width:0}
 .kpi-tile::before{content:"";position:absolute;inset-block:0;inset-inline-start:calc(var(--kgap) / -2);width:1px;background:var(--line)}
 .kpi-tile::after{content:"";position:absolute;top:-1px;inset-inline:calc(var(--kgap) / -2);height:1px;background:var(--line)}
-@container (max-width:899px){.kpi-strip[data-n="5"],.kpi-strip[data-n="6"]{--cols:3}}
+@container (max-width:1199px){.kpi-strip[data-n="5"],.kpi-strip[data-n="6"]{--cols:3}}
 @container (max-width:699px){.kpi-strip[data-n="4"],.kpi-strip[data-n="7"],.kpi-strip[data-n="8"]{--cols:2}}
 @container (max-width:559px){.kpi-strip:not([data-n="1"]){--cols:2}.kpi-strip{--kgap:28px}.kpi-strip .kpi-v{font-size:30px;line-height:34px}}
 @container (max-width:359px){.kpi-strip{--cols:1}}
-.kpi-fig{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
-/* a narrow tile: the change pill wraps under the figure and its text wraps inside it, it never spills past the tile's edge */
-.kpi-fig>*{min-width:0;max-width:100%}
-.kpi-fig .chip{white-space:normal;height:auto;min-height:22px;padding-block:3px;line-height:1.3}
-/* a long figure ($16,750.00, Read-only) shrinks with its tile instead of running into the next one; short figures keep the full size */
-.kpi-strip .kpi-v[data-long]{font-size:clamp(22px,calc((100cqi - (var(--cols) - 1) * var(--kgap)) / var(--cols) / 5.8),36px);line-height:1.12}
-.kpi-v{font-family:var(--font-display);font-size:36px;line-height:40px;font-weight:300;letter-spacing:-1.4px;color:var(--ink)}
-.kpi-cap{font-size:12px;color:var(--muted)}
+/* B3-B6: every tile is label row (label, status badge in the top-right slot) -> value -> supporting text, with fixed row heights, so tiles in a
+   strip share their baselines whether or not they carry a badge. The value is one size for every tile of a strip (it follows the tile width,
+   not the length of the value), stays on one line with its % sign or unit, and uses tabular figures. */
+.kpi-head{display:flex;align-items:center;gap:var(--space-2);min-height:24px;min-width:0}
+.kpi-head .eyebrow{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kpi-badge{flex:0 0 auto;display:inline-flex}
+.kpi-badge .chip{white-space:nowrap;height:22px}
+.kpi-fig{display:flex;align-items:center;min-width:0}
+.kpi-v{font-family:var(--font-display);font-size:36px;line-height:40px;font-weight:300;letter-spacing:-1.4px;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;font-variant-numeric:tabular-nums}
+.kpi-strip .kpi-v{font-size:clamp(24px,calc((100cqi - (var(--cols) - 1) * var(--kgap)) / var(--cols) / 6),36px);line-height:1.12}
+.kpi-cap{font-size:12px;color:var(--muted);min-height:1.4em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .kpi-card{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:start;padding:16px;border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}
 .kpi-card:hover{border-color:var(--line-2);background:var(--surface-2)}
 .kpi-card-top{display:flex;justify-content:space-between;width:100%;color:var(--muted)} .kpi-card-top svg{width:18px;height:18px}
@@ -916,7 +920,7 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .hbar-tmark-key{display:inline-block;width:2px;height:12px;background:var(--ink);border-radius:1px;margin-inline-end:6px;vertical-align:-2px}
 .chart-note{margin:8px 0 0;font-size:12px;color:var(--muted)}
 .legend.row{flex-direction:row;flex-wrap:wrap;gap:4px 12px}.legend.row li{padding:2px 0}
-.chart-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:14px;margin-bottom:14px}
+.chart-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:var(--grid-gap)}
 .donut2{position:relative;width:140px;height:140px;margin:0 auto} .donut2 svg{width:100%;height:100%}
 .donut2-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;color:var(--muted)}
 .donut2-c b{font-family:var(--font-display);font-size:26px;line-height:28px;font-weight:300;letter-spacing:-.8px;color:var(--ink)}
@@ -990,7 +994,7 @@ main#content{background:var(--surface);margin:0 8px 8px 0;border-radius:0 0 var(
 @media (max-width:760px){header#topbar{margin:0;border-radius:0;padding:0 10px}main#content{margin:0;border-radius:0}}
 .crumbs{font-size:11.5px;letter-spacing:.07em;text-transform:uppercase}
 .crumbs .cur{color:var(--ink)}
-.page{padding:8px 28px 28px;gap:18px}
+.page{padding:8px 28px 28px;gap:var(--section-gap)}
 @media (max-width:760px){.page{padding:10px 14px 18px}}
 .page-head h1{font-size:clamp(28px,2.6vw,38px);font-weight:300;letter-spacing:-.02em;line-height:1.15}
 .page-head .sub{font-size:13.5px;margin-top:4px}
@@ -1232,14 +1236,33 @@ main#content{background:var(--surface);margin:0 8px 8px 0;border-radius:0 0 var(
 }
 @media print{.tabbar{display:none!important}}
 
-/* Running text fills the width it has and is justified (owner decision, 2026-11-24). Hyphenation (html lang="en") keeps the gaps between
-   words even; a one-line text and the last line of a paragraph stay left-aligned. On phones, columns are too narrow for even spacing,
-   so text stays left-aligned there. Empty states keep their own alignment. */
-.field.help,.field .help,.page-head .sub,.card .c-body p,.brief-h,.banner>span{text-align:justify;hyphens:auto;-webkit-hyphens:auto}
-.card .c-body .empty p,.empty p{text-align:inherit;hyphens:manual}
-/* the sign-in card and other narrow columns are too narrow for justified text: even word gaps need a wide line */
-.auth-card .c-body p{text-align:left;hyphens:manual;-webkit-hyphens:manual}
-@media (max-width:600px){.field.help,.field .help,.page-head .sub,.card .c-body p,.brief-h,.banner>span{text-align:left;hyphens:manual}}
+/* ---------- Layout and text tokens (one set, used by every shared component; owner design rules, 2026-11-26) ----------
+   Spacing scale, the gaps between sections and cards, card padding and header height, and the readable line length. A screen that needs
+   something else adds a documented variant to the component, never a one-off value. */
+:root{
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px; --space-6:32px;
+  --section-gap:var(--space-4);      /* between page blocks: KPI strip, card rows, tables */
+  --grid-gap:var(--space-4);         /* between cards in a card grid, rows and columns alike */
+  --card-pad:var(--space-4);         /* inside a card body */
+  --card-head-h:52px;                /* every card header, with or without a badge, link or segmented control */
+  --card-min:300px;                  /* narrowest card in a card grid before it wraps */
+  --text-max:72ch;                   /* long running text inside a full-width container */
+  --rhythm-heading:var(--space-2);   /* heading to its body */
+  --rhythm-para:var(--space-3);      /* paragraph to paragraph */
+  --rhythm-help:var(--space-4);      /* helper text to the next label */
+}
+
+/* A1, A2: running text is left-aligned and never hyphenated by the browser ("figures", "audit", "company" stay whole). */
+html,body{text-align:start;hyphens:manual;-webkit-hyphens:manual}
+p,li,dd,td,th,.field.help,.field .help,.page-head .sub,.brief-h,.banner>span{text-align:start;hyphens:manual;-webkit-hyphens:manual}
+/* A4: paragraphs space themselves; an empty paragraph takes no room. */
+.card .c-body p+p{margin-top:var(--rhythm-para)}
+p:empty{display:none}
+/* A3: identifiers, code, keys, endpoints and variable names: monospace, never hyphenated, break only where needed so nothing leaves its card. */
+code,kbd,samp,.code{font-family:var(--font-mono);font-size:.92em;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-xs,4px);
+  padding:0 .3em;hyphens:none;-webkit-hyphens:none;overflow-wrap:anywhere;word-break:normal;white-space:normal}
+pre code{background:none;border:0;padding:0;white-space:pre}
+
 /* A plain form (no layout of its own) spaces its fields: label groups, help text, segmented controls and the submit button never touch
    (owner review, 2026-11-24). Forms that lay themselves out (.rec-form, or a gap of their own) are left alone; in block flow the margins
    collapse with the sign-in page's own spacing. */
@@ -1260,3 +1283,19 @@ form:not(.rec-form):not([style*="gap"])>.field+*,form:not(.rec-form):not([style*
   transition:opacity .2s,transform .2s;pointer-events:none;display:flex;align-items:center;gap:9px;max-width:min(92vw,520px)}
 #toast[data-on]{opacity:1;transform:translateX(-50%) translateY(0)}
 #toast[data-action]{pointer-events:auto}
+
+/* ---------- C1-C4: the card grid (CardGrid in components/ui/Blocks.tsx) ----------
+   Up to --cols cards per row, one width, the shared gap for rows and columns. Cards in a row stretch to one height; a short last row grows to
+   fill the width (no orphan beside an empty gap); below --card-min the grid wraps to fewer columns. */
+.cgrid{--cols:3;display:flex;flex-wrap:wrap;gap:var(--grid-gap);align-items:stretch;min-width:0}
+.cgrid[data-cols="2"]{--cols:2} .cgrid[data-cols="4"]{--cols:4}
+:root{--panel-max:400px}
+.cgrid[data-capped]>.card>.c-body{max-height:var(--panel-max);overflow:auto}
+/* a control row at the top of a card body (a period switch), so the card header keeps its one height */
+.c-toolbar{display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:center;margin-bottom:var(--space-3)}
+.cgrid>*{flex:1 1 calc((100% - (var(--cols) - 1) * var(--grid-gap)) / var(--cols));min-width:min(100%,var(--card-min))}
+/* the content of a page-level scroll region is a stack with the section gap (B8: the KPI strip never touches the cards below it) */
+.page>.scroll{display:flex;flex-direction:column;gap:var(--section-gap)}
+
+/* ---------- E1, E2: focus rings for the keyboard only; one selected style for tabs ---------- */
+:focus:not(:focus-visible){outline:none}

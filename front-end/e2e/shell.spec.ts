@@ -114,7 +114,7 @@ test("the old My Workspace address opens My Work on the Policies tab, and the br
 test("header: approvals pill opens My Work, Help menu, theme in the account menu, greeting on the Overview", async ({ browser }, ti) => {
   const s = await openAs(browser, ti, "admin"); const p = s.page;
   await gotoModule(p, "/ws/overview");
-  await expect(heading(p)).toHaveText(/^Good (morning|afternoon|evening), Jordan$/);
+  await expect(heading(p)).toHaveText(/^(Good (Morning|Afternoon|Evening)|Hello), Jordan$/);
   const pill = p.getByRole("button", { name: /approvals? waiting for you$/ });
   const n = Number((await pill.getAttribute("aria-label"))!.match(/^\d+/)![0]);
   await pill.click();
