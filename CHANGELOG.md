@@ -12,7 +12,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ### Fixed
 - The sign-in card and the authenticator set-up text are left-aligned: justified text in a narrow column left wide word gaps.
-- Staging alias: `vercel alias set` now runs in the Vercel team (`--scope`); without it the live preview's hostname step failed with "User not found".
+- Staging alias: the live preview's hostname is now assigned through the Vercel REST API, scoped to the team. `vercel alias set` (also with `--scope`) failed with "User not found" because it loads the token's user first.
 - Docs: `STAGING_LIVE_ENABLED` is a **repository** variable (PIPELINE.md, SUPABASE.md section 4i said the `staging` environment, where the live job's `if` cannot see it).
 
 ## [0.3.1] - 2026-11-24

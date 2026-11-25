@@ -210,9 +210,15 @@ runs:
         [[ $url =~ ^https://[A-Za-z0-9.-]+$ ]] || { echo "unexpected deploy output" >&2; exit 1; }
         if [[ $TARGET_ENV == staging && -n ${STAGING_ALIAS:-} ]]; then
           [[ $STAGING_ALIAS =~ ^[A-Za-z0-9.-]+$ ]] || { echo "invalid STAGING_ALIAS" >&2; exit 1; }
-          # alias set does not read VERCEL_ORG_ID the way deploy does: without --scope it runs as the token's own
-          # user and Vercel answers "User not found".
-          "$VERCEL_BIN" alias set "$url" "$STAGING_ALIAS" --scope "$VERCEL_ORG_ID"
+          # Alias through the REST API, scoped to the team. `vercel alias set` first loads the token's user, which
+          # fails ("User not found", 404) for tokens that are not tied to a user; the API needs no user lookup.
+          # The token goes in on stdin, never on the command line.
+          api() { curl -fsS --proto '=https' --max-time 30 -H @- "$@" <<< "Authorization: Bearer $VERCEL_TOKEN"; }
+          dep_id=$(api "https://api.vercel.com/v13/deployments/${url#https://}?teamId=$VERCEL_ORG_ID" | jq -r '.id // empty')
+          [[ $dep_id =~ ^dpl_[A-Za-z0-9]+$ ]] || { echo "could not look up the deployment id" >&2; exit 1; }
+          api -X POST -H "Content-Type: application/json" --data "$(jq -cn --arg a "$STAGING_ALIAS" '{alias: $a}')" \
+            "https://api.vercel.com/v2/deployments/$dep_id/aliases?teamId=$VERCEL_ORG_ID" >/dev/null
+          echo "Alias set: https://$STAGING_ALIAS"
           url="https://$STAGING_ALIAS"
         fi
         echo "url=$url" >> "$GITHUB_OUTPUT"
