@@ -6,7 +6,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ### Changed
 - Layout and text, fixed once in the shared components and tokens (docs/architecture/DESIGN_SYSTEM.md, "Fix once, apply everywhere"):
-  - **Text:** text is left-aligned everywhere and never hyphenated by the browser (reverses the justified-text decision of 2026-11-24). Code and identifiers use one monospace style that wraps inside its card. The greeting says "Hello" from midnight to 04:59.
+  - **Text:** text is left-aligned everywhere and never hyphenated by the browser (reverses the justified-text decision of 2026-11-24). Code and identifiers use one monospace style that wraps inside its card. The greeting says "Hello" from midnight to 04:59, then "Good Morning", "Good Afternoon" or "Good Evening" (each word capitalised).
   - **KPI tiles:** a status badge sits in a fixed top-right slot, never beside the value. Values use one size, stay on one line and use tabular figures. Long labels end in an ellipsis with the full text on hover. Strips of 5 or 6 tiles use 3 columns until the strip is 1200px wide.
   - **Card grid:** cards side by side share one width, height and gap, and a short last row fills the width. Card headers have one height. On Reports, the KPI strip and the cards below now have the section gap between them, and "Open issues by severity" no longer sits alone on its row. On Overview, the panels no longer stretch around one long list, and the Risk posture period switch moved into the card body.
   - **Focus and tabs:** focus rings show for keyboard focus only, not after a mouse click. The requirement status filter on a framework uses the standard tabs.

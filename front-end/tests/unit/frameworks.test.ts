@@ -107,11 +107,11 @@ describe("A5: greeting from the local hour", () => {
   it("is neutral from midnight to 04:59, then morning, afternoon and evening", async () => {
     const { greetingFor } = await import("@/lib/greeting");
     expect([0, 3, 4].map(greetingFor)).toEqual(["Hello", "Hello", "Hello"]);
-    expect(greetingFor(5)).toBe("Good morning");
-    expect(greetingFor(11)).toBe("Good morning");
-    expect(greetingFor(12)).toBe("Good afternoon");
-    expect(greetingFor(17)).toBe("Good afternoon");
-    expect(greetingFor(18)).toBe("Good evening");
-    expect(greetingFor(23)).toBe("Good evening");
+    expect(greetingFor(5)).toBe("Good Morning");
+    expect(greetingFor(11)).toBe("Good Morning");
+    expect(greetingFor(12)).toBe("Good Afternoon");
+    expect(greetingFor(17)).toBe("Good Afternoon");
+    expect(greetingFor(18)).toBe("Good Evening");
+    expect(greetingFor(23)).toBe("Good Evening");
   });
 });

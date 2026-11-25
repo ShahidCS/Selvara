@@ -108,7 +108,7 @@ export default function WorkModule() {
   );
 }
 
-/** "Good morning, Priya. You have 3 open tasks · 2 policies to acknowledge" (counts from the same lists as the Tasks and Policies tabs). */
+/** "Good Morning, Priya. You have 3 open tasks · 2 policies to acknowledge" (counts from the same lists as the Tasks and Policies tabs). */
 function useGreeting(role: string): string {
   const me = getMe();
   const { tasks } = useTasks(role);
