@@ -1,6 +1,7 @@
 /* HTTP client. The prototype made no network calls, so everything defaults to "mock" mode (in-memory seeded data).
  * Set NEXT_PUBLIC_API_MODE=http and NEXT_PUBLIC_API_BASE_URL to call a real API. No secrets here; credentials come from the
  * session cookie (credentials: "include"), never from client code or the repo. */
+import { guardedWrite } from "@/lib/submitGuard";
 export const API_MODE = (process.env.NEXT_PUBLIC_API_MODE || "mock") as "mock" | "http";
 export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 
@@ -22,8 +23,19 @@ export async function netFetch(url: string, init: RequestInit, ms = REQUEST_TIME
   catch (e) { throw new NetworkError((e as Error)?.name === "TimeoutError" ? TIMEOUT_MSG : OFFLINE_MSG); }
 }
 
+/** EDGE-11: writes still in flight, by method, path and body. A second identical write (a double click, a repeated Enter) gets the
+ *  first one's answer instead of reaching the server again. Entries leave when the request ends. */
+const inFlight = new Map<string, Promise<unknown>>();
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (API_MODE !== "http" || !API_BASE) throw new ApiError(0, "API is in mock mode");
+  const method = (init.method || "GET").toUpperCase();
+  if (method === "GET" || method === "HEAD" || (init.body !== undefined && init.body !== null && typeof init.body !== "string")) return fetchJson<T>(path, init);
+  const key = `${method} ${path} ${init.body ?? ""}`;
+  const same = inFlight.get(key); if (same) return same as Promise<T>;
+  const p = guardedWrite(() => fetchJson<T>(path, init)).finally(() => inFlight.delete(key));
+  inFlight.set(key, p); return p;
+}
+async function fetchJson<T>(path: string, init: RequestInit): Promise<T> {
   const res = await netFetch(`${API_BASE}${path}`, {
     ...init, credentials: "include",
     headers: { "Content-Type": "application/json", Accept: "application/json", ...(init.headers || {}) },

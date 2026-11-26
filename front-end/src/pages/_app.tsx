@@ -2,8 +2,12 @@ import type { AppProps } from "next/app";
 import Head from "next/head";
 import "@/styles/globals.css";
 import { AppShell } from "@/components/shell/AppShell";
+import { useEffect } from "react";
+import { installSubmitGuard } from "@/lib/submitGuard";
 
 export default function App({ Component, pageProps }: AppProps) {
+  // EDGE-11: a button that started a save cannot send it again until the save ends (every page, every button).
+  useEffect(() => installSubmitGuard(document), []);
   return (
     <>
       <Head>

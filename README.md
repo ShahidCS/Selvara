@@ -256,6 +256,8 @@ A production build (`NEXT_PUBLIC_API_MODE=http`) has no demo accounts: sign-in, 
 
 Every demo account uses the password `selvara-demo`.
 
+> **On staging, use the Staging demo preview.** The stable staging address (`STAGING_ALIAS`) serves the **Staging live** preview, a production build, so demo accounts cannot sign in there. The demo preview's address is in each "Deploy staging" run (job **Staging demo**, environment URL) and changes with every deploy until `STAGING_DEMO_ALIAS` is set ([docs/security/PIPELINE.md](docs/security/PIPELINE.md)). If Vercel shows its own sign-in page first, the preview is behind Vercel's deployment protection (same document, "For demos").
+
 | Persona | Role | Email |
 |---|---|---|
 | Dana Whitfield | Platform Super Admin | `dana.whitfield@demo.selvara.test` |

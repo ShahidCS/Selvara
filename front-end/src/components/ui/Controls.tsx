@@ -119,5 +119,5 @@ export async function oneAtATime(flag: { current: boolean }, fn: () => unknown, 
 export function BusyButton({ onClick, children, className = "btn btn-primary", busyLabel, ...rest }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & { onClick: () => unknown; busyLabel?: string }) {
   const [busy, setBusy] = useState(false); const inFlight = useRef(false);
   const run = () => oneAtATime(inFlight, onClick, setBusy);
-  return <button type="button" {...rest} className={className} disabled={busy || rest.disabled} aria-busy={busy || undefined} onClick={run}>{busy && busyLabel ? busyLabel : children}</button>;
+  return <button type="button" {...rest} className={className} data-busy-owner="" disabled={busy || rest.disabled} aria-busy={busy || undefined} onClick={run}>{busy && busyLabel ? busyLabel : children}</button>;
 }
