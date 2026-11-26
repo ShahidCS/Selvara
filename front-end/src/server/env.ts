@@ -28,7 +28,7 @@ export function deps(): Deps | null {
   let db: NonNullable<Deps["db"]>;
   try { db = dbFromEnv(String(e.DATABASE_URL), e.DATABASE_CA_CERT); } catch { cached = null; return cached; } // e.g. no CA certificate for a remote database
   const store = new SupabaseStore(env);
-  cached = { auth: new SupabaseAuth(env), store, dir: new PgDirectory(db), plat: new PgPlatform(db), sup: new PgSupport(db), help: new PgHelpDesk(db), csp: new PgCspReports(db), ws: new PgWsStore(db, store), files: new SupabaseFileStore(env, e.EVIDENCE_BUCKET || undefined), site: { origin: site.origin, rpId: site.hostname }, secret: String(e.SERVER_SECRET), now: Date.now, db, ai: claudeFromEnv(e), hooks: httpsHookSender, pstore: new PgPlatStore(db), payments: stripeFromEnv(e) ?? null };
+  cached = { auth: new SupabaseAuth(env), store, dir: new PgDirectory(db), plat: new PgPlatform(db), sup: new PgSupport(db), help: new PgHelpDesk(db), csp: new PgCspReports(db), ws: new PgWsStore(db, store), files: new SupabaseFileStore(env, e.EVIDENCE_BUCKET || undefined), site: { origin: site.origin, rpId: site.hostname }, secret: String(e.SERVER_SECRET), matchSecret: String(e.MATCH_KEY_SECRET ?? "").length >= 32 ? String(e.MATCH_KEY_SECRET) : undefined, now: Date.now, db, ai: claudeFromEnv(e), hooks: httpsHookSender, pstore: new PgPlatStore(db), payments: stripeFromEnv(e) ?? null };
   return cached;
 }
 /** The client address: from Vercel's own header when running on Vercel (a trusted proxy), otherwise the socket. Never from a header a client can set elsewhere. */

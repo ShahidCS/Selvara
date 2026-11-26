@@ -92,3 +92,52 @@ describe("EDGE-20: requests to join through the routes", () => {
     expect(pending()).toBe(1); expect(await store.profileByEmail("john.doe@mailinator.com")).toBeNull();
   });
 });
+
+/* EDGE-20 recommendation 3: a request that looks like the same mailbox as one this company rejected (or a member it removed) is flagged to
+   the admins, never refused automatically. Only a keyed hash is stored. */
+describe("EDGE-20: the alias match key", async () => {
+  const { matchForm, matchKey, recordMatch, findMatch, MATCH_TTL } = await import("@/server/aliasMatch");
+  it("treats +tags, case, Unicode forms, Gmail dots and googlemail.com as the same mailbox; other addresses stay apart", () => {
+    expect(matchForm(" John.Doe+jobs@Example.TEST ")).toBe("john.doe@example.test");
+    expect(matchForm("j.o.h.n.doe+x@googlemail.com")).toBe("johndoe@gmail.com");
+    expect(matchForm("JohnDoe@gmail.com.")).toBe("johndoe@gmail.com");
+    expect(matchForm("ｊｏｈｎ@example.test")).toBe("john@example.test"); // full-width letters (NFKC)
+    expect(matchForm("john@bücher.example")).toBe("john@xn--bcher-kva.example");
+    expect(matchForm("john.doe@example.test")).not.toBe(matchForm("johndoe@example.test")); // dots matter outside Gmail
+    expect(matchForm("john@example.test")).not.toBe(matchForm("john@example2.test"));
+  });
+  it("keys differ per company and per secret; the address cannot be read from what is stored", async () => {
+    const base = { secret: "s".repeat(40), now: () => 1_800_000_000_000 } as unknown as Deps;
+    const k = matchKey(base, "t1", "john@example.test");
+    expect(k).toMatch(/^[0-9a-f]{64}$/); expect(k).toBe(matchKey(base, "t1", "John+x@Example.test"));
+    expect(matchKey(base, "t2", "john@example.test")).not.toBe(k);
+    expect(matchKey({ ...base, matchSecret: "m".repeat(40) } as Deps, "t1", "john@example.test")).not.toBe(k);
+    const kv = new Map<string, { v: unknown; ttl?: number }>();
+    const d = { ...base, store: { kvSet: async (ns: string, key: string, v: unknown, ttl?: number) => { kv.set(`${ns}/${key}`, { v, ttl }); }, kvGet: async (ns: string, key: string) => (kv.get(`${ns}/${key}`)?.v ?? null) } } as unknown as Deps;
+    await recordMatch(d, "t1", "john.doe@example.test", "rejected", "Not an employee of ours; checked with HR");
+    expect(JSON.stringify([...kv])).not.toMatch(/john|example/); // neither the address nor its parts
+    expect([...kv.values()][0].ttl).toBe(MATCH_TTL.rejected);
+    expect(await findMatch(d, "t1", "John.Doe+again@example.test")).toMatchObject({ kind: "rejected", reason: "Not an employee of ours; checked with HR" });
+    expect(await findMatch(d, "t2", "john.doe@example.test")).toBeNull();
+    const later = { ...d, now: () => 1_800_000_000_000 + MATCH_TTL.rejected + 1 } as Deps;
+    expect(await findMatch(later, "t1", "john.doe@example.test")).toBeNull(); // kept 3 months only
+    await recordMatch(d, "t1", "ex.member@example.test", "removed", "ignored for removals");
+    expect(await findMatch(d, "t1", "ex.member+back@example.test")).toEqual({ at: 1_800_000_000_000, kind: "removed" });
+  });
+});
+
+describe("EDGE-20: the flag through the routes", () => {
+  it("a rejected applicant asking again with an alias is flagged (not refused); approving it says so in the audit log", async () => {
+    const jordan = await member("jordan@acme.example", "admin", "Jordan Avery");
+    await join("john.doe@other.example");
+    const first = (await call("GET", "team/join-requests", {}, jordan)).body as { id: string; match?: unknown }[];
+    expect(first).toHaveLength(1); expect(first[0].match).toBeUndefined();
+    expect((await call("POST", `team/join-requests/${first[0].id}/reject`, { reason: "Not known to the hiring team" }, jordan)).status).toBe(200);
+    await join("John.Doe+again@other.example", "203.0.113.30");
+    const second = (await call("GET", "team/join-requests", {}, jordan)).body as { id: string; email: string; match?: { kind: string; reason?: string; at: number } }[];
+    expect(second).toHaveLength(1); expect(second[0].email).toBe("john.doe+again@other.example");
+    expect(second[0].match).toMatchObject({ kind: "rejected", reason: "Not known to the hiring team", at: clock });
+    expect((await call("POST", `team/join-requests/${second[0].id}/approve`, { reason: "Confirmed by phone with the hiring manager" }, jordan)).status).toBe(200);
+    expect(store.auditLog.filter((x) => x.action === "team.join.approved").at(-1)!.target).toMatch(/; matches a request rejected on \d{4}-\d{2}-\d{2}$/);
+  });
+});
