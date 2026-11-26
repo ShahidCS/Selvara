@@ -15,7 +15,7 @@
      policies listed in `shared`), only while their access is live: `auditorScope` is the one place that works it out, and the Frameworks,
      Controls, Evidence and Policies routes use it (a record outside the scope does not exist for the auditor). */
 import { createHash } from "node:crypto";
-import { isoDayOf, roleBlock } from "@/lib/rulesWs";
+import { endOfLocalDay, isoDayOf, localDayOf, roleBlock } from "@/lib/rulesWs";
 import fwShort from "@/data/fwShort.json";
 import type { Deps } from "../types";
 import { LIB_FRAMEWORKS } from "./catalogue";
@@ -37,7 +37,7 @@ type Shared = Record<ShareKind, string[]>;
 interface Pbc { id: string; item: string; owner: string; ownerId?: string; status: "Requested" | "Outstanding" | "Received" }
 interface Finding { id: string; title: string; sev: string; status: "Draft" | "Open" | "Rejected" | "Closed"; rec: string; issue: string; draftedBy?: string; draftedById?: string; acceptedBy?: string; acceptedAt?: string; rejectedReason?: string; rejectedBy?: string }
 interface Ir { id: string; item: string; by: string; byId: string; at: string; status: "Open" | "Answered" | "Closed"; response: string; answeredBy?: string; closedBy?: string }
-interface Access { status: "none" | "granted" | "ended"; auditorId?: string; auditor?: string; from?: string; fromAt?: string; until?: string; grantedBy?: string; endedBy?: string; endedAt?: string; endedAtStamp?: string }
+interface Access { status: "none" | "granted" | "ended"; auditorId?: string; auditor?: string; from?: string; fromAt?: string; until?: string; /** EDGE-16: the UTC instant the last day ends where it was chosen */ untilAt?: number; grantedBy?: string; endedBy?: string; endedAt?: string; endedAtStamp?: string }
 export interface Audit {
   id: string; name: string; fw: string; auditor: string; lead: string; stage: string; scope: string; period: string; progress: number; opened: string;
   pbc: Pbc[]; tests: unknown[]; findings: Finding[]; irs: Ir[]; access: Access; populationsFrozen: boolean; frozenAt?: string; frozenBy?: string; createdBy: string; createdById: string; closeReason?: string;
@@ -48,7 +48,8 @@ const stamp = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace("T
 /** The minutes a snapshot must fall in to be shared with this engagement's auditor: from the grant to the end of access. */
 const inWindow = (a: Audit, at: string, now: number) => !!a.access.fromAt && at >= a.access.fromAt && at <= (a.access.endedAtStamp ?? (a.access.until ? `${a.access.until} 23:59` : stamp(now)));
 const isOpenFinding = (f: Finding) => f.status !== "Closed" && f.status !== "Draft" && f.status !== "Rejected";
-const live = (a: Audit, today: string) => a.access.status === "granted" && !!a.access.until && a.access.until >= today;
+/** Access is live until its end: a UTC instant when known (EDGE-16), else the end of the date in UTC. */
+const live = (a: Audit, today: string, now: number) => a.access.status === "granted" && !!a.access.until && (a.access.untilAt ? now < a.access.untilAt : a.access.until >= today);
 const sharedOf = (a: Audit): Shared => ({ controls: a.shared?.controls ?? [], evidence: a.shared?.evidence ?? [], policies: a.shared?.policies ?? [] });
 /** The audit as the screens read it (the demonstration's `auditorAccess` flag is derived). */
 export const auditView = (a: Audit) => ({ ...a, auditorAccess: a.access.status, shared: sharedOf(a) });
@@ -78,7 +79,7 @@ export async function auditorScope(t: WsTx): Promise<AuditorScope | null> {
   if (t.actor.role !== "auditor") return null;
   const s: AuditorScope = { frameworks: new Set(), controls: new Set(), evidence: new Set(), policies: new Set() }; const today = isoDayOf(t.now);
   for (const { data: a } of await t.list<Audit>("audit")) {
-    if (a.access.auditorId !== t.actor.id || !live(a, today)) continue;
+    if (a.access.auditorId !== t.actor.id || !live(a, today, t.now)) continue;
     const fw = await fwIdOf(t, a.fw); if (fw) s.frameworks.add(fw);
     const sh = sharedOf(a); for (const k of Object.keys(SHARE_KINDS) as ShareKind[]) for (const id of sh[k]) s[k].add(id);
   }
@@ -105,7 +106,7 @@ async function sweepAudits(t: WsTx) {
   const today = isoDayOf(t.now);
   for (const rec of await t.list<Audit>("audit")) {
     const a = rec.data;
-    if (a.access.status === "granted" && a.access.until && a.access.until < today) {
+    if (a.access.status === "granted" && a.access.until && (a.access.untilAt ? t.now >= a.access.untilAt : a.access.until < today)) {
       a.access.status = "ended"; a.access.endedBy = "System"; a.access.endedAt = today; a.access.endedAtStamp = `${a.access.until} 23:59`; await save(t, rec);
       await t.audit("audit.auditor.access.expired", `${a.id} ${a.name}: ${a.access.auditor} (until ${a.access.until})`, "Audit", true);
       if (a.access.auditorId) await t.notify(a.access.auditorId, `Your auditor access to ${a.name} ended on ${a.access.until}.`);
@@ -141,7 +142,7 @@ export function auditRoutes(h: WsHelpers) {
     return tx(d, c, async (t) => {
       await sweepAudits(t); const rec = await load(t, r.path[2]); const a = rec.data;
       if (a.access.auditorId !== c.actor.id) missing("Audit"); // another auditor's engagement does not exist for them
-      if (!live(a, isoDayOf(t.now))) refuse(a.access.status === "ended" ? "Auditor access for this engagement has ended." : "Auditor access has not been granted for this engagement yet.");
+      if (!live(a, isoDayOf(t.now), t.now)) refuse(a.access.status === "ended" ? "Auditor access for this engagement has ended." : "Auditor access has not been granted for this engagement yet.");
       return ok({ ok: true, ...((await fn(t, rec, r.body, r.path)) as object) });
     });
   });
@@ -150,7 +151,7 @@ export function auditRoutes(h: WsHelpers) {
     await sweepAudits(t);
     const today = isoDayOf(t.now); const all = (await t.list<Audit>("audit")).map((x) => x.data);
     const isAuditor = c.actor.role === "auditor";
-    const mine = isAuditor ? all.filter((a) => a.access.auditorId === c.actor.id && live(a, today)) : all;
+    const mine = isAuditor ? all.filter((a) => a.access.auditorId === c.actor.id && live(a, today, t.now)) : all;
     const snaps = (await t.list<RiskSnapshot>("risk-snapshot")).map((x) => x.data);
     const shared = (a: Audit) => snaps.filter((s) => inWindow(a, s.at, t.now))
       .map((s) => ({ id: s.id, at: s.at, count: s.count, scope: s.scope, hash: s.hash }));
@@ -175,10 +176,10 @@ export function auditRoutes(h: WsHelpers) {
     const a = rec.data; if (a.access.status === "granted") invalid("Auditor access is already granted.");
     const m = (await membersOf(d, t.actor)).find((x) => x.id === str(b.auditorId, 100) && x.role === "auditor");
     if (!m) invalid("Choose the external auditor. Invite them in Team & Rules with the Auditor role first.");
-    const today = isoDayOf(t.now); const until = txt(b.until, 10);
+    const today = localDayOf(t.now, t.actor.tz); const until = txt(b.until, 10); // EDGE-16: the granter's own today
     const ms = Date.parse(until + "T00:00:00Z"); // a real calendar day only ("2026-13-45" or "9999-99-99" never pass)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(until) || Number.isNaN(ms) || isoDayOf(ms) !== until || until < today || ms > t.now + ACCESS_MAX_DAYS * 86400_000) invalid(`Choose an end date within ${ACCESS_MAX_DAYS} days.`);
-    a.access = { status: "granted", auditorId: m!.id, auditor: m!.name, from: today, fromAt: stamp(t.now), until, grantedBy: t.actor.name }; a.lead = `External, ${m!.name}`;
+    a.access = { status: "granted", auditorId: m!.id, auditor: m!.name, from: today, fromAt: stamp(t.now), until, untilAt: endOfLocalDay(until, t.actor.tz), grantedBy: t.actor.name }; a.lead = `External, ${m!.name}`;
     if (a.stage === "Planned") { a.stage = "Fieldwork"; a.progress = PROGRESS[1]; }
     a.period = `Access ${today} to ${until}`; await save(t, rec);
     await t.audit("audit.auditor.access.granted", `${a.id} ${a.name} → ${m!.name} until ${until}`, "Audit");
@@ -202,7 +203,7 @@ export function auditRoutes(h: WsHelpers) {
     }
     a.shared = sh; await save(t, rec);
     await t.audit(on ? "audit.shared.added" : "audit.shared.removed", `${a.id} ${a.name}: ${kind} ${id} by ${t.actor.name}`, "Audit");
-    if (a.access.auditorId && live(a, isoDayOf(t.now))) await t.notify(a.access.auditorId, on ? `${t.actor.name} shared ${id} with you on ${a.name}.` : `${t.actor.name} stopped sharing ${id} with you on ${a.name}.`);
+    if (a.access.auditorId && live(a, isoDayOf(t.now), t.now)) await t.notify(a.access.auditorId, on ? `${t.actor.name} shared ${id} with you on ${a.name}.` : `${t.actor.name} stopped sharing ${id} with you on ${a.name}.`);
     return { shared: sh };
   });
   const end = manage(async (_d, t, rec, b) => { if (rec.data.access.status !== "granted") invalid("Auditor access is not granted."); await complete(t, rec, txt(b.reason, 500), "complete and end auditor access"); return {}; });
@@ -268,7 +269,7 @@ export function auditRoutes(h: WsHelpers) {
   /** Management closes an answered request (so a request the auditor never closes cannot block completion); the auditor closes any. */
   const closeIr = wsRoute(h, "audits", async (d, r, c) => tx(d, c, async (t) => {
     await sweepAudits(t); const rec = await load(t, r.path[2]); const a = rec.data; const me = c.actor;
-    if (me.role === "auditor" && (a.access.auditorId !== me.id || !live(a, isoDayOf(t.now)))) missing("Audit"); // nothing about another engagement is revealed
+    if (me.role === "auditor" && (a.access.auditorId !== me.id || !live(a, isoDayOf(t.now), t.now))) missing("Audit"); // nothing about another engagement is revealed
     if (a.stage === "Complete") invalid("This engagement is complete and locked.");
     const x = a.irs.find((y) => y.id === str(r.path[4], 20)) ?? missing("Request");
     if (x.status === "Closed") invalid("The request is already closed.");
@@ -300,7 +301,7 @@ export function auditRoutes(h: WsHelpers) {
   /** The engagement report (draft), for management and the assigned auditor while access is live. */
   const report = wsRoute(h, "audits", async (d, r, c) => tx(d, c, async (t) => {
     const rec = await load(t, r.path[2]); const a = rec.data;
-    if (c.actor.role === "auditor" ? a.access.auditorId !== c.actor.id || !live(a, isoDayOf(t.now)) : !!manageBlock(c.actor.role)) missing("Audit");
+    if (c.actor.role === "auditor" ? a.access.auditorId !== c.actor.id || !live(a, isoDayOf(t.now), t.now) : !!manageBlock(c.actor.role)) missing("Audit");
     const lines = [`${a.name} (DRAFT REPORT)`, `Framework: ${a.fw}. Auditor: ${a.auditor}${a.access.auditor ? ` (${a.access.auditor})` : ""}. Stage: ${a.stage}.`, `Scope: ${a.scope}`, "",
       "Requests (PBC)", ...a.pbc.map((p) => `  ${p.id} ${p.item} — ${p.owner}, ${p.status}`), "", "Information requests", ...a.irs.map((x) => `  ${x.id} ${x.item} — ${x.status}${x.response ? `: ${x.response}` : ""}`),
       "", "Findings", ...a.findings.filter((f) => f.status !== "Draft").map((f) => `  ${f.id} [${f.sev}] ${f.title} — ${f.status}${f.issue ? `, issue ${f.issue}` : ""}${f.rec ? `. Recommendation: ${f.rec}` : ""}`),
@@ -311,7 +312,7 @@ export function auditRoutes(h: WsHelpers) {
   /** A risk register snapshot shared with this engagement's auditor (taken while their access ran). */
   const snapshot = wsRoute(h, "audits", async (d, r, c) => tx(d, c, async (t) => {
     const rec = await load(t, r.path[2]); const a = rec.data;
-    if (c.actor.role === "auditor" ? a.access.auditorId !== c.actor.id || !live(a, isoDayOf(t.now)) : !!manageBlock(c.actor.role)) missing("Audit");
+    if (c.actor.role === "auditor" ? a.access.auditorId !== c.actor.id || !live(a, isoDayOf(t.now), t.now) : !!manageBlock(c.actor.role)) missing("Audit");
     const s = (await t.get<RiskSnapshot>("risk-snapshot", str(r.path[4], 20))) ?? missing("Snapshot");
     if (!inWindow(a, s.data.at, t.now)) missing("Snapshot");
     await t.audit("risk.register.snapshot.downloaded", `${s.id} (SHA-256 ${s.data.sha256}) for ${a.id} by ${c.actor.name}`, "Risk");

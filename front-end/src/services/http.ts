@@ -14,8 +14,11 @@ export const TIMEOUT_MSG = "Selvara did not answer in time. Check your connectio
 export const REQUEST_TIMEOUT_MS = 65_000; export const UPLOAD_TIMEOUT_MS = 120_000;
 export class NetworkError extends ApiError { constructor(message: string) { super(0, message); this.name = "NetworkError"; } }
 /** fetch with a time limit; a network failure or a timeout becomes a NetworkError with a message for people. */
+/** EDGE-16: the browser's IANA time zone, so the server counts "today" from the viewer's own day (times stay in UTC). */
+const timeZone = (): string => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { return ""; } };
 export async function netFetch(url: string, init: RequestInit, ms = REQUEST_TIMEOUT_MS): Promise<Response> {
-  try { return await fetch(url, { ...init, signal: init.signal ?? AbortSignal.timeout(ms) }); }
+  const tz = timeZone(); const headers = new Headers(init.headers); if (tz && !headers.has("X-Time-Zone")) headers.set("X-Time-Zone", tz);
+  try { return await fetch(url, { ...init, headers, signal: init.signal ?? AbortSignal.timeout(ms) }); }
   catch (e) { throw new NetworkError((e as Error)?.name === "TimeoutError" ? TIMEOUT_MSG : OFFLINE_MSG); }
 }
 

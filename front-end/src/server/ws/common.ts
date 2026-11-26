@@ -1,6 +1,7 @@
 /* Server-only. What every workspace module's routes share: which company roles may open which module (the same table the browser uses,
    data/roles.json), the acting person from the session, turning refusals into answers, and the company's members for owner pickers. */
 import { scalarText } from "@/server/text";
+import { validTimeZone } from "@/lib/rulesWs";
 import roles from "@/data/roles.json";
 import { REAUTH_MS } from "@/lib/accountSecurity";
 import type { Ctx, Req, Res } from "../core";
@@ -29,7 +30,7 @@ export function wsRoute(h: WsHelpers, mod: string | null, fn: WsHandler): H {
   return h.signed(async (d, r, c) => {
     if (c.a.platform || !c.a.company) return err(403, "Not permitted.");
     if (mod && !modAllowed(c.a.role, mod)) return err(403, "Not permitted.");
-    const actor: Actor = { id: c.p.id, name: c.p.person, role: c.a.role, tenantId: c.a.company.id, ip: r.ip, committed: [] };
+    const actor: Actor = { id: c.p.id, name: c.p.person, role: c.a.role, tenantId: c.a.company.id, ip: r.ip, tz: validTimeZone(r.headers["x-time-zone"]), committed: [] };
     try {
       const out = await fn(d, r, { ...c, actor });
       if (actor.committed?.length) for (const fn of afterCommit) await fn(d, actor).catch(() => undefined); // never fails the change itself

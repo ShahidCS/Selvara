@@ -7,7 +7,7 @@
    is assigned to them or a closure is decided. */
 import { approvalBlock } from "@/lib/rules";
 import {
-  ISSUE_CLOSE_TTL_H, ISSUE_SEVERITIES, ISSUE_STATES, isHighSeverity, isoDayOf, issueCoreBlock, issueDeleteBlock, issueDueText, issueWriteBlock, roleBlock,
+  ISSUE_CLOSE_TTL_H, ISSUE_SEVERITIES, ISSUE_STATES, isHighSeverity, isoDayOf, issueCoreBlock, issueDeleteBlock, issueDueText, issueWriteBlock, localDayOf, roleBlock,
 } from "@/lib/rulesWs";
 import type { Deps } from "../types";
 import { approvalsView, invalid, membersOf, missing, modAllowed, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
@@ -29,7 +29,8 @@ const dueOf = (v: unknown, now: number): string => {
   return s;
 };
 /** The issue as the screens read it: `due` is the text every module tests for "Overdue". */
-export const issueView = (x: Issue, now: number) => ({ ...x, due: issueDueText(x.dueDate, isoDayOf(now)) });
+/** EDGE-16: "Due today" and "Overdue" count from the viewer's own day. */
+export const issueView = (x: Issue, now: number, tz?: string) => ({ ...x, due: issueDueText(x.dueDate, localDayOf(now, tz)) });
 async function load(t: WsTx, id: string): Promise<Rec<Issue>> { return (await t.get<Issue>("issue", str(id, 40))) ?? missing("Issue"); }
 async function pendingOf(t: WsTx, x: Issue) {
   if (!x.closure) return null; const a = await t.approval(x.closure.approvalId, ISSUE_KINDS);
@@ -58,7 +59,7 @@ export function issueRoutes(h: WsHelpers) {
   const data = wsRoute(h, "issues", async (d, _r, c) => ok(await tx(d, c, async (t) => {
     await sweepApprovals(t, ISSUE_KINDS);
     const names = new Map((await membersOf(d, c.actor)).map((m) => [m.id, m.name]));
-    return { issues: (await t.list<Issue>("issue")).map((x) => issueView(x.data, t.now)).reverse(), approvals: await approvalsView(t, ISSUE_KINDS, names) };
+    return { issues: (await t.list<Issue>("issue")).map((x) => issueView(x.data, t.now, t.actor.tz)).reverse(), approvals: await approvalsView(t, ISSUE_KINDS, names) };
   })));
   const create = wsRoute(h, "issues", async (d, r, c) => {
     refuse(issueWriteBlock(c.actor.role));

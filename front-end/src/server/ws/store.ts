@@ -9,7 +9,7 @@ import { PassThrough, UpstreamError } from "../errors";
 import type { AuditRow, Store } from "../types";
 
 /** Who acts: always from the session, never from the request. `role` is the base company role (admin, owner, analyst, ...). */
-export interface Actor { id: string; name: string; role: string; tenantId: string; ip: string; /** Filled after a commit with what was audited (webhook events, server/ws/webhooks.ts). */ committed?: { action: string; target: string }[] }
+export interface Actor { id: string; name: string; role: string; tenantId: string; ip: string; /** EDGE-16: the viewer's IANA time zone (validated), for "today"; undefined means UTC. */ tz?: string; /** Filled after a commit with what was audited (webhook events, server/ws/webhooks.ts). */ committed?: { action: string; target: string }[] }
 export interface Rec<T = Record<string, unknown>> { id: string; data: T; version: number }
 export interface NewWsApproval { kind: string; title: string; subject: string; payload: Record<string, unknown>; needs: 1 | 2; approverRoles: string[]; forbid: string[]; ttlMs: number }
 

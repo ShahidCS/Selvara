@@ -11,6 +11,29 @@ export const textBlock = (v: unknown, min: number, what = "A reason"): string | 
   String(v ?? "").trim().length >= min ? null : `${what} of at least ${min} characters is required.`;
 export const isoDayOf = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
+/* EDGE-16: time is stored in UTC; "today" is each viewer's own calendar day. The browser sends its IANA time zone (X-Time-Zone); the server
+   accepts only a zone the runtime knows, else uses UTC. A date someone picks for an expiry means the end of that day where they are, kept as
+   a UTC instant, so every check afterwards compares instants and no one's clock or header can stretch it. */
+/** A valid IANA time zone, or undefined. */
+export function validTimeZone(tz: unknown): string | undefined {
+  const s = String(tz ?? "").trim(); if (!s || s.length > 64 || !/^[A-Za-z0-9_+\-/]+$/.test(s)) return undefined;
+  try { new Intl.DateTimeFormat("en", { timeZone: s }); return s; } catch { return undefined; }
+}
+/** The calendar day (YYYY-MM-DD) of an instant in a time zone (UTC when none). */
+export const localDayOf = (ms: number, tz?: string): string =>
+  tz ? new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(ms) : isoDayOf(ms);
+/** How far the zone's wall clock is ahead of UTC at an instant (ms). */
+function offsetAt(ms: number, tz: string): number {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" })
+    .formatToParts(ms).filter((x) => x.type !== "literal").map((x) => [x.type, Number(x.value)]));
+  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(ms / 1000) * 1000;
+}
+/** The UTC instant at which a calendar day ends in a time zone (the first moment of the next day there). */
+export function endOfLocalDay(day: string, tz?: string): number {
+  const next = Date.parse(day + "T00:00:00Z") + 86_400_000; if (!tz) return next;
+  let at = next - offsetAt(next, tz); at = next - offsetAt(at, tz); return at;
+}
+
 /* ---------- frameworks ---------- */
 /** Framework administration (scope, snooze, add, requirement mapping and applicability): company admin or owner. */
 export const fwAdminBlock = (role: string): string | null => (["admin", "owner", "super"].includes(role) ? null : "Only a company admin or control owner can change requirement mappings or applicability.");
@@ -46,19 +69,21 @@ export const requestExceptionBlock = (role: string) => roleBlock(role, "requesti
 export const EXCEPTION_TTL_H = 24 * 14;
 export const EXCEPTION_MAX_DAYS = 366;
 /** The request's own details: reason, compensating control, an expiry in the future and at most 12 months away. */
-export function exceptionInputBlock(x: { reason: string; compensating: string; expires: string }, nowMs: number): string | null {
+export function exceptionInputBlock(x: { reason: string; compensating: string; expires: string }, nowMs: number, tz?: string): string | null {
   return textBlock(x.reason, 10) || textBlock(x.compensating, 20, "A compensating-control note")
     || (!/^\d{4}-\d{2}-\d{2}$/.test(x.expires) || Number.isNaN(Date.parse(x.expires + "T00:00:00Z")) ? "Enter a valid expiry date." : null)
-    || (x.expires <= isoDayOf(nowMs) ? "The expiry must be in the future." : null)
+    || (x.expires <= localDayOf(nowMs, tz) ? "The expiry must be in the future." : null)
     || (Date.parse(x.expires + "T00:00:00Z") > nowMs + EXCEPTION_MAX_DAYS * 86400_000 ? "An exception can last at most 12 months." : null);
 }
 export type ExceptionState = "Pending" | "Active" | "Expired" | "Rejected";
 /** An exception's state from its request's status and its expiry date. */
-export function exceptionStateOf(approvalStatus: string | null | undefined, expires: string, today: string): ExceptionState {
+export function exceptionStateOf(approvalStatus: string | null | undefined, expires: string, today: string, at?: { now: number; expiresAt?: number }): ExceptionState {
   if (!approvalStatus || approvalStatus === "Rejected" || approvalStatus === "Withdrawn") return "Rejected";
-  if (approvalStatus === "Pending") return expires < today ? "Expired" : "Pending";
+  // EDGE-16: an exception made with a time zone ends at a UTC instant; older ones end with their date in UTC
+  const over = at?.expiresAt ? at.now >= at.expiresAt : expires < today;
+  if (approvalStatus === "Pending") return over ? "Expired" : "Pending";
   if (approvalStatus === "Expired") return "Expired";
-  return expires < today ? "Expired" : "Active";
+  return over ? "Expired" : "Active";
 }
 export function decideExceptionBlock(state: ExceptionState, role: string, isRequesterOrOwner: boolean): string | null {
   if (state !== "Pending") return "This request is no longer pending.";
@@ -131,9 +156,9 @@ export function policyDecideExceptionBlock(status: string, role: string, isPubli
   if (status !== "Pending") return `The exception is already ${status.toLowerCase()}.`;
   return roleBlock(role, "retrospective approval", "admin", "owner") || (isPublisherOrAuthor ? "Segregation of duties: the person who published the emergency change or its authors cannot approve it." : null);
 }
-export function policyEffectiveBlock(eff: string, nowMs: number): string | null {
+export function policyEffectiveBlock(eff: string, nowMs: number, tz?: string): string | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(eff) || Number.isNaN(Date.parse(eff + "T00:00:00Z"))) return "Enter a valid effective date.";
-  if (eff < isoDayOf(nowMs)) return "The effective date cannot be in the past.";
+  if (eff < localDayOf(nowMs, tz)) return "The effective date cannot be in the past.";
   if (Date.parse(eff + "T00:00:00Z") > nowMs + POLICY_EFFECTIVE_MAX_DAYS * 86400_000) return "The effective date can be at most 90 days ahead.";
   return null;
 }

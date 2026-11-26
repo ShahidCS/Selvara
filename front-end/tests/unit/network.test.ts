@@ -33,3 +33,14 @@ describe("EDGE-11: a slow save is never sent twice", () => {
     expect(typeof BusyButton).toBe("function");
   });
 });
+
+describe("EDGE-16: the browser tells the server its time zone", () => {
+  it("every request carries X-Time-Zone (an explicit one is kept)", async () => {
+    const seen: Headers[] = [];
+    vi.stubGlobal("fetch", vi.fn((_u: string, init: RequestInit) => { seen.push(new Headers(init.headers)); return Promise.resolve(new Response("{}")); }));
+    await netFetch("https://app.example.test/api/ws/data/issues", { headers: { Accept: "application/json" } });
+    await netFetch("https://app.example.test/api/ws/data/issues", { headers: { "X-Time-Zone": "Asia/Karachi" } });
+    expect(seen[0].get("X-Time-Zone")).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone); expect(seen[0].get("Accept")).toBe("application/json");
+    expect(seen[1].get("X-Time-Zone")).toBe("Asia/Karachi");
+  });
+});
