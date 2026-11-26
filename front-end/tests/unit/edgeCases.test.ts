@@ -136,3 +136,21 @@ describe("EDGE-19: removed from a company, then asking to join again", () => {
     expect(m).toEqual(expect.objectContaining({ status: "Pending", role: "employee" }));
   });
 });
+
+describe("EDGE-20: a rejected applicant asks again", () => {
+  it("every new request, from the same address or an alias, waits for a company admin: nobody gets in without approval", async () => {
+    expect((await join({ email: "john.doe@example.com" })).status).toBe(202);
+    const first = (await store.profileByEmail("john.doe@example.com"))!;
+    await dir.decide(ACME, "admin-casey", first.id, "Removed", "Not an employee of Acme", clock, { at: clock, actor: "Casey Morgan", action: "team.join.rejected", target: "John Doe", cat: "Access", space: "ws", ip: "198.51.100.1" } as never);
+    await store.updateProfile(first.id, { status: "Rejected" });
+    // the same address again: back to pending, never active
+    expect((await join({ email: "john.doe@example.com" }, "198.51.100.20")).status).toBe(202);
+    expect((await dir.membership(ACME, first.id))?.status).toBe("Pending");
+    // an alias of the same mailbox is a different address: also pending only
+    expect((await join({ email: "John.Doe+again@Example.com" }, "198.51.100.21")).status).toBe(202);
+    const alias = (await store.profileByEmail("john.doe+again@example.com"))!;
+    expect(alias.id).not.toBe(first.id); // KNOWN LIMIT: not linked to the rejected address (see the audit)
+    expect((await dir.membership(ACME, alias.id))?.status).toBe("Pending");
+    expect([401, 409]).toContain((await call("POST", "auth/sign-in", { email: "john.doe+again@example.com", password: PW })).status); // cannot sign in until approved
+  });
+});
