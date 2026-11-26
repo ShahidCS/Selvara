@@ -203,8 +203,20 @@ export function loadWorkspace(): Promise<void> {
 export const STEP_UP = "Confirm your password first.";
 export const stepUp = createStore<{ answer: ((ok: boolean) => void) | null }>({ answer: null });
 const askPassword = () => new Promise<boolean>((resolve) => stepUp.set({ answer: (ok) => { stepUp.set({ answer: null }); resolve(ok); } }));
-const send = async <T,>(path: string, init: RequestInit): Promise<T> => {
-  let out: T;
+/** EDGE-18: the version this screen holds of the record named in the path (`/ws/<module>/<id>/...`), when exactly one loaded record has that id;
+ *  the server refuses the change (409) if the record has changed since. */
+export function recordVersionFor(path: string, data: Record<string, unknown> = DATA as unknown as Record<string, unknown>): number | null {
+  const id = decodeURIComponent(path.split("?")[0].split("/").filter(Boolean)[2] ?? ""); if (!id) return null;
+  const found = new Set<number>();
+  for (const v of Object.values(data)) if (Array.isArray(v)) for (const r of v) if (r && typeof r === "object" && (r as { id?: unknown }).id === id && typeof (r as { _v?: unknown })._v === "number") found.add((r as { _v: number })._v);
+  return found.size === 1 ? [...found][0] : null;
+}
+const withVersion = (path: string, init: RequestInit): RequestInit => {
+  const v = recordVersionFor(path); if (v === null) return init;
+  return { ...init, headers: { ...(init.headers as Record<string, string> | undefined), "X-Record-Version": String(v) } };
+};
+const send = async <T,>(path: string, init0: RequestInit): Promise<T> => {
+  let out: T; const init = withVersion(path, init0);
   try { out = await apiFetch<T>(path, init); }
   catch (e) {
     if (!(e instanceof ApiError && e.status === 403 && e.message === STEP_UP) || !(await askPassword())) throw e;
@@ -218,8 +230,9 @@ export const wsDelete = <T,>(path: string) => send<T>(path, { method: "DELETE" }
 export const wsPatch = <T,>(path: string, body: unknown) => send<T>(path, { method: "PATCH", body: JSON.stringify(body) });
 /** Uploads a file's bytes (the server checks type, size and content). */
 export async function wsUpload<T>(path: string, file: File): Promise<T> {
+  const v = recordVersionFor(path);
   const res = await netFetch(`${API_BASE}${path}${path.includes("?") ? "&" : "?"}name=${encodeURIComponent(file.name)}`, {
-    method: "POST", credentials: "include", headers: { "Content-Type": "application/octet-stream", Accept: "application/json" }, body: file,
+    method: "POST", credentials: "include", headers: { "Content-Type": "application/octet-stream", Accept: "application/json", ...(v === null ? {} : { "X-Record-Version": String(v) }) }, body: file,
   }, UPLOAD_TIMEOUT_MS);
   if (!res.ok) { let m = `${res.status} ${res.statusText}`; try { const j = await res.json(); if (j && typeof j.error === "string") m = j.error; } catch { /* no JSON */ } throw new ApiError(res.status, m); }
   const out = (res.status === 204 ? undefined : await res.json()) as T; await loadWorkspace(); return out;

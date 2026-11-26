@@ -17,8 +17,8 @@ beforeEach(() => {
   d = { auth, store, dir, plat, sup: new MemorySupport(store, dir, plat), ws: new MemoryWsStore(store), files: new MemoryFileStore(), site: { origin: ORIGIN, rpId: "app.example.test" }, secret: "x".repeat(40), now: () => clock };
   vi.spyOn(console, "warn").mockImplementation(() => {}); vi.spyOn(console, "error").mockImplementation(() => {});
 });
-const call = (method: string, path: string, body: Record<string, unknown> = {}, ip = "198.51.100.7", cookie?: string): Promise<Res> =>
-  handle(d, { method, path: path.split("/").filter(Boolean), body, ip, cookies: cookie ? { [COOKIE]: cookie } : {}, headers: { origin: ORIGIN, "content-type": "application/json", "user-agent": "Mozilla/5.0 Chrome/140" } } as Req);
+const call = (method: string, path: string, body: Record<string, unknown> = {}, ip = "198.51.100.7", cookie?: string, extra: Record<string, string> = {}): Promise<Res> =>
+  handle(d, { method, path: path.split("/").filter(Boolean), body, ip, cookies: cookie ? { [COOKIE]: cookie } : {}, headers: { origin: ORIGIN, "content-type": "application/json", "user-agent": "Mozilla/5.0 Chrome/140", ...extra } } as Req);
 const join = (b: Record<string, unknown>, ip = "198.51.100.7") => call("POST", "auth/join-requests", { name: "John Doe", email: "test@example.com", password: PW, company: "acme-eu", ...b }, ip);
 
 describe("EDGE-2: a double-tapped sign-up", () => {
@@ -102,9 +102,8 @@ describe("EDGE-7: quitting authenticator set-up halfway through first sign-in", 
 });
 
 describe("EDGE-18: the same record edited on two devices", () => {
-  // KNOWN GAP (recorded in the audit, needs a design decision): edit routes do not take the version the person loaded, so a save from a device
-  // holding an older copy silently replaces a newer change (last writer wins). `it.fails` keeps this visible; it flips when edits check versions.
-  it.fails("a save made from an older copy is refused, not silently applied over a newer change", async () => {
+  // Owner's decision 2026-11-26: every edit checks the version the person loaded (X-Record-Version); records carry it as _v.
+  it("a save made from an older copy is refused (409), not silently applied over a newer change; a fresh copy saves", async () => {
     const { totpAt } = await import("@/lib/totp");
     const id = await auth.createUser("jordan@acme.example", PW, "Jordan Avery"); await auth.confirmUser(id);
     await store.insertProfile({ id, email: "jordan@acme.example", person: "Jordan Avery", status: "Active", requestedAt: clock }); dir.addMember(ACME, id, "admin");
@@ -112,10 +111,17 @@ describe("EDGE-18: the same record edited on two devices", () => {
     const v = await call("POST", "auth/sign-in/verify", { ticket: (st.body as { ticket: string }).ticket, code: await totpAt(auth.secretOf("jordan@acme.example")!, clock) });
     const cookie = v.cookies![0].match(new RegExp(`${COOKIE}=([^;]*)`))![1];
     const pid = ((await call("POST", "ws/policies", { name: "Access control policy" }, undefined, cookie)).body as { id: string }).id;
-    const loaded = 1; // both devices loaded version 1
-    expect((await call("PATCH", `ws/policies/${pid}`, { name: "Access control policy v2", note: "Phone one: tightened scope", version: loaded }, undefined, cookie)).status).toBe(200);
-    const stale = await call("PATCH", `ws/policies/${pid}`, { name: "Access control policy (old copy)", note: "Phone two: edited an old copy", version: loaded }, undefined, cookie);
-    expect(stale.status).toBe(409);
+    const loaded = async () => ((await call("GET", "ws/data/policies", {}, undefined, cookie)).body as { policies: { id: string; _v: number; name: string }[] }).policies.find((p) => p.id === pid)!;
+    const both = (await loaded())._v; expect(both).toBeGreaterThan(0); // both phones hold this version
+    const save = (name: string, note: string, ver: number) => call("PATCH", `ws/policies/${pid}`, { name, note }, undefined, cookie, { "x-record-version": String(ver) });
+    expect((await save("Access control policy v2", "Phone one: tightened scope", both)).status).toBe(200);
+    const stale = await save("Access control policy (old copy)", "Phone two: edited an old copy", both);
+    expect(stale.status).toBe(409); expect((stale.body as { error: string }).error).toMatch(/changed since you opened it/);
+    expect((await loaded()).name).toBe("Access control policy v2"); // the newer change stands
+    const fresh = await loaded();
+    expect((await save("Access control policy v3", "Phone two: after reloading", fresh._v)).status).toBe(200);
+    // the version is never stored inside the record
+    expect(JSON.stringify([...(d.ws as unknown as { rows: Map<string, { data: object }> }).rows.values()].map((r) => r.data))).not.toContain('"_v"');
   });
 });
 

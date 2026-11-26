@@ -26,11 +26,16 @@ const afterCommit: ((d: Deps, a: Actor) => Promise<void>)[] = [];
  *  server/trustpublic.ts). Each listener once per module load. */
 export const onCommitted = (fn: (d: Deps, a: Actor) => Promise<void>) => { if (!afterCommit.includes(fn)) afterCommit.push(fn); };
 /** A workspace route: a member of the session's company whose role may open `mod`. Refusals from rules and stale copies become answers. */
+/** EDGE-18: the version the person loaded of the record named in the path (the id after the module), if the screen sent it. */
+const expectedVersion = (r: Req): Actor["expect"] => {
+  const v = Number(r.headers["x-record-version"]); const id = r.path[2];
+  return r.method !== "GET" && id && Number.isSafeInteger(v) && v > 0 ? { id, version: v } : undefined;
+};
 export function wsRoute(h: WsHelpers, mod: string | null, fn: WsHandler): H {
   return h.signed(async (d, r, c) => {
     if (c.a.platform || !c.a.company) return err(403, "Not permitted.");
     if (mod && !modAllowed(c.a.role, mod)) return err(403, "Not permitted.");
-    const actor: Actor = { id: c.p.id, name: c.p.person, role: c.a.role, tenantId: c.a.company.id, ip: r.ip, tz: validTimeZone(r.headers["x-time-zone"]), committed: [] };
+    const actor: Actor = { id: c.p.id, name: c.p.person, role: c.a.role, tenantId: c.a.company.id, ip: r.ip, tz: validTimeZone(r.headers["x-time-zone"]), expect: expectedVersion(r), committed: [] };
     try {
       const out = await fn(d, r, { ...c, actor });
       if (actor.committed?.length) for (const fn of afterCommit) await fn(d, actor).catch(() => undefined); // never fails the change itself

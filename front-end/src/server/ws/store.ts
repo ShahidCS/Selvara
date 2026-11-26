@@ -9,7 +9,7 @@ import { PassThrough, UpstreamError } from "../errors";
 import type { AuditRow, Store } from "../types";
 
 /** Who acts: always from the session, never from the request. `role` is the base company role (admin, owner, analyst, ...). */
-export interface Actor { id: string; name: string; role: string; tenantId: string; ip: string; /** EDGE-16: the viewer's IANA time zone (validated), for "today"; undefined means UTC. */ tz?: string; /** Filled after a commit with what was audited (webhook events, server/ws/webhooks.ts). */ committed?: { action: string; target: string }[] }
+export interface Actor { id: string; name: string; role: string; tenantId: string; ip: string; /** EDGE-18: the version of the record named in the path that the person loaded (X-Record-Version); checked once per request. */ expect?: { id: string; version: number; done?: boolean }; /** EDGE-16: the viewer's IANA time zone (validated), for "today"; undefined means UTC. */ tz?: string; /** Filled after a commit with what was audited (webhook events, server/ws/webhooks.ts). */ committed?: { action: string; target: string }[] }
 export interface Rec<T = Record<string, unknown>> { id: string; data: T; version: number }
 export interface NewWsApproval { kind: string; title: string; subject: string; payload: Record<string, unknown>; needs: 1 | 2; approverRoles: string[]; forbid: string[]; ttlMs: number }
 
@@ -120,7 +120,7 @@ export class PgWsStore implements WsStore {
           },
           async auditVerify() { const r = await q.query<{ v: string | null }>("select public.company_audit_verify() as v"); return r[0]?.v == null ? null : Number(r[0].v); },
         };
-        return work(t);
+        return work(versioned(t));
       });
       for (const n of notices) await store.insertNotice({ id: randomUUID().replace(/-/g, "").slice(0, 12), userId: n.userId, at: now, text: n.text.slice(0, 300) }).catch(() => undefined);
       actor.committed?.push(...done);
@@ -184,7 +184,7 @@ export class MemoryWsStore implements WsStore {
       async auditVerify() { return null; },
     };
     try {
-      const out = await work(t);
+      const out = await work(versioned(t));
       for (const e of pending) await store.audit(e);
       for (const n of pending2) await store.insertNotice({ id: randomUUID().slice(0, 12), userId: n.userId, at: now, text: n.text.slice(0, 300) });
       actor.committed?.push(...pending.map((e) => ({ action: e.action, target: e.target })));
@@ -195,4 +195,29 @@ export class MemoryWsStore implements WsStore {
       throw e;
     }
   }
+}
+
+/* EDGE-18: versioned edits. Every record the server reads carries its version as `_v` (so the screens know which copy they hold); `_v` is never
+   stored. When the request names the version the person loaded (X-Record-Version, for the record whose id is in the path), the first change to
+   that record compares it: a save made from an older copy is refused (409) instead of silently replacing a newer change. */
+export const STALE_COPY = "This record changed since you opened it. Reload to see the latest version, then make your change again.";
+const withVersion = <R,>(rec: Rec<R> | null): Rec<R> | null =>
+  rec && rec.data && typeof rec.data === "object" && !Array.isArray(rec.data) ? { ...rec, data: { ...(rec.data as object), _v: rec.version } as R } : rec;
+const withoutVersion = (data: object): object => {
+  if (!data || typeof data !== "object" || Array.isArray(data) || !("_v" in data)) return data;
+  const { _v, ...rest } = data as Record<string, unknown>; void _v; return rest;
+};
+export function versioned(t: WsTx): WsTx {
+  const check = (id: string, version: number) => {
+    const ex = t.actor.expect; if (!ex || ex.done || ex.id !== id) return;
+    ex.done = true; if (ex.version !== version) throw new WsConflict(STALE_COPY);
+  };
+  return {
+    ...t,
+    async get<R>(kind: string, id: string) { return withVersion(await t.get<R>(kind, id)); },
+    async list<R>(kind: string) { return (await t.list<R>(kind)).map((r) => withVersion(r)!); },
+    insert: (kind, id, data) => t.insert(kind, id, withoutVersion(data)),
+    update: (kind, id, data, version) => { check(id, version); return t.update(kind, id, withoutVersion(data), version); },
+    remove: (kind, id, version) => { check(id, version); return t.remove(kind, id, version); },
+  };
 }

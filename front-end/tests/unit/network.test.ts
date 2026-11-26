@@ -44,3 +44,15 @@ describe("EDGE-16: the browser tells the server its time zone", () => {
     expect(seen[1].get("X-Time-Zone")).toBe("Asia/Karachi");
   });
 });
+
+describe("EDGE-18: the screen sends the version it holds", () => {
+  it("names the loaded version of the record in the path, and nothing when the id is unknown or ambiguous", async () => {
+    const { recordVersionFor } = await import("@/services/ws");
+    const data = { policies: [{ id: "P-001", _v: 3 }], issues: [{ id: "R-014", _v: 7 }], risks: [{ id: "R-014", _v: 2 }], controls: [{ id: "GOV-1" }] };
+    expect(recordVersionFor("/ws/policies/P-001", data)).toBe(3);
+    expect(recordVersionFor("/ws/policies/P-001/review?x=1", data)).toBe(3);
+    expect(recordVersionFor("/ws/issues/R-014", data)).toBeNull(); // two records share the id: send nothing rather than a wrong version
+    expect(recordVersionFor("/ws/controls/GOV-1/status", data)).toBeNull(); // no version loaded (demonstration data)
+    expect(recordVersionFor("/ws/policies", data)).toBeNull(); // a create names no record
+  });
+});
