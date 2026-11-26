@@ -4,7 +4,9 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
-## [0.3.2] - 2026-11-26
+## [0.3.3] - 2026-11-26
+
+The first release of these changes. Tag `v0.3.2` was pushed before the version bump was merged; it points at a commit still versioned 0.3.1, so the release workflow refused it and nothing was deployed. Tags are immutable, so the release is 0.3.3.
 
 Layout and consistency fixed once in shared components (design brief parts A to K), the full framework library reinstated from the original sources, CSP violation reporting, more security headers and a sign-in fix. **Deploy note:** production needs migration `0012_csp_reports.sql` (schema version 12) before this release; it is already applied there. Staging runs this version.
 
