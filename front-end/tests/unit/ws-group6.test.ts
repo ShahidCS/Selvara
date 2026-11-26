@@ -95,7 +95,7 @@ describe("the PII blocker (lib/pii.ts)", () => {
     expect(maskPii("Ask sam.lee@example.test and Jordan Avery", ["Jordan Avery"])).toBe("Ask [EMAIL] and [PERSON]");
   });
   it("refuses private, loopback, link-local and mapped addresses as webhook targets", () => {
-    for (const ip of ["10.0.0.1", "127.0.0.1", "169.254.169.254", "172.16.5.4", "192.168.1.1", "100.64.0.1", "::1", "fd00::1", "fe80::1", "::ffff:10.0.0.1", "0.0.0.0"]) expect(privateAddress(ip)).toBe(true);
+    for (const ip of ["10.0.0.1", "127.0.0.1", "169.254.169.254", "172.16.5.4", "192.168.1.1", "100.64.0.1", "::1", "fd00::1", "fe80::1", "::ffff:10.0.0.1", "0.0.0.0", "0:0:0:0:0:ffff:7f00:1", "0:0:0:0:0:0:0:1", "::ffff:7f00:1", "2001:0db8::1", "64:ff9b::7f00:1"]) expect(privateAddress(ip)).toBe(true);
     for (const ip of ["93.184.216.34", "2606:2800:220:1:248:1893:25c8:1946"]) expect(privateAddress(ip)).toBe(false);
   });
 });

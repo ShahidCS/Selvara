@@ -55,7 +55,8 @@ export function privateAddress(ip: string): boolean {
       || (a === 192 && b === 168) || (a === 192 && b === 0) || (a === 198 && (b === 18 || b === 19)) || (a === 198 && b === 51) || (a === 203 && b === 0);
   }
   if (v === 6) {
-    const s = ip.toLowerCase();
+    // SEC-26: compare the canonical text (so 0:0:0:0:0:ffff:7f00:1 is seen as ::ffff:7f00:1, a mapped 127.0.0.1)
+    let s = ip.toLowerCase(); try { s = new URL(`http://[${s}]/`).hostname.slice(1, -1); } catch { return true; }
     const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/.exec(s); if (mapped) return privateAddress(mapped[1]);
     // unspecified, loopback, IPv4-compatible/mapped, unique-local, link- and site-local, multicast, documentation, NAT64, 6to4, discard
     return s === "::" || s === "::1" || /^::[0-9a-f.:]*$/.test(s) || /^f[cd]/.test(s) || /^fe[89a-f]/.test(s) || /^ff/.test(s) || s.startsWith("2001:db8") || s.startsWith("64:ff9b") || s.startsWith("2002:") || s.startsWith("100:");
