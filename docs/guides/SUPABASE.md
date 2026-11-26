@@ -76,6 +76,7 @@ Set these in Vercel → Project → Settings → Environment Variables. Use the 
 | `SUPABASE_SERVICE_ROLE_KEY` | service_role key | **yes** |
 | `SITE_URL` | the deployment's address, for example `https://selvara.example.com` (its origin is checked on every write, and it is the passkey relying party) | no |
 | `SERVER_SECRET` | 48 random bytes, for example from `openssl rand -base64 48` (encrypts sign-in tickets) | **yes** |
+| `MATCH_KEY_SECRET` | 48 random bytes, as above. Keys the alias match of requests to join (EDGE-20); set it once and keep it, because changing it forgets earlier rejections. Without it a key derived from `SERVER_SECRET` is used | recommended |
 
 Without all five, and from v0.1.8 also `DATABASE_URL` and `DATABASE_CA_CERT` (section 4b), `/api` answers 503 and the public demonstration is unaffected.
 

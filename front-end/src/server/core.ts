@@ -17,6 +17,7 @@ import { approvalBlock, normaliseName, INVITE_TTL_H, isAssignableRole, isPrivile
 import { isEmail } from "@/lib/security";
 import { domainAllowed, parseJoinDomains } from "@/lib/emailDomains";
 import { isDisposable } from "./disposable";
+import { findMatch, recordMatch } from "./aliasMatch";
 import { checkRegistration, verifyAssertion } from "@/lib/webauthn";
 import { randomId, same, seal, sha256Hex, unseal } from "./crypto";
 import { adminRoutes } from "./admin";
@@ -569,7 +570,12 @@ type AdminCtx = Ctx & { company: Company };
 const admin = (h: (d: Deps, r: Req, c: AdminCtx) => Promise<Res>) => signed(async (d, r, c) => (c.a.role === "admin" && !c.a.platform && c.a.company ? h(d, r, { ...c, company: c.a.company }) : err(403, "Not permitted.")));
 const memberList = admin(async (d, _r, { p: me, company }) => ok((await d.dir.members(company.id, me.id)).filter((m) => m.status !== "Removed")
   .map((m) => ({ id: m.userId, name: m.person, email: m.email, role: m.role, status: m.status, since: m.since, me: m.userId === me.id }))));
-const joinList = admin(async (d, _r, { p: me, company }) => ok((await d.dir.members(company.id, me.id, "Pending")).map((x) => ({ id: x.userId, name: x.person, email: x.email, requestedAt: x.since }))));
+/** Pending requests to join. EDGE-20: each says when it looks like the same mailbox as a request this company rejected or a member it removed
+ *  (aliasMatch.ts); the admin decides, with a reason. */
+const joinList = admin(async (d, _r, { p: me, company }) => ok(await Promise.all((await d.dir.members(company.id, me.id, "Pending")).map(async (x) => {
+  const match = await findMatch(d, company.id, x.email);
+  return { id: x.userId, name: x.person, email: x.email, requestedAt: x.since, ...(match ? { match } : {}) };
+}))));
 const joinDecide = admin(async (d, r, { p: me, a, company }) => {
   const id = s(r.path[2], 100); const decision = r.path[3]; const why = s(r.body.reason).trim();
   if (decision !== "approve" && decision !== "reject") return err(404, "Not found.");
@@ -580,9 +586,13 @@ const joinDecide = admin(async (d, r, { p: me, a, company }) => {
   if (m.status !== "Pending") return err(409, "That request has already been decided.");
   const p = await d.store.profileById(id); if (!p) return err(404, "Request not found.");
   const approve = decision === "approve";
+  // EDGE-20: an approval of a flagged request says so in the audit log
+  const match = approve ? await findMatch(d, company.id, p.email) : null;
+  const flagged = match ? `; matches a ${match.kind === "rejected" ? "request rejected" : "member removed"} on ${new Date(match.at).toISOString().slice(0, 10)}` : "";
   const done = await d.dir.decide(company.id, me.id, id, approve ? "Active" : "Removed", why, d.now(),
-    entry(d, r, actorOf(me, a), approve ? "team.join.approved" : "team.join.rejected", `${p.person} <${p.email}> as Employee; reason: ${why}`));
+    entry(d, r, actorOf(me, a), approve ? "team.join.approved" : "team.join.rejected", `${p.person} <${p.email}> as Employee; reason: ${why}${flagged}`));
   if (!done) return err(409, "That request has already been decided.");
+  if (!approve) await recordMatch(d, company.id, p.email, "rejected", why);
   // A new person's account becomes usable with their first approval; a rejection leaves it unconfirmed (it still cannot sign in).
   if (approve && p.status !== "Active") { await d.auth.confirmUser(p.id); await d.store.updateProfile(p.id, { status: "Active", decidedBy: me.person, reason: why }); }
   // the applicant learns the outcome by email when email is set up (the admin's reason is not sent)

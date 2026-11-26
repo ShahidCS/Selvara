@@ -5,6 +5,7 @@
    really offboards: the membership ends (never the last admin), sessions end, grants are revoked, pending access requests are denied,
    delegations end, and owned controls and policies move to the chosen member. A privileged person needs a second admin or owner.
    Device posture has no source until the device integrations (group 7): it is shown as "Not connected", never invented. */
+import { recordMatch } from "../aliasMatch";
 import { sendMail } from "../mail";
 import { MFA_RESET_TTL_H, OFFBOARD_TTL_H, isPrivilegedLevel, mfaResetFieldsBlock, roleBlock } from "@/lib/rulesWs";
 import { ROLE_LABEL, isPrivilegedRole as privRole } from "@/lib/rules";
@@ -152,6 +153,8 @@ export async function offboardIn(t: WsTx, d: Deps, p: { id: string; name: string
     const res = await d.dir.removeMember(a.tenantId, a.id, p.id, `Offboarded by ${a.name}`, t.now,
       { at: t.now, actor: a.name, actorId: a.id, tenantId: a.tenantId, action: "member.removed", target: `${p.name}: offboarded`, cat: "Access", space: "ws", ip: a.ip });
     if (res === "last-admin") throw new WsConflict("The last remaining admin cannot be offboarded.");
+    // EDGE-20: a later request to join from the same mailbox is flagged to the admins for 12 months
+    const prof = await d.store.profileById(p.id); if (prof) await recordMatch(d, a.tenantId, prof.email, "removed");
   }
   return n;
 }

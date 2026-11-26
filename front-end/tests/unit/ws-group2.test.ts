@@ -158,6 +158,9 @@ describe("people", () => {
     expect((await call("POST", `ws/people/${jordan.id}/offboard`, { transferToId: casey.id }, jordan.cookie)).status).toBe(403);
     expect(body<{ pending: boolean; revoked: number }>(await call("POST", `ws/people/${priya.id}/offboard`, { transferToId: jordan.id }, jordan.cookie))).toEqual({ pending: false, revoked: 1 });
     expect(dir.memberships.find((m) => m.userId === priya.id)!.status).toBe("Removed");
+    // EDGE-20: a later request to join from the same mailbox is flagged to the admins (12 months)
+    const { findMatch } = await import("@/server/aliasMatch");
+    expect(await findMatch(d, ACME, (await store.profileById(priya.id))!.email.replace("@", "+back@"))).toMatchObject({ kind: "removed" });
     expect((await call("GET", "auth/session", {}, priya.cookie)).status).toBe(401);
     const off = await call("POST", `ws/people/${owen.id}/offboard`, { transferToId: jordan.id }, casey.cookie); // an owner: privileged
     expect(off.status).toBe(202);
