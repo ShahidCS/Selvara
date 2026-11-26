@@ -118,3 +118,21 @@ describe("EDGE-18: the same record edited on two devices", () => {
     expect(stale.status).toBe(409);
   });
 });
+
+describe("EDGE-19: removed from a company, then asking to join again", () => {
+  it("the old session stops at once, and a new request starts again as a pending Employee: no old role or access comes back by itself", async () => {
+    const { totpAt } = await import("@/lib/totp");
+    const id = await auth.createUser("john.doe@example.com", PW, "John Doe"); await auth.confirmUser(id);
+    await store.insertProfile({ id, email: "john.doe@example.com", person: "John Doe", status: "Active", requestedAt: clock }); dir.addMember(ACME, id, "analyst");
+    dir.addMember(ACME, "admin-casey", "admin"); // the company keeps an admin (the last admin can never be removed)
+    const st = await call("POST", "auth/sign-in", { email: "john.doe@example.com", password: PW });
+    const v = await call("POST", "auth/sign-in/verify", { ticket: (st.body as { ticket: string }).ticket, code: await totpAt(auth.secretOf("john.doe@example.com")!, clock) });
+    const cookie = v.cookies![0].match(new RegExp(`${COOKIE}=([^;]*)`))![1];
+    expect((await call("GET", "auth/session", {}, undefined, cookie)).status).toBe(200);
+    expect(await dir.removeMember(ACME, "offboarder", id, "Left the company", clock, { at: clock, actor: "Casey Morgan", action: "member.removed", target: "John Doe", cat: "Access", space: "ws", ip: "198.51.100.1" } as never)).toBe("ok");
+    expect((await call("GET", "auth/session", {}, undefined, cookie)).status).toBe(401); // checked on every request
+    expect((await call("POST", "auth/join-requests", { name: "John Doe", email: "john.doe@example.com", password: PW, company: "acme-eu" })).status).toBe(202);
+    const m = await dir.membership(ACME, id);
+    expect(m).toEqual(expect.objectContaining({ status: "Pending", role: "employee" }));
+  });
+});
