@@ -100,3 +100,21 @@ describe("EDGE-7: quitting authenticator set-up halfway through first sign-in", 
     expect((await auth.listTotp(id)).length).toBe(1); // exactly one authenticator, no leftover from the first attempt
   });
 });
+
+describe("EDGE-18: the same record edited on two devices", () => {
+  // KNOWN GAP (recorded in the audit, needs a design decision): edit routes do not take the version the person loaded, so a save from a device
+  // holding an older copy silently replaces a newer change (last writer wins). `it.fails` keeps this visible; it flips when edits check versions.
+  it.fails("a save made from an older copy is refused, not silently applied over a newer change", async () => {
+    const { totpAt } = await import("@/lib/totp");
+    const id = await auth.createUser("jordan@acme.example", PW, "Jordan Avery"); await auth.confirmUser(id);
+    await store.insertProfile({ id, email: "jordan@acme.example", person: "Jordan Avery", status: "Active", requestedAt: clock }); dir.addMember(ACME, id, "admin");
+    const st = await call("POST", "auth/sign-in", { email: "jordan@acme.example", password: PW });
+    const v = await call("POST", "auth/sign-in/verify", { ticket: (st.body as { ticket: string }).ticket, code: await totpAt(auth.secretOf("jordan@acme.example")!, clock) });
+    const cookie = v.cookies![0].match(new RegExp(`${COOKIE}=([^;]*)`))![1];
+    const pid = ((await call("POST", "ws/policies", { name: "Access control policy" }, undefined, cookie)).body as { id: string }).id;
+    const loaded = 1; // both devices loaded version 1
+    expect((await call("PATCH", `ws/policies/${pid}`, { name: "Access control policy v2", note: "Phone one: tightened scope", version: loaded }, undefined, cookie)).status).toBe(200);
+    const stale = await call("PATCH", `ws/policies/${pid}`, { name: "Access control policy (old copy)", note: "Phone two: edited an old copy", version: loaded }, undefined, cookie);
+    expect(stale.status).toBe(409);
+  });
+});

@@ -805,3 +805,21 @@ describe("SEC-12: password reset requests are rate limited per address", () => {
     clock += 61 * 60_000; expect((await ask("alex.kim@company.example")).status).toBe(202);
   });
 });
+
+describe("EDGE-18: signed in on two phones", () => {
+  it("each phone has its own session, both are listed, and signing out the others ends every other session at once", async () => {
+    const a = await account("alex.kim@company.example");
+    const b = await signIn("alex.kim@company.example"); const phone2 = cookieOf(b);
+    const list = (await call("GET", "me/security", {}, { cookie: a.cookie })).body as { sessions: { current: boolean }[] };
+    expect(list.sessions.length).toBe(2); expect(list.sessions.filter((x) => x.current)).toHaveLength(1);
+    expect((await call("GET", "auth/session", {}, { cookie: phone2 })).status).toBe(200);
+    // re-authentication is needed for this sensitive action; then the other phone is signed out
+    await call("POST", "me/reauth", { password: PW }, { cookie: a.cookie });
+    expect((await call("POST", "me/sessions/revoke-others", {}, { cookie: a.cookie })).status).toBeLessThan(300);
+    expect((await call("GET", "auth/session", {}, { cookie: phone2 })).status).toBe(401);
+    expect((await call("GET", "auth/session", {}, { cookie: a.cookie })).status).toBe(200);
+    // and signing out here as well leaves no session anywhere
+    await call("POST", "auth/sign-out", {}, { cookie: a.cookie });
+    expect((await call("GET", "auth/session", {}, { cookie: a.cookie })).status).toBe(401);
+  });
+});
