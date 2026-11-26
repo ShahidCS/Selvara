@@ -1300,7 +1300,7 @@ form:not(.rec-form):not([style*="gap"])>.field+*,form:not(.rec-form):not([style*
 .c-toolbar{display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:center;margin-bottom:var(--space-3)}
 .cgrid>*{flex:1 1 calc((100% - (var(--cols) - 1) * var(--grid-gap)) / var(--cols));min-width:min(100%,var(--card-min))}
 /* the content of a page-level scroll region is a stack with the section gap (B8: the KPI strip never touches the cards below it) */
-.page>.scroll{display:flex;flex-direction:column;gap:var(--section-gap)}
+.page>.scroll,.stack{display:flex;flex-direction:column;gap:var(--section-gap)}
 
 /* ---------- E1, E2: focus rings for the keyboard only; one selected style for tabs ---------- */
 :focus:not(:focus-visible){outline:none}
