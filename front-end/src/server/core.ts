@@ -5,6 +5,7 @@
    append-only audit log. Since slice 2a (docs/architecture/BACKEND_FOUNDATION.md) a session belongs to one company and the person's role comes
    from their membership there (or from platform staff), checked again on every request; join requests, lockout settings and the member list are
    per company. Handlers take a plain request and return a plain response, so they are tested without a network. */
+import { scalarText } from "@/server/text";
 import { sendMail } from "./mail";
 import { vendorPortalRoutes } from "./vendorportal";
 import { trustPublicRoutes } from "./trustpublic";
@@ -39,7 +40,7 @@ export const NO_COMPANY = "Your account is not an active member of any company y
 const THROTTLED = "Too many attempts. Wait a few minutes, then try again.";
 export const COOKIE = "__Host-sv";
 const MIN = 60_000;
-const s = (v: unknown, max = 300) => String(v ?? "").slice(0, max);
+const s = (v: unknown, max = 300) => scalarText(v).slice(0, max);
 const norm = (e: unknown) => s(e, 254).trim().toLowerCase();
 const PRIVILEGED = new Set(["admin", "super", "support"]);
 

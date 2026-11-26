@@ -6,6 +6,7 @@
 
    The database enforces it whatever this code does: with the platform flag, the company is visible only during a live session on a live grant,
    and restrictive policies refuse every platform write to company data. MemorySupport is the stand-in for the server tests. */
+import { scalarText } from "@/server/text";
 import { elevationBlock, supportGrantBlock, SUPPORT_GRANT_MAX_H } from "@/lib/rules";
 import type { Ctx, Req, Res } from "./core";
 import type { Db, Tx } from "./db";
@@ -209,7 +210,7 @@ export interface SupportHelpers {
 }
 const ok = (body?: unknown): Res => ({ status: body === undefined ? 204 : 200, body });
 const err = (status: number, error: string): Res => ({ status, body: { error } });
-const s = (v: unknown, max = 300) => String(v ?? "").slice(0, max);
+const s = (v: unknown, max = 300) => scalarText(v).slice(0, max);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const statusOf = (g: GrantRow, at: number): GrantStatus => (g.revokedAt !== null ? "Revoked" : g.expiresAt <= at ? "Expired" : "Live");
 export const NO_SESSION = "Open a support session first. It needs a live support grant from the company.";

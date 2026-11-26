@@ -2,6 +2,7 @@
    elevation (reason, ticket, 60 minutes at most) changes anything, and every company change is a request another super admin approves
    (docs/security/SOD_MATRIX.md sections 2 and 3). The database checks the elevation again for the company functions (migration 0006).
    Registered into core.ts's route table through `adminRoutes`, which receives core's helpers (no import cycle). */
+import { scalarText } from "@/server/text";
 import { sendMail } from "./mail";
 import { approvalBlock, companyBlock, elevationBlock, reasonBlock } from "@/lib/rules";
 import { isEmail } from "@/lib/security";
@@ -20,7 +21,7 @@ export interface AdminHelpers {
 }
 const ok = (body?: unknown): Res => ({ status: body === undefined ? 204 : 200, body });
 const err = (status: number, error: string): Res => ({ status, body: { error } });
-const s = (v: unknown, max = 300) => String(v ?? "").slice(0, max);
+const s = (v: unknown, max = 300) => scalarText(v).slice(0, max);
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HOUR = 3600_000;
 export const ELEVATE_FIRST = "Elevate to make changes.";

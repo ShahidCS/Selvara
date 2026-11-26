@@ -1,5 +1,6 @@
 /* Server-only. What every workspace module's routes share: which company roles may open which module (the same table the browser uses,
    data/roles.json), the acting person from the session, turning refusals into answers, and the company's members for owner pickers. */
+import { scalarText } from "@/server/text";
 import roles from "@/data/roles.json";
 import { REAUTH_MS } from "@/lib/accountSecurity";
 import type { Ctx, Req, Res } from "../core";
@@ -16,7 +17,7 @@ export const modAllowed = (role: string, mod: string): boolean => { const m = MO
 
 export const ok = (body?: unknown): Res => ({ status: body === undefined ? 204 : 200, body });
 export const err = (status: number, error: string): Res => ({ status, body: { error } });
-export const str = (v: unknown, max = 300) => String(v ?? "").slice(0, max);
+export const str = (v: unknown, max = 300) => scalarText(v).slice(0, max);
 export const txt = (v: unknown, max = 500) => str(v, max * 2).trim().slice(0, max);
 
 const afterCommit: ((d: Deps, a: Actor) => Promise<void>)[] = [];

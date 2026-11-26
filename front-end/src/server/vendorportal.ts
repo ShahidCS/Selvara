@@ -10,6 +10,7 @@
    - Files are not scanned for malware (no scanner is configured): their type and content are checked, they are stored privately and served
      to the company only through 60-second links.
    - Everything the vendor does is written to the company's audit log, attributed to the vendor contact (masked address). */
+import { scalarText } from "@/server/text";
 import { createHash, randomBytes } from "node:crypto";
 import questions from "@/data/vendorQuestions.json";
 import type { Req, Res } from "./core";
@@ -35,7 +36,7 @@ const LINK_DAYS = 30; const DAY = 86_400_000;
 const h = (v: string) => createHash("sha256").update(v).digest("hex");
 const ok = (body?: unknown, cookies?: string[]): Res => ({ status: body === undefined ? 204 : 200, body, cookies });
 const err = (status: number, error: string): Res => ({ status, body: { error } });
-const s = (v: unknown, max = 300) => String(v ?? "").slice(0, max).trim();
+const s = (v: unknown, max = 300) => scalarText(v).slice(0, max).trim();
 export const portalLink = (d: Deps, token: string) => `${d.site.origin}/vendor-portal#t=${token}`;
 const NO_MAIL = "This portal needs email, which is not set up yet. Ask your contact at the company to send the questionnaire again later.";
 const DEAD = "This link no longer works. Ask your contact at the company to send a new one.";
