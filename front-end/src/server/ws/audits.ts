@@ -324,7 +324,8 @@ export function auditRoutes(h: WsHelpers) {
     refuse(roleBlock(c.actor.role, "reading the audit log", "admin"));
     return tx(d, c, async (t) => ok(await fn(d, t, r.body, r.body)));
   });
-  const shape = (e: CompanyAuditEntry) => ({ seq: e.chainN, at: new Date(e.at).toISOString().slice(0, 16).replace("T", " "), actor: e.actor, action: e.action, target: e.target, cat: e.cat, hash: e.hash, prev: e.prevHash });
+  const shape = (e: CompanyAuditEntry) => ({ seq: e.chainN, at: new Date(e.at).toISOString().slice(0, 16).replace("T", " "), actor: e.actor, action: e.action, target: e.target, cat: e.cat, hash: e.hash, prev: e.prevHash,
+    ...(e.v ? { v: e.v } : {}), ...(e.piiHash ? { piiHash: e.piiHash } : {}), ...(e.redacted ? { redacted: true } : {}) });
   const logData = logRoute(async (_d, t) => ({
     entries: (await t.auditPage(null, 500)).map(shape), verification: (await t.get<{ at: string; by: string; firstBad: number | null; entries: number }>("audit-verify", "last"))?.data ?? null,
     packages: (await t.list<{ id: string; at: string; by: string; entries: number; sha: string }>("audit-package")).map((x) => x.data).reverse(),
@@ -353,7 +354,7 @@ export function auditRoutes(h: WsHelpers) {
     const rows = await newest(t);
     const cell = (v: unknown) => { let s = String(v ?? ""); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
     const content = format === "json" ? JSON.stringify(rows.map(shape), null, 2)
-      : ["chain_n,at,actor,action,target,cat,hash,prev_hash", ...rows.map((e) => [e.chainN, new Date(e.at).toISOString(), e.actor, e.action, e.target, e.cat, e.hash, e.prevHash].map(cell).join(","))].join("\r\n");
+      : ["chain_n,at,actor,action,target,cat,hash,prev_hash,hash_v,pii_hash,redacted", ...rows.map((e) => [e.chainN, new Date(e.at).toISOString(), e.actor, e.action, e.target, e.cat, e.hash, e.prevHash, e.v ?? 1, e.piiHash ?? "", e.redacted ? "yes" : ""].map(cell).join(","))].join("\r\n");
     await t.audit("auditlog.exported", `${rows.length} entries, ${format.toUpperCase()}`, "System");
     return { fileName: `workspace-audit-log.${format}`, type: format === "json" ? "application/json" : "text/csv", content };
   });
@@ -365,7 +366,7 @@ export function auditRoutes(h: WsHelpers) {
     await t.insert("audit-package", id, { id, at: at.slice(0, 16).replace("T", " "), by: t.actor.name, entries: rows.length, sha });
     await t.audit("evidence.package.generated", `${id}, ${rows.length} entries, SHA-256 ${sha}`, "System");
     return { fileName: `${id}.json`, content: JSON.stringify({ package: id, generated: at, generatedBy: t.actor.name, entries: rows, manifest: { algorithm: "SHA-256", entries: rows.length, sha256: sha, firstBad: await t.auditVerify() },
-      note: "Evidence package for an auditor. manifest.sha256 is the SHA-256 of JSON.stringify(entries) (compact, no spaces); each entry also carries the server's own hash chain." }, null, 2) };
+      note: "Evidence package for an auditor. manifest.sha256 is the SHA-256 of JSON.stringify(entries) (compact, no spaces); each entry also carries the server's own hash chain. Entries with v 2 hash piiHash (a salted hash of actor, target and client address) in place of those fields; redacted entries had a person erased (EDGE-19)." }, null, 2) };
   });
 
   return {

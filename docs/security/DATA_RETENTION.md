@@ -18,7 +18,7 @@ jurisdiction and per contract.
 3. **Erase or anonymise, never just hide.** When a period ends or an erasure request is granted, data is deleted, or, where a record must
    stay (an audit trail, an invoice), the personal data in it is irreversibly anonymised.
 4. **Integrity of the audit trail.** Audit logs are append-only and hash-chained. They are never edited to erase a person. Instead they
-   hold as little personal data as possible from the start, and personal data that must go is removed by **crypto-shredding** (section 5).
+   hold as little personal data as possible from the start, and personal data that must go is removed without breaking the chain (section 5).
 5. **Legal hold beats the schedule.** A hold placed by a company admin (or by the platform for a legal claim) stops deletion of the held
    kind until released (four-eyes), as the product already enforces (`team-hold`).
 6. **Backups follow.** Deleted data leaves backups by expiry of the backup cycle, never by restoring and editing a backup.
@@ -62,7 +62,7 @@ jurisdiction and per contract.
    - the auth user, password hash, authenticators, passkeys, recovery codes and sessions are deleted;
    - the profile is anonymised: the name becomes "Former member" plus a stable pseudonym, the email is removed;
    - workspace records keep their history but show the pseudonym in place of the name;
-   - audit entries keep the pseudonymous id; the person's name in them is removed by crypto-shredding (section 5);
+   - audit entries keep the pseudonymous id; the person's name, email address and client address in them are removed without breaking the chain (section 5);
    - the action is itself audited (`privacy.erasure.completed`) without the erased values.
 5. **Re-joining.** After erasure the email address may join again as a new person; nothing of the erased account returns.
 
@@ -73,15 +73,20 @@ are deleted, except what the law requires Selvara to keep (billing). Deletion is
 
 ## 5. Erasure and the hash-chained audit log
 
-The audit log's chain hashes each entry, so editing a past entry breaks verification by design. To reconcile erasure with integrity:
+The audit log's chain hashes each entry, so editing a past entry breaks verification by design. To reconcile erasure with integrity (owner's
+decision, 2026-11-26: this design in place of per-person encryption keys):
 
 1. **Minimise at source:** entries name people by their member id and display name only; no emails, addresses beyond the client IP, or
    free-text personal data where avoidable.
-2. **Crypto-shredding (target design):** the personal part of each entry (display names in `actor` and `target`) is stored encrypted under a
-   per-person key, and the chain hashes the ciphertext. Erasure destroys the person's key: the entries and the chain stay valid, and the
-   names become unreadable. Until this is built, erasure keeps audit entries as they are under Art. 17(3)(b) and (e), restricted to
-   admins and auditors, and the person is told so.
-3. Deleting a whole chain at the end of its period (or contract) is allowed and audited at the platform level.
+2. **Personal fields outside the chain hash (migration 0014, built):** from chain version 2, an entry's hash covers a salted hash of its
+   personal fields (actor name, free-text target, client address), with a random salt per entry, plus the fields that are not personal.
+   Erasure (`audit_redact_person`, platform super admins with a live elevation only) replaces the person's name with a pseudonym ("Former
+   member · M-…"), removes their email address and their client address, and deletes the salt. The chain still verifies; the erased values
+   can no longer be confirmed or guessed from the stored hash. Entries where someone else acted but the person is named keep that actor's
+   name and address; those fields are then no longer individually verifiable, which is recorded (`redacted_ms`).
+3. **Entries written before migration 0014 (chain version 1)** hash the personal fields directly and cannot be changed. Erasure keeps them as
+   they are under Art. 17(3)(b) and (e), restricted to admins and auditors, until their retention ends; the person is told so.
+4. Deleting a whole chain at the end of its period (or contract) is allowed and audited at the platform level.
 
 ## 6. Implementation status and gaps
 
@@ -90,7 +95,7 @@ The audit log's chain hashes each entry, so editing a past entry breaks verifica
 | Schedule, minimums, four-eyes shortening, legal hold (company workspace) | Built as configuration (`features/team/services/governance.ts`, `SOD_MATRIX` §14); production purge job not built (the demonstration previews only) |
 | Session, reset and code expiry | Built |
 | Account erasure and anonymisation | **Not built** (EDGE-19): needs the steps in section 3 |
-| Crypto-shredding of audit names | **Not built**: design in section 5 |
+| Erasable audit entries (section 5) | **Built** for entries written after migration 0014; older entries kept as section 5 says. Erasure itself: not built yet |
 | Purge job (server, skips holds, audited) | **Not built** |
 | Backups at most 35 days | Provider setting: to confirm |
 | Records of processing (Art. 30) | The product has a RoPA module for customers; Selvara's own RoPA to be written from this schedule |
