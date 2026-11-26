@@ -6,10 +6,10 @@
 [![Deploy staging](https://github.com/ShahidCS/Selvara/actions/workflows/deploy-staging.yml/badge.svg?branch=staging)](https://github.com/ShahidCS/Selvara/actions/workflows/deploy-staging.yml)
 ![Licence: proprietary](https://img.shields.io/badge/licence-proprietary%20(all%20rights%20reserved)-lightgrey)
 ![Node 20.9+](https://img.shields.io/badge/node-%E2%89%A520.9-339933)
-![Release: v0.3.1](https://img.shields.io/badge/release-v0.3.1-5b36e0)
+![Release: v0.3.2](https://img.shields.io/badge/release-v0.3.2-5b36e0)
 ![Status: server built, in review](https://img.shields.io/badge/status-server%20built%2C%20in%20review-blue)
 
-> **Status: v0.3.1 released (24 Nov 2026); production setup and review pending.** Every module runs on the server (Next.js API routes on Supabase Postgres with row level security per company, Supabase Auth with MFA). The same app also builds as a demonstration on synthetic in-browser data, deployed as a preview from the `staging` branch. Before relying on it in production: the owner setup in [docs/guides/SUPABASE.md](docs/guides/SUPABASE.md) and the security, compliance and management review. See [Project status](#project-status).
+> **Status: v0.3.2 released (26 Nov 2026); production setup and review pending.** Every module runs on the server (Next.js API routes on Supabase Postgres with row level security per company, Supabase Auth with MFA). The same app also builds as a demonstration on synthetic in-browser data, deployed as a preview from the `staging` branch. Before relying on it in production: the owner setup in [docs/guides/SUPABASE.md](docs/guides/SUPABASE.md) and the security, compliance and management review. See [Project status](#project-status).
 
 ![Selvara overview dashboard](docs/screenshots/01-overview.png)
 

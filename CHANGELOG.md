@@ -4,6 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-26
+
+Layout and consistency fixed once in shared components (design brief parts A to K), the full framework library reinstated from the original sources, CSP violation reporting, more security headers and a sign-in fix. **Deploy note:** production needs migration `0012_csp_reports.sql` (schema version 12) before this release; it is already applied there. Staging runs this version.
+
 ### Changed
 - Your account (demo build): the preview tabs and the account cards no longer sit inside an outer card (design brief C6), matching the production page.
 - Dialogs: every choice inside a dialog now uses the shared listbox, which opens under its field and never covers the dialog (design brief G1). This covers about 50 fields in 26 dialogs, among them risk, policy, AI governance, vendor, billing, rates, user and MFA reset forms, and the owner picker. Page forms keep the browser's own dropdown.
