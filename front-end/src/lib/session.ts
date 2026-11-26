@@ -7,7 +7,7 @@
      one-hour session, the second step shows its own code on screen, and the shared password cannot be changed or reset.
    Passwords are compared as salted SHA-256 hashes here; the server uses a slow KDF (Argon2id). Rules: docs/security/SOD_MATRIX.md section 12. */
 import { clearSessionWidths } from "./columnWidths";
-import { nameBlock } from "./rules";
+import { nameBlock, normaliseName } from "./rules";
 import { ROLES, roleOf, setSessionPerson } from "./rbac";
 import { newSecret, otpauthUri, verifyTotp } from "./totp";
 import { checkRegistration, newChallenge, verifyAssertion, type StoredPasskey } from "./webauthn";
@@ -68,7 +68,7 @@ export function resetMembers() { MEMBERS = []; try { localStorage.removeItem(KEY
 export interface JoinInput { name: string; email: string; password: string; company?: string; /** Production: the token from an invitation link (`/login#invite=…`). */ invite?: string }
 /** Ask to join as an Employee. The answer never says whether the email is already known (no account enumeration); a duplicate is ignored. */
 export async function requestToJoin(input: JoinInput): Promise<void> {
-  const name = clampText(input.name, 80); const email = norm(input.email);
+  const name = normaliseName(clampText(input.name, 80)); const email = norm(input.email);
   const bad = nameBlock(name); if (bad) throw new Error(bad);
   if (!isEmail(email)) throw new Error("Enter a valid work email address.");
   const pw = checkPassword(String(input.password ?? ""), { email, name });

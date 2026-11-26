@@ -13,7 +13,7 @@ import { appLabel, CHALLENGE, CUSTOM_BOUNDS, LOCKOUT, MFA, REAUTH_MS, RESET, typ
 import { checkPassword, POLICY } from "@/lib/credentials";
 import { IP_POLICY, LEVEL_LABEL, REPUTATION } from "@/lib/ipGuard";
 import { generateRecoveryCodes } from "@/lib/me";
-import { approvalBlock, INVITE_TTL_H, isAssignableRole, isPrivilegedRole, nameBlock, reasonBlock, ROLE_REQUEST_TTL_H, roleChangeBlock, secondAdminBlock } from "@/lib/rules";
+import { approvalBlock, normaliseName, INVITE_TTL_H, isAssignableRole, isPrivilegedRole, nameBlock, reasonBlock, ROLE_REQUEST_TTL_H, roleChangeBlock, secondAdminBlock } from "@/lib/rules";
 import { isEmail } from "@/lib/security";
 import { checkRegistration, verifyAssertion } from "@/lib/webauthn";
 import { randomId, same, seal, sha256Hex, unseal } from "./crypto";
@@ -301,7 +301,8 @@ const signOut: H = async (d, r) => {
  *  probed. A new person's account stays unconfirmed in Supabase (it cannot sign in) until an admin of that company approves; a person who is
  *  already active elsewhere keeps their password and gets a pending membership. Platform staff cannot join a company this way. */
 const join: H = async (d, r) => {
-  const name = s(r.body.name, 80).trim(); const email = norm(r.body.email); const password = s(r.body.password, 1024); const code = s(r.body.company, 40).trim().toLowerCase();
+  // EDGE-5: the name in NFC, at most 80 characters (never half an emoji)
+  const name = normaliseName(Array.from(s(r.body.name, 400)).slice(0, 80).join("")); const email = norm(r.body.email); const password = s(r.body.password, 1024); const code = s(r.body.company, 40).trim().toLowerCase();
   const invite = s(r.body.invite, 100).trim();
   const bad = nameBlock(name); if (bad) return err(400, bad);
   if (!isEmail(email)) return err(400, "Enter a valid work email address.");
