@@ -45,3 +45,19 @@ test("zoom to 200% and 400% (640 and 320 CSS px wide): no workspace page scrolls
     await s.close();
   }
 });
+
+test("an Arabic phone in an extreme time zone: the English UI stays consistent (Western digits, en dates, left to right) and nothing breaks", async ({ browser }, ti) => {
+  for (const [locale, timezoneId] of [["ar-EG", "Pacific/Kiritimati"], ["ar-SA", "Pacific/Pago_Pago"]] as const) {
+    const ctx = await browser.newContext({ baseURL: ti.project.use.baseURL, viewport: { width: 390, height: 844 }, locale, timezoneId });
+    await ctx.addInitScript(() => localStorage.setItem("assurance.v1", JSON.stringify({ role: "admin", collapsed: false, signedIn: true, tourDone: true })));
+    const p = await ctx.newPage(); const errors: string[] = []; p.on("pageerror", (e) => errors.push(e.message));
+    for (const path of ["/ws/overview", "/ws/issues", "/ws/audits"]) {
+      await p.goto(path); await expect(p.locator("main#content h1").first()).toBeVisible();
+      const text = await p.locator("main#content").innerText();
+      expect(text, `${locale} ${path}`).not.toMatch(/[٠-٩۰-۹]/); // no Arabic-Indic digits mixed into English text
+      expect(await p.evaluate(() => document.documentElement.dir || "ltr")).toBe("ltr");
+    }
+    expect(errors).toEqual([]);
+    await ctx.close();
+  }
+});
