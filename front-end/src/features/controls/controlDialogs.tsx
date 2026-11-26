@@ -4,7 +4,7 @@ import { bumpData } from "@/lib/store";
 import { wsLog } from "@/lib/audit";
 import { getActor } from "@/lib/sod";
 import { downloadText } from "@/lib/format";
-import { StatusChip, SelectList } from "@/components/ui";
+import { BusyButton, StatusChip, SelectList } from "@/components/ui";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import * as svc from "@/features/controls/services/controls";
 import { uiMessage } from "@/lib/grcSod";
@@ -53,7 +53,7 @@ export function openAttestModal(L: LayerApi, id: string) {
     } catch (e) { L.toast(uiMessage(e), false); }
   };
   L.openModal("Record attestation, " + id, <AttestBody h={h} c={c} />,
-    <><button className="btn btn-secondary" onClick={L.closeLayer}>Cancel</button><button className="btn btn-primary" onClick={submit}>Attest</button></>);
+    <><button className="btn btn-secondary" onClick={L.closeLayer}>Cancel</button><BusyButton onClick={submit}>Attest</BusyButton></>);
 }
 
 /* ---------------- add-mapping modal ---------------- */
@@ -84,5 +84,5 @@ export function openMappingModal(L: LayerApi, id: string) {
     } catch (e) { L.toast(uiMessage(e), false); }
   };
   L.openModal("Add mapping, " + id, <MappingBody h={h} />,
-    <><button className="btn btn-secondary" onClick={L.closeLayer}>Cancel</button><button className="btn btn-primary" onClick={submit}>Add mapping</button></>);
+    <><button className="btn btn-secondary" onClick={L.closeLayer}>Cancel</button><BusyButton onClick={submit}>Add mapping</BusyButton></>);
 }

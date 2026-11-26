@@ -19,3 +19,17 @@ describe("EDGE-10/11: network failures and timeouts", () => {
     expect(uiMessage(new Error("TypeError: x is undefined"))).toBe("Something went wrong. Please try again.");
   });
 });
+
+describe("EDGE-11: a slow save is never sent twice", () => {
+  it("a second click while the first save is in flight does nothing; after it finishes, a new click works", async () => {
+    const { oneAtATime, BusyButton } = await import("@/components/ui");
+    const flag = { current: false }; const seen: boolean[] = []; let calls = 0; let release!: () => void;
+    const save = () => { calls++; return new Promise<void>((r) => { release = r; }); };
+    const first = oneAtATime(flag, save, (b) => seen.push(b));
+    await oneAtATime(flag, save, (b) => seen.push(b)); // the double click
+    expect(calls).toBe(1);
+    release(); await first; expect(seen).toEqual([true, false]);
+    const again = oneAtATime(flag, save); release(); await again; expect(calls).toBe(2);
+    expect(typeof BusyButton).toBe("function");
+  });
+});

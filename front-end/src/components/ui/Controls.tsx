@@ -1,4 +1,4 @@
-import { Children, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Children, useEffect, useRef, useState, type ButtonHTMLAttributes, type KeyboardEvent, type ReactNode } from "react";
 
 /** Toggle switch (`role="switch"`). The label is always visible text; the state is also written (On or Off) so it never rests on position or colour alone. */
 export function Switch({ checked, onChange, label, id, disabled, hint }: { checked: boolean; onChange: (v: boolean) => void; label: string; id?: string; disabled?: boolean; hint?: string }) {
@@ -107,4 +107,17 @@ export function SelectList({ id, value, onChange, children, disabled, className,
   });
   return <Listbox id={id} label={ariaLabel} value={String(value)} options={options} disabled={disabled} className={className} title={title} describedBy={describedBy}
     invalid={invalid === true || invalid === "true"} focusFirst={focus !== undefined && focus !== false} onChange={(v) => onChange?.({ target: { value: v } })} />;
+}
+
+/** EDGE-11: a button whose action takes time (a save over a slow connection). While the action runs it is disabled and busy, and a second click
+ *  (also one in the same render, through a ref) does nothing, so a slow save is never sent twice. */
+/** Runs `fn` unless a run is already in flight (the flag is a ref, so it holds within one render); reports busy on and off. */
+export async function oneAtATime(flag: { current: boolean }, fn: () => unknown, busy: (on: boolean) => void = () => {}): Promise<void> {
+  if (flag.current) return; flag.current = true; busy(true);
+  try { await fn(); } finally { flag.current = false; busy(false); }
+}
+export function BusyButton({ onClick, children, className = "btn btn-primary", busyLabel, ...rest }: Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onClick"> & { onClick: () => unknown; busyLabel?: string }) {
+  const [busy, setBusy] = useState(false); const inFlight = useRef(false);
+  const run = () => oneAtATime(inFlight, onClick, setBusy);
+  return <button type="button" {...rest} className={className} disabled={busy || rest.disabled} aria-busy={busy || undefined} onClick={run}>{busy && busyLabel ? busyLabel : children}</button>;
 }
