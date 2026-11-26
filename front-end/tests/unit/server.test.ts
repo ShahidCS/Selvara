@@ -169,6 +169,25 @@ describe("requests to join and reset", () => {
   });
 });
 
+describe("SEC-17: reset links expire and die when the password changes", () => {
+  it("a link works only within 60 minutes of the request", async () => {
+    await account("alex.kim@company.example");
+    await call("POST", "auth/password/reset-request", { email: "alex.kim@company.example" });
+    const token = auth.outbox.at(-1)!.token;
+    clock += 59 * 60_000; expect((await call("GET", `auth/password/reset/${token}`)).body).toEqual({ valid: true });
+    clock += 2 * 60_000; expect((await call("GET", `auth/password/reset/${token}`)).body).toEqual({ valid: false });
+  });
+  it("an unused link stops working once the password is changed another way", async () => {
+    const a = await account("alex.kim@company.example");
+    await call("POST", "auth/password/reset-request", { email: "alex.kim@company.example" });
+    const token = auth.outbox.at(-1)!.token;
+    expect((await call("GET", `auth/password/reset/${token}`)).body).toEqual({ valid: true });
+    expect((await call("POST", "me/password", { current: PW, next: NEW }, { cookie: a.cookie })).status).toBe(204);
+    expect((await call("GET", `auth/password/reset/${token}`)).body).toEqual({ valid: false });
+    expect((await call("POST", "auth/password/reset", { token, code: a.codes[1], password: "Another-strong-Pass-35" })).status).toBe(400);
+  });
+});
+
 describe("account endpoints", () => {
   it("security view, re-authentication window for new codes, password change ends other sessions", async () => {
     const a = await account("alex.kim@company.example"); const b = await signIn("alex.kim@company.example");

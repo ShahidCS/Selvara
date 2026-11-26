@@ -345,6 +345,7 @@ const resetRequest: H = async (d, r) => {
   if (!(await allow(d, r.ip, "reset", RESET.MAX_PER_HOUR, 60 * MIN))) return err(429, "Too many reset requests from your network. Try again in an hour.");
   const p = await d.store.profileByEmail(email);
   if (p && p.status === "Active" && (await allow(d, "acct:" + p.id, "reset", RESET.MAX_PER_HOUR, 60 * MIN))) {
+    await d.store.kvSet("resetReq", p.id, d.now(), RESET.LINK_MS); // SEC-17: the server's own record of the request
     await d.auth.sendResetEmail(email, `${d.site.origin}/login`);
     await notify(d, p.id, "A password reset was requested for your account. If this was not you, you can ignore it: your password has not changed.");
     await audit(d, r, actorOf(p, await accessAtSignIn(d, p.id)), "auth.password.reset_requested", "Password reset link requested by email");
@@ -357,7 +358,10 @@ async function recoveryOf(d: Deps, token: unknown): Promise<{ userId: string; t:
     const t = JSON.parse(Buffer.from(s(token, 8192), "base64url").toString()) as { access: string; refresh: string };
     if (typeof t.access !== "string" || typeof t.refresh !== "string") return null;
     const used = await sha256Hex(t.access); if (await d.store.kvGet("resetUsed", used)) return null;
-    const userId = await d.auth.userOfRecovery(t); return userId ? { userId, t, used } : null;
+    const userId = await d.auth.userOfRecovery(t); if (!userId) return null;
+    // SEC-17: only within RESET.LINK_MS of a request this server recorded, and never after the password has changed since
+    const askedAt = await d.store.kvGet<number>("resetReq", userId); if (!askedAt || d.now() - askedAt > RESET.LINK_MS) return null;
+    return { userId, t, used };
   } catch { return null; }
 }
 const resetCheck: H = async (d, r) => ok({ valid: !!(await recoveryOf(d, r.path[3])) });
@@ -371,7 +375,7 @@ const resetDo: H = async (d, r) => {
   const second = (/^\d{6}$/.test(code) && (await d.auth.verifyTotp(rec.t, factor, code))) || (await redeemRecovery(d, rec.userId, code)) >= 0;
   if (!second) { await d.store.kvSet("resetTries", rec.used, tries + 1, RESET.TTL_MS * 4); return err(400, tries + 1 >= RESET.CODE_TRIES ? "Too many wrong codes. Ask for a new link." : "That code is not correct."); }
   const pw = checkPassword(s(r.body.password, 1024), { email: p.email, name: p.person }); if (!pw.ok) return err(400, pw.errors[0] || "Choose a stronger password.");
-  await d.auth.setPassword(p.id, s(r.body.password, 1024)); await d.store.kvSet("resetUsed", rec.used, 1, 24 * 60 * MIN);
+  await d.auth.setPassword(p.id, s(r.body.password, 1024)); await d.store.kvSet("resetUsed", rec.used, 1, 24 * 60 * MIN); await d.store.kvDel("resetReq", p.id);
   await d.auth.signOut(rec.t);
   let ended = 0; for (const x of await d.store.sessionsOf(p.id)) if (!x.revokedAt) { ended++; await d.store.updateSession(x.idHash, { revokedAt: d.now(), revokedWhy: "Password reset" }); }
   await d.store.kvDel("lock", p.email);
@@ -426,7 +430,7 @@ const changePassword = signed(async (d, r, { s: me, p, a }) => {
   await d.auth.signOut(res);
   const next = s(r.body.next, 1024); const pw = checkPassword(next, { email: p.email, name: p.person }); if (!pw.ok) return err(400, pw.errors[0] || "Choose a stronger password.");
   if (next === s(r.body.current, 1024)) return err(400, "Choose a password you are not using now.");
-  await d.auth.setPassword(p.id, next); await d.store.kvSet("reauth", me.idHash, d.now(), REAUTH_MS);
+  await d.auth.setPassword(p.id, next); await d.store.kvSet("reauth", me.idHash, d.now(), REAUTH_MS); await d.store.kvDel("resetReq", p.id); // SEC-17: outstanding reset links die
   let ended = 0; for (const x of await d.store.sessionsOf(p.id)) if (!x.revokedAt && x.idHash !== me.idHash) { ended++; await d.store.updateSession(x.idHash, { revokedAt: d.now(), revokedWhy: "Password changed" }); }
   await notify(d, p.id, `Your password was changed${ended ? ` and ${ended} other session${ended === 1 ? " was" : "s were"} signed out` : ""}. If this was not you, reset it now.`);
   await audit(d, r, actorOf(p, a), "auth.password.changed", "Password changed after re-entering the current one"); return ok();
