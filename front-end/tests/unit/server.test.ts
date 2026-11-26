@@ -627,8 +627,10 @@ describe("failure logging (a 500 can be diagnosed from the function logs, withou
     expect(JSON.parse(String(spy.mock.calls[0][0]))).toEqual({ level: "warn", event: "auth.sign-in.refused", reason: "auth-refused", code: "email_not_confirmed", status: 400, message: "Email not confirmed for [email]" });
     const r = await call("POST", "auth/sign-in", { email: "nobody@example.test", password: "Wrong-password-12" });
     expect(r.status).toBe(401);
-    const last = JSON.parse(String(spy.mock.calls.at(-1)![0]));
-    expect(last).toEqual({ level: "warn", event: "auth.sign-in.refused", reason: "no-profile" });
+    const lines = spy.mock.calls.map((c) => JSON.parse(String(c[0])) as Record<string, unknown>);
+    expect(lines.find((l) => l.event === "auth.sign-in.refused" && l.reason === "no-profile")).toEqual({ level: "warn", event: "auth.sign-in.refused", reason: "no-profile" });
+    // SEC-8: the failed attempt is a security event with the address and a keyed hash of the email, never the email itself
+    expect(lines.find((l) => l.event === "auth.sign-in.failed")).toEqual({ level: "warn", at: expect.any(String), event: "auth.sign-in.failed", route: "POST auth/sign-in", ip: "198.51.100.7", subject: expect.stringMatching(/^[0-9a-f]{16}$/) });
     expect(JSON.stringify(spy.mock.calls)).not.toContain("nobody@example.test");
   });
 
@@ -739,5 +741,37 @@ describe("Support access (slice 3b): customer grants, read-only support sessions
     expect((await call("POST", "admin/elevation", { reason: "Customer onboarding for a new contract", ticket: "OPS-101", minutes: 30 }, { cookie: dana.cookie })).status).toBe(200);
     expect((await open(dana.cookie)).status).toBe(409);
     expect((await call("POST", "admin/elevation/end", {}, { cookie: dana.cookie })).status).toBe(204);
+  });
+});
+
+describe("SEC-8: security events are logged with time, who and address, and nothing secret", () => {
+  it("failed sign-ins and second steps, locks, permission denials, invalid sessions and rate limits", async () => {
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const events = () => spy.mock.calls.map((c) => JSON.parse(String(c[0])) as Record<string, unknown>).filter((l) => typeof l.at === "string");
+    const emp = await account("sam.lee@company.example", "employee", "Sam Lee");
+    // a wrong password for a known account names the user id
+    await call("POST", "auth/sign-in", { email: "sam.lee@company.example", password: "Not-the-password-99" }, { ip: "203.0.113.5" });
+    expect(events()).toContainEqual(expect.objectContaining({ event: "auth.sign-in.failed", ip: "203.0.113.5", userId: expect.any(String) }));
+    // wrong second-step codes, until the account locks
+    const st = await call("POST", "auth/sign-in", { email: "sam.lee@company.example", password: PW }, { ip: "203.0.113.6" });
+    const ticket = (st.body as { ticket: string }).ticket;
+    for (let i = 0; i < 5; i++) await call("POST", "auth/sign-in/verify", { ticket, code: "000000" }, { ip: "203.0.113.6" });
+    expect(events()).toContainEqual(expect.objectContaining({ event: "auth.second-step.failed", ip: "203.0.113.6" }));
+    expect(events()).toContainEqual(expect.objectContaining({ event: "auth.account.locked", ip: "203.0.113.6", userId: expect.any(String) }));
+    // a company admin's route, asked for by an employee: permission denied, with a session reference (not the cookie)
+    clock += 6 * 60_000;
+    const r = await call("GET", "team/join-requests", {}, { cookie: emp.cookie, ip: "203.0.113.7" });
+    expect(r.status).toBe(403);
+    expect(events()).toContainEqual(expect.objectContaining({ event: "access.denied", route: "GET team/join-requests", status: 403, ip: "203.0.113.7", session: expect.stringMatching(/^[0-9a-f]{16}$/) }));
+    // a session that is no longer valid
+    await call("GET", "auth/session", {}, { cookie: "A".repeat(43), ip: "203.0.113.8" });
+    expect(events()).toContainEqual(expect.objectContaining({ event: "auth.session.invalid", route: "GET auth/session", status: 401, ip: "203.0.113.8" }));
+    // rate limited
+    for (let i = 0; i < 5; i++) await call("POST", "auth/join-requests", { name: "Test Person", email: `t${i}@example.test`, password: PW, company: "acme-eu" }, { ip: "203.0.113.9" });
+    expect(events()).toContainEqual(expect.objectContaining({ event: "rate.limited", route: "POST auth/join-requests", status: 429, ip: "203.0.113.9" }));
+    // every event has a time, and no line holds a password, an email address or a cookie
+    for (const e of events()) expect(Date.parse(String(e.at))).not.toBeNaN();
+    const all = JSON.stringify(spy.mock.calls);
+    for (const secret of [PW, "Not-the-password-99", "sam.lee@company.example", emp.cookie, "A".repeat(43)]) expect(all).not.toContain(secret);
   });
 });
