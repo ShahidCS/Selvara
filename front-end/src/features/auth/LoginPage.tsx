@@ -302,8 +302,9 @@ function JoinForm({ onBack, invite = "" }: { onBack: () => void; invite?: string
   const [nameErr, setNameErr] = useState(""); const [pwErr, setPwErr] = useState("");
   const nameRef = useRef<HTMLInputElement>(null); const emRef = useRef<HTMLInputElement>(null); const pwRef = useRef<HTMLInputElement>(null); const doneRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => { (sent ? doneRef.current : nameRef.current)?.focus(); }, [sent]);
+  const inFlight = useRef(false); // EDGE-2: a ref, not state: a second tap in the same render must not send a second request
   const submit = async (e: React.FormEvent) => {
-    e.preventDefault(); if (busy) return;
+    e.preventDefault(); if (busy || inFlight.current) return;
     // check each field where it is, in order, and put focus on the first one to fix (the service checks the same rules again)
     const nb = nameBlock(name); setNameErr(nb ?? "");
     if (nb) { nameRef.current?.focus(); return; }
@@ -311,9 +312,9 @@ function JoinForm({ onBack, invite = "" }: { onBack: () => void; invite?: string
     // an invitation may use an existing account's current password, which the service checks itself; a new password is checked here first
     const pc = invite ? null : checkPassword(pw, { email: em, name }); const pe = !pc || pc.ok ? "" : pc.errors[0] ?? "Choose a stronger password."; setPwErr(pe);
     if (pe) { pwRef.current?.focus(); return; }
-    setBusy(true); setErr("");
+    inFlight.current = true; setBusy(true); setErr("");
     try { await auth.requestToJoin({ name, email: em, password: pw, ...(DEMO_ENABLED ? {} : invite ? { invite } : { company }) }); setPw(""); setSent(true); } catch (x) { setErr(msg(x, "Could not send the request.")); }
-    setBusy(false);
+    finally { inFlight.current = false; setBusy(false); }
   };
   if (sent && invite) return (
     <>

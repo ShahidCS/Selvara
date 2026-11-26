@@ -253,7 +253,7 @@ const aws: Provider = {
 const OKTA_SCOPES = "okta.users.read okta.apps.read okta.roles.read";
 async function oktaToken(c: Ctx, cfg: Config) {
   const url = `https://${cfg.domain}/oauth2/v1/token`;
-  const assertion = jwtRS256({ iss: cfg.clientId, sub: cfg.clientId, aud: url, iat: Math.floor(c.now / 1000), exp: Math.floor(c.now / 1000) + 300, jti: `${c.now}-${Math.random().toString(36).slice(2)}` }, c.secret(cfg.privateKey), cfg.kid);
+  const assertion = jwtRS256({ iss: cfg.clientId, sub: cfg.clientId, aud: url, iat: Math.floor(c.now / 1000), exp: Math.floor(c.now / 1000) + 300, jti: crypto.randomUUID() /* SEC-26: unpredictable and unique, never Math.random */ }, c.secret(cfg.privateKey), cfg.kid);
   const r = await c.net(url, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" }, body: new URLSearchParams({ grant_type: "client_credentials", scope: OKTA_SCOPES, client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer", client_assertion: assertion }).toString() });
   if (r.status === 400 && /dpop/i.test(r.text)) throw new ProviderError("Okta requires DPoP for this app. Turn off \"Require Demonstrating Proof of Possession\" in the app's settings, then try again.", 400);
   if (r.status !== 200) failed("Getting an Okta token", r);

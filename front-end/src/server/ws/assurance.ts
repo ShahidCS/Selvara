@@ -5,7 +5,7 @@
    with synthetic ones, nothing is seeded by hashing, a manual test's result is recorded by a person, and there is no simulated ticketing. Also: frameworks start out of
    scope, only one exception request may be pending per control and its requester may withdraw it, custom control ids never take a library id. */
 import {
-  CONTROL_STATUSES, EXCEPTION_TTL_H, FW_KINDS, FW_MAX_LINES, TEST_RESULTS, attestBlock, decideExceptionBlock, exceptionInputBlock, exceptionStateOf, fwAddBlock,
+  endOfLocalDay, CONTROL_STATUSES, EXCEPTION_TTL_H, FW_KINDS, FW_MAX_LINES, TEST_RESULTS, attestBlock, decideExceptionBlock, exceptionInputBlock, exceptionStateOf, fwAddBlock,
   fwAdminBlock, fwIdFor, fwNaBlock, isoDayOf, manageControlsBlock, requestExceptionBlock, runTestsBlock, setStatusBlock, statusFromTests, textBlock,
 } from "@/lib/rulesWs";
 import { approvalBlock, reasonBlock } from "@/lib/rules";
@@ -15,7 +15,7 @@ import { auditorScope, scopeGuard, withoutMemberIds, type AuditorScope } from ".
 import { approvalsView, invalid, memberRef, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
 import { WsConflict, type Actor, type Rec, type WsTx } from "./store";
 
-export interface Exception { id: string; requestedBy: string; requestedById: string; at: string; reason: string; compensating: string; expires: string; approvalId: string; expiryLogged?: boolean }
+export interface Exception { id: string; requestedBy: string; requestedById: string; at: string; reason: string; compensating: string; expires: string; /** EDGE-16: the UTC instant the expiry day ends where it was chosen */ expiresAt?: number; approvalId: string; expiryLogged?: boolean }
 export interface Control { id: string; title: string; domain: string; owner: string; ownerId: string; status: string; map: Record<string, string[]>; custom?: boolean; library?: boolean; attestation?: { by: string; byId: string; at: string; note: string }; exceptions?: Exception[] }
 export interface Test { id: string; name: string; source: string; controls: string[]; logic: string; result: string; cadence: string; last: string; items: { item: string; result: string }[]; note?: string; /** Automated (integration) tests: when the provider last answered. */ syncedAt?: number }
 /** An integration's automated test (server/ws/integrations.ts): recorded only by its sync, never by hand. */
@@ -82,7 +82,7 @@ async function controlsData(d: Deps, t: WsTx) {
     let changed = false;
     for (const x of c.data.exceptions ?? []) {
       const a = aps.find((y) => y.id === x.approvalId);
-      if (!x.expiryLogged && a?.status === "Approved" && exceptionStateOf(a.status, x.expires, today) === "Expired") { x.expiryLogged = true; changed = true; await t.audit("control.exception.expired", `${c.id} ${x.id} expired ${x.expires}`); }
+      if (!x.expiryLogged && a?.status === "Approved" && exceptionStateOf(a.status, x.expires, today, { now: t.now, expiresAt: x.expiresAt }) === "Expired") { x.expiryLogged = true; changed = true; await t.audit("control.exception.expired", `${c.id} ${x.id} expired ${x.expires}`); }
     }
     if (changed) await t.update("control", c.id, c.data, c.version);
   }
@@ -247,11 +247,11 @@ export function assuranceRoutes(h: WsHelpers) {
       if (action === "exceptions") {
         refuse(requestExceptionBlock(me.role));
         const input = { reason: txt(r.body.reason, 500), compensating: txt(r.body.compensating, 500), expires: str(r.body.expires, 10) };
-        const bad = exceptionInputBlock(input, t.now); if (bad) invalid(bad);
+        const bad = exceptionInputBlock(input, t.now, t.actor.tz); if (bad) invalid(bad);
         const aps = await t.approvals(EXC);
-        if ((x.exceptions ?? []).some((e) => exceptionStateOf(aps.find((a) => a.id === e.approvalId)?.status, e.expires, isoDayOf(t.now)) === "Pending")) invalid("An exception request for this control is already pending.");
+        if ((x.exceptions ?? []).some((e) => exceptionStateOf(aps.find((a) => a.id === e.approvalId)?.status, e.expires, isoDayOf(t.now), { now: t.now, expiresAt: e.expiresAt }) === "Pending")) invalid("An exception request for this control is already pending.");
         const a = await t.request({ kind: "control.exception", title: `Exception for ${id} ${x.title}`, subject: id, payload: { controlId: id, expires: input.expires }, needs: 1, approverRoles: ["admin", "owner"], forbid: [x.ownerId], ttlMs: EXCEPTION_TTL_H * 3600_000 });
-        (x.exceptions ??= []).push({ id: `EX-${await t.next("exception", 0)}`, requestedBy: me.name, requestedById: me.id, at: isoDayOf(t.now), ...input, approvalId: a.id });
+        (x.exceptions ??= []).push({ id: `EX-${await t.next("exception", 0)}`, requestedBy: me.name, requestedById: me.id, at: isoDayOf(t.now), ...input, expiresAt: endOfLocalDay(input.expires, t.actor.tz), approvalId: a.id });
         await t.update("control", id, x, rec.version); await t.audit("control.exception.requested", `${id} ${a.id} until ${input.expires} by ${me.name}`);
         return ok(a.id);
       }
@@ -298,7 +298,7 @@ export function assuranceRoutes(h: WsHelpers) {
         await t.audit("control.exception.withdrawn", `${id} ${x.id} by ${me.name}`);
         return ok(true);
       }
-      const state = exceptionStateOf(a.status === "Pending" && a.expiresAt <= t.now ? "Expired" : a.status, x.expires, isoDayOf(t.now));
+      const state = exceptionStateOf(a.status === "Pending" && a.expiresAt <= t.now ? "Expired" : a.status, x.expires, isoDayOf(t.now), { now: t.now, expiresAt: x.expiresAt });
       refuse(decideExceptionBlock(state, me.role, me.id === x.requestedById || me.id === rec.data.ownerId),
         approvalBlock({ key: me.id, base: me.role }, { status: a.status, expiresAt: a.expiresAt, approverRoles: a.approverRoles, requestedBy: a.requestedBy, forbid: a.forbid, votes: a.votes.map((v) => v.by) }, t.now));
       const reason = txt(r.body.reason, 300); const bad = reasonBlock(reason); if (bad) invalid(bad);

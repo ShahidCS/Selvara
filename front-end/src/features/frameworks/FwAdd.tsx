@@ -61,7 +61,7 @@ export function FwAdd({ onAdded }: { onAdded: (id: string) => void }) {
         <label className="field" style={{ margin: 0 }}><span className="flab">Kind</span><select className="select" value={A.kind} onChange={(e) => set({ kind: e.target.value })}>{["Standard", "Framework", "Regulation"].map((k) => <option key={k}>{k}</option>)}</select></label>
         <label className="field" style={{ margin: 0 }}><span className="flab">Region</span><input className="input" value={A.region} onChange={(e) => set({ region: e.target.value })} placeholder="Global" /></label>
       </div>
-      <div className="field" style={{ margin: 0 }}><label htmlFor="fa-text">Requirements, one per line <Req /></label><textarea className="input" id="fa-text" required rows={6} style={{ resize: "vertical" }} value={A.text} onChange={(e) => set({ text: e.target.value })} {...inv("text")} />{errLine("text")}</div>
+      <div className="field" style={{ margin: 0 }}><label htmlFor="fa-text">Requirements, one per line <Req /></label><textarea className="input" id="fa-text" required rows={6} maxLength={60300} style={{ resize: "vertical" }} value={A.text} onChange={(e) => set({ text: e.target.value })} {...inv("text")} />{errLine("text")}</div>
       {rows.length ? (
         <>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: 4 }}>

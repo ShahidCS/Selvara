@@ -10,6 +10,7 @@
      recovery codes are removed and every session ends; they and the company's log are told.
    - Sign-in blocks are listed for staff and lifted by an elevated super admin with a reason.
    Everything is written to the platform's log; billing changes to a company also to the company's own log. */
+import { scalarText } from "@/server/text";
 import { mailConfigured, sendMail } from "./mail";
 import { reasonBlock } from "@/lib/rules";
 import { applyFinance, appliedRate, twoDecimals, type Payments, stripeSignatureOk, DAY, FINANCE_DUAL_USD_CENTS, financeBlock, issueFor, METHODS, money, outstanding, priceList, ratesOf, readFeeds, judge, REFERENCE_RATES, shown, stripeFromEnv, usdCents, CYCLES,
@@ -26,7 +27,7 @@ type H = (d: Deps, r: Req) => Promise<Res>;
 export interface Admin8Helpers { signed: (h: (d: Deps, r: Req, c: Ctx) => Promise<Res>) => H; entry: (d: Deps, r: Req, p: Ctx["p"], a: Ctx["a"], action: string, target: string) => AuditRow }
 const ok = (body?: unknown): Res => ({ status: body === undefined ? 204 : 200, body });
 const err = (status: number, error: string): Res => ({ status, body: { error } });
-const s = (v: unknown, max = 300) => String(v ?? "").slice(0, max).trim();
+const s = (v: unknown, max = 300) => scalarText(v).slice(0, max).trim();
 const TICKET = /^[A-Z]{2,6}-\d{1,6}$/; const HOUR = 3600_000; const MIN_REASON = 15;
 const ELEVATE = "Elevate to make changes.";
 const FINANCE_TITLE: Record<FinanceKind, string> = { credit: "Credit", refund: "Refund", markpaid: "Mark paid", writeoff: "Write off", void: "Void" };

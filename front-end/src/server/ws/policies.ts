@@ -164,7 +164,7 @@ export function policyRoutes(h: WsHelpers) {
         const as = await viaDelegate(t, me, p, w);
         refuse(policyApproveBlock({ role: me.role, workStatus: w?.status ?? null, approver: w?.approver ?? null, isEditor: !!w && editorIds(w).has(me.id), actsAsApprover: as.ok }));
         const reason = txt(r.body.reason, 500); const bad = textBlock(reason, 10, "An approval reason"); if (bad) invalid(bad);
-        const eff = str(r.body.effective, 10) || isoDayOf(t.now); const effBad = policyEffectiveBlock(eff, t.now); if (effBad) invalid(effBad);
+        const eff = str(r.body.effective, 10) || isoDayOf(t.now); const effBad = policyEffectiveBlock(eff, t.now, t.actor.tz); if (effBad) invalid(effBad);
         if (w!.ver.startsWith("0.")) w!.ver = "1.0";
         Object.assign(w!, { status: "Approved", approvedBy: me.name, approvedById: me.id, approvedOnBehalfOf: as.onBehalfOf ?? undefined, approvedAt: isoDayOf(t.now), approvalReason: reason, effective: eff });
         log(t, p, w!.ver, "Approved (immutable)", as.onBehalfOf ? `${reason} (on behalf of ${as.onBehalfOf}, by delegation)` : reason);

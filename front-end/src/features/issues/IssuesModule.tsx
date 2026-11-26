@@ -67,7 +67,7 @@ function IssuesList() {
               tabs={COLS.map((c) => ({ key: c, label: c, match: (i: Issue) => i.status === c }))}
               filters={[{ key: "sev", label: "Severity", options: ISSUE_SEVS, get: (i: Issue) => i.sev }, { key: "owner", label: "Owner", options: owners, get: (i: Issue) => i.owner }, { key: "due", label: "Due", options: ["Overdue", "Due this week", "Later"], get: (i: Issue) => dueBucket(i.due), more: true }]}
               exportName="issues" onOpen={(i) => open(i.id)}
-              rowActions={(i) => [{ label: "Open issue", run: () => open(i.id) }, { label: "Copy ID", run: () => { void navigator.clipboard?.writeText(i.id); L.toast("Issue ID copied"); } }]} />
+              rowActions={(i) => [{ label: "Open issue", run: () => open(i.id) }, { label: "Copy ID", run: async () => { try { await navigator.clipboard.writeText(i.id); L.toast("Issue ID copied"); } catch { L.toast(`Copy is not allowed here. The issue ID is ${i.id}.`, false); } } }]} />
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: 12, alignItems: "start" }}>
               {COLS.map((c) => {

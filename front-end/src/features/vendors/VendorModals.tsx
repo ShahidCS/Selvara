@@ -1,4 +1,4 @@
-import { SelectList } from "@/components/ui";
+import { BusyButton, SelectList } from "@/components/ui";
 /* Short vendor dialogs: add certificate, flag finding, change tier. The record is a page (VendorDetail); add, reassess and waiver are form pages (VendorForms). */
 import { useState } from "react";
 import { API_ON } from "@/lib/rbac";
@@ -15,8 +15,8 @@ export const Req = () => <span style={{ color: "var(--bad-ink)" }}>*</span>;
 export const errP = (id: string, on: boolean, text: string) => <p className="field help" id={id} role="alert" style={{ color: "var(--bad-ink)", display: on ? "block" : "none" }}>{text}</p>;
 export const grid = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 };
 const NotFound = () => <p className="field help">Vendor not found.</p>;
-const Foot = ({ L, label, onSave }: { L: LayerApi; label: string; onSave: () => void }) => (
-  <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><button className="btn btn-primary" onClick={onSave}>{label}</button></LayerFoot>
+const Foot = ({ L, label, onSave }: { L: LayerApi; label: string; onSave: () => unknown }) => (
+  <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><BusyButton onClick={onSave}>{label}</BusyButton></LayerFoot>
 );
 /** Service call: validation refusals show the inline line (`onInvalid(msg)`) or a toast; rule violations (SodError) their message; other exceptions a generic toast (ASVS 7.4.1). */
 function useAct() {

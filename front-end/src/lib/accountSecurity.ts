@@ -133,7 +133,8 @@ export async function verifyChallenge(c: { seed: string; nonce: number } | undef
 }
 
 /* ---------- password reset links ---------- */
-export const RESET = { TTL_MS: 15 * MIN, MAX_PER_HOUR: 3, CODE_TRIES: 5 };
+/** LINK_MS (SEC-17): a reset link works only within 60 minutes of the request, and not after the password changes in any other way. */
+export const RESET = { TTL_MS: 15 * MIN, MAX_PER_HOUR: 3, CODE_TRIES: 5, LINK_MS: 60 * MIN };
 export function createReset(email: string): ResetLink {
   const s = acct();
   s.resets.forEach((r) => { if (r.email === email) r.used = true; }); // a new link replaces older ones

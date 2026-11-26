@@ -4,7 +4,7 @@ import { bumpData } from "@/lib/store";
 import { wsLog } from "@/lib/audit";
 import { getActor } from "@/lib/sod";
 import { downloadText } from "@/lib/format";
-import { StatusChip, SelectList } from "@/components/ui";
+import { BusyButton, StatusChip, SelectList } from "@/components/ui";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import * as svc from "@/features/controls/services/controls";
 import { uiMessage } from "@/lib/grcSod";
@@ -36,7 +36,7 @@ function AttestBody({ h, c }: { h: FormHandle; c: any }) {
     <>
       <p style={{ margin: "0 0 8px" }}>The control owner confirms this control is designed appropriately and operating as intended for the current period.</p>
       <div className="field"><label htmlFor="ca-by">Attested by</label><input className="input" id="ca-by" value={getActor().name} readOnly /><p className="field help">Only the control owner ({c.owner}) can attest; the name is set from your sign-in.</p></div>
-      <div className="field"><label htmlFor="ca-note">Statement {REQ}</label><textarea className="input" id="ca-note" rows={2} style={{ resize: "vertical" }} placeholder="e.g. Reviewed configuration and evidence; control operating effectively" ref={h.ref("note")} aria-invalid={err} aria-describedby={err ? "ca-err" : undefined} />
+      <div className="field"><label htmlFor="ca-note">Statement {REQ}</label><textarea className="input" id="ca-note" rows={2} maxLength={500} style={{ resize: "vertical" }} placeholder="e.g. Reviewed configuration and evidence; control operating effectively" ref={h.ref("note")} aria-invalid={err} aria-describedby={err ? "ca-err" : undefined} />
         <p className="field help" id="ca-err" role={err ? "alert" : undefined} style={{ color: "var(--bad-ink)", display: err ? "block" : "none", margin: 0 }}>A statement is required.</p></div>
     </>
   );
@@ -53,7 +53,7 @@ export function openAttestModal(L: LayerApi, id: string) {
     } catch (e) { L.toast(uiMessage(e), false); }
   };
   L.openModal("Record attestation, " + id, <AttestBody h={h} c={c} />,
-    <><button className="btn btn-secondary" onClick={L.closeLayer}>Cancel</button><button className="btn btn-primary" onClick={submit}>Attest</button></>);
+    <><button className="btn btn-secondary" onClick={L.closeLayer}>Cancel</button><BusyButton onClick={submit}>Attest</BusyButton></>);
 }
 
 /* ---------------- add-mapping modal ---------------- */
@@ -84,5 +84,5 @@ export function openMappingModal(L: LayerApi, id: string) {
     } catch (e) { L.toast(uiMessage(e), false); }
   };
   L.openModal("Add mapping, " + id, <MappingBody h={h} />,
-    <><button className="btn btn-secondary" onClick={L.closeLayer}>Cancel</button><button className="btn btn-primary" onClick={submit}>Add mapping</button></>);
+    <><button className="btn btn-secondary" onClick={L.closeLayer}>Cancel</button><BusyButton onClick={submit}>Add mapping</BusyButton></>);
 }

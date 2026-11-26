@@ -95,7 +95,7 @@ describe("the PII blocker (lib/pii.ts)", () => {
     expect(maskPii("Ask sam.lee@example.test and Jordan Avery", ["Jordan Avery"])).toBe("Ask [EMAIL] and [PERSON]");
   });
   it("refuses private, loopback, link-local and mapped addresses as webhook targets", () => {
-    for (const ip of ["10.0.0.1", "127.0.0.1", "169.254.169.254", "172.16.5.4", "192.168.1.1", "100.64.0.1", "::1", "fd00::1", "fe80::1", "::ffff:10.0.0.1", "0.0.0.0"]) expect(privateAddress(ip)).toBe(true);
+    for (const ip of ["10.0.0.1", "127.0.0.1", "169.254.169.254", "172.16.5.4", "192.168.1.1", "100.64.0.1", "::1", "fd00::1", "fe80::1", "::ffff:10.0.0.1", "0.0.0.0", "0:0:0:0:0:ffff:7f00:1", "0:0:0:0:0:0:0:1", "::ffff:7f00:1", "2001:0db8::1", "64:ff9b::7f00:1"]) expect(privateAddress(ip)).toBe(true);
     for (const ip of ["93.184.216.34", "2606:2800:220:1:248:1893:25c8:1946"]) expect(privateAddress(ip)).toBe(false);
   });
 });
@@ -355,5 +355,28 @@ describe("reference review part 3: pause all agents and prefill (server)", () =>
     expect(log("assistant.prefill.generated").at(-1)?.target).toBe("vendor: 3 of 4 fields; test-model; 50 in / 20 out tokens");
     expect(JSON.stringify(store.auditLog)).not.toContain("Acme Cloud");
     expect((await pf({ form: "risk", text: "Risk title: Legacy VPN" }, t.priya.cookie)).status).toBe(403);
+  });
+});
+
+describe("SEC-12: rate limits on the expensive endpoints", () => {
+  it("the company API allows 600 calls an hour per key, then 429 until the next hour", async () => {
+    const t = await team();
+    const k = body<{ full: string }>(await call("POST", "ws/api-keys", { label: "Reporting", scope: "Read", days: 30 }, t.jordan.cookie)).full;
+    clock = Math.ceil(clock / 3600_000) * 3600_000 + 1_000; // the start of an hour, so all calls fall in one window
+    let last = 0;
+    for (let i = 0; i < 600; i++) last = (await v1("GET", "v1/issues", k)).status;
+    expect(last).toBe(200);
+    expect((await v1("GET", "v1/issues", k)).status).toBe(429);
+    clock += 3600_000; // the next hour: allowed again
+    expect((await v1("GET", "v1/issues", k)).status).toBe(200);
+  });
+  it("the assistant answers 30 questions an hour per person, blocked ones included", async () => {
+    const t = await team(); await turnAiOn(t);
+    const iss = body<{ id: string }>(await call("POST", "ws/issues", { title: "Rotate the backup key", sev: "Medium", ownerId: t.owen.id }, t.jordan.cookie)).id;
+    let st = 0;
+    for (let i = 0; i < 30; i++) st = (await call("POST", "ws/assistant/ask", { question: `Summarise this issue (${i})`, records: [{ mod: "issues", id: iss }] }, t.jordan.cookie)).status;
+    expect(st).toBe(200);
+    const over = await call("POST", "ws/assistant/ask", { question: "One more summary", records: [{ mod: "issues", id: iss }] }, t.jordan.cookie);
+    expect(over.status).toBe(429); expect(body<{ error: string }>(over).error).toMatch(/30 questions an hour/);
   });
 });

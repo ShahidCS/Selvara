@@ -417,7 +417,7 @@ export function riskRoutes(h: WsHelpers) {
       const id = `RS-${String(await t.next("risk-snapshot", 0)).padStart(3, "0")}`;
       // shared with the auditor of any engagement whose access is live now (they download it from the engagement, server/ws/audits.ts)
       const today = isoDayOf(t.now);
-      const shared = (await t.list<{ access?: { status: string; until?: string } }>("audit")).some((x) => x.data.access?.status === "granted" && (x.data.access.until ?? "") >= today);
+      const shared = (await t.list<{ access?: { status: string; until?: string; untilAt?: number } }>("audit")).some((x) => x.data.access?.status === "granted" && (x.data.access.untilAt ? t.now < x.data.access.untilAt : (x.data.access.until ?? "") >= today));
       const at = new Date(t.now).toISOString().slice(0, 16).replace("T", " ");
       await t.insert("risk-snapshot", id, { id, at, count: pool.length, scope: scope === "approved" ? "Approved risks" : "All risks", hash: sha256.slice(0, 12), sha256, by: c.actor.name, byId: c.actor.id, shared, content } satisfies RiskSnapshot);
       await t.audit("risk.register.snapshot", `${pool.length} risks (${scope}), SHA-256 ${sha256}`, "Risk");

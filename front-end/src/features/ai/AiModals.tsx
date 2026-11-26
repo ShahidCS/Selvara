@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { LayerFoot, useLayer } from "@/components/shell/LayerProvider";
 import type { LayerApi } from "@/components/shell/LayerProvider";
-import { Icon, SelectList } from "@/components/ui";
+import { BusyButton, Icon, SelectList } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { bumpData } from "@/lib/store";
 import { AI_ANNEX_AREAS, AI_BIAS_STATUSES, AI_FRIA_STATUSES, AI_GUARDRAILS, AI_ROLES, AI_TIERS, aiFind, aiInit, aiLog } from "@/features/ai/lib/ai";
@@ -15,8 +15,8 @@ import { MemberSelect, useMembers } from "@/components/kit/MemberSelect";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Reopen = (() => void) | undefined;
 export const gridStyle = (gap: number) => ({ display: "grid", gridTemplateColumns: "1fr 1fr", gap });
-const Foot = ({ L, label, onSave, icon }: { L: LayerApi; label: string; onSave: () => void; icon?: string }) => (
-  <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><button className="btn btn-primary" onClick={onSave}>{icon ? <Icon name={icon} /> : null}{label}</button></LayerFoot>
+const Foot = ({ L, label, onSave, icon }: { L: LayerApi; label: string; onSave: () => unknown; icon?: string }) => (
+  <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><BusyButton onClick={onSave}>{icon ? <Icon name={icon} /> : null}{label}</BusyButton></LayerFoot>
 );
 const NotFound = () => <p className="field help">AI system not found.</p>;
 
@@ -176,7 +176,8 @@ function OversightForm({ id, reopen }: { id: string; reopen: Reopen }) {
   const save = () => act(() => svc.saveOversight(id, t), () => { aiLog("ai.oversight.updated", a.name); L.closeLayer(); reopen?.(); bumpData(); L.toast("Oversight measures updated"); });
   return (
     <>
-      <div className="field"><label htmlFor="aOv">One measure per line</label><textarea className="input" id="aOv" rows={5} style={{ resize: "vertical" }} value={t} onChange={(e) => setT(e.target.value)} /></div>
+      <div className="field"><label htmlFor="aOv">One measure per line</label><textarea className="input" id="aOv" rows={5} maxLength={9030} aria-describedby="aOv-h" style={{ resize: "vertical" }} value={t} onChange={(e) => setT(e.target.value)} />
+        <p className="field help" id="aOv-h">Up to 30 measures, each up to 300 characters.</p></div>
       <Foot L={L} label="Save" onSave={save} />
     </>
   );

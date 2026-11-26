@@ -12,6 +12,7 @@
    - Subscriptions: verified addresses only; each update email carries a one-click unsubscribe link. A new public document is emailed to
      subscribers after its publication was approved and committed.
    - Everything a visitor does is written to the company's audit log as "Visitor <masked address>" (or "Public visitor"). */
+import { scalarText } from "@/server/text";
 import { createHash, randomBytes } from "node:crypto";
 import type { Req, Res } from "./core";
 import { mailConfigured, maskEmail, sendMail } from "./mail";
@@ -25,7 +26,7 @@ import { isNdaDoc, NDA_DOCS, sectionsOf } from "@/lib/trustSections";
 
 const ok = (body?: unknown, cookies?: string[]): Res => ({ status: body === undefined ? 204 : 200, body, cookies });
 const err = (status: number, error: string): Res => ({ status, body: { error } });
-const s = (v: unknown, max = 300) => String(v ?? "").slice(0, max).trim();
+const s = (v: unknown, max = 300) => scalarText(v).slice(0, max).trim();
 const h = (v: string) => createHash("sha256").update(v).digest("hex");
 const HOUR = 3600_000;
 const NOT_PUBLIC = "This Trust Center is not public.";

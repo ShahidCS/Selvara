@@ -43,7 +43,7 @@ export class MemoryAuth implements AuthProvider {
   async listTotp(userId: string) { return (this.users.get(userId)?.factors ?? []).filter((f) => f.verified).map((f) => ({ id: f.id, label: f.label, createdAt: f.createdAt })); }
   async removeTotp(userId: string, factorId: string) { const u = this.users.get(userId); if (u) u.factors = u.factors.filter((f) => f.id !== factorId); }
   async signOut(t: { access: string }) { this.tokens.delete(t.access); }
-  async createUser(email: string, password: string, _person?: string) { void _person; const id = crypto.randomUUID(); /* a uuid, as Supabase Auth issues */ const salt = randomId(8); this.users.set(id, { id, email, salt, hash: await sha256Hex(salt + password), confirmed: false, factors: [] }); return id; }
+  async createUser(email: string, password: string, _person?: string) { void _person; if (this.byEmail(email)) throw new Error("A user with this email address has already been registered"); /* as Supabase Auth */ const id = crypto.randomUUID(); /* a uuid, as Supabase Auth issues */ const salt = randomId(8); const u: MUser = { id, email, salt, hash: "", confirmed: false, factors: [] }; this.users.set(id, u); /* reserved before any await: the email is unique at once, as in Supabase */ u.hash = await sha256Hex(salt + password); return id; }
   async confirmUser(id: string) { const u = this.users.get(id); if (u) u.confirmed = true; }
   async setPassword(id: string, password: string) { const u = this.users.get(id); if (u) u.hash = await sha256Hex(u.salt + password); }
   async sendResetEmail(email: string) { const u = this.byEmail(email); if (u) { const t = this.tok(u.id, true); this.outbox.push({ email, token: Buffer.from(JSON.stringify(t)).toString("base64url") }); } }

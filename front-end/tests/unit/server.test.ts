@@ -169,6 +169,25 @@ describe("requests to join and reset", () => {
   });
 });
 
+describe("SEC-17: reset links expire and die when the password changes", () => {
+  it("a link works only within 60 minutes of the request", async () => {
+    await account("alex.kim@company.example");
+    await call("POST", "auth/password/reset-request", { email: "alex.kim@company.example" });
+    const token = auth.outbox.at(-1)!.token;
+    clock += 59 * 60_000; expect((await call("GET", `auth/password/reset/${token}`)).body).toEqual({ valid: true });
+    clock += 2 * 60_000; expect((await call("GET", `auth/password/reset/${token}`)).body).toEqual({ valid: false });
+  });
+  it("an unused link stops working once the password is changed another way", async () => {
+    const a = await account("alex.kim@company.example");
+    await call("POST", "auth/password/reset-request", { email: "alex.kim@company.example" });
+    const token = auth.outbox.at(-1)!.token;
+    expect((await call("GET", `auth/password/reset/${token}`)).body).toEqual({ valid: true });
+    expect((await call("POST", "me/password", { current: PW, next: NEW }, { cookie: a.cookie })).status).toBe(204);
+    expect((await call("GET", `auth/password/reset/${token}`)).body).toEqual({ valid: false });
+    expect((await call("POST", "auth/password/reset", { token, code: a.codes[1], password: "Another-strong-Pass-35" })).status).toBe(400);
+  });
+});
+
 describe("account endpoints", () => {
   it("security view, re-authentication window for new codes, password change ends other sessions", async () => {
     const a = await account("alex.kim@company.example"); const b = await signIn("alex.kim@company.example");
@@ -627,8 +646,10 @@ describe("failure logging (a 500 can be diagnosed from the function logs, withou
     expect(JSON.parse(String(spy.mock.calls[0][0]))).toEqual({ level: "warn", event: "auth.sign-in.refused", reason: "auth-refused", code: "email_not_confirmed", status: 400, message: "Email not confirmed for [email]" });
     const r = await call("POST", "auth/sign-in", { email: "nobody@example.test", password: "Wrong-password-12" });
     expect(r.status).toBe(401);
-    const last = JSON.parse(String(spy.mock.calls.at(-1)![0]));
-    expect(last).toEqual({ level: "warn", event: "auth.sign-in.refused", reason: "no-profile" });
+    const lines = spy.mock.calls.map((c) => JSON.parse(String(c[0])) as Record<string, unknown>);
+    expect(lines.find((l) => l.event === "auth.sign-in.refused" && l.reason === "no-profile")).toEqual({ level: "warn", event: "auth.sign-in.refused", reason: "no-profile" });
+    // SEC-8: the failed attempt is a security event with the address and a keyed hash of the email, never the email itself
+    expect(lines.find((l) => l.event === "auth.sign-in.failed")).toEqual({ level: "warn", at: expect.any(String), event: "auth.sign-in.failed", route: "POST auth/sign-in", ip: "198.51.100.7", subject: expect.stringMatching(/^[0-9a-f]{16}$/) });
     expect(JSON.stringify(spy.mock.calls)).not.toContain("nobody@example.test");
   });
 
@@ -739,5 +760,66 @@ describe("Support access (slice 3b): customer grants, read-only support sessions
     expect((await call("POST", "admin/elevation", { reason: "Customer onboarding for a new contract", ticket: "OPS-101", minutes: 30 }, { cookie: dana.cookie })).status).toBe(200);
     expect((await open(dana.cookie)).status).toBe(409);
     expect((await call("POST", "admin/elevation/end", {}, { cookie: dana.cookie })).status).toBe(204);
+  });
+});
+
+describe("SEC-8: security events are logged with time, who and address, and nothing secret", () => {
+  it("failed sign-ins and second steps, locks, permission denials, invalid sessions and rate limits", async () => {
+    const spy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const events = () => spy.mock.calls.map((c) => JSON.parse(String(c[0])) as Record<string, unknown>).filter((l) => typeof l.at === "string");
+    const emp = await account("sam.lee@company.example", "employee", "Sam Lee");
+    // a wrong password for a known account names the user id
+    await call("POST", "auth/sign-in", { email: "sam.lee@company.example", password: "Not-the-password-99" }, { ip: "203.0.113.5" });
+    expect(events()).toContainEqual(expect.objectContaining({ event: "auth.sign-in.failed", ip: "203.0.113.5", userId: expect.any(String) }));
+    // wrong second-step codes, until the account locks
+    const st = await call("POST", "auth/sign-in", { email: "sam.lee@company.example", password: PW }, { ip: "203.0.113.6" });
+    const ticket = (st.body as { ticket: string }).ticket;
+    for (let i = 0; i < 5; i++) await call("POST", "auth/sign-in/verify", { ticket, code: "000000" }, { ip: "203.0.113.6" });
+    expect(events()).toContainEqual(expect.objectContaining({ event: "auth.second-step.failed", ip: "203.0.113.6" }));
+    expect(events()).toContainEqual(expect.objectContaining({ event: "auth.account.locked", ip: "203.0.113.6", userId: expect.any(String) }));
+    // a company admin's route, asked for by an employee: permission denied, with a session reference (not the cookie)
+    clock += 6 * 60_000;
+    const r = await call("GET", "team/join-requests", {}, { cookie: emp.cookie, ip: "203.0.113.7" });
+    expect(r.status).toBe(403);
+    expect(events()).toContainEqual(expect.objectContaining({ event: "access.denied", route: "GET team/join-requests", status: 403, ip: "203.0.113.7", session: expect.stringMatching(/^[0-9a-f]{16}$/) }));
+    // a session that is no longer valid
+    await call("GET", "auth/session", {}, { cookie: "A".repeat(43), ip: "203.0.113.8" });
+    expect(events()).toContainEqual(expect.objectContaining({ event: "auth.session.invalid", route: "GET auth/session", status: 401, ip: "203.0.113.8" }));
+    // rate limited
+    for (let i = 0; i < 5; i++) await call("POST", "auth/join-requests", { name: "Test Person", email: `t${i}@example.test`, password: PW, company: "acme-eu" }, { ip: "203.0.113.9" });
+    expect(events()).toContainEqual(expect.objectContaining({ event: "rate.limited", route: "POST auth/join-requests", status: 429, ip: "203.0.113.9" }));
+    // every event has a time, and no line holds a password, an email address or a cookie
+    for (const e of events()) expect(Date.parse(String(e.at))).not.toBeNaN();
+    const all = JSON.stringify(spy.mock.calls);
+    for (const secret of [PW, "Not-the-password-99", "sam.lee@company.example", emp.cookie, "A".repeat(43)]) expect(all).not.toContain(secret);
+  });
+});
+
+describe("SEC-12: password reset requests are rate limited per address", () => {
+  it("three an hour from one network, then 429; the answer never says whether the email exists", async () => {
+    await account("alex.kim@company.example");
+    const ask = (email: string) => call("POST", "auth/password/reset-request", { email }, { ip: "203.0.113.40" });
+    for (const e of ["alex.kim@company.example", "nobody@company.example", "alex.kim@company.example"]) expect((await ask(e)).status).toBe(202);
+    expect((await ask("alex.kim@company.example")).status).toBe(429);
+    expect((await call("POST", "auth/password/reset-request", { email: "alex.kim@company.example" }, { ip: "203.0.113.41" })).status).toBe(202); // another network
+    clock += 61 * 60_000; expect((await ask("alex.kim@company.example")).status).toBe(202);
+  });
+});
+
+describe("EDGE-18: signed in on two phones", () => {
+  it("each phone has its own session, both are listed, and signing out the others ends every other session at once", async () => {
+    const a = await account("alex.kim@company.example");
+    const b = await signIn("alex.kim@company.example"); const phone2 = cookieOf(b);
+    const list = (await call("GET", "me/security", {}, { cookie: a.cookie })).body as { sessions: { current: boolean }[] };
+    expect(list.sessions.length).toBe(2); expect(list.sessions.filter((x) => x.current)).toHaveLength(1);
+    expect((await call("GET", "auth/session", {}, { cookie: phone2 })).status).toBe(200);
+    // re-authentication is needed for this sensitive action; then the other phone is signed out
+    await call("POST", "me/reauth", { password: PW }, { cookie: a.cookie });
+    expect((await call("POST", "me/sessions/revoke-others", {}, { cookie: a.cookie })).status).toBeLessThan(300);
+    expect((await call("GET", "auth/session", {}, { cookie: phone2 })).status).toBe(401);
+    expect((await call("GET", "auth/session", {}, { cookie: a.cookie })).status).toBe(200);
+    // and signing out here as well leaves no session anywhere
+    await call("POST", "auth/sign-out", {}, { cookie: a.cookie });
+    expect((await call("GET", "auth/session", {}, { cookie: a.cookie })).status).toBe(401);
   });
 });

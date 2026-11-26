@@ -6,7 +6,7 @@
    of modules it may open. The posture of a module the person cannot open comes as figures only (scores and statuses without titles, owners
    or text), so a person never sees a risk, issue or control they could not open. */
 import { approvalBlock } from "@/lib/rules";
-import { isoDayOf, issueDueText, roleBlock } from "@/lib/rulesWs";
+import { isoDayOf, issueDueText, localDayOf, roleBlock } from "@/lib/rulesWs";
 import type { Deps } from "../types";
 import type { Control, FwCustom, FwState } from "./assurance";
 import { LIB_FRAMEWORKS } from "./catalogue";
@@ -26,7 +26,8 @@ const GROUP4 = ["vendor.request.critical", "vendor.gate", "vendor.tier", "vendor
 const HOME: Record<string, string> = { vendor: "vendors", trust: "trust", q: "questionnaires" };
 
 async function work(t: WsTx, me: Actor) {
-  const today = isoDayOf(t.now); const week = isoDayOf(t.now + 7 * 86400_000); const role = me.role;
+  // EDGE-16: the viewer's own day
+  const today = localDayOf(t.now, me.tz); const week = localDayOf(t.now + 7 * 86400_000, me.tz); const role = me.role;
   const issues = (await t.list<Issue>("issue")).map((x) => x.data).filter((i) => i.ownerId === me.id && i.status !== "Closed")
     .map((i) => ({ id: i.id, title: i.title, sev: i.sev, status: i.status, dueDate: i.dueDate, due: issueDueText(i.dueDate, today) }));
   const risks = (await t.list<Risk>("risk")).map((x) => x.data);

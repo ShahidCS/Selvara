@@ -58,10 +58,18 @@ export function roleChangeBlock(c: RoleChange): string | null {
 export const secondAdminBlock = (eligible: number): string | null => (eligible < 1 ? "No eligible second admin (not you, not the member) to approve this." : null);
 
 /** Names people type (join requests, profiles): letters and the usual punctuation, never markup. */
+/** A person's name as stored: Unicode NFC (so "José" typed two ways is one name), trimmed. */
+export const normaliseName = (name: string): string => String(name ?? "").normalize("NFC").trim();
 export function nameBlock(name: string): string | null {
-  const n = name.trim();
-  if (n.length < 2) return "Enter your full name.";
+  const n = normaliseName(name);
+  // EDGE-5: count letters in characters (code points), not bytes or UTF-16 units: an emoji alone is not a name, two CJK letters are
+  if (Array.from(n).filter((c) => /\p{L}/u.test(c)).length < 2) return "Enter your full name.";
   if (/[<>"`{}[\]\\]/.test(n) || /\p{Cc}/u.test(n)) return "Enter your name without symbols such as < > { } or quotes.";
+  // invisible and direction-changing characters (zero-width, bidirectional overrides) can make one name look like another; a zero-width
+  // joiner is allowed only inside an emoji sequence
+  if (/\p{Cf}/u.test(n.replace(/(?<=\p{Extended_Pictographic}\uFE0F?)\u200D(?=\p{Extended_Pictographic})/gu, ""))) return "Enter your name without invisible or direction-changing characters.";
+  // lookalike letters: Latin mixed with Cyrillic or Greek (for example a Cyrillic о in "Jordan") is refused; any one alphabet is fine
+  if (/\p{Script=Latin}/u.test(n) && (/\p{Script=Cyrillic}/u.test(n) || /\p{Script=Greek}/u.test(n))) return "Write your name in one alphabet.";
   return null;
 }
 

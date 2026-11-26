@@ -5,6 +5,7 @@
    append-only audit log. Since slice 2a (docs/architecture/BACKEND_FOUNDATION.md) a session belongs to one company and the person's role comes
    from their membership there (or from platform staff), checked again on every request; join requests, lockout settings and the member list are
    per company. Handlers take a plain request and return a plain response, so they are tested without a network. */
+import { scalarText } from "@/server/text";
 import { sendMail } from "./mail";
 import { vendorPortalRoutes } from "./vendorportal";
 import { trustPublicRoutes } from "./trustpublic";
@@ -12,7 +13,7 @@ import { appLabel, CHALLENGE, CUSTOM_BOUNDS, LOCKOUT, MFA, REAUTH_MS, RESET, typ
 import { checkPassword, POLICY } from "@/lib/credentials";
 import { IP_POLICY, LEVEL_LABEL, REPUTATION } from "@/lib/ipGuard";
 import { generateRecoveryCodes } from "@/lib/me";
-import { approvalBlock, INVITE_TTL_H, isAssignableRole, isPrivilegedRole, nameBlock, reasonBlock, ROLE_REQUEST_TTL_H, roleChangeBlock, secondAdminBlock } from "@/lib/rules";
+import { approvalBlock, normaliseName, INVITE_TTL_H, isAssignableRole, isPrivilegedRole, nameBlock, reasonBlock, ROLE_REQUEST_TTL_H, roleChangeBlock, secondAdminBlock } from "@/lib/rules";
 import { isEmail } from "@/lib/security";
 import { checkRegistration, verifyAssertion } from "@/lib/webauthn";
 import { randomId, same, seal, sha256Hex, unseal } from "./crypto";
@@ -22,7 +23,8 @@ import { helpRoutes } from "./helpdesk";
 import { workspaceRoutes } from "./ws/routes";
 import { v1Routes } from "./ws/apikeys";
 import { admin8Routes, stripeWebhook } from "./admin8";
-import { logFailure, logSignInRefused } from "./errors";
+import { logFailure, logSecurityEvent, logSignInRefused } from "./errors";
+import { createHmac } from "node:crypto";
 import { guardBody, ResponseLeak } from "./responseGuard";
 import { CSP_PER_HOUR, rawReports, reduceReport } from "./cspReport";
 import type { Company, Lockout, Log, Outcome } from "./directory";
@@ -39,9 +41,11 @@ export const NO_COMPANY = "Your account is not an active member of any company y
 const THROTTLED = "Too many attempts. Wait a few minutes, then try again.";
 export const COOKIE = "__Host-sv";
 const MIN = 60_000;
-const s = (v: unknown, max = 300) => String(v ?? "").slice(0, max);
+const s = (v: unknown, max = 300) => scalarText(v).slice(0, max);
 const norm = (e: unknown) => s(e, 254).trim().toLowerCase();
 const PRIVILEGED = new Set(["admin", "super", "support"]);
+/** SEC-8: who a failed sign-in concerns, when there is no user id: a keyed hash of the address, never the address. */
+const subjectOf = (d: Deps, email: string) => createHmac("sha256", d.secret).update(`log-subject|${email}`).digest("hex").slice(0, 16);
 
 /* ---------- access: which company and role a person works with ---------- */
 /** What a session may do: a company role (in `company`) or a platform role (no company). Never taken from the request. */
@@ -114,10 +118,10 @@ async function lockRule(d: Deps, p: Profile | null): Promise<LockoutRule> {
   return rules.reduce((a, b) => (b.attempts < a.attempts || (b.attempts === a.attempts && b.lockMs > a.lockMs) ? b : a), rules[0] ?? LOCKOUT.standard);
 }
 async function locked(d: Deps, email: string) { const f = await d.store.kvGet<{ n: number; until: number }>("lock", email); return !!f && f.until > d.now(); }
-async function accountFail(d: Deps, email: string, p: Profile | null) {
+async function accountFail(d: Deps, r: Req, email: string, p: Profile | null) {
   const rule = await lockRule(d, p);
   const f = (await d.store.kvGet<{ n: number; until: number }>("lock", email)) || { n: 0, until: 0 }; f.n += 1;
-  if (f.n >= rule.attempts) { f.until = d.now() + rule.lockMs; f.n = 0; if (p) await notify(d, p.id, `Your account was locked for ${rule.lockMs / MIN} minutes after ${rule.attempts} failed sign-in attempts.`); }
+  if (f.n >= rule.attempts) { f.until = d.now() + rule.lockMs; f.n = 0; logSecurityEvent({ event: "auth.account.locked", ip: r.ip, ...(p ? { userId: p.id } : { subject: subjectOf(d, email) }) }, d.now()); if (p) await notify(d, p.id, `Your account was locked for ${rule.lockMs / MIN} minutes after ${rule.attempts} failed sign-in attempts.`); }
   await d.store.kvSet("lock", email, f, 24 * 60 * MIN);
   if (p) await d.store.kvSet("failedSince", p.id, ((await d.store.kvGet<number>("failedSince", p.id)) || 0) + 1);
 }
@@ -190,7 +194,9 @@ const signIn: H = async (d, r) => {
   const p = isEmail(email) ? await d.store.profileByEmail(email) : null;
   if (!p && isEmail(email)) logSignInRefused("no-profile"); // an auth user without a Selvara profile (SUPABASE.md section 5)
   const res = p && p.status !== "Rejected" ? await d.auth.signInWithPassword(email, password) : null;
-  if (!p || !res) { await ipFail(d, r); await accountFail(d, email, p); return (await blocked(d, r.ip)) ? err(403, BLOCKED_MSG) : err(401, SIGNIN_FAILED); }
+  if (!p || !res) {
+    logSecurityEvent({ event: "auth.sign-in.failed", route: "POST auth/sign-in", ip: r.ip, ...(p ? { userId: p.id } : { subject: subjectOf(d, email) }) }, d.now());
+    await ipFail(d, r); await accountFail(d, r, email, p); return (await blocked(d, r.ip)) ? err(403, BLOCKED_MSG) : err(401, SIGNIN_FAILED); }
   if (p.status === "Pending") { await d.auth.signOut(res); return err(409, "Your request to join is waiting for a company admin to approve it."); }
   if (p.status === "Rejected") { await d.auth.signOut(res); return err(409, "Your request to join was not approved. Ask a company admin."); }
   const acc = await accessAtSignIn(d, p.id); if (!acc) { await d.auth.signOut(res); return err(409, NO_COMPANY); }
@@ -206,7 +212,8 @@ const signIn: H = async (d, r) => {
   return ok({ step: "mfa", ticket: tid, method: "totp" });
 };
 async function wrongSecond(d: Deps, r: Req, tid: string, t: Ticket): Promise<Res> {
-  t.tries += 1; await ipFail(d, r); const p = await d.store.profileById(t.userId); await accountFail(d, t.email, p);
+  t.tries += 1; logSecurityEvent({ event: "auth.second-step.failed", ip: r.ip, userId: t.userId }, d.now());
+  await ipFail(d, r); const p = await d.store.profileById(t.userId); await accountFail(d, r, t.email, p);
   if (!t.alerted && t.method !== "enroll" && p) { t.alerted = true; await notify(d, p.id, "Someone entered your correct password but then failed the second step. If this was not you, change your password now."); }
   if (await locked(d, t.email)) { await d.store.kvDel("ticket", tid); return err(423, THROTTLED); }
   if (t.tries >= MFA.TRIES) { await d.store.kvDel("ticket", tid); return err(400, "Too many wrong codes. Start again."); }
@@ -294,7 +301,8 @@ const signOut: H = async (d, r) => {
  *  probed. A new person's account stays unconfirmed in Supabase (it cannot sign in) until an admin of that company approves; a person who is
  *  already active elsewhere keeps their password and gets a pending membership. Platform staff cannot join a company this way. */
 const join: H = async (d, r) => {
-  const name = s(r.body.name, 80).trim(); const email = norm(r.body.email); const password = s(r.body.password, 1024); const code = s(r.body.company, 40).trim().toLowerCase();
+  // EDGE-5: the name in NFC, at most 80 characters (never half an emoji)
+  const name = normaliseName(Array.from(s(r.body.name, 400)).slice(0, 80).join("")); const email = norm(r.body.email); const password = s(r.body.password, 1024); const code = s(r.body.company, 40).trim().toLowerCase();
   const invite = s(r.body.invite, 100).trim();
   const bad = nameBlock(name); if (bad) return err(400, bad);
   if (!isEmail(email)) return err(400, "Enter a valid work email address.");
@@ -308,7 +316,17 @@ const join: H = async (d, r) => {
   let userId = existing?.id;
   if (!existing || existing.status === "Rejected") {
     if (existing) { await d.auth.setPassword(existing.id, password); await d.store.updateProfile(existing.id, { status: "Pending", requestedAt: d.now(), person: name }); }
-    else { userId = await d.auth.createUser(email, password, name); await d.store.insertProfile({ id: userId, email, person: name, status: "Pending", requestedAt: d.now() }); }
+    else {
+      // EDGE-2: a second, simultaneous request for the same new email (a double tap) finds the account the first one just made, and answers the same
+      try { userId = await d.auth.createUser(email, password, name); await d.store.insertProfile({ id: userId, email, person: name, status: "Pending", requestedAt: d.now() }); }
+      catch (e) {
+        const now = await d.store.profileByEmail(email);
+        // the account exists but its profile is still being written by the other request (or an earlier attempt left an auth user without a
+        // profile, which the operator sees in the log): the person gets the same answer as always
+        if (!now) { logFailure("POST auth/join-requests", e); return { status: 202 }; }
+        userId = now.id;
+      }
+    }
   } else if (await d.dir.platformRole(existing.id)) return { status: 202 };
   const who = existing && existing.status === "Active" ? existing.person : name;
   await d.dir.requestToJoin(tenantId, userId as string, d.now(), entry(d, r, { name: `${who} (not signed in)`, id: userId, tenantId }, "team.join.requested", `${who} <${email}>`));
@@ -338,6 +356,7 @@ const resetRequest: H = async (d, r) => {
   if (!(await allow(d, r.ip, "reset", RESET.MAX_PER_HOUR, 60 * MIN))) return err(429, "Too many reset requests from your network. Try again in an hour.");
   const p = await d.store.profileByEmail(email);
   if (p && p.status === "Active" && (await allow(d, "acct:" + p.id, "reset", RESET.MAX_PER_HOUR, 60 * MIN))) {
+    await d.store.kvSet("resetReq", p.id, d.now(), RESET.LINK_MS); // SEC-17: the server's own record of the request
     await d.auth.sendResetEmail(email, `${d.site.origin}/login`);
     await notify(d, p.id, "A password reset was requested for your account. If this was not you, you can ignore it: your password has not changed.");
     await audit(d, r, actorOf(p, await accessAtSignIn(d, p.id)), "auth.password.reset_requested", "Password reset link requested by email");
@@ -350,7 +369,10 @@ async function recoveryOf(d: Deps, token: unknown): Promise<{ userId: string; t:
     const t = JSON.parse(Buffer.from(s(token, 8192), "base64url").toString()) as { access: string; refresh: string };
     if (typeof t.access !== "string" || typeof t.refresh !== "string") return null;
     const used = await sha256Hex(t.access); if (await d.store.kvGet("resetUsed", used)) return null;
-    const userId = await d.auth.userOfRecovery(t); return userId ? { userId, t, used } : null;
+    const userId = await d.auth.userOfRecovery(t); if (!userId) return null;
+    // SEC-17: only within RESET.LINK_MS of a request this server recorded, and never after the password has changed since
+    const askedAt = await d.store.kvGet<number>("resetReq", userId); if (!askedAt || d.now() - askedAt > RESET.LINK_MS) return null;
+    return { userId, t, used };
   } catch { return null; }
 }
 const resetCheck: H = async (d, r) => ok({ valid: !!(await recoveryOf(d, r.path[3])) });
@@ -364,7 +386,7 @@ const resetDo: H = async (d, r) => {
   const second = (/^\d{6}$/.test(code) && (await d.auth.verifyTotp(rec.t, factor, code))) || (await redeemRecovery(d, rec.userId, code)) >= 0;
   if (!second) { await d.store.kvSet("resetTries", rec.used, tries + 1, RESET.TTL_MS * 4); return err(400, tries + 1 >= RESET.CODE_TRIES ? "Too many wrong codes. Ask for a new link." : "That code is not correct."); }
   const pw = checkPassword(s(r.body.password, 1024), { email: p.email, name: p.person }); if (!pw.ok) return err(400, pw.errors[0] || "Choose a stronger password.");
-  await d.auth.setPassword(p.id, s(r.body.password, 1024)); await d.store.kvSet("resetUsed", rec.used, 1, 24 * 60 * MIN);
+  await d.auth.setPassword(p.id, s(r.body.password, 1024)); await d.store.kvSet("resetUsed", rec.used, 1, 24 * 60 * MIN); await d.store.kvDel("resetReq", p.id);
   await d.auth.signOut(rec.t);
   let ended = 0; for (const x of await d.store.sessionsOf(p.id)) if (!x.revokedAt) { ended++; await d.store.updateSession(x.idHash, { revokedAt: d.now(), revokedWhy: "Password reset" }); }
   await d.store.kvDel("lock", p.email);
@@ -410,16 +432,16 @@ const putTours = signed(async (d, r, { p }) => {
 const reauth = signed(async (d, r, { s: me, p }) => {
   if (await blocked(d, r.ip)) return err(403, BLOCKED_MSG);
   const res = await d.auth.signInWithPassword(p.email, s(r.body.password, 1024));
-  if (!res) { await ipFail(d, r); await accountFail(d, p.email, p); return err(400, "That password is not correct."); }
+  if (!res) { logSecurityEvent({ event: "auth.reauth.failed", ip: r.ip, userId: p.id }, d.now()); await ipFail(d, r); await accountFail(d, r, p.email, p); return err(400, "That password is not correct."); }
   await d.auth.signOut(res); await d.store.kvSet("reauth", me.idHash, d.now(), REAUTH_MS); return ok();
 });
 const changePassword = signed(async (d, r, { s: me, p, a }) => {
   const res = await d.auth.signInWithPassword(p.email, s(r.body.current, 1024));
-  if (!res) { await ipFail(d, r); await accountFail(d, p.email, p); return err(400, "That password is not correct."); }
+  if (!res) { logSecurityEvent({ event: "auth.reauth.failed", ip: r.ip, userId: p.id }, d.now()); await ipFail(d, r); await accountFail(d, r, p.email, p); return err(400, "That password is not correct."); }
   await d.auth.signOut(res);
   const next = s(r.body.next, 1024); const pw = checkPassword(next, { email: p.email, name: p.person }); if (!pw.ok) return err(400, pw.errors[0] || "Choose a stronger password.");
   if (next === s(r.body.current, 1024)) return err(400, "Choose a password you are not using now.");
-  await d.auth.setPassword(p.id, next); await d.store.kvSet("reauth", me.idHash, d.now(), REAUTH_MS);
+  await d.auth.setPassword(p.id, next); await d.store.kvSet("reauth", me.idHash, d.now(), REAUTH_MS); await d.store.kvDel("resetReq", p.id); // SEC-17: outstanding reset links die
   let ended = 0; for (const x of await d.store.sessionsOf(p.id)) if (!x.revokedAt && x.idHash !== me.idHash) { ended++; await d.store.updateSession(x.idHash, { revokedAt: d.now(), revokedWhy: "Password changed" }); }
   await notify(d, p.id, `Your password was changed${ended ? ` and ${ended} other session${ended === 1 ? " was" : "s were"} signed out` : ""}. If this was not you, reset it now.`);
   await audit(d, r, actorOf(p, a), "auth.password.changed", "Password changed after re-entering the current one"); return ok();
@@ -435,7 +457,7 @@ const newCodes = signed(async (d, r, { s: me, p, a }) => {
    already uses; a lost app is replaced with a recovery code instead, which removes every app first. At most MFA.MAX_APPS apps. The set-up
    key and URI are returned once (responseGuard.ts ALLOWED); the session tokens wait sealed until the first code from the new app confirms it. */
 type AppSetup = { factorId: string; access: string; refresh: string; label: string; replaces?: string; tries: number; expires: number };
-const failAuth = async (d: Deps, r: Req, p: Profile) => { await ipFail(d, r); await accountFail(d, p.email, p); };
+const failAuth = async (d: Deps, r: Req, p: Profile) => { logSecurityEvent({ event: "auth.reauth.failed", ip: r.ip, userId: p.id }, d.now()); await ipFail(d, r); await accountFail(d, r, p.email, p); };
 const appAdd = signed(async (d, r, { s: me, p, a }) => {
   if (await blocked(d, r.ip)) return err(403, BLOCKED_MSG);
   const prev = await d.store.kvGet<string>("appadd", me.idHash); // a set-up left unfinished ends here
@@ -704,6 +726,8 @@ const WEBHOOK_ROUTES = new Set(["POST billing/stripe/webhook"]);
 const KEY_ROUTES = new Set(["POST v1/events", "POST billing/stripe/webhook"]);
 /** Browser reports (CSP): no origin check, and the browser's own content types instead of JSON. */
 const REPORT_ROUTES = new Set(["POST csp-report"]);
+/** The sign-in steps log their own failures (with who they concern), so the generic 401 event skips them. */
+const SIGN_IN_ROUTES = new Set(["POST auth/sign-in", "POST auth/sign-in/verify", "POST auth/sign-in/passkey", "POST auth/sign-out"]);
 /** Routes that take raw bytes (application/octet-stream) instead of JSON: evidence file uploads (pages/api/[...path].ts reads them). */
 export const RAW_ROUTES = new Set(["POST ws/evidence/:id/files", "POST ws/kb-docs", "POST ws/trust/resources/:id/file", "POST vendor-portal/files/:q"]);
 
@@ -734,6 +758,12 @@ export async function handle(d: Deps, r: Req): Promise<Res> {
   // The person sees a generic message; the function log gets the route pattern, the failing step and Supabase's code (errors.ts), never values.
   let out: Res;
   try { out = await h(d, r); } catch (e) { logFailure(key, e, r.headers["x-vercel-id"]); return err(500, "Something went wrong. Please try again."); }
+  // SEC-8: refusals that matter for security monitoring (the person still gets the same answer)
+  const cookieSent = !!r.cookies[COOKIE];
+  if (out.status === 403 || out.status === 423 || out.status === 429 || (out.status === 401 && cookieSent && !SIGN_IN_ROUTES.has(key))) {
+    logSecurityEvent({ event: out.status === 401 ? "auth.session.invalid" : out.status === 403 ? "access.denied" : out.status === 423 ? "auth.locked" : "rate.limited",
+      route: key, status: out.status, ip: r.ip, ...(cookieSent ? { session: (await sha256Hex(r.cookies[COOKIE])).slice(0, 16) } : {}), requestId: r.headers["x-vercel-id"] }, d.now());
+  }
   // The last check before a body leaves the server (responseGuard.ts): credential fields and secret-looking values are removed.
   if (out.body !== undefined) {
     const g = guardBody(key, out.body);
