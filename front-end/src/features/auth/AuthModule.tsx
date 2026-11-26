@@ -37,8 +37,9 @@ function Gallery() {
   const lab = onTab ? { "aria-labelledby": "authtab-" + view } : { "aria-label": view === "resetpw" ? "Set a new password" : "Two-factor authentication" };
   return (
     <Page mod="auth" acts={view === "account" ? undefined : <span className="tag"><Icon name="access" />Preview</span>}>
-      <div className="card">
-        <div className="c-head" style={{ padding: "0 8px" }}>
+      {/* C6: no card around cards. The tabs sit on the page; the panel holds the account's cards, or the one sign-in preview card. */}
+      <div className="scroll">
+        <div>
           <div className="tabs" role="tablist" aria-label="Sign-in screens" onKeyDown={tabKey}>
             {AUTH_TABS.map((t) => {
               const sel = view === t[0]; const rove = sel || (!onTab && t[0] === AUTH_TABS[0][0]);
@@ -46,7 +47,7 @@ function Gallery() {
             })}
           </div>
         </div>
-        <div className="c-body scroll" id="authBody" role="tabpanel" tabIndex={0} {...lab}>
+        <div id="authBody" className="stack" role="tabpanel" tabIndex={0} {...lab}>
           {view === "account" ? <YourAccount /> : <AuthCard>
             {view === "signin" ? <SignIn key="signin" api={api} />
               : view === "challenge" ? <Challenge key="challenge" api={api} />

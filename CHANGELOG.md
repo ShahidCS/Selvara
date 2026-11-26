@@ -5,6 +5,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ## [Unreleased]
 
 ### Changed
+- Your account (demo build): the preview tabs and the account cards no longer sit inside an outer card (design brief C6), matching the production page.
 - Dialogs: every choice inside a dialog now uses the shared listbox, which opens under its field and never covers the dialog (design brief G1). This covers about 50 fields in 26 dialogs, among them risk, policy, AI governance, vendor, billing, rates, user and MFA reset forms, and the owner picker. Page forms keep the browser's own dropdown.
 - Frameworks: a one-line note is back saying that requirement-to-control mappings and applicability decisions are drafts until qualified compliance staff review them. The "paraphrased" wording stays removed.
 - Frameworks: the "requirement titles are paraphrased" banner and its guided-tour step are removed.
