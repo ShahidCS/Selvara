@@ -74,3 +74,29 @@ describe("EDGE-5: the shared name rule (client and server)", () => {
     expect(nameBlock("Анна Петрова")).toBeNull(); expect(nameBlock("Ελένη Παππά")).toBeNull(); expect(nameBlock("محمد علي")).toBeNull();
   });
 });
+
+describe("EDGE-6: an Apple 'Hide My Email' relay address", () => {
+  it("is accepted as the work email, stored as given (lower case), and signs in on later visits", async () => {
+    const relay = "dpk7x2mq9s@privaterelay.appleid.com";
+    expect((await join({ email: relay.toUpperCase() })).status).toBe(202);
+    const p = await store.profileByEmail(relay); expect(p?.email).toBe(relay);
+  });
+});
+
+describe("EDGE-7: quitting authenticator set-up halfway through first sign-in", () => {
+  it("leaves no half-made factor: the next sign-in starts set-up again cleanly and completes", async () => {
+    const { totpAt } = await import("@/lib/totp");
+    const id = await auth.createUser("john.doe@example.com", PW, "John Doe"); await auth.confirmUser(id);
+    await store.insertProfile({ id, email: "john.doe@example.com", person: "John Doe", status: "Active", requestedAt: clock }); dir.addMember(ACME, id, "employee");
+    const first = await call("POST", "auth/sign-in", { email: "john.doe@example.com", password: PW });
+    expect(first.body).toEqual(expect.objectContaining({ step: "enroll" })); // quits here: never enters a code
+    clock += 60 * 60_000; // comes back an hour later (the first ticket has expired)
+    const again = await call("POST", "auth/sign-in", { email: "john.doe@example.com", password: PW });
+    const b = again.body as { step: string; ticket: string; secret: string };
+    expect(b.step).toBe("enroll"); expect(b.secret).not.toBe((first.body as { secret: string }).secret);
+    expect((await call("POST", "auth/sign-in/verify", { ticket: (first.body as { ticket: string }).ticket, code: await totpAt(b.secret, clock) })).status).toBe(400); // the old ticket is dead
+    const done = await call("POST", "auth/sign-in/verify", { ticket: b.ticket, code: await totpAt(b.secret, clock) });
+    expect(done.status).toBe(200);
+    expect((await auth.listTotp(id)).length).toBe(1); // exactly one authenticator, no leftover from the first attempt
+  });
+});
