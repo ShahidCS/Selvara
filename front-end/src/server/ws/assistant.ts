@@ -14,6 +14,7 @@
    - What an agent changes is real but bounded: it drafts a note (with the model) that is sent as an in-app notice to the owners of its trigger's
      records (the admins for the weekly summary), once approved. The `notices` MCP grant must be in place for that.
    - Questions and answers are not stored; the audit log records who asked, which records were sent, the model and the token counts. */
+import { WsRefused } from "./store";
 import { findPii, maskPii, piiExplain, type PiiFinding, type PiiPart } from "@/lib/pii";
 import { isoDayOf } from "@/lib/rulesWs";
 import { PREFILL_FORMS, checkValues } from "@/lib/prefill";
@@ -130,7 +131,7 @@ Reply with one JSON object only, mapping field keys to values, for example {"nam
 Placeholders such as [EMAIL] or [PERSON] mark personal data that was removed: never use them as values.`;
 
 async function hourly(t: WsTx, key: string, max: number, msg: string) {
-  const n = await t.next(`${key}-${Math.floor(t.now / 3600_000)}`, 0); if (n > max) invalid(msg);
+  const n = await t.next(`${key}-${Math.floor(t.now / 3600_000)}`, 0); if (n > max) throw new WsRefused(msg, 429); // SEC-12: rate limited, not a bad request
 }
 const safeId = (id: string) => id.replace(/[^a-z0-9]/gi, "").slice(0, 8).toLowerCase() || "x";
 

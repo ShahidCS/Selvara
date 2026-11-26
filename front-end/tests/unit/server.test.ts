@@ -775,3 +775,14 @@ describe("SEC-8: security events are logged with time, who and address, and noth
     for (const secret of [PW, "Not-the-password-99", "sam.lee@company.example", emp.cookie, "A".repeat(43)]) expect(all).not.toContain(secret);
   });
 });
+
+describe("SEC-12: password reset requests are rate limited per address", () => {
+  it("three an hour from one network, then 429; the answer never says whether the email exists", async () => {
+    await account("alex.kim@company.example");
+    const ask = (email: string) => call("POST", "auth/password/reset-request", { email }, { ip: "203.0.113.40" });
+    for (const e of ["alex.kim@company.example", "nobody@company.example", "alex.kim@company.example"]) expect((await ask(e)).status).toBe(202);
+    expect((await ask("alex.kim@company.example")).status).toBe(429);
+    expect((await call("POST", "auth/password/reset-request", { email: "alex.kim@company.example" }, { ip: "203.0.113.41" })).status).toBe(202); // another network
+    clock += 61 * 60_000; expect((await ask("alex.kim@company.example")).status).toBe(202);
+  });
+});
