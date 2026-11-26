@@ -176,7 +176,8 @@ function OversightForm({ id, reopen }: { id: string; reopen: Reopen }) {
   const save = () => act(() => svc.saveOversight(id, t), () => { aiLog("ai.oversight.updated", a.name); L.closeLayer(); reopen?.(); bumpData(); L.toast("Oversight measures updated"); });
   return (
     <>
-      <div className="field"><label htmlFor="aOv">One measure per line</label><textarea className="input" id="aOv" rows={5} style={{ resize: "vertical" }} value={t} onChange={(e) => setT(e.target.value)} /></div>
+      <div className="field"><label htmlFor="aOv">One measure per line</label><textarea className="input" id="aOv" rows={5} maxLength={9030} aria-describedby="aOv-h" style={{ resize: "vertical" }} value={t} onChange={(e) => setT(e.target.value)} />
+        <p className="field help" id="aOv-h">Up to 30 measures, each up to 300 characters.</p></div>
       <Foot L={L} label="Save" onSave={save} />
     </>
   );
