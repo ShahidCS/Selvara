@@ -241,6 +241,7 @@ The full register, with owners, compensating controls, expiry dates and exit cri
 - The credential presence check (true/false per credential, never a value) and its fail-fast message.
 - `apply-settings.sh` against the live API, including its fallbacks on a plan without environment protection or rulesets.
 - The production release path (v0.3.1, 2026-11-24): `verify-tag.sh` against a real signed tag, the full gates in `release.yml`, the deploy to the `production` environment and the `publish` job that created the GitHub Release. (v0.3.0 was refused by the tag check: tag on the pre-bump commit.)
+- The production approval step (v0.3.3, 2026-11-26): the release run paused at the `production` environment (required reviewer, tag rule `v*.*.*`) after all gates passed, deployed only after the owner approved, and published the GitHub Release with the archive, its checksum and the SBOM. (v0.3.2 was refused by the tag check: tag pushed before the version bump merged.) This closes EX-08.
 - The `staging-protection` ruleset (2026-11-25): active on `staging` with no bypass; blocks deletion and force pushes and requires signed commits.
 - Rulesets applied 2026-11-25 and read back through the API: `main-protection` (active on the default branch; no deletion or force push, linear history, signed commits, squash-only pull requests with one code-owner review, the 10 required checks; repository admins may bypass only through a pull request) and `release-tags` (active on `refs/tags/v*`; only repository admins may create, move or delete release tags).
 - Dependabot pull requests reviewed and merged through the pipeline (#93, #94), and the weekly scheduled security run (green on 2026-11-16 and 2026-11-23). Major-version bumps (TypeScript, Tailwind, ESLint) still each need their own review.
@@ -253,7 +254,6 @@ The full register, with owners, compensating controls, expiry dates and exit cri
 **Not yet proven:**
 - **Build provenance and SBOM attestations, and cosign signing:** both are off (EX-09, EX-06), so `gh attestation verify` does not apply yet.
 - **The demo alias** (`STAGING_DEMO_ALIAS`): not set yet. It uses the same alias step as the live preview, which is proven (above).
-- **The production approval step:** set by the owner on 2026-11-25 (required reviewer, tag rule `v*.*.*`); this session cannot read environment settings, so it is proven by the next release pausing for approval.
 - **Merging under `main-protection`:** the first pull request merged through the repository-admin bypass (one code-owner review is required and the owner is the only maintainer).
 
 ## Staging branch and previews

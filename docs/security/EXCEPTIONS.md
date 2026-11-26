@@ -13,7 +13,7 @@ Review the whole register at least quarterly and whenever a "Review when" trigge
 | EX-05 | CSP `script-src 'unsafe-inline'` | @ShahidCS | **Closed 2026-11-25** (webpack build, `script-src 'self'`) |
 | EX-06 | Public Sigstore signing disabled | @ShahidCS | Repository visibility decision |
 | EX-07 | No GitHub Advanced Security (private repository, current plan) | @ShahidCS | If the repository moves to an organisation with Advanced Security, or becomes public |
-| EX-08 | No environment approval gate and no rulesets (private repository, free plan) | @ShahidCS | When the account is upgraded (GitHub Pro or Team), or the repository becomes public |
+| EX-08 | No environment approval gate and no rulesets (private repository, free plan) | @ShahidCS | **Closed 2026-11-26** (public repository; rulesets active; production approval proven by v0.3.3). Reopens if the repository goes private on the free plan |
 | EX-09 | No build-provenance or SBOM attestations (user-owned private repository) | @ShahidCS | If the repository becomes public or moves to an organisation whose plan supports attestations |
 
 ## EX-01 Sole-maintainer review and approval
@@ -187,6 +187,13 @@ and read back through the API: `main-protection` and `release-tags` are active (
 rulesets). The owner also set a required reviewer and a `v*.*.*` tag rule on the `production` environment; that is
 confirmed when the next release pauses for approval. Close this exception (and its row in the table) after that
 release. The compensating controls above stay in place regardless.
+
+**Closed 2026-11-26.** The v0.3.3 release run (Actions run 45761745136) verified the signed tag, ran the full CI and
+security gates, then **paused at the `production` environment until the owner approved it**, and only then deployed and
+published the GitHub Release. With the three rulesets already active, every "What is lost" item above is now enforced:
+the production approval step, protection of `main` (no direct or force push, signed commits, squash-only pull requests
+with the required checks) and immutable `v*` tags. The approver is the same person who authored the release (sole
+maintainer); that stays under EX-01.
 **Planned change:** the owner will make the repository private again once the back end is ready. On the free plan that
 turns the rulesets and the production approval off again, so this exception reopens; buy GitHub Pro first (or Team for
 an organisation) to keep them. EX-09 (attestations) stays as it is for the same reason (owner decision 2026-11-25).
