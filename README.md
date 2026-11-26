@@ -141,62 +141,73 @@ All screenshots use synthetic data (v0.3.1, 24 Nov 2026). The workspace screens 
 
 ## Standards, regulations and frameworks covered
 
-Selvara ships a catalogue of **28 standards, regulations and frameworks** with roughly **1,900 modelled requirements** and a shared control library mapped across them. "Covered" means: a catalogue entry, requirement-level scoring from the status of mapped controls, control mapping, N/A justification and a gap export. It does **not** mean certification, a regulator's acceptance, legal advice, or a substitute for the text of the standard or law.
+Selvara ships a catalogue of **25 standards, regulations and frameworks**, matching the owner's Compliance Sources Register, with roughly **1,880 modelled requirements** and a shared control library mapped across them. "Covered" means: a catalogue entry, requirement-level scoring from the status of mapped controls, control mapping, N/A justification and a gap export. It does **not** mean certification, a regulator's acceptance, legal advice, or a substitute for the text of the standard or law.
 
-Status below was researched on **2026-11-08**. Several items changed recently, so check the official text before relying on a date.
+Names, publishers and versions follow the Compliance Sources Register (2026-11-26). Several items changed recently, so check the official text before relying on a date.
 
-### International standards
+### ISO / IEC
 
-| Catalogue entry | Issuer | Edition tracked or current | Requirements modelled |
+| Name - Full form | Publisher | Latest version / publication | Requirements modelled |
 |---|---|---|---|
-| ISO/IEC 27001:2022 (ISMS) | ISO/IEC | 2022, Amendment 1:2024 (climate action) | 123 |
-| ISO/IEC 27002:2022 (security controls) | ISO/IEC | 2022 | 93 |
-| ISO/IEC 27701 (privacy information management) | ISO/IEC | 2025 edition is current: standalone, replaces 2019 | 8 |
-| ISO 22301 (business continuity) | ISO | 2019, Amendment 1:2024 | 6 |
-| ISO/IEC 27005 (information security risk) | ISO/IEC | 2022 | 6 |
-| ISO/IEC 42001 (AI management system) | ISO/IEC | 2023 | 70 |
-| ISO/IEC 29100 (privacy framework) | ISO/IEC | 2024 edition is current | 24 |
-| ISO/IEC 30107-1 (biometric presentation attack detection) | ISO/IEC | 2023 | 12 |
-| PCI DSS v4.0.1 | PCI Security Standards Council | v4.0.1 is the only active version; future-dated requirements mandatory since 31 Mar 2025 | 10 |
+| ISO/IEC 27001:2022 - Information security, cybersecurity and privacy protection - Information security management systems - Requirements | ISO/IEC (JTC 1/SC 27) | Oct 2022 (Amd 1:2024, Feb 2024) | 123 (earlier edition, see note) |
+| ISO/IEC 27002:2022 - Information security, cybersecurity and privacy protection - Information security controls | ISO/IEC (JTC 1/SC 27) | Feb 2022 | 93 |
+| ISO/IEC 27005:2022 - Information security, cybersecurity and privacy protection - Guidance on managing information security risks | ISO/IEC (JTC 1/SC 27) | Oct 2022 | 6 |
+| ISO/IEC 27701:2025 - Information security, cybersecurity and privacy protection - Privacy information management systems (PIMS) - Requirements and guidance | ISO/IEC (JTC 1/SC 27) | Oct 2025 | 8 (earlier edition, see note) |
+| ISO/IEC 29100:2024 - Information technology - Security techniques - Privacy framework | ISO/IEC (JTC 1/SC 27) | Feb 2024 | 24 |
+| ISO/IEC 30107-1:2023 - Information technology - Biometric presentation attack detection - Part 1: Framework | ISO/IEC (JTC 1/SC 37) | 2023 | 12 |
+| ISO/IEC 42001:2023 - Information technology - Artificial intelligence - Management system | ISO/IEC (JTC 1/SC 42) | Dec 2023 | 70 |
+| ISO 22301:2019 - Security and resilience - Business continuity management systems - Requirements | ISO (TC 292) | Oct 2019 (Amd 1:2024, Feb 2024) | 6 (earlier edition, see note) |
+
+### NIST
+
+| Name - Full form | Publisher | Latest version / publication | Requirements modelled |
+|---|---|---|---|
+| NIST CSF 2.0 - Cybersecurity Framework 2.0 (CSWP 29) | NIST | Feb 2024 | 106 |
+| NIST SP 800-53 Rev. 5 - Security and Privacy Controls for Information Systems and Organizations | NIST | Sep 2020 (Release 5.2.0, Aug 2025) | 298 (earlier edition, see note) |
+| NIST SP 800-37 Rev. 2 - Risk Management Framework for Information Systems and Organizations | NIST | Dec 2018 | 47 |
+| NIST SP 800-207 - Zero Trust Architecture | NIST | Aug 2020 | 35 |
+
+### Industry bodies
+
+| Name - Full form | Publisher | Latest version / publication | Requirements modelled |
+|---|---|---|---|
+| PCI DSS v4.0.1 - Payment Card Industry Data Security Standard | PCI Security Standards Council | Jun 2024 | 10 |
+| SOC 2 Type II - System and Organization Controls 2 (based on Trust Services Criteria) | AICPA | TSC 2017 (Points of Focus updated 2022) | 11 |
 
 ### European Union
 
-| Catalogue entry | Instrument | Notes | Requirements modelled |
+| Name - Full form | Publisher | Latest version / publication | Requirements modelled |
 |---|---|---|---|
-| GDPR | Regulation (EU) 2016/679 | Proposed "Digital Omnibus" changes are not adopted | 12 |
-| EU AI Act | Regulation (EU) 2024/1689, amended by (EU) 2026/1744 | High-risk obligations moved to 2 Dec 2027 (Annex III) and 2 Aug 2028 (Annex I) | 10 |
-| DORA | Regulation (EU) 2022/2554 | Applies since 17 Jan 2025 | 289 |
-| NIS2 | Directive (EU) 2022/2555 | National transposition varies | 52 |
+| GDPR - General Data Protection Regulation, Regulation (EU) 2016/679 | European Parliament & Council of the EU | May 2016 (applicable from 25 May 2018) | 12 |
+| EU AI Act - Regulation (EU) 2024/1689 | European Parliament & Council of the EU | Jul 2024 | 10 |
+| DORA - Digital Operational Resilience Act, Regulation (EU) 2022/2554 | European Parliament & Council of the EU | Dec 2022 (applicable from 17 Jan 2025) | 289 |
+| NIS2 Directive - Directive (EU) 2022/2555 | European Parliament & Council of the EU | Dec 2022 | 52 |
 
-### Middle East and South Asia
+### United Arab Emirates
 
-| Catalogue entry | Issuer | Notes | Requirements modelled |
+| Name - Full form | Publisher | Latest version / publication | Requirements modelled |
 |---|---|---|---|
-| UAE PDPL | UAE federal (Federal Decree-Law 45 of 2021) | Executive regulations status unclear in sources | 8 |
-| DIFC Data Protection Law | DIFC (Law No. 5 of 2020) | Applies in the DIFC, not UAE mainland | 7 |
-| UAE Information Assurance Standards | UAE federal authorities | Issuer and current version need confirmation | 188 |
-| SAMA Cyber Security Framework | SAMA (Saudi Central Bank) | Version 1.0 (2017); catalogue is a subset | 8 |
-| SBP Enterprise Technology Governance and Risk Management Framework | State Bank of Pakistan | BPRD Circular 05/2017 | 60 |
-| SBP AML/CFT/CPF Regulations | State Bank of Pakistan | BPRD Circular 05/2020 as amended | 7 |
-| PECA 2016 | Government of Pakistan | Cybercrime statute, amended 2025 | 46 |
-| PTA Critical Telecom Data and Infrastructure Security Regulations (CTDISR) 2025 | Pakistan Telecommunication Authority | S.R.O. of 29 Oct 2025 | 349 |
-| UAE National Information Assurance Framework (NIAF) | UAE Supreme Council for National Security (NESA) | 2014 | 36 |
+| UAE PDPL - Federal Decree-Law No. 45 of 2021 on the Protection of Personal Data | UAE Federal Government / UAE Data Office | Sep 2021 | 8 |
+| DIFC Data Protection Law No. 5 of 2020 (DPL) | Dubai International Financial Centre | Jul 2020 (latest amendments 2025) | 7 (earlier edition, see note) |
+| UAE Information Assurance Regulation v1.1 | UAE Cyber Security Council (formerly NESA) | Mar 2020 | 188 (earlier edition, see note) |
 
-### United States frameworks
+### Saudi Arabia
 
-| Catalogue entry | Issuer | Edition tracked or current | Requirements modelled |
+| Name - Full form | Publisher | Latest version / publication | Requirements modelled |
 |---|---|---|---|
-| SOC 2 | AICPA | 2017 Trust Services Criteria (revised points of focus 2022) | 11 |
-| NIST CSF 2.0 | NIST | February 2024 | 106 |
-| NIST SP 800-207 Zero Trust Architecture | NIST | August 2020 | 35 |
-| NIST SP 800-37 Risk Management Framework | NIST | Revision 2 | 47 |
-| NIST SP 800-53 Security and Privacy Controls | NIST | Revision 5 | 298 |
+| SAMA Cyber Security Framework (CSF) v1.0 | Saudi Central Bank (SAMA) | May 2017 | 8 |
 
-### Financial crime
+### Pakistan
 
-| Catalogue entry | Notes | Requirements modelled |
-|---|---|---|
-| AML/CFT and sanctions | Composite of screening and monitoring requirements; the closest official reference is the FATF Recommendations | 7 |
+| Name - Full form | Publisher | Latest version / publication | Requirements modelled |
+|---|---|---|---|
+| PECA 2016 - Prevention of Electronic Crimes Act, 2016 | Parliament of Pakistan | Aug 2016 (amended Jan 2025) | 46 |
+| SBP Enterprise Technology Governance & Risk Management Framework (ETGRMF), BPRD Circular No. 05 of 2017 | State Bank of Pakistan | May 2017 | 60 |
+| Critical Telecom Data and Infrastructure Security Regulations (CTDISR), 2025 | Pakistan Telecommunication Authority (PTA) | 2025 | 349 |
+
+**Earlier edition.** For ISO/IEC 27001 (Amd 1:2024), ISO 22301 (Amd 1:2024), ISO/IEC 27701:2025, NIST SP 800-53 Release 5.2.0, the DIFC 2025 amendments and the UAE Information Assurance Regulation v1.1, the modelled requirements reflect an earlier edition. The app says so on the Frameworks list and the framework page; the gaps are listed in [`docs/architecture/FRAMEWORK_RECONCILIATION.md`](docs/architecture/FRAMEWORK_RECONCILIATION.md) for a qualified reviewer.
+
+**Recommended, not added yet.** NCA ECC-2:2024, Saudi PDPL, ADGM Data Protection Regulations 2021, CIS Controls v8.1 and SWIFT CSCF. Each needs a sourced requirement list and a compliance review first.
 
 **Add your own.** The "Add a regulation, standard or guideline" flow loads templates (NIS2, CIS Controls v8.1, HIPAA Security Rule, SAMA CSF) or pasted requirements and matches each line to control domains by keyword. These are starting points, not full catalogues.
 

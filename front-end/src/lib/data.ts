@@ -21,6 +21,9 @@ export const FRAMEWORK_REQS: Record<string, { g: string[][]; r: string[][] }> = 
 export const ANNEXA: { id: string; title: string; theme: string }[] = annex as any;
 export const FW_SHORT: Record<string, string> = fwShort as any;
 export const FW_ID: Record<string, string> = Object.fromEntries(DATA.frameworks.map((f) => [f.id, f.name]));
+/** The frameworks a control maps to that are in the library (or the company's own). A mapping kept in a company's records for a framework the
+    library no longer lists (for example one removed by the Compliance Sources Register) is not shown. */
+export const mappedFws = (c: { map?: Record<string, string[]> }): string[] => Object.keys(c.map || {}).filter((k) => k in FW_ID && (c.map![k] || []).length > 0);
 
 export const testsForControl = (cid: string) => DATA.tests.filter((t) => t.controls.includes(cid));
 export function controlsForFw(id: string) {

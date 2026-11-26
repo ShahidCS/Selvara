@@ -1,6 +1,6 @@
 /* Controls API stubs. In mock mode (default) each function performs the in-memory DATA mutation the prototype did and
  * returns the result; the caller then does wsLog / toast / bumpData. In http mode it would call the (not yet existing) API. */
-import { DATA, FW_SHORT, testsForControl } from "@/lib/data";
+import { DATA, FW_SHORT, mappedFws, testsForControl } from "@/lib/data";
 import { nowStamp, csvCell } from "@/lib/format";
 import { wsLog } from "@/lib/audit";
 import { getActor, SodError } from "@/lib/sod";
@@ -154,9 +154,9 @@ export function syncAllTests() {
 /* exports: return file text (mock builds it from DATA) */
 export function exportSoa() {
   return viaApi(() => csv(["Doc", "Control", "Title", "Domain", "Owner", "Status", "Frameworks"],
-    scoped("controls", DATA.controls).map((c) => ["SoA", c.id, c.title, c.domain, c.owner, c.status, Object.keys(c.map || {}).map((k) => FW_SHORT[k] || k).join("|")])),
+    scoped("controls", DATA.controls).map((c) => ["SoA", c.id, c.title, c.domain, c.owner, c.status, mappedFws(c).map((k) => FW_SHORT[k] || k).join("|")])),
   logged(() => csv(["Doc", "Control", "Title", "Domain", "Owner", "Status", "Frameworks"],
-    scoped("controls", DATA.controls).map((c) => ["SoA", c.id, c.title, c.domain, c.owner, c.status, Object.keys(c.map || {}).map((k) => FW_SHORT[k] || k).join("|")])), "controls.soa.exported", `${DATA.controls.length} controls`));
+    scoped("controls", DATA.controls).map((c) => ["SoA", c.id, c.title, c.domain, c.owner, c.status, mappedFws(c).map((k) => FW_SHORT[k] || k).join("|")])), "controls.soa.exported", `${DATA.controls.length} controls`));
 }
 export function exportMatrix() {
   return viaApi(() => csv(["Control", "Domain", ...MATRIX_FWS.map((f) => FW_SHORT[f])],
@@ -167,7 +167,7 @@ export function exportMatrix() {
 function workpaper(id: string) {
     const c = DATA.controls.find((x) => x.id === id)!;
     const tests = testsForControl(c.id);
-    return `LOCKED WORKPAPER — ${c.id} ${c.title}\nDomain: ${c.domain}\nOwner: ${c.owner}\nStatus: ${c.status}\nMappings: ${Object.keys(c.map || {}).map((k) => FW_SHORT[k] + " " + c.map[k].join("/")).join("; ")}\nAttestation: ${c.attestation ? c.attestation.by + " on " + c.attestation.at : "none"}\nTests:\n${tests.map((t) => " - " + t.id + " " + t.name + " [" + t.result + "]").join("\n") || " none"}\n\nDraft workpaper for audit support. Requires reviewer sign-off.`;
+    return `LOCKED WORKPAPER — ${c.id} ${c.title}\nDomain: ${c.domain}\nOwner: ${c.owner}\nStatus: ${c.status}\nMappings: ${mappedFws(c).map((k) => (FW_SHORT[k] || k) + " " + c.map[k].join("/")).join("; ")}\nAttestation: ${c.attestation ? c.attestation.by + " on " + c.attestation.at : "none"}\nTests:\n${tests.map((t) => " - " + t.id + " " + t.name + " [" + t.result + "]").join("\n") || " none"}\n\nDraft workpaper for audit support. Requires reviewer sign-off.`;
 }
 export function exportWorkpaper(id: string) {
   return viaApi(() => workpaper(id), logged(() => workpaper(id), "control.workpaper.exported", id));

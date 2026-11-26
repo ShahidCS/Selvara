@@ -5,6 +5,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 ## [Unreleased]
 
 ### Changed
+- Frameworks: the library matches the owner's Compliance Sources Register, 25 entries. Each shows its full name, publisher and latest version on the Frameworks list and on its page (new Source card). SBP AML/CFT/CPF Regulations, AML/CFT & Sanctions and UAE NIAF are removed with their requirements and control links; UAE NIAF is replaced by the UAE Information Assurance Regulation v1.1 entry. Six entries whose modelled requirements predate the register version (ISO/IEC 27001 Amd 1, ISO 22301 Amd 1, ISO/IEC 27701:2025, NIST SP 800-53 Release 5.2.0, DIFC 2025 amendments, UAE IA Regulation v1.1) show an "Earlier edition" badge and a note; no requirement text was written, and FRAMEWORK_RECONCILIATION.md lists each gap for review. The register's recommended additions are recorded there, not added. **Deploy note:** a company's existing records that name a removed framework (scope, requirement mappings) are kept but no longer shown, since the library no longer lists it.
 - Docs: EX-08 is closed. The v0.3.3 release paused for the owner's approval at the `production` environment before deploying, and the rulesets on `main`, `staging` and release tags are active. EXCEPTIONS.md and PIPELINE.md record the evidence. The exception reopens if the repository goes private on the free plan.
 
 ## [0.3.3] - 2026-11-26

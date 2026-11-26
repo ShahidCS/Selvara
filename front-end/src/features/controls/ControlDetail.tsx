@@ -1,5 +1,5 @@
 import { inAuditorScope } from "@/services/audits";
-import { DATA, FW_ID, testsForControl } from "@/lib/data";
+import { DATA, FW_ID, mappedFws, testsForControl } from "@/lib/data";
 import { RecordHistory } from "@/components/kit/RecordHistory";
 import { bumpData, setModState, useApp, useData } from "@/lib/store";
 import { iAm, uiMessage } from "@/lib/grcSod";
@@ -30,7 +30,7 @@ export function ControlDetail({ id }: { id: string }) {
   const dis = (why: string | null) => ({ disabled: !!why, title: why || undefined });
   const tests = testsForControl(c.id);
   const att = c.attestation;
-  const keys = Object.keys(c.map || {});
+  const keys = mappedFws(c);
   const excs = svc.exceptionsOf(c);
 
   return (

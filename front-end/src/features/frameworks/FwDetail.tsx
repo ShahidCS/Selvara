@@ -54,6 +54,15 @@ export function FwDetail({ fwId }: { fwId: string }) {
       <button className="btn btn-secondary" onClick={viewInControls}>View in controls</button>
     </>}>
       <div className="scroll rec-scroll" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <section className="card" aria-labelledby="fwSrcH"><div className="c-head"><h3 id="fwSrcH">Source</h3></div><div className="c-body stack">
+        <dl className="meta-grid lstart">
+          {f.title ? <><dt>Full name</dt><dd>{f.title}</dd></> : null}
+          <dt>Publisher</dt><dd>{f.publisher || "Not recorded"}</dd>
+          <dt>Latest version</dt><dd>{f.version || "Not recorded"}</dd>
+          {cat ? <><dt>Requirements modelled</dt><dd>{cat.r.length} in {cat.g.length} group{cat.g.length === 1 ? "" : "s"}</dd></> : null}
+        </dl>
+        {f.reqEdition ? <p className="banner warn" role="note" style={{ margin: 0, display: "flex", gap: 8, alignItems: "flex-start" }}><Icon name="alert" aria-hidden="true" /> <span><strong>Requirements reflect an earlier edition:</strong> {f.reqEdition}. Readiness here is measured against that text, not the latest version, until a qualified reviewer updates the requirements.</span></p> : null}
+      </div></section>
       <KpiStrip label="Framework summary">
         <KpiTile label="Readiness" value={ok ? p + "%" : "—"} caption={!ok ? `Not assessed: none of ${sc ? sc.total : 0} requirements assessed yet` : sc ? `${sc.impl} of ${sc.total} applicable requirements met` : undefined} />
         <KpiTile label="Mapped controls" value={ctrls.length} caption={`${passing} passing, ${needs} need evidence`} />

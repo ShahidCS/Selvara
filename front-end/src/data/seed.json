@@ -90,310 +90,358 @@
   {
    "id": "iso27001",
    "name": "ISO/IEC 27001:2022",
+   "title": "Information security, cybersecurity and privacy protection - Information security management systems - Requirements",
    "kind": "Standard",
    "region": "Global",
    "pct": 87,
    "controls": 93,
    "gaps": 7,
    "audit": "Surveillance, 12 Mar 2027",
-   "mapped": 92
+   "mapped": 92,
+   "publisher": "ISO/IEC (JTC 1/SC 27)",
+   "version": "Oct 2022 (Amd 1:2024, Feb 2024)",
+   "reqEdition": "ISO/IEC 27001:2022 without Amd 1:2024 (climate action changes to clauses 4.1 and 4.2)"
   },
   {
    "id": "iso27002",
    "name": "ISO/IEC 27002:2022",
+   "title": "Information security, cybersecurity and privacy protection - Information security controls",
    "kind": "Standard",
    "region": "Global",
    "pct": 86,
    "controls": 93,
    "gaps": 8,
    "audit": "Control set for 27001",
-   "mapped": 80
+   "mapped": 80,
+   "publisher": "ISO/IEC (JTC 1/SC 27)",
+   "version": "Feb 2022"
   },
   {
    "id": "soc2",
    "name": "SOC 2 Type II",
+   "title": "System and Organization Controls 2 (based on Trust Services Criteria)",
    "kind": "Framework",
    "region": "US",
    "pct": 84,
    "controls": 61,
    "gaps": 6,
    "audit": "Window closes 30 Apr 2027",
-   "mapped": 22
+   "mapped": 22,
+   "publisher": "AICPA",
+   "version": "TSC 2017 (Points of Focus updated 2022)"
   },
   {
    "id": "iso27701",
-   "name": "ISO/IEC 27701 (PIMS)",
+   "name": "ISO/IEC 27701:2025",
+   "title": "Information security, cybersecurity and privacy protection - Privacy information management systems (PIMS) - Requirements and guidance",
    "kind": "Standard",
    "region": "Global",
    "pct": 78,
    "controls": 49,
    "gaps": 9,
    "audit": "Gap assessment",
-   "mapped": 2
+   "mapped": 2,
+   "publisher": "ISO/IEC (JTC 1/SC 27)",
+   "version": "Oct 2025",
+   "reqEdition": "ISO/IEC 27701:2019 (clause structure of the earlier edition)"
   },
   {
    "id": "iso22301",
-   "name": "ISO 22301 (BCMS)",
+   "name": "ISO 22301:2019",
+   "title": "Security and resilience - Business continuity management systems - Requirements",
    "kind": "Standard",
    "region": "Global",
    "pct": 81,
    "controls": 37,
    "gaps": 6,
    "audit": "DR test complete",
-   "mapped": 2
+   "mapped": 2,
+   "publisher": "ISO (TC 292)",
+   "version": "Oct 2019 (Amd 1:2024, Feb 2024)",
+   "reqEdition": "ISO 22301:2019 without Amd 1:2024 (climate action changes)"
   },
   {
    "id": "iso27005",
-   "name": "ISO/IEC 27005 (Risk)",
+   "name": "ISO/IEC 27005:2022",
+   "title": "Information security, cybersecurity and privacy protection - Guidance on managing information security risks",
    "kind": "Standard",
    "region": "Global",
    "pct": 83,
    "controls": 21,
    "gaps": 3,
    "audit": "Methodology adopted",
-   "mapped": 5
+   "mapped": 5,
+   "publisher": "ISO/IEC (JTC 1/SC 27)",
+   "version": "Oct 2022"
   },
   {
    "id": "iso42001",
-   "name": "ISO/IEC 42001 (AI MS)",
+   "name": "ISO/IEC 42001:2023",
+   "title": "Information technology - Artificial intelligence - Management system",
    "kind": "Standard",
    "region": "Global",
    "pct": 46,
    "controls": 38,
    "gaps": 20,
    "audit": "Implementation",
-   "mapped": 38
+   "mapped": 38,
+   "publisher": "ISO/IEC (JTC 1/SC 42)",
+   "version": "Dec 2023"
   },
   {
    "id": "nistcsf",
    "name": "NIST CSF 2.0",
+   "title": "Cybersecurity Framework 2.0 (CSWP 29)",
    "kind": "Framework",
    "region": "US",
    "pct": 80,
    "controls": 106,
    "gaps": 14,
    "audit": "Profile mapped",
-   "mapped": 78
+   "mapped": 78,
+   "publisher": "NIST",
+   "version": "Feb 2024"
   },
   {
    "id": "pci",
    "name": "PCI DSS v4.0.1",
+   "title": "Payment Card Industry Data Security Standard",
    "kind": "Standard",
    "region": "Global",
    "pct": 69,
    "controls": 51,
    "gaps": 14,
    "audit": "Scoping / RoC prep",
-   "mapped": 12
+   "mapped": 12,
+   "publisher": "PCI Security Standards Council",
+   "version": "Jun 2024"
   },
   {
    "id": "gdpr",
    "name": "GDPR",
+   "title": "General Data Protection Regulation, Regulation (EU) 2016/679",
    "kind": "Regulation",
    "region": "EU",
    "pct": 91,
    "controls": 42,
    "gaps": 3,
    "audit": "Internal review Q2",
-   "mapped": 6
+   "mapped": 6,
+   "publisher": "European Parliament & Council of the EU",
+   "version": "May 2016 (applicable from 25 May 2018)"
   },
   {
    "id": "euaiact",
    "name": "EU AI Act",
+   "title": "Regulation (EU) 2024/1689",
    "kind": "Regulation",
    "region": "EU",
    "pct": 52,
    "controls": 34,
    "gaps": 17,
    "audit": "High-risk classification",
-   "mapped": 5
+   "mapped": 5,
+   "publisher": "European Parliament & Council of the EU",
+   "version": "Jul 2024"
   },
   {
    "id": "dora",
    "name": "DORA",
+   "title": "Digital Operational Resilience Act, Regulation (EU) 2022/2554",
    "kind": "Regulation",
    "region": "EU",
    "pct": 58,
    "controls": 44,
    "gaps": 18,
    "audit": "ICT resilience gap",
-   "mapped": 91
+   "mapped": 91,
+   "publisher": "European Parliament & Council of the EU",
+   "version": "Dec 2022 (applicable from 17 Jan 2025)"
   },
   {
    "id": "nis2",
    "name": "NIS2 Directive",
+   "title": "Directive (EU) 2022/2555",
    "kind": "Regulation",
    "region": "EU",
    "pct": 63,
    "controls": 35,
    "gaps": 13,
    "audit": "Applicability review",
-   "mapped": 47
+   "mapped": 47,
+   "publisher": "European Parliament & Council of the EU",
+   "version": "Dec 2022"
   },
   {
    "id": "uaepdpl",
    "name": "UAE PDPL",
+   "title": "Federal Decree-Law No. 45 of 2021 on the Protection of Personal Data",
    "kind": "Regulation",
    "region": "UAE",
    "pct": 84,
    "controls": 38,
    "gaps": 6,
    "audit": "DPO appointed",
-   "mapped": 5
+   "mapped": 5,
+   "publisher": "UAE Federal Government / UAE Data Office",
+   "version": "Sep 2021"
   },
   {
    "id": "difc",
-   "name": "DIFC Data Protection Law",
+   "name": "DIFC Data Protection Law No. 5 of 2020 (DPL)",
+   "title": "",
    "kind": "Regulation",
    "region": "UAE",
    "pct": 88,
    "controls": 36,
    "gaps": 4,
    "audit": "Annual assessment",
-   "mapped": 3
+   "mapped": 3,
+   "publisher": "Dubai International Financial Centre",
+   "version": "Jul 2020 (latest amendments 2025)",
+   "reqEdition": "DIFC Law No. 5 of 2020 as enacted; the 2025 amendments are not modelled"
   },
   {
    "id": "sama",
-   "name": "SAMA Cyber Security Framework",
+   "name": "SAMA Cyber Security Framework (CSF) v1.0",
+   "title": "",
    "kind": "Framework",
    "region": "KSA",
    "pct": 72,
    "controls": 118,
    "gaps": 22,
    "audit": "Maturity level 3 target",
-   "mapped": 6
-  },
-  {
-   "id": "sbp",
-   "name": "SBP AML/CFT/CPF Regulations",
-   "kind": "Regulation",
-   "region": "Pakistan",
-   "pct": 77,
-   "controls": 29,
-   "gaps": 7,
-   "audit": "Reg. 8 screening",
-   "mapped": 4
+   "mapped": 6,
+   "publisher": "Saudi Central Bank (SAMA)",
+   "version": "May 2017"
   },
   {
    "id": "peca",
    "name": "PECA 2016",
+   "title": "Prevention of Electronic Crimes Act, 2016",
    "kind": "Regulation",
    "region": "Pakistan",
    "pct": 74,
    "controls": 18,
    "gaps": 5,
    "audit": "Data handling",
-   "mapped": 43
+   "mapped": 43,
+   "publisher": "Parliament of Pakistan",
+   "version": "Aug 2016 (amended Jan 2025)"
   },
   {
    "id": "uaeia",
-   "name": "UAE IA Standards",
+   "name": "UAE Information Assurance Regulation v1.1",
+   "title": "",
    "kind": "Framework",
    "region": "UAE",
    "pct": 70,
    "controls": 62,
    "gaps": 19,
    "audit": "T2 controls",
-   "mapped": 97
-  },
-  {
-   "id": "amlcft",
-   "name": "AML/CFT & Sanctions",
-   "kind": "Framework",
-   "region": "Global",
-   "pct": 83,
-   "controls": 40,
-   "gaps": 7,
-   "audit": "Screening & monitoring",
-   "mapped": 2
+   "mapped": 97,
+   "publisher": "UAE Cyber Security Council (formerly NESA)",
+   "version": "Mar 2020",
+   "reqEdition": "UAE Information Assurance Standards (NESA, 2014)"
   },
   {
    "id": "iso29100",
-   "name": "ISO/IEC 29100 Privacy framework",
+   "name": "ISO/IEC 29100:2024",
+   "title": "Information technology - Security techniques - Privacy framework",
    "kind": "Framework",
    "region": "Global",
    "pct": 74,
    "controls": 0,
    "gaps": 4,
    "audit": "Privacy review, 2027",
-   "mapped": 25
+   "mapped": 25,
+   "publisher": "ISO/IEC (JTC 1/SC 27)",
+   "version": "Feb 2024"
   },
   {
    "id": "iso30107",
-   "name": "ISO/IEC 30107-1 Biometric PAD",
+   "name": "ISO/IEC 30107-1:2023",
+   "title": "Information technology - Biometric presentation attack detection - Part 1: Framework",
    "kind": "Standard",
    "region": "Global",
    "pct": 69,
    "controls": 0,
    "gaps": 3,
    "audit": "IDV assurance, 2027",
-   "mapped": 12
+   "mapped": 12,
+   "publisher": "ISO/IEC (JTC 1/SC 37)",
+   "version": "2023"
   },
   {
    "id": "nist800207",
-   "name": "NIST SP 800-207 Zero Trust",
+   "name": "NIST SP 800-207",
+   "title": "Zero Trust Architecture",
    "kind": "Framework",
    "region": "US",
    "pct": 62,
    "controls": 0,
    "gaps": 5,
    "audit": "Architecture review",
-   "mapped": 33
+   "mapped": 33,
+   "publisher": "NIST",
+   "version": "Aug 2020"
   },
   {
    "id": "sbpetg",
-   "name": "SBP Enterprise Technology Governance & Risk Management Framework",
+   "name": "SBP Enterprise Technology Governance & Risk Management Framework (ETGRMF), BPRD Circular No. 05 of 2017",
+   "title": "",
    "kind": "Regulation",
    "region": "Pakistan",
    "pct": 58,
    "controls": 0,
    "gaps": 6,
    "audit": "SBP inspection",
-   "mapped": 62
+   "mapped": 62,
+   "publisher": "State Bank of Pakistan",
+   "version": "May 2017"
   },
   {
    "id": "nist80037",
-   "name": "NIST SP 800-37 Risk Management Framework",
+   "name": "NIST SP 800-37 Rev. 2",
+   "title": "Risk Management Framework for Information Systems and Organizations",
    "kind": "Framework",
    "region": "US",
    "pct": 66,
    "controls": 0,
    "gaps": 5,
    "audit": "RMF assessment",
-   "mapped": 28
+   "mapped": 28,
+   "publisher": "NIST",
+   "version": "Dec 2018"
   },
   {
    "id": "nist80053",
-   "name": "NIST SP 800-53",
+   "name": "NIST SP 800-53 Rev. 5",
+   "title": "Security and Privacy Controls for Information Systems and Organizations",
    "kind": "Framework",
    "region": "US",
    "pct": 0,
    "controls": 298,
    "gaps": 0,
    "audit": "",
-   "mapped": 108
-  },
-  {
-   "id": "uaeniaf",
-   "name": "UAE National Information Assurance Framework",
-   "kind": "Framework",
-   "region": "UAE",
-   "pct": 0,
-   "controls": 36,
-   "gaps": 0,
-   "audit": "",
-   "mapped": 35
+   "mapped": 108,
+   "publisher": "NIST",
+   "version": "Sep 2020 (Release 5.2.0, Aug 2025)",
+   "reqEdition": "Rev. 5 as first published (Sep 2020); changes up to Release 5.2.0 are not modelled"
   },
   {
    "id": "ctdisr",
-   "name": "PTA Critical Telecom Data and Infrastructure Security Regulations 2025",
+   "name": "Critical Telecom Data and Infrastructure Security Regulations (CTDISR), 2025",
+   "title": "",
    "kind": "Regulation",
    "region": "Pakistan",
    "pct": 0,
    "controls": 349,
    "gaps": 0,
    "audit": "",
-   "mapped": 106
+   "mapped": 106,
+   "publisher": "Pakistan Telecommunication Authority (PTA)",
+   "version": "2025"
   }
  ],
  "controls": [
@@ -610,9 +658,6 @@
      "M4.3.1",
      "T3.2.4"
     ],
-    "uaeniaf": [
-     "1.4"
-    ],
     "nis2": [
      "32(6)"
     ],
@@ -658,9 +703,6 @@
     "sama": [
      "3.3"
     ],
-    "sbp": [
-     "Reg.8"
-    ],
     "uaeia": [
      "T2.3",
      "T5.4.2",
@@ -685,9 +727,6 @@
      "IA-2",
      "IA-10",
      "MA-4"
-    ],
-    "uaeniaf": [
-     "1.2.4"
     ],
     "nis2": [
      "21(2)(j)"
@@ -874,9 +913,6 @@
      "T2.5",
      "T7.4.1"
     ],
-    "sbp": [
-     "Reg.8"
-    ],
     "iso27002": [
      "8.24"
     ],
@@ -884,9 +920,6 @@
      "MP-5",
      "SC-13",
      "SC-28"
-    ],
-    "uaeniaf": [
-     "1.2.1"
     ],
     "nis2": [
      "21(2)(h)"
@@ -1109,9 +1142,6 @@
     ],
     "uaeia": [
      "T3.5.1"
-    ],
-    "uaeniaf": [
-     "3.4.2"
     ],
     "nis2": [
      "21(2)(c)"
@@ -1397,9 +1427,6 @@
      "T2.2.6",
      "T2.3.7"
     ],
-    "uaeniaf": [
-     "3.2.2"
-    ],
     "dora": [
      "RTS-Art.18(1)",
      "RTS-Art.18(2)(b)",
@@ -1541,9 +1568,6 @@
     "uaeia": [
      "M4.1.1",
      "M4.2.1"
-    ],
-    "uaeniaf": [
-     "3.2.3"
     ],
     "nis2": [
      "21(2)(i)"
@@ -1786,10 +1810,6 @@
      "IR-8",
      "PM-14"
     ],
-    "uaeniaf": [
-     "3.3",
-     "3.3.2"
-    ],
     "ctdisr": [
      "Reg.22(1)",
      "Reg.22(3)",
@@ -1871,11 +1891,6 @@
      "CP-4",
      "PM-8",
      "PM-14"
-    ],
-    "uaeniaf": [
-     "3.4",
-     "3.4.1",
-     "3.4.3"
     ],
     "sbpetg": [
      "5.1",
@@ -2017,12 +2032,6 @@
    "owner": "P. Nair",
    "status": "Pass",
    "map": {
-    "amlcft": [
-     "Screening"
-    ],
-    "sbp": [
-     "Reg.8"
-    ],
     "sama": [
      "Fincrime"
     ],
@@ -2038,12 +2047,6 @@
    "owner": "P. Nair",
    "status": "Needs evidence",
    "map": {
-    "amlcft": [
-     "Monitoring"
-    ],
-    "sbp": [
-     "Reg.8"
-    ],
     "sama": [
      "Fincrime"
     ]
@@ -2292,12 +2295,6 @@
      "M5.2.1",
      "M5.2.6"
     ],
-    "uaeniaf": [
-     "1.5",
-     "6.1",
-     "6.2",
-     "6.3"
-    ],
     "nis2": [
      "3(4)",
      "25(1)",
@@ -2414,9 +2411,6 @@
      "M5.5.1",
      "M5.5.3",
      "M6.2.2"
-    ],
-    "uaeniaf": [
-     "7.2"
     ],
     "nis2": [
      "21(2)(f)",
@@ -2648,9 +2642,6 @@
      "M6.1.1",
      "M6.2.1"
     ],
-    "uaeniaf": [
-     "7.2"
-    ],
     "nis2": [
      "21(2)(f)"
     ],
@@ -2712,11 +2703,6 @@
      "M1.4.2",
      "M5.2.7",
      "M5.5.3"
-    ],
-    "uaeniaf": [
-     "6.5",
-     "7",
-     "7.1"
     ],
     "nis2": [
      "3(4)",
@@ -2911,9 +2897,6 @@
      "M2.1.1",
      "M2.2.3"
     ],
-    "uaeniaf": [
-     "3.1"
-    ],
     "nis2": [
      "21(1)",
      "21(2)(a)"
@@ -2986,10 +2969,6 @@
      "M2.2.2",
      "M2.2.3",
      "M2.4.1"
-    ],
-    "uaeniaf": [
-     "3.1",
-     "3.1.3"
     ],
     "nis2": [
      "21(1)",
@@ -3066,9 +3045,6 @@
      "M2.3.4",
      "M2.4.2"
     ],
-    "uaeniaf": [
-     "3.2"
-    ],
     "nis2": [
      "21(1)"
     ],
@@ -3130,11 +3106,6 @@
     "uaeia": [
      "T9.2.1"
     ],
-    "uaeniaf": [
-     "3.1.2",
-     "3.4",
-     "4.1"
-    ],
     "dora": [
      "RTS-Art.5",
      "RTS-Art.24(1)",
@@ -3189,12 +3160,6 @@
      "T4.4.1",
      "T4.4.2",
      "T8.3.1"
-    ],
-    "uaeniaf": [
-     "3.3.1",
-     "4.2",
-     "4.3",
-     "5"
     ],
     "nis2": [
      "23(2)",
@@ -3365,9 +3330,6 @@
      "T1.1.1",
      "T1.2.1",
      "T1.2.2"
-    ],
-    "uaeniaf": [
-     "3.1.1"
     ],
     "nis2": [
      "21(2)(i)"
@@ -3741,9 +3703,6 @@
      "T5.2.1",
      "T5.5.2"
     ],
-    "uaeniaf": [
-     "1.2.4"
-    ],
     "dora": [
      "RTS-Art.20(1)",
      "RTS-Art.20(2)(a)",
@@ -3852,10 +3811,6 @@
      "T5.4.1",
      "T5.4.5",
      "T5.6.1"
-    ],
-    "uaeniaf": [
-     "1.2.1",
-     "3.2.1"
     ],
     "nis2": [
      "21(2)(i)"
@@ -4109,9 +4064,6 @@
     "uaeia": [
      "M5.2.6",
      "T7.4.2"
-    ],
-    "uaeniaf": [
-     "1.2.5"
     ],
     "nis2": [
      "21(2)(h)"
@@ -4539,9 +4491,6 @@
     "uaeia": [
      "T3.4.1"
     ],
-    "uaeniaf": [
-     "3.2.1"
-    ],
     "dora": [
      "RTS-Art.11(2)(d)",
      "RTS-Art.34(i)"
@@ -4624,9 +4573,6 @@
     "uaeia": [
      "T3.6.1",
      "T3.6.3"
-    ],
-    "uaeniaf": [
-     "3.3.1"
     ],
     "dora": [
      "RTS-Art.12(2)(c)",
@@ -4802,10 +4748,6 @@
      "T7.3.3",
      "T7.3.4"
     ],
-    "uaeniaf": [
-     "1.2.2",
-     "1.2.5"
-    ],
     "dora": [
      "Art.9(3)",
      "Art.10(4)",
@@ -4865,9 +4807,6 @@
      "T5.4.4",
      "T5.4.5",
      "T5.4.6"
-    ],
-    "uaeniaf": [
-     "3.2.1"
     ],
     "dora": [
      "RTS-Art.2(1)",
@@ -5007,9 +4946,6 @@
     ],
     "uaeia": [
      "M5.4.1"
-    ],
-    "uaeniaf": [
-     "3.1.3"
     ],
     "nis2": [
      "32(2)(d)",
@@ -5531,9 +5467,6 @@
      "M4.4.1",
      "M4.4.2"
     ],
-    "uaeniaf": [
-     "3.2.3"
-    ],
     "dora": [
      "RTS-Art.19(b)(iii)"
     ],
@@ -5617,9 +5550,6 @@
      "T2.3.3",
      "T2.3.4",
      "T2.3.5"
-    ],
-    "uaeniaf": [
-     "3.2.2"
     ],
     "dora": [
      "RTS-Art.18(2)(b)",
@@ -5955,9 +5885,6 @@
      "T8.3.2",
      "T8.3.3"
     ],
-    "uaeniaf": [
-     "3.3"
-    ],
     "nis2": [
      "21(2)(b)",
      "23(3)"
@@ -6016,12 +5943,6 @@
     ],
     "uaeia": [
      "T8.3.2"
-    ],
-    "uaeniaf": [
-     "3.3.3",
-     "4.3",
-     "5",
-     "7"
     ],
     "nis2": [
      "23(1)",
@@ -6193,12 +6114,6 @@
      "T7.8.7",
      "T9.2.2"
     ],
-    "uaeniaf": [
-     "1.2.3",
-     "3.4.2",
-     "3.4.3",
-     "4.4"
-    ],
     "dora": [
      "RTS-Art.8(2)(c)",
      "RTS-Art.24(2)",
@@ -6248,9 +6163,6 @@
     ],
     "uaeia": [
      "M1.4.2"
-    ],
-    "uaeniaf": [
-     "4.4"
     ],
     "nis2": [
      "21(2)(c)",
@@ -6449,14 +6361,6 @@
     "nist80053": [
      "CA-2"
     ],
-    "uaeniaf": [
-     "1.5",
-     "4.1",
-     "6.1",
-     "6.2",
-     "6.4",
-     "7.2"
-    ],
     "nis2": [
      "24(1)",
      "32(2)(a)",
@@ -6507,9 +6411,6 @@
      "T7.8.3",
      "T7.8.4"
     ],
-    "uaeniaf": [
-     "6.3"
-    ],
     "ctdisr": [
      "Reg.21(7)",
      "Reg.21(8)",
@@ -6531,16 +6432,6 @@
      "T4.4.1",
      "T8.3.1",
      "T8.3.2"
-    ],
-    "uaeniaf": [
-     "1.4",
-     "3.3.3",
-     "4.2",
-     "4.3",
-     "4.4",
-     "5",
-     "7",
-     "7.1"
     ],
     "nis2": [
      "30(1)(a)"

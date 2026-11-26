@@ -64,10 +64,13 @@ function FrameworksList() {
   const snoozed = frameworks.filter((f) => fwSnoozed(f.id)).length;
 
   const cols: DTColumn<Fw>[] = [
-    { key: "name", header: "Name", width: 190, value: (f) => f.name, locked: true, render: (f) => {
+    { key: "name", header: "Name", width: 340, value: (f) => f.name, locked: true, render: (f) => {
       const cat = FRAMEWORK_REQS[f.id];
       return (<>
-        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}><span className="strong">{f.name}</span><Chip cls={f.kind === "Regulation" ? "info" : "neutral"}>{f.kind}</Chip></div>
+        <div className="fw-name" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}><span className="strong">{f.name}</span><Chip cls={f.kind === "Regulation" ? "info" : "neutral"}>{f.kind}</Chip>
+          {f.reqEdition ? <Chip cls="warn" icon="alert" title={`Requirements reflect an earlier edition: ${f.reqEdition}`}>Earlier edition</Chip> : null}</div>
+        {f.title ? <div className="fw-full">{f.title}</div> : null}
+        {f.publisher || f.version ? <div className="fw-src">{[f.publisher, f.version].filter(Boolean).join(" · ")}</div> : null}
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{cat ? cat.r.length + " requirements, " : ""}{f.mapped} mapped controls{f.audit ? ", " + f.audit : ""}</div>
       </>);
     } },
@@ -104,7 +107,7 @@ function FrameworksList() {
       <p className="banner info" role="note" data-tour="frameworks-draft">Requirement-to-control mappings and applicability decisions are drafts. Qualified compliance staff review them before anyone relies on them.</p>
       <div className="card" data-tour="frameworks-table">
         <div className="c-body flush scroll" style={{ padding: 0 }}>
-          <DataTable<Fw> id="frameworks" label="Frameworks" rows={rows} rowKey={(f) => f.id} columns={cols} searchText={(f) => `${f.name} ${f.id} ${f.region || ""}`}
+          <DataTable<Fw> id="frameworks" label="Frameworks" rows={rows} rowKey={(f) => f.id} columns={cols} searchText={(f) => `${f.name} ${f.title || ""} ${f.publisher || ""} ${f.id} ${f.region || ""}`}
             tabs={KINDS.map((k) => ({ key: k, label: k + "s", match: (f: Fw) => f.kind === k }))}
             filters={[{ key: "region", label: "Region", options: regions, get: (f: Fw) => f.region || "" }]}
             onOpen={(f) => open(f.id)} exportName="frameworks" />
