@@ -188,6 +188,9 @@ export const listMembers = () => apiFetch<MemberRow[]>("/team/members");
 /** The company's account lockout. Production: GET /team/settings. */
 export interface Lockout { preset: string; custom?: { attempts: number; minutes: number } }
 export const getLockout = () => apiFetch<{ lockout: Lockout }>("/team/settings").then((r) => r.lockout);
+/** EDGE-20: the email domains this company accepts requests to join from (empty: any). Production: GET / POST /team/settings, admins only. */
+export const getJoinDomains = () => apiFetch<{ joinDomains?: string[] }>("/team/settings").then((r) => r.joinDomains ?? []);
+export const setJoinDomains = (domains: string[]) => post<void>("/team/settings", { joinDomains: domains });
 /** A trusted office network is never blocked for failed sign-ins (accounts still lock and MFA still applies). Adding one weakens a control, so a
  *  second company admin approves it; removing one is immediate. */
 export function requestTrustedNet(netIn: string, labelIn: string) {

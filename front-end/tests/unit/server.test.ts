@@ -369,7 +369,7 @@ describe("companies: sessions belong to one company, roles come from memberships
     const globexAdmin = await account("casey@globex.example", "admin", "Casey Morgan", GLOBEX);
     expect((await call("POST", "team/settings", { lockout: "custom", custom: { attempts: 3, minutes: 60 } }, { cookie: globexAdmin.cookie })).status).toBe(204);
     expect(dir.lockouts.get(ACME)).toBeUndefined();
-    expect((await call("GET", "team/settings", {}, { cookie: globexAdmin.cookie })).body).toEqual({ lockout: { preset: "custom", custom: { attempts: 3, minutes: 60 } } });
+    expect((await call("GET", "team/settings", {}, { cookie: globexAdmin.cookie })).body).toEqual({ lockout: { preset: "custom", custom: { attempts: 3, minutes: 60 } }, joinDomains: [] });
     await account("alex.kim@company.example"); // Acme only: the standard preset (more than 3 attempts)
     for (let i = 0; i < 3; i++) await call("POST", "auth/sign-in", { email: "alex.kim@company.example", password: "nope" }, { ip: `198.51.100.${60 + i}` });
     expect((await call("POST", "auth/sign-in", { email: "alex.kim@company.example", password: PW }, { ip: "198.51.100.70" })).status).toBe(428); // not locked: only the challenge

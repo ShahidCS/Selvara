@@ -15,6 +15,8 @@ import { IP_POLICY, LEVEL_LABEL, REPUTATION } from "@/lib/ipGuard";
 import { generateRecoveryCodes } from "@/lib/me";
 import { approvalBlock, normaliseName, INVITE_TTL_H, isAssignableRole, isPrivilegedRole, nameBlock, reasonBlock, ROLE_REQUEST_TTL_H, roleChangeBlock, secondAdminBlock } from "@/lib/rules";
 import { isEmail } from "@/lib/security";
+import { domainAllowed, parseJoinDomains } from "@/lib/emailDomains";
+import { isDisposable } from "./disposable";
 import { checkRegistration, verifyAssertion } from "@/lib/webauthn";
 import { randomId, same, seal, sha256Hex, unseal } from "./crypto";
 import { adminRoutes } from "./admin";
@@ -306,12 +308,21 @@ const join: H = async (d, r) => {
   const invite = s(r.body.invite, 100).trim();
   const bad = nameBlock(name); if (bad) return err(400, bad);
   if (!isEmail(email)) return err(400, "Enter a valid work email address.");
+  // EDGE-20: a throwaway address is refused openly (this says nothing about any company or account)
+  if (!invite && isDisposable(email)) return err(400, "Use your work email address. Temporary (disposable) email addresses cannot be used.");
   if (!invite && !/^[a-z0-9][a-z0-9-]{2,39}$/.test(code)) return err(400, "Enter your company code. Your company admin can tell you what it is.");
   const pw = checkPassword(password, { email, name }); if (!pw.ok) return err(400, pw.errors[0] || "Choose a stronger password.");
   if (await blocked(d, r.ip)) return err(403, BLOCKED_MSG);
   if (!(await allow(d, r.ip, "join", IP_POLICY.JOIN_MAX, IP_POLICY.JOIN_WINDOW_MS))) return err(429, "Too many requests to join from your network. Try again in an hour.");
   if (invite) { await joinByInvite(d, r, { name, email, password, token: invite }); return { status: 202 }; }
   const tenantId = await d.dir.companyByCode(code); if (!tenantId) return { status: 202 };
+  // EDGE-20: a company that accepts only its own email domains. The answer stays the same 202 (codes cannot be probed); the person is told by
+  // email, which only the address's owner reads. Nothing is created, so the admins see no request.
+  const policy = await d.dir.joinPolicy(tenantId);
+  if (!domainAllowed(email, policy.domains)) {
+    await sendMail(d, email, { t: "join-domain", company: policy.company || "This company" }, { tenantId, actor: "Selvara (request to join)", ip: r.ip });
+    return { status: 202 };
+  }
   const existing = await d.store.profileByEmail(email);
   let userId = existing?.id;
   if (!existing || existing.status === "Rejected") {
@@ -579,8 +590,17 @@ const joinDecide = admin(async (d, r, { p: me, a, company }) => {
   return ok({ id, status: approve ? "Active" : "Rejected", emailed: mail.sent });
 });
 /** The company's lockout setting, for the Team & Rules page. */
-const lockoutGet = admin(async (d, _r, { p: me, company }) => ok({ lockout: await d.dir.lockoutOf(company.id, me.id) }));
+const lockoutGet = admin(async (d, _r, { p: me, company }) => ok({ lockout: await d.dir.lockoutOf(company.id, me.id), joinDomains: (await d.dir.joinPolicy(company.id)).domains }));
 const lockoutSet = admin(async (d, r, { p: me, a, company }) => {
+  // EDGE-20: the email domains requests to join are accepted from (empty: any). Audited with the list before and after.
+  if ("joinDomains" in r.body) {
+    const parsed = parseJoinDomains(r.body.joinDomains); if ("error" in parsed) return err(400, parsed.error);
+    const before = (await d.dir.joinPolicy(company.id)).domains;
+    if (before.join(",") === parsed.domains.join(",")) return ok();
+    const show = (x: string[]) => (x.length ? x.join(", ") : "any domain");
+    await d.dir.setJoinDomains(company.id, me.id, parsed.domains, d.now(), entry(d, r, actorOf(me, a), "team.join_domains.changed", `${show(before)} → ${show(parsed.domains)}`));
+    return ok();
+  }
   const preset = s(r.body.lockout, 20); const custom = r.body.custom as { attempts?: unknown; minutes?: unknown } | undefined;
   if (!["standard", "strict", "pci", "custom"].includes(preset)) return err(400, "Choose one of the listed presets.");
   let value: Lockout = { preset };
