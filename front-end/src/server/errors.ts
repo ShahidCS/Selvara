@@ -57,8 +57,8 @@ export function logSignInRefused(reason: "no-profile" | "auth-refused", e?: unkn
 }
 
 /** SEC-8 (ASVS V7.1, V7.2): one structured line per security event for the operator's log search and alerting: failed sign-ins and second
- *  steps, account locks, refused requests (permission denied 403, locked 423, rate limited 429) and sessions that are no longer valid. It carries
- *  the time, the event, the route pattern, the status, the client address and who it concerns: the user id when known, otherwise `subject`, a keyed
+ *  steps, account locks, refused requests (permission denied 403, locked 423, rate limited 429), uploads refused for active content (422,
+ *  SEC-18) and sessions that are no longer valid. It carries the time, the event, the route pattern, the status, the client address and who it concerns: the user id when known, otherwise `subject`, a keyed
  *  hash of the email address (so repeated attempts on one account can be correlated without logging the address). Never a password, token or
  *  cookie. Admin actions are in the audit log (store.audit) with the same who, when and address. */
 export interface SecurityEvent { event: string; ip: string; route?: string; status?: number; userId?: string; subject?: string; session?: string; requestId?: string }

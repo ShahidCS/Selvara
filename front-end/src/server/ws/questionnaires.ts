@@ -8,7 +8,7 @@
    with the Vendor role sees only the questionnaires sent to them (vendors.ts). */
 import { answerVerifyBlock, isoDayOf, questionnaireWorkBlock } from "@/lib/rulesWs";
 import type { Deps } from "../types";
-import { approvalsView, invalid, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
+import { approvalsView, invalid, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers, refuseFile } from "./common";
 import { checkFile } from "./files";
 import { pendingOf, registerFourEyes } from "./foureyes";
 import type { Actor, Rec, WsTx } from "./store";
@@ -118,7 +118,7 @@ export function questionnaireRoutes(h: WsHelpers) {
   const upload = wsRoute(h, "questionnaires", async (d, r, c) => {
     refuse(questionnaireWorkBlock(c.actor.role));
     if (!d.files.configured) invalid("File storage is not set up yet. Ask your administrator to configure it.");
-    const chk = checkFile(r.body.name, r.raw ?? new Uint8Array()); if ("error" in chk) invalid(chk.error);
+    const chk = checkFile(r.body.name, r.raw ?? new Uint8Array()); if ("error" in chk) await refuseFile(d, c.actor, chk, r.body.name);
     const f = chk as { name: string; ext: string; type: string };
     return tx(d, c, async (t) => {
       if ((await t.list("kb-doc")).length >= 500) invalid("The knowledge base holds at most 500 documents.");

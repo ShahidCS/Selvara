@@ -141,7 +141,13 @@ const draft = signedIn(async (d, r, v) => {
 const upload = signedIn(async (d, r, v) => {
   if (!d.files.configured) return err(409, "File uploads are not set up yet. Describe the evidence in the comment instead.");
   const qid = s(r.path[2], 10); if (!PORTAL_QUESTIONS.some((q) => q.id === qid)) return err(404, "Question not found.");
-  const bytes = r.raw ?? new Uint8Array(); const f = checkFile(r.body.name, bytes); if ("error" in f) return err(400, f.error);
+  const bytes = r.raw ?? new Uint8Array(); const f = checkFile(r.body.name, bytes);
+  if ("error" in f) {
+    if (!f.threat) return err(400, f.error);
+    // SEC-18: recorded in the customer's audit log, refused with 422 (also a security event, core.ts)
+    await d.ws.tx(visitorActor(v.tenantId, v.email, r.ip), d.now(), (t) => t.audit("file.refused", `Vendor portal ${qid}: ${s(r.body.name, 120) || "file"}: ${f.threat}`, "Security"));
+    return err(422, f.error);
+  }
   if (!["pdf", "docx", "xlsx", "png", "jpg", "jpeg"].includes(f.ext)) return err(400, "Allowed: pdf, docx, xlsx, png, jpg.");
   if (!(await under(d, `vupload-${v.tenantId}`, h(v.email).slice(0, 32), 60))) return err(429, "Too many files in the last hour. Please wait, then try again.");
   const path = `${v.tenantId}/vendor-q/${v.subject}/${qid}-${randomBytes(6).toString("hex")}.${f.ext}`; let replaced = ""; let stored = false;

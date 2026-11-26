@@ -760,8 +760,8 @@ export async function handle(d: Deps, r: Req): Promise<Res> {
   try { out = await h(d, r); } catch (e) { logFailure(key, e, r.headers["x-vercel-id"]); return err(500, "Something went wrong. Please try again."); }
   // SEC-8: refusals that matter for security monitoring (the person still gets the same answer)
   const cookieSent = !!r.cookies[COOKIE];
-  if (out.status === 403 || out.status === 423 || out.status === 429 || (out.status === 401 && cookieSent && !SIGN_IN_ROUTES.has(key))) {
-    logSecurityEvent({ event: out.status === 401 ? "auth.session.invalid" : out.status === 403 ? "access.denied" : out.status === 423 ? "auth.locked" : "rate.limited",
+  if (out.status === 403 || out.status === 422 || out.status === 423 || out.status === 429 || (out.status === 401 && cookieSent && !SIGN_IN_ROUTES.has(key))) {
+    logSecurityEvent({ event: out.status === 401 ? "auth.session.invalid" : out.status === 403 ? "access.denied" : out.status === 422 ? "upload.refused" : out.status === 423 ? "auth.locked" : "rate.limited",
       route: key, status: out.status, ip: r.ip, ...(cookieSent ? { session: (await sha256Hex(r.cookies[COOKIE])).slice(0, 16) } : {}), requestId: r.headers["x-vercel-id"] }, d.now());
   }
   // The last check before a body leaves the server (responseGuard.ts): credential fields and secret-looking values are removed.
