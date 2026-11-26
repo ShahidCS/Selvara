@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { LayerFoot, useLayer } from "@/components/shell/LayerProvider";
 import type { LayerApi } from "@/components/shell/LayerProvider";
-import { Icon } from "@/components/ui";
+import { Icon, SelectList } from "@/components/ui";
 import { DATA } from "@/lib/data";
 import { bumpData } from "@/lib/store";
 import { AI_ANNEX_AREAS, AI_BIAS_STATUSES, AI_FRIA_STATUSES, AI_GUARDRAILS, AI_ROLES, AI_TIERS, aiFind, aiInit, aiLog } from "@/features/ai/lib/ai";
@@ -35,7 +35,7 @@ function ClassifyForm({ id }: { id: string }) {
   return (
     <>
       <div>
-        <div className="field"><label htmlFor="aT">Risk tier (EU AI Act / ISO 42001)</label><select className="select" id="aT" value={t} onChange={(e) => setT(e.target.value)}>{AI_TIERS.map((x) => <option key={x}>{x}</option>)}</select></div>
+        <div className="field"><label htmlFor="aT">Risk tier (EU AI Act / ISO 42001)</label><SelectList className="select" id="aT" value={t} onChange={(e) => setT(e.target.value)}>{AI_TIERS.map((x) => <option key={x}>{x}</option>)}</SelectList></div>
         <p className="field help" style={{ marginTop: 10 }}>High-risk systems require an impact assessment and human oversight before approval.</p>
       </div>
       <Foot L={L} label="Save" onSave={save} />
@@ -60,7 +60,7 @@ function AssignForm({ id }: { id: string }) {
   const save = () => act(() => svc.assignOwner(id, o), () => { aiLog("ai.owner.assigned", a.name); L.closeLayer(); bumpData(); L.toast("Owner assigned"); });
   return (
     <>
-      <div className="field"><label htmlFor="aO">Owner</label><select className="select" id="aO" data-focus value={o} onChange={(e) => setO(e.target.value)}>{DATA.people.map((p) => <option key={p.id || p.name}>{p.name}</option>)}</select></div>
+      <div className="field"><label htmlFor="aO">Owner</label><SelectList className="select" id="aO" data-focus value={o} onChange={(e) => setO(e.target.value)}>{DATA.people.map((p) => <option key={p.id || p.name}>{p.name}</option>)}</SelectList></div>
       <Foot L={L} label="Save" onSave={save} />
     </>
   );
@@ -77,7 +77,7 @@ function GuardForm({ id, reopen }: { id: string; reopen: Reopen }) {
   return (
     <>
       <div>
-        <div className="field"><label htmlFor="aG">Guardrail tier</label><select className="select" id="aG" data-focus value={AI_GUARDRAILS.some((x) => x[0] === g) ? g : AI_GUARDRAILS[0][0]} onChange={(e) => setG(e.target.value)}>{AI_GUARDRAILS.map((x) => <option key={x[0]}>{x[0]}</option>)}</select></div>
+        <div className="field"><label htmlFor="aG">Guardrail tier</label><SelectList className="select" id="aG" data-focus value={AI_GUARDRAILS.some((x) => x[0] === g) ? g : AI_GUARDRAILS[0][0]} onChange={(e) => setG(e.target.value)}>{AI_GUARDRAILS.map((x) => <option key={x[0]}>{x[0]}</option>)}</SelectList></div>
         <div id="aGrule" className="field help" style={{ marginTop: 4 }}>{rule}</div>
         <p className="field help" style={{ marginTop: 8 }}>A guardrail change takes effect only after a second admin or owner (not you, not the system owner) approves it.</p>
       </div>
@@ -104,13 +104,13 @@ function EuForm({ id, reopen }: { id: string; reopen: Reopen }) {
       <div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <p className="field help" style={{ margin: 0 }}>Answer for this system. The result is a draft legal determination for a second person to confirm.</p>
-        <div className="field"><label htmlFor="eqP">1. Does it use a prohibited practice? {hint("(Art. 5 — social scoring, manipulation, untargeted scraping, real-time remote biometric ID in public)")}</label><select className="select" id="eqP" value={P} onChange={(e) => setP(e.target.value)}><option value="no">No</option><option value="yes">Yes</option></select></div>
-        <div className="field"><label htmlFor="eqH">2. Is it used in a high-risk area? {hint("(Annex III)")}</label><select className="select" id="eqH" value={H} onChange={(e) => setH(e.target.value)}><option value="no">No</option><option value="yes">Yes</option></select></div>
+        <div className="field"><label htmlFor="eqP">1. Does it use a prohibited practice? {hint("(Art. 5 — social scoring, manipulation, untargeted scraping, real-time remote biometric ID in public)")}</label><SelectList className="select" id="eqP" value={P} onChange={(e) => setP(e.target.value)}><option value="no">No</option><option value="yes">Yes</option></SelectList></div>
+        <div className="field"><label htmlFor="eqH">2. Is it used in a high-risk area? {hint("(Annex III)")}</label><SelectList className="select" id="eqH" value={H} onChange={(e) => setH(e.target.value)}><option value="no">No</option><option value="yes">Yes</option></SelectList></div>
         {H === "yes" ? <div className="grid2" style={gridStyle(10)}>
-          <div className="field"><label htmlFor="eqArea">Annex III area</label><select className="select" id="eqArea" value={area} onChange={(e) => setArea(e.target.value)}>{AI_ANNEX_AREAS.map((x) => <option key={x}>{x}</option>)}</select></div>
-          <div className="field"><label htmlFor="eqRole">Our role</label><select className="select" id="eqRole" value={role} onChange={(e) => setRole(e.target.value)}>{AI_ROLES.map((x) => <option key={x}>{x}</option>)}</select></div>
+          <div className="field"><label htmlFor="eqArea">Annex III area</label><SelectList className="select" id="eqArea" value={area} onChange={(e) => setArea(e.target.value)}>{AI_ANNEX_AREAS.map((x) => <option key={x}>{x}</option>)}</SelectList></div>
+          <div className="field"><label htmlFor="eqRole">Our role</label><SelectList className="select" id="eqRole" value={role} onChange={(e) => setRole(e.target.value)}>{AI_ROLES.map((x) => <option key={x}>{x}</option>)}</SelectList></div>
         </div> : null}
-        <div className="field"><label htmlFor="eqT">3. Does it interact with people or generate content? {hint("(Art. 50 transparency)")}</label><select className="select" id="eqT" value={T} onChange={(e) => setT(e.target.value)}><option value="yes">Yes</option><option value="no">No</option></select></div>
+        <div className="field"><label htmlFor="eqT">3. Does it interact with people or generate content? {hint("(Art. 50 transparency)")}</label><SelectList className="select" id="eqT" value={T} onChange={(e) => setT(e.target.value)}><option value="yes">Yes</option><option value="no">No</option></SelectList></div>
         </div>
       </div>
       <Foot L={L} label="Save draft classification" onSave={save} />
@@ -132,7 +132,7 @@ function FriaForm({ id, reopen }: { id: string; reopen: Reopen }) {
   return (
     <>
       <div>
-        <div className="field" style={{ marginBottom: 12 }}><label htmlFor="aFs">Status</label><select className="select" id="aFs" value={AI_FRIA_STATUSES.includes(st) ? st : AI_FRIA_STATUSES[0]} onChange={(e) => setSt(e.target.value)}>{AI_FRIA_STATUSES.map((s) => <option key={s}>{s}</option>)}</select></div>
+        <div className="field" style={{ marginBottom: 12 }}><label htmlFor="aFs">Status</label><SelectList className="select" id="aFs" value={AI_FRIA_STATUSES.includes(st) ? st : AI_FRIA_STATUSES[0]} onChange={(e) => setSt(e.target.value)}>{AI_FRIA_STATUSES.map((s) => <option key={s}>{s}</option>)}</SelectList></div>
         <div className="field"><label htmlFor="aFsum">Summary of findings</label><textarea className="input" id="aFsum" rows={3} maxLength={2000} style={{ resize: "vertical" }} value={sum} onChange={(e) => setSum(e.target.value)} /></div>
         <p className="field help">Draft — needs human review before reliance.</p>
       </div>
@@ -155,7 +155,7 @@ function BiasForm({ id, reopen }: { id: string; reopen: Reopen }) {
   return (
     <>
       <div>
-        <div className="field" style={{ marginBottom: 12 }}><label htmlFor="aBs">Result</label><select className="select" id="aBs" value={AI_BIAS_STATUSES.includes(st) ? st : AI_BIAS_STATUSES[0]} onChange={(e) => setSt(e.target.value)}>{AI_BIAS_STATUSES.map((s) => <option key={s}>{s}</option>)}</select></div>
+        <div className="field" style={{ marginBottom: 12 }}><label htmlFor="aBs">Result</label><SelectList className="select" id="aBs" value={AI_BIAS_STATUSES.includes(st) ? st : AI_BIAS_STATUSES[0]} onChange={(e) => setSt(e.target.value)}>{AI_BIAS_STATUSES.map((s) => <option key={s}>{s}</option>)}</SelectList></div>
         <div className="field"><label htmlFor="aBn">Notes</label><textarea className="input" id="aBn" rows={3} maxLength={2000} style={{ resize: "vertical" }} value={n} onChange={(e) => setN(e.target.value)} /></div>
       </div>
       <Foot L={L} label="Save" onSave={save} />

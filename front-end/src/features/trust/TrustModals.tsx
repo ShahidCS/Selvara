@@ -1,4 +1,4 @@
-import { Empty } from "@/components/ui";
+import { Empty, SelectList } from "@/components/ui";
 import { useState } from "react";
 import { API_ON } from "@/lib/rbac";
 import { uiMessage } from "@/lib/grcSod";
@@ -77,7 +77,7 @@ export function PublishForm({ L }: { L: LayerApi }) {
     <>
       <div>
         <div className="field"><label htmlFor="tp-name">Resource name <Req /></label><input className="input" id="tp-name" data-focus maxLength={160} placeholder="e.g. CAIQ self-assessment 2026" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={err} aria-describedby={err ? "tp-err" : undefined} /></div>
-        <div className="field"><label htmlFor="tp-access">Visibility</label><select className="select" id="tp-access" value={access} onChange={(e) => setAccess(e.target.value)}><option>Public</option><option>On request, NDA</option></select></div>
+        <div className="field"><label htmlFor="tp-access">Visibility</label><SelectList className="select" id="tp-access" value={access} onChange={(e) => setAccess(e.target.value)}><option>Public</option><option>On request, NDA</option></SelectList></div>
         <p className="field help">Publishing as Public is a four-eyes step: it is listed only after a different admin or owner approves it. On-request resources are listed at once.</p>
         <p className="field help" id="tp-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>Resource name is required.</p>
       </div>

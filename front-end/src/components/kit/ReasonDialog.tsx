@@ -1,3 +1,4 @@
+import { SelectList } from "@/components/ui";
 /* A dialog that asks for one piece of text (a reason, a note, an outcome) before a change is sent. Production records the text with the
    change; the server checks it again. Server refusals are shown in the dialog in the server's own words. */
 import { useState, type ReactNode } from "react";
@@ -25,7 +26,7 @@ function ReasonForm(o: Opts) {
         {o.intro ? <div style={{ margin: "0 0 10px", fontSize: 13 }}>{o.intro}</div> : null}
         {o.select ? (
           <div className="field"><label htmlFor="rd-pick">{o.selectLabel ?? "Choose"}</label>
-            <select className="select" id="rd-pick" value={pick} onChange={(e) => setPick(e.target.value)}>{o.select.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
+            <SelectList className="select" id="rd-pick" value={pick} onChange={(e) => setPick(e.target.value)}>{o.select.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</SelectList></div>
         ) : null}
         {o.label ? <div className="field"><label htmlFor="rd-text">{o.label}{min ? <span style={{ color: "var(--bad-ink)" }}> *</span> : null}</label>
           {o.textType === "date" ? <input className="input" id="rd-text" type="date" data-focus aria-invalid={!!err} aria-describedby={err ? "rd-err" : undefined} value={text} onChange={(e) => { setText(e.target.value); setErr(""); }} /> : <textarea className="input" id="rd-text" data-focus rows={3} maxLength={o.max ?? 300} style={{ resize: "vertical" }} value={text} onChange={(e) => { setText(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "rd-err" : undefined} />}</div> : null}

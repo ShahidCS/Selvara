@@ -1,3 +1,4 @@
+import { SelectList } from "@/components/ui";
 import { useState } from "react";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { useLayer } from "@/hooks/useLayer";
@@ -89,7 +90,7 @@ export function FinanceForm({ cid, invId, kind: k0, close }: { cid: string; invI
   return (
     <>
       <p style={{ margin: "0 0 10px" }}>{iv.id}, {c.name}. Invoice total {money(total, cur)}, status {iv.status}.</p>
-      <div className="field"><label htmlFor="fKind">Action</label><select className="select" id="fKind" value={kind} onChange={(e) => pick(e.target.value as svc.FinanceKind)}>{kinds.map((x) => <option key={x} value={x}>{svc.FINANCE_LABEL[x]}</option>)}</select></div>
+      <div className="field"><label htmlFor="fKind">Action</label><SelectList className="select" id="fKind" value={kind} onChange={(e) => pick(e.target.value as svc.FinanceKind)}>{kinds.map((x) => <option key={x} value={x}>{svc.FINANCE_LABEL[x]}</option>)}</SelectList></div>
       <div className="field" style={{ marginTop: 12 }}><label htmlFor="fAmt">Amount ({cur})</label>{full
         ? <input className="input num" id="fAmt" type="text" readOnly aria-describedby="fAmtH" value={money(total, cur)} />
         : <input className="input" id="fAmt" type="number" min={0} step="0.01" inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} />}

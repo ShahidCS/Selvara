@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { DATA, FW_SHORT } from "@/lib/data";
 import { bumpData } from "@/lib/store";
 import { wsLog } from "@/lib/audit";
 import { getActor } from "@/lib/sod";
 import { downloadText } from "@/lib/format";
-import { StatusChip } from "@/components/ui";
+import { StatusChip, SelectList } from "@/components/ui";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import * as svc from "@/features/controls/services/controls";
 import { uiMessage } from "@/lib/grcSod";
@@ -58,10 +59,12 @@ export function openAttestModal(L: LayerApi, id: string) {
 /* ---------------- add-mapping modal ---------------- */
 function MappingBody({ h }: { h: FormHandle }) {
   const err = useErrFlag(h);
+  // G1: the shared listbox; the form handle still reads the value from a field it registered (a hidden input holding the choice)
+  const [fw, setFw] = useState(DATA.frameworks[0]?.id ?? "");
   return (
     <>
       <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <div className="field"><label htmlFor="cm-fw">Framework</label><select className="select" id="cm-fw" ref={h.ref("fw")}>{DATA.frameworks.map((f) => <option key={f.id} value={f.id}>{FW_SHORT[f.id] || f.id}</option>)}</select></div>
+        <div className="field"><label htmlFor="cm-fw">Framework</label><SelectList id="cm-fw" value={fw} onChange={(e) => setFw(e.target.value)}>{DATA.frameworks.map((f) => <option key={f.id} value={f.id}>{FW_SHORT[f.id] || f.id}</option>)}</SelectList><input type="hidden" ref={h.ref("fw")} value={fw} readOnly /></div>
         <div className="field"><label htmlFor="cm-ref">Requirement code {REQ}</label><input className="input" id="cm-ref" placeholder="e.g. A.8.9" ref={h.ref("ref")} aria-invalid={err} aria-describedby={err ? "cm-err" : undefined} />
           <p className="field help" id="cm-err" role={err ? "alert" : undefined} style={{ color: "var(--bad-ink)", display: err ? "block" : "none", margin: 0 }}>Requirement code is required.</p></div>
       </div>

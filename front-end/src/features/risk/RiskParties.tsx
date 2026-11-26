@@ -1,6 +1,6 @@
 /* Interested parties tab (source renderRiskIP + riskLinkParty/UnlinkParty/AddParty2, lines 2729-2737). Edit gate: riskCanEdit. */
 import { useState } from "react";
-import { Icon, Table } from "@/components/ui";
+import { Icon, Table, SelectList } from "@/components/ui";
 import { LayerFoot, useLayer } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
 import { wsLog } from "@/lib/audit";
@@ -15,7 +15,7 @@ function LinkRiskForm({ options, close, onLink }: { options: { id: string; title
   const [sel, setSel] = useState(options[0]?.id || "");
   return (
     <>
-      <div className="field"><label htmlFor="rp-link">Risk</label><select className="select" id="rp-link" data-focus value={sel} onChange={(e) => setSel(e.target.value)}>{options.map((o) => <option key={o.id} value={o.id}>{o.id} · {o.title}</option>)}</select></div>
+      <div className="field"><label htmlFor="rp-link">Risk</label><SelectList className="select" id="rp-link" data-focus value={sel} onChange={(e) => setSel(e.target.value)}>{options.map((o) => <option key={o.id} value={o.id}>{o.id} · {o.title}</option>)}</SelectList></div>
       <LayerFoot><button className="btn btn-secondary" onClick={close}>Cancel</button><button className="btn btn-primary" disabled={!sel} onClick={() => sel && onLink(sel)}>Link</button></LayerFoot>
     </>
   );

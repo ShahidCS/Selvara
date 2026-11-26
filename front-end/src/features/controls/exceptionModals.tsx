@@ -1,3 +1,4 @@
+import { SelectList } from "@/components/ui";
 import { useState } from "react";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import type { LayerApi } from "@/components/shell/LayerProvider";
@@ -36,7 +37,7 @@ function StatusForm({ L, id, done }: { L: LayerApi; id: string; done: () => void
   return (
     <>
       <div>
-        <div className="field"><label htmlFor="cs-st">Status</label><select className="select" id="cs-st" data-focus value={status} onChange={(e) => setStatus(e.target.value)}>{svc.CONTROL_STATUSES.map((s) => <option key={s}>{s}</option>)}</select></div>
+        <div className="field"><label htmlFor="cs-st">Status</label><SelectList className="select" id="cs-st" data-focus value={status} onChange={(e) => setStatus(e.target.value)}>{svc.CONTROL_STATUSES.map((s) => <option key={s}>{s}</option>)}</SelectList></div>
         <div className="field"><label htmlFor="cs-r">Reason <Req /></label><textarea className="input" id="cs-r" rows={2} maxLength={500} style={{ resize: "vertical" }} value={reason} onChange={(e) => setReason(e.target.value)} /></div>
         <Err t={err} />
       </div>

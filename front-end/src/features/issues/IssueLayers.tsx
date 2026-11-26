@@ -1,6 +1,6 @@
 /* The short dialogs of an issue (add task, link, delete, closure notes). The record itself is a page (IssueDetail) and create and edit are form pages (IssueFormPage). */
 import { useState } from "react";
-import { Icon } from "@/components/ui";
+import { Icon, SelectList } from "@/components/ui";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import type { LayerApi } from "@/components/shell/LayerProvider";
 import { DATA } from "@/lib/data";
@@ -51,7 +51,7 @@ function LinkForm({ L, id, kind }: { L: LayerApi; id: string; kind: "control" | 
   });
   return (
     <>
-      <div className="field"><label htmlFor="il-sel">{kind === "control" ? "Control" : "Risk"}</label><select className="select" id="il-sel" data-focus value={sel} onChange={(e) => setSel(e.target.value)}>{opts.map((o) => <option key={o}>{o}</option>)}</select></div>
+      <div className="field"><label htmlFor="il-sel">{kind === "control" ? "Control" : "Risk"}</label><SelectList className="select" id="il-sel" data-focus value={sel} onChange={(e) => setSel(e.target.value)}>{opts.map((o) => <option key={o}>{o}</option>)}</SelectList></div>
       <LayerFoot><button className="btn btn-secondary" onClick={L.closeLayer}>Cancel</button><button className="btn btn-primary" onClick={submit}>Link</button></LayerFoot>
     </>
   );

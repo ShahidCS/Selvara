@@ -100,6 +100,8 @@ function FrameworksList() {
         <KpiTile label="Open gaps" value={gaps} delta={gaps ? { tone: "watch", text: "To close" } : { tone: "good", text: "None" }} caption="Not met or not assessed" />
         <KpiTile label="Snoozed" value={snoozed} caption="Paused, not scored as due" />
       </KpiStrip>
+      {/* Regulatory content stays draft until a person qualified in compliance has reviewed it (organisation rule) */}
+      <p className="banner info" role="note" data-tour="frameworks-draft">Requirement-to-control mappings and applicability decisions are drafts. Qualified compliance staff review them before anyone relies on them.</p>
       <div className="card" data-tour="frameworks-table">
         <div className="c-body flush scroll" style={{ padding: 0 }}>
           <DataTable<Fw> id="frameworks" label="Frameworks" rows={rows} rowKey={(f) => f.id} columns={cols} searchText={(f) => `${f.name} ${f.id} ${f.region || ""}`}

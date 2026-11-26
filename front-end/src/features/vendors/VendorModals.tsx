@@ -1,3 +1,4 @@
+import { SelectList } from "@/components/ui";
 /* Short vendor dialogs: add certificate, flag finding, change tier. The record is a page (VendorDetail); add, reassess and waiver are form pages (VendorForms). */
 import { useState } from "react";
 import { API_ON } from "@/lib/rbac";
@@ -52,7 +53,7 @@ function FindingForm({ id }: { id: string }) {
     <>
       <div>
         <div className="field"><label htmlFor="vff-title">Finding <Req /></label><input className="input" id="vff-title" data-focus maxLength={300} placeholder="e.g. Incident response SLA not evidenced" value={title} onChange={(e) => setTitle(e.target.value)} aria-invalid={err} aria-describedby={err ? "vff-err" : undefined} /></div>
-        <div className="field"><label htmlFor="vff-sev">Severity</label><select className="select" id="vff-sev" value={sev} onChange={(e) => setSev(e.target.value)}>{FINDING_SEVS.map((s) => <option key={s}>{s}</option>)}</select></div>
+        <div className="field"><label htmlFor="vff-sev">Severity</label><SelectList className="select" id="vff-sev" value={sev} onChange={(e) => setSev(e.target.value)}>{FINDING_SEVS.map((s) => <option key={s}>{s}</option>)}</SelectList></div>
         {errP("vff-err", err, "Finding description is required.")}
       </div>
       <Foot L={L} label="Flag" onSave={save} />
@@ -72,7 +73,7 @@ function TierForm({ id }: { id: string }) {
   return (
     <>
       <div>
-        <div className="field"><label htmlFor="vt-tier">Tier</label><select className="select" id="vt-tier" data-focus value={VENDOR_TIERS.includes(t) ? t : VENDOR_TIERS[0]} onChange={(e) => setT(e.target.value)}>{VENDOR_TIERS.map((x) => <option key={x}>{x}</option>)}</select></div>
+        <div className="field"><label htmlFor="vt-tier">Tier</label><SelectList className="select" id="vt-tier" data-focus value={VENDOR_TIERS.includes(t) ? t : VENDOR_TIERS[0]} onChange={(e) => setT(e.target.value)}>{VENDOR_TIERS.map((x) => <option key={x}>{x}</option>)}</SelectList></div>
         <p className="field help">Tier drives the reassessment cadence and the depth of due diligence required. A tier change is applied only after a different admin or owner approves it.</p>
       </div>
       <Foot L={L} label="Request tier change" onSave={save} />

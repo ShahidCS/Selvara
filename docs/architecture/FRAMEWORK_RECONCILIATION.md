@@ -68,6 +68,5 @@ missing.
 - **Unresolved references already in the app: 78.** Some original control links use a short reference where the catalogue
   has a longer id (for example `Art.5` where DORA lists `Art.5(1)`). They predate this change, nothing new adds to them, and they are left as
   they are rather than guessed at. By framework: soc2 13, uaeia 11, dora 8, nis2 8, pci 6, iso27005 5, sbp 4, sama 3, iso42001 3, nist80037 3, nist800207 3, gdpr 2, amlcft 2, euaiact 1, iso30107 1, iso27701 1, peca 1, iso29100 1, difc 1, uaepdpl 1. A unit test keeps the number from rising.
-- **The requirement-titles disclaimer was removed** from the Frameworks page, as asked. Requirement-to-control mappings and applicability remain
-  draft content: under the organisation's rules, regulatory mappings need review by qualified compliance staff before anyone relies on them.
+- **The requirement-titles disclaimer was removed** from the Frameworks page, as asked. A one-line note on the page still says that requirement-to-control mappings and applicability decisions are drafts. Under the organisation's rules, qualified compliance staff review them before anyone relies on them.
 - **Nothing was invented.** Where the sources hold no data, the app holds none either.

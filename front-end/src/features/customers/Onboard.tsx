@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Icon } from "@/components/ui";
+import { Icon, SelectList } from "@/components/ui";
 import { LayerFoot } from "@/components/shell/LayerProvider";
 import { useLayer } from "@/hooks/useLayer";
 import { ELEV_REASON_MIN, sodMessage } from "@/lib/elevation";
@@ -49,11 +49,11 @@ export function OnboardForm({ close }: { close: () => void }) {
       <p className="field help" style={{ marginBottom: 14 }}>Fields marked <span aria-hidden="true">*</span> are required. Creates a new tenant with a company admin. The admin receives an invite and enrols MFA at first sign-in. Region is locked at creation for data-residency.</p>
       <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div className={cls("oName")}><label htmlFor="oName">Company name<Req /></label><input className="input" {...fp("oName")} placeholder="e.g. Globex Pay" data-focus maxLength={100} value={name} onChange={(x) => { setName(x.target.value); clear("oName"); }} />{msg("oName")}</div>
-        <div className="field"><label htmlFor="oRegion">Region (data residency)</label><select className="select" id="oRegion" value={region} onChange={(x) => setRegion(x.target.value)}>{svc.ONBOARD_REGIONS.map((r) => <option key={r}>{r}</option>)}</select></div>
-        <div className="field"><label htmlFor="oPlan">Plan</label><select className="select" id="oPlan" value={plan} onChange={(x) => { setPlan(x.target.value); syncMods(x.target.value); }}>{svc.ONBOARD_PLANS.map((p) => <option key={p}>{p}</option>)}</select></div>
-        <div className="field"><label htmlFor="oCur">Billing currency</label><select className="select" id="oCur" value={cur} onChange={(x) => setCur(x.target.value)}>{svc.ONBOARD_CURRENCIES.map((c) => <option key={c}>{c}</option>)}</select></div>
-        <div className="field"><label htmlFor="oBill">Billing method</label><select className="select" id="oBill" value={bill} onChange={(x) => setBill(x.target.value)}>{svc.ONBOARD_BILLING_METHODS.map((b) => <option key={b}>{b}</option>)}</select></div>
-        <div className="field"><label htmlFor="oCycle">Billing cycle</label><select className="select" id="oCycle" value={cycle} onChange={(x) => setCycle(x.target.value)}>{svc.ONBOARD_CYCLES.map((c) => <option key={c}>{c}</option>)}</select></div>
+        <div className="field"><label htmlFor="oRegion">Region (data residency)</label><SelectList className="select" id="oRegion" value={region} onChange={(x) => setRegion(x.target.value)}>{svc.ONBOARD_REGIONS.map((r) => <option key={r}>{r}</option>)}</SelectList></div>
+        <div className="field"><label htmlFor="oPlan">Plan</label><SelectList className="select" id="oPlan" value={plan} onChange={(x) => { setPlan(x.target.value); syncMods(x.target.value); }}>{svc.ONBOARD_PLANS.map((p) => <option key={p}>{p}</option>)}</SelectList></div>
+        <div className="field"><label htmlFor="oCur">Billing currency</label><SelectList className="select" id="oCur" value={cur} onChange={(x) => setCur(x.target.value)}>{svc.ONBOARD_CURRENCIES.map((c) => <option key={c}>{c}</option>)}</SelectList></div>
+        <div className="field"><label htmlFor="oBill">Billing method</label><SelectList className="select" id="oBill" value={bill} onChange={(x) => setBill(x.target.value)}>{svc.ONBOARD_BILLING_METHODS.map((b) => <option key={b}>{b}</option>)}</SelectList></div>
+        <div className="field"><label htmlFor="oCycle">Billing cycle</label><SelectList className="select" id="oCycle" value={cycle} onChange={(x) => setCycle(x.target.value)}>{svc.ONBOARD_CYCLES.map((c) => <option key={c}>{c}</option>)}</SelectList></div>
         <div className={cls("oAdminName")} style={{ gridColumn: "1/-1" }}><label htmlFor="oAdminName">Company admin name<Req /></label><input className="input" {...fp("oAdminName")} placeholder="Full name" maxLength={100} value={an} onChange={(x) => { setAn(x.target.value); clear("oAdminName"); }} />{msg("oAdminName")}</div>
         <div className={cls("oAdminEmail")} style={{ gridColumn: "1/-1" }}><label htmlFor="oAdminEmail">Company admin email<Req /></label><input className="input" {...fp("oAdminEmail")} type="email" placeholder="admin@company.example" maxLength={254} autoComplete="off" value={ae} onChange={(x) => { setAe(x.target.value); clear("oAdminEmail"); }} />{msg("oAdminEmail")}</div>
       </div>
