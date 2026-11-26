@@ -17,7 +17,7 @@ import { SERVER_KINDS } from "@/lib/rulesWs";
 import { appStore, bumpData, createStore } from "@/lib/store";
 import { clearG6, G6, g6Settings } from "@/lib/g6";
 import { clearG7, g7 } from "@/lib/g7";
-import { ApiError, apiFetch, API_BASE } from "./http";
+import { ApiError, apiFetch, API_BASE, netFetch, UPLOAD_TIMEOUT_MS } from "./http";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export interface WsMember { id: string; name: string; role: string }
@@ -218,9 +218,9 @@ export const wsDelete = <T,>(path: string) => send<T>(path, { method: "DELETE" }
 export const wsPatch = <T,>(path: string, body: unknown) => send<T>(path, { method: "PATCH", body: JSON.stringify(body) });
 /** Uploads a file's bytes (the server checks type, size and content). */
 export async function wsUpload<T>(path: string, file: File): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}${path.includes("?") ? "&" : "?"}name=${encodeURIComponent(file.name)}`, {
+  const res = await netFetch(`${API_BASE}${path}${path.includes("?") ? "&" : "?"}name=${encodeURIComponent(file.name)}`, {
     method: "POST", credentials: "include", headers: { "Content-Type": "application/octet-stream", Accept: "application/json" }, body: file,
-  });
+  }, UPLOAD_TIMEOUT_MS);
   if (!res.ok) { let m = `${res.status} ${res.statusText}`; try { const j = await res.json(); if (j && typeof j.error === "string") m = j.error; } catch { /* no JSON */ } throw new ApiError(res.status, m); }
   const out = (res.status === 204 ? undefined : await res.json()) as T; await loadWorkspace(); return out;
 }
