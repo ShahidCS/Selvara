@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import { EVIDENCE_FILE_MAX, EVIDENCE_FILE_TYPES } from "@/lib/rulesWs";
 import { safeFileName } from "@/lib/security";
 import { upstream } from "../errors";
+import { activeContent } from "../scan";
 
 export interface FileStore {
   /** False when the bucket is not configured: uploads are refused with a clear message, nothing else breaks. */
@@ -43,7 +44,7 @@ export class MemoryFileStore implements FileStore {
 const starts = (b: Uint8Array, sig: number[]) => sig.every((x, i) => b[i] === x);
 const ZIP = [0x50, 0x4b, 0x03, 0x04];
 /** Why this file may not be stored, or null with its safe name, extension and content type. */
-export function checkFile(name: unknown, bytes: Uint8Array): { error: string } | { name: string; ext: string; type: string } {
+export function checkFile(name: unknown, bytes: Uint8Array): { error: string; threat?: string } | { name: string; ext: string; type: string } {
   const safe = safeFileName(name, "");
   const ext = (safe.includes(".") ? safe.split(".").pop() || "" : "").toLowerCase();
   const type = EVIDENCE_FILE_TYPES[ext];
@@ -57,6 +58,9 @@ export function checkFile(name: unknown, bytes: Uint8Array): { error: string } |
     : ext === "docx" || ext === "xlsx" ? starts(bytes, ZIP)
     : isText(bytes);
   if (!okContent) return { error: `The file's content is not a valid .${ext} file.` };
+  // SEC-18 phase A: active content (scan.ts). The refusal names the reason so the person can fix the file.
+  const threat = activeContent(ext, bytes);
+  if (threat) return { error: `This file was refused because ${threat}. Fix the file, or save a clean copy (for example as PDF), and upload it again.`, threat };
   return { name: safe, ext, type };
 }
 function isText(b: Uint8Array): boolean {

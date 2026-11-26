@@ -8,7 +8,7 @@ import {
 } from "@/lib/rulesWs";
 import { approvalBlock, reasonBlock } from "@/lib/rules";
 import type { Deps } from "../types";
-import { approvalsView, invalid, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
+import { approvalsView, invalid, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers, refuseFile } from "./common";
 import { auditorScope, scopeGuard, withoutMemberIds } from "./audits";
 import { checkFile } from "./files";
 import { WsConflict, WsRefused, type Rec, type WsTx } from "./store";
@@ -152,7 +152,7 @@ export function evidenceRoutes(h: WsHelpers) {
     refuse(evidenceWriteBlock(c.actor.role));
     if (!d.files.configured) refuse("File storage is not configured yet. Ask the platform owner to create the evidence bucket (SUPABASE.md section 4d).");
     const id = str(r.path[2], 40); const bytes = r.raw ?? new Uint8Array();
-    const f = checkFile(r.body.name, bytes); if ("error" in f) invalid(f.error);
+    const f = checkFile(r.body.name, bytes); if ("error" in f) await refuseFile(d, c.actor, f, r.body.name);
     const ok1 = f as { name: string; ext: string; type: string };
     await tx(d, c, async (t) => { const e = (await item(t, id)).data; if (e.attachments.length >= EVIDENCE_FILES_PER_ITEM) invalid(`At most ${EVIDENCE_FILES_PER_ITEM} files per evidence item.`); });
     const fileId = randomUUID(); const path = `${c.actor.tenantId}/${id}/${fileId}.${ok1.ext}`;

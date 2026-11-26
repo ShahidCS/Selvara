@@ -122,6 +122,11 @@ describe("standalone vendor portal", () => {
     await call("POST", "vendor-portal/draft", { items }, vc);
     expect(body<{ error: string }>(await call("POST", "vendor-portal/submit", {}, vc)).error).toBe(`${CRIT.length} "Yes" answers on required items still need evidence attached.`);
     expect((await call("POST", "vendor-portal/files/G1", { name: "cert.pdf" }, vc, new TextEncoder().encode("not a pdf"))).status).toBe(400); // content checked
+    // SEC-18: active content is refused (422) and recorded in the customer's audit log; nothing is stored
+    const js = new TextEncoder().encode("%PDF-1.7\n1 0 obj<< /S /JavaScript /JS (app.alert(1)) >>endobj\n");
+    const refused = await call("POST", "vendor-portal/files/G1", { name: "cert.pdf" }, vc, js);
+    expect(refused.status).toBe(422); expect(body<{ error: string }>(refused).error).toMatch(/^This file was refused because it contains JavaScript/);
+    expect(log("file.refused").map((x) => x.target)).toEqual(["Vendor portal G1: cert.pdf: it contains JavaScript"]);
     for (const id of CRIT) expect((await call("POST", `vendor-portal/files/${id}`, { name: `${id}.pdf` }, vc, PDF)).status).toBe(200);
     expect((await call("POST", "vendor-portal/submit", {}, vc)).status).toBe(200);
     expect(log("vendor.questionnaire.submitted")[0].actor).toBe("Vendor contact c•••@vendor.example");

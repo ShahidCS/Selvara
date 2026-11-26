@@ -27,7 +27,7 @@ import { createHmac } from "node:crypto";
 import { DOMAIN_RE, isoDayOf, trustManageBlock } from "@/lib/rulesWs";
 import { isNdaDoc, isTrustSection, NDA_DOCS, sectionLabel, sectionsOf, visibleDocs, type TrustSection, type TrustSections } from "@/lib/trustSections";
 import type { Deps } from "../types";
-import { approvalsView, err, invalid, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers } from "./common";
+import { approvalsView, err, invalid, membersOf, missing, ok, refuse, str, sweepApprovals, txt, wsRoute, type WsHelpers, refuseFile } from "./common";
 import type { Control } from "./assurance";
 import { checkFile } from "./files";
 import { pendingOf, registerFourEyes } from "./foureyes";
@@ -376,7 +376,7 @@ export function trustRoutes(h: WsHelpers) {
   const upload = wsRoute(h, "trust", async (d, r, c) => {
     refuse(trustManageBlock(c.actor.role));
     if (!d.files.configured) invalid("File storage is not set up yet. Ask your administrator to configure it.");
-    const chk = checkFile(r.body.name, r.raw ?? new Uint8Array()); if ("error" in chk) invalid(chk.error);
+    const chk = checkFile(r.body.name, r.raw ?? new Uint8Array()); if ("error" in chk) await refuseFile(d, c.actor, chk, r.body.name);
     const f = chk as { name: string; ext: string; type: string };
     return tx(d, c, async (t) => {
       const rec = (await t.get<Resource>("trust-resource", str(r.path[3], 20))) ?? missing("Resource"); const x = rec.data;

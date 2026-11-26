@@ -1,6 +1,6 @@
 # Recommendations, 2026-11-26: malware scanning and email aliases
 
-Follow-up to the security audit (`AUDIT-2026-11-26.md`), on the owner's request. Drafts for review; nothing here is built yet.
+Follow-up to the security audit (`AUDIT-2026-11-26.md`), on the owner's request. Drafts for review. Decisions and status: section 1 status note, and the audit's second addendum.
 
 ## 1. Malware scanning of uploads (SEC-18)
 
@@ -33,8 +33,14 @@ vendor-portal files; at most 4 MB; types pdf, png, jpg/jpeg, docx, xlsx and text
 5. **Configuration:** `SCANNER_URL` and `SCANNER_TOKEN` (SECRET) in the server environment; without them uploads keep today's behaviour and
    the admin console shows "Malware scanning is not set up".
 
-What I need from you: where to host the scanner container. Then I build the app side (quarantine, statuses, retry, tests with the EICAR test
-file) in one change.
+**Status (owner's decision, 2026-11-26): phase A built.** The scanner daemon cannot run in the Vercel functions that serve the API (it keeps its
+signatures in memory and needs a resident process), so the work is split:
+
+- **Phase A, built:** the oletools/pdfid-style active-content checks, written in the API itself (`server/scan.ts`, no new dependency) and run
+  on every upload before anything is stored. Because they finish within the request, no quarantine path is needed yet: a refused file is never
+  stored. Refusals answer 422 with the reason, write a `file.refused` audit entry and an `upload.refused` security event.
+- **Phase B, to do:** ClamAV with a REST wrapper on one small container in the same region as the database, with the quarantine flow above
+  (fail closed, retry, signature age alert, rescan of stored files). Needs: the host and region.
 
 ## 2. Email aliases of rejected applicants (EDGE-20)
 

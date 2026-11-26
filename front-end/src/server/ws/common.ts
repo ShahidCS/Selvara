@@ -51,6 +51,13 @@ export function wsRoute(h: WsHelpers, mod: string | null, fn: WsHandler): H {
 /** Throws the first rule refusal (the same text the browser shows on the disabled button). */
 export function refuse(...reasons: (string | null | undefined)[]): void { const m = reasons.find((x) => !!x); if (m) throw new WsRefused(m); }
 export const invalid = (m: string): never => { throw new WsRefused(m, 400); };
+/** SEC-18: a file that failed checkFile. Active content is recorded in the company's audit log (its own transaction, so the refusal does not
+ *  roll it back) and refused with 422, which the request handler also logs as a security event. Other problems are a plain 400. */
+export async function refuseFile(d: Deps, actor: Actor, f: { error: string; threat?: string }, name: unknown): Promise<never> {
+  if (!f.threat) invalid(f.error);
+  await d.ws.tx(actor, d.now(), (t) => t.audit("file.refused", `${scalarText(name).slice(0, 120) || "file"}: ${f.threat}`, "Security"));
+  throw new WsRefused(f.error, 422);
+}
 export const missing = (what: string): never => { throw new WsRefused(`${what} not found.`, 404); };
 
 /** The company's active members (id, name, role), for owners and assignees. */
