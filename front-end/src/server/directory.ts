@@ -43,6 +43,10 @@ export interface Directory {
   /** Lockout settings of every company the person is an active member of. */
   lockoutsOf(userId: string): Promise<Lockout[]>;
   setLockout(tenantId: string, actorId: string, lockout: Lockout, at: number, entry: AuditRow): Promise<void>;
+  /** EDGE-20: the email domains this company accepts requests to join from (empty: any; migration 0013) and its name. Read without a
+   *  signed-in person, for a request to join that named the company's code. */
+  joinPolicy(tenantId: string): Promise<{ domains: string[]; company: string }>;
+  setJoinDomains(tenantId: string, actorId: string, domains: string[], at: number, entry: AuditRow): Promise<void>;
 
   /* Role changes and invitations (slice 2c, migration 0005). */
   /** Ids of the company's active admins. */
@@ -151,6 +155,19 @@ export class PgDirectory implements Directory {
       await q.query(`insert into tenant_settings (tenant_id, lockout, updated_by, updated_ms) values ($1, $2, $3, $4)
         on conflict (tenant_id) do update set lockout = excluded.lockout, updated_by = excluded.updated_by, updated_ms = excluded.updated_ms, version = tenant_settings.version + 1`,
         [tenantId, JSON.stringify(lockout), actorId, at]);
+      await q.query(auditSql, auditArgs(entry));
+    });
+  }
+  async joinPolicy(tenantId: string) {
+    const r = await this.db.tx({ tenantId, userId: null }, (q) => q.query<{ join_domains: string[] | null; name: string }>(
+      "select s.join_domains, t.name from tenants t left join tenant_settings s on s.tenant_id = t.id where t.id = $1", [tenantId]));
+    return { domains: r[0]?.join_domains ?? [], company: r[0]?.name ?? "" };
+  }
+  async setJoinDomains(tenantId: string, actorId: string, domains: string[], at: number, entry: AuditRow) {
+    await this.db.tx({ tenantId, userId: actorId }, async (q) => {
+      await q.query(`insert into tenant_settings (tenant_id, join_domains, updated_by, updated_ms) values ($1, $2, $3, $4)
+        on conflict (tenant_id) do update set join_domains = excluded.join_domains, updated_by = excluded.updated_by, updated_ms = excluded.updated_ms, version = tenant_settings.version + 1`,
+        [tenantId, domains, actorId, at]);
       await q.query(auditSql, auditArgs(entry));
     });
   }
@@ -355,6 +372,9 @@ export class MemoryDirectory implements Directory {
   async lockoutOf(tenantId: string) { return this.lockouts.get(tenantId) ?? { preset: "standard" }; }
   async lockoutsOf(userId: string) { return (await this.companiesOf(userId)).map((c) => this.lockouts.get(c.company.id) ?? { preset: "standard" }); }
   async setLockout(tenantId: string, _actorId: string, lockout: Lockout, _at: number, entry: AuditRow) { this.lockouts.set(tenantId, lockout); await this.store.audit(entry); }
+  joinDomains = new Map<string, string[]>();
+  async joinPolicy(tenantId: string) { return { domains: [...(this.joinDomains.get(tenantId) ?? [])], company: this.companies.get(tenantId)?.name ?? "" }; }
+  async setJoinDomains(tenantId: string, _actorId: string, domains: string[], _at: number, entry: AuditRow) { this.joinDomains.set(tenantId, [...domains]); await this.store.audit(entry); }
 
   requests: (ApprovalRow & { tenantId: string })[] = [];
   invites: (InvitationRow & { tenantId: string; tokenHash: string | null; invitedById: string })[] = [];

@@ -63,6 +63,9 @@ signatures in memory and needs a resident process), so the work is split:
 7. **Platform-wide abuse list** (rare): platform staff may add a match-key HMAC with a reason, four-eyes, kept 12 months, for abuse across
    companies (spam requests). It only flags, like item 3.
 
+**Status (2026-11-26): items 4 and 5 built** (control ACC-27, migration 0013). Domain restriction is a company setting, off by default; the
+suggestion to turn it on for companies whose admins share one domain is left to each company. Next: items 2 and 3.
+
 ### Order of work, if approved
 
 Domain restriction (4) and disposable-address refusal (5) first: small, high value. Then the match key and the admin flag (2, 3), then the

@@ -701,6 +701,25 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
     });
   });
 
+  describe("company email domains for requests to join (0013)", () => {
+    it("joinPolicy reads the list and name by company id alone; only that company's context writes it; the database checks the list", async () => {
+      const dir = new PgDirectory(app);
+      const entry = (tenantId: string, actorId: string, action: string): AuditRow => ({ at: now, actor: "Someone", actorId, tenantId, action, target: "target", cat: "Access", space: "ws", ip: "198.51.100.7" });
+      expect(await dir.joinPolicy(A)).toMatchObject({ domains: [] });
+      await dir.setJoinDomains(A, alex, ["acme.example", "mail.acme.example"], now, entry(A, alex, "team.join_domains.changed"));
+      const pol = await dir.joinPolicy(A);
+      expect(pol.domains).toEqual(["acme.example", "mail.acme.example"]); expect(pol.company.length).toBeGreaterThan(0);
+      expect((await dir.joinPolicy(B)).domains).toEqual([]); // the other company's list is its own
+      // another company's context can neither read nor change it
+      expect(await app.tx(ctxA(), (q) => q.query("select join_domains from tenant_settings where tenant_id = $1", [B]))).toEqual([]);
+      expect(await app.tx(ctxA(), (q) => q.query("update tenant_settings set join_domains = '{x.example}' where tenant_id = $1 returning 1", [B]))).toEqual([]);
+      // the check constraint refuses what is not a lower-case domain, and more than 20
+      for (const bad of [["Acme.example"], ["acme"], ["*.acme.example"], ["acme.example,evil.example"], Array.from({ length: 21 }, (_, i) => `d${i}.example`)])
+        expect(await code(admin.query("update public.tenant_settings set join_domains = $2 where tenant_id = $1", [A, bad]))).toMatch(/check constraint/);
+      await admin.query("update public.tenant_settings set join_domains = '{}' where tenant_id = $1", [A]);
+    });
+  });
+
   describe("schema check and request context", () => {
     it("works at the current schema and fails closed when the database is older than the code", async () => {
       expect(await app.schemaVersion()).toBe(SCHEMA_VERSION);

@@ -41,6 +41,7 @@ export type Template =
   | { t: "invite"; company: string; role: string; link: string; expires: string }
   | { t: "first-admin"; company: string; link: string; expires: string }
   | { t: "join-decided"; company: string; approved: boolean; link: string }
+  | { t: "join-domain"; company: string }
   | { t: "mfa-reset"; link: string }
   | { t: "code"; code: string; purpose: string }
   | { t: "vendor-invite"; company: string; vendor: string; link: string; due: string }
@@ -55,6 +56,7 @@ function render(m: Template): { subject: string; lines: string[]; link: string; 
     case "invite": return { subject: `${clip(m.company, 80)} invited you to Selvara`, lines: [`${clip(m.company, 80)} invited you to join its Selvara workspace as ${clip(m.role, 30)}.`, `The link works once, with this email address, until ${m.expires}.`], link: m.link, button: "Accept the invitation" };
     case "first-admin": return { subject: `Your Selvara workspace for ${clip(m.company, 80)} is ready`, lines: [`You are the first admin of ${clip(m.company, 80)} on Selvara.`, `The link works once, with this email address, until ${m.expires}. You set a password and an authenticator when you join.`], link: m.link, button: "Set up your account" };
     case "join-decided": return { subject: m.approved ? `You can now sign in to ${clip(m.company, 80)}` : `Your request to join ${clip(m.company, 80)}`, lines: [m.approved ? `A company admin approved your request to join ${clip(m.company, 80)}. Sign in with the password you chose.` : `A company admin of ${clip(m.company, 80)} did not approve your request to join. Ask them if you think this is a mistake.`], link: m.link, button: "Open Selvara" };
+    case "join-domain": return { subject: `Your request to join ${clip(m.company, 80)}`, lines: [`${clip(m.company, 80)} accepts requests to join only from its own email addresses, so your request was not sent to its admins.`, "Ask a company admin to invite you, or ask again with your work email address. If you did not ask to join, ignore this message."], link: "", button: "" };
     case "mfa-reset": return { subject: "Your Selvara second factor was reset", lines: ["Your multi-factor authentication was reset after an identity check, and your sessions were ended.", "Sign in again and set up a new authenticator. If you did not ask for this, contact your company admin at once."], link: m.link, button: "Sign in" };
     case "code": return { subject: `Your Selvara code: ${m.code}`, lines: [`Your one-time code for ${clip(m.purpose, 80)} is ${m.code}.`, "It works once, for 10 minutes. Nobody from Selvara will ask you for it. If you did not ask for it, ignore this message."], link: "", button: "" };
     case "vendor-invite": return { subject: `${clip(m.company, 80)} asks ${clip(m.vendor, 80)} to complete a security questionnaire`, lines: [`${clip(m.company, 80)} asks you to complete its security questionnaire for ${clip(m.vendor, 80)}${m.due ? `, by ${m.due}` : ""}.`, "Open the link and confirm this email address; a one-time code is sent to it."], link: m.link, button: "Open the questionnaire" };

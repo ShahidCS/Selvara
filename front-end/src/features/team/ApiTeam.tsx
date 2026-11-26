@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Chip, DataTable, Empty, Icon, Listbox, Page, Segmented, StatusChip, type DTColumn, Avatar } from "@/components/ui";
 import { LayerFoot, useLayer } from "@/hooks/useLayer";
 import { CUSTOM_BOUNDS, LOCKOUT, type LockoutPreset } from "@/lib/accountSecurity";
+import { parseJoinDomains } from "@/lib/emailDomains";
 import { apiMessage, notSentText, RequestsTable, utcMin } from "@/components/kit/serverRequests";
 import { ASSIGNABLE_ROLES, isAssignableRole, isPrivilegedRole, ROLE_LABEL } from "@/lib/rules";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
@@ -171,6 +172,39 @@ function SignIn() {
         </form>
       ) : null}
       <p className="field help" id="alk-err" role="alert" style={{ color: "var(--bad-ink)", display: cerr ? "block" : "none", marginTop: 6 }}>{cerr}</p>
+      <JoinDomains />
+    </>
+  );
+}
+
+/** EDGE-20: requests to join only from the company's own email domains; anyone else is invited. Throwaway addresses are always refused. */
+function JoinDomains() {
+  const L = useLayer();
+  const [cur, setCur] = useState<string[] | null>(null); const [text, setText] = useState(""); const [err, setErr] = useState("");
+  const load = () => svc.getJoinDomains().then((d) => { setCur(d); setText(d.join("\n")); }, (e) => setErr(why(e, "Could not load the setting")));
+  useEffect(() => { void load(); }, []);
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault(); setErr("");
+    const parsed = parseJoinDomains(text); if ("error" in parsed) { setErr(parsed.error); return; }
+    try { await svc.setJoinDomains(parsed.domains); await load(); L.toast(parsed.domains.length ? `Requests to join: ${parsed.domains.join(", ")} only` : "Requests to join: any email domain"); }
+    catch (x) { setErr(why(x, "Could not save the domains")); }
+  };
+  if (!cur) return null;
+  return (
+    <>
+      <div className="sectitle" style={{ marginTop: 20 }}>Requests to join</div>
+      <p className="field help" style={{ margin: "0 0 8px" }}>
+        {cur.length ? <>Only addresses at <strong>{cur.join(", ")}</strong> (and their subdomains) can ask to join. </> : <>Anyone with your company code can ask to join, from any email domain. </>}
+        List your company&apos;s own email domains to accept requests only from them; invite anyone else (auditors, vendors, contractors) by email. A person at another domain is told by email to ask for an invitation, and your admins see nothing. Temporary (disposable) email addresses are always refused. Every change is audited.
+      </p>
+      <form onSubmit={save} noValidate style={{ display: "grid", gap: 8, maxWidth: 520 }}>
+        <div className="field" style={{ margin: 0 }}>
+          <label htmlFor="jd-list">Email domains (one per line, empty for any)</label>
+          <textarea className="input" id="jd-list" rows={3} maxLength={1200} placeholder="acme.example" value={text} onChange={(e) => setText(e.target.value)} aria-invalid={!!err} aria-describedby={err ? "jd-err" : undefined} />
+        </div>
+        <div><button type="submit" className="btn btn-secondary">Save domains</button></div>
+      </form>
+      <p className="field help" id="jd-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none", marginTop: 6 }}>{err}</p>
     </>
   );
 }
