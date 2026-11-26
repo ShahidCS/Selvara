@@ -2,6 +2,7 @@
  * (DATA, the framework edits and the four-eyes requests), so every module keeps its full behaviour (production programme, decision D7). The
  * server decides what a person may see; this only copies it in. Writes go through wsPost/wsPatch/wsUpload, which reload the data afterwards.
  * Nothing here runs in the demonstration build. */
+import { guardedWrite } from "@/lib/submitGuard";
 import { DATA, FRAMEWORK_REQS, FW_ID, refreshFrameworkCounts } from "@/lib/data";
 import { WS_AUDIT } from "@/lib/audit";
 import { fwEdits, touchFw } from "@/lib/frameworks";
@@ -215,7 +216,9 @@ const withVersion = (path: string, init: RequestInit): RequestInit => {
   const v = recordVersionFor(path); if (v === null) return init;
   return { ...init, headers: { ...(init.headers as Record<string, string> | undefined), "X-Record-Version": String(v) } };
 };
-const send = async <T,>(path: string, init0: RequestInit): Promise<T> => {
+/** EDGE-11: the whole change (password prompt, retry and reload included) counts as one write for the button that started it. */
+const send = <T,>(path: string, init0: RequestInit): Promise<T> => guardedWrite(() => sendOnce<T>(path, init0));
+const sendOnce = async <T,>(path: string, init0: RequestInit): Promise<T> => {
   let out: T; const init = withVersion(path, init0);
   try { out = await apiFetch<T>(path, init); }
   catch (e) {
@@ -229,7 +232,8 @@ export const wsPost = <T,>(path: string, body: unknown = {}) => send<T>(path, { 
 export const wsDelete = <T,>(path: string) => send<T>(path, { method: "DELETE" });
 export const wsPatch = <T,>(path: string, body: unknown) => send<T>(path, { method: "PATCH", body: JSON.stringify(body) });
 /** Uploads a file's bytes (the server checks type, size and content). */
-export async function wsUpload<T>(path: string, file: File): Promise<T> {
+export function wsUpload<T>(path: string, file: File): Promise<T> { return guardedWrite(() => uploadOnce<T>(path, file)); }
+async function uploadOnce<T>(path: string, file: File): Promise<T> {
   const v = recordVersionFor(path);
   const res = await netFetch(`${API_BASE}${path}${path.includes("?") ? "&" : "?"}name=${encodeURIComponent(file.name)}`, {
     method: "POST", credentials: "include", headers: { "Content-Type": "application/octet-stream", Accept: "application/json", ...(v === null ? {} : { "X-Record-Version": String(v) }) }, body: file,
