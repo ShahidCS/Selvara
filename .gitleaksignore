@@ -1,0 +1,4 @@
+# Verified false positives only, one fingerprint per line (commit:file:rule:line). Never add a real secret here: rotate it instead.
+# SEC-11: in front-end/.env.example the empty SERVER_SECRET= value was followed by the next variable's name, which the generic-api-key
+# rule read as the value. The value is empty; the lines were reordered in the following commit so it cannot recur.
+b1ae744aa3b8b16f1368e3802d1455d99dae2951:front-end/.env.example:generic-api-key:20
