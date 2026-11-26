@@ -1,6 +1,6 @@
 /* Controls API stubs. In mock mode (default) each function performs the in-memory DATA mutation the prototype did and
  * returns the result; the caller then does wsLog / toast / bumpData. In http mode it would call the (not yet existing) API. */
-import { DATA, FW_SHORT, testsForControl } from "@/lib/data";
+import { DATA, FW_SHORT, mappedFws, testsForControl } from "@/lib/data";
 import { nowStamp, csvCell } from "@/lib/format";
 import { wsLog } from "@/lib/audit";
 import { getActor, SodError } from "@/lib/sod";
@@ -13,7 +13,6 @@ import { attestBlock, decideExceptionBlock, exceptionStateOf, manageControlsBloc
 import { API_ON } from "@/lib/rbac";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export const MATRIX_FWS = ["iso27001", "soc2", "nistcsf", "gdpr", "pci"];
 export const CONTROL_DOMAINS = ["Governance", "Identity & Access", "Operations", "Cryptography", "Network", "Logging", "Business Continuity", "Third Party", "Privacy", "AI"];
 let TESTSEQ = 6; // source: let TESTSEQ=6
 
@@ -154,20 +153,21 @@ export function syncAllTests() {
 /* exports: return file text (mock builds it from DATA) */
 export function exportSoa() {
   return viaApi(() => csv(["Doc", "Control", "Title", "Domain", "Owner", "Status", "Frameworks"],
-    scoped("controls", DATA.controls).map((c) => ["SoA", c.id, c.title, c.domain, c.owner, c.status, Object.keys(c.map || {}).map((k) => FW_SHORT[k] || k).join("|")])),
+    scoped("controls", DATA.controls).map((c) => ["SoA", c.id, c.title, c.domain, c.owner, c.status, mappedFws(c).map((k) => FW_SHORT[k] || k).join("|")])),
   logged(() => csv(["Doc", "Control", "Title", "Domain", "Owner", "Status", "Frameworks"],
-    scoped("controls", DATA.controls).map((c) => ["SoA", c.id, c.title, c.domain, c.owner, c.status, Object.keys(c.map || {}).map((k) => FW_SHORT[k] || k).join("|")])), "controls.soa.exported", `${DATA.controls.length} controls`));
+    scoped("controls", DATA.controls).map((c) => ["SoA", c.id, c.title, c.domain, c.owner, c.status, mappedFws(c).map((k) => FW_SHORT[k] || k).join("|")])), "controls.soa.exported", `${DATA.controls.length} controls`));
 }
-export function exportMatrix() {
-  return viaApi(() => csv(["Control", "Domain", ...MATRIX_FWS.map((f) => FW_SHORT[f])],
-    scoped("controls", DATA.controls).map((c) => [c.id, c.domain, ...MATRIX_FWS.map((f) => ((c.map || {})[f] || []).join("|"))])),
-  logged(() => csv(["Control", "Domain", ...MATRIX_FWS.map((f) => FW_SHORT[f])],
-    scoped("controls", DATA.controls).map((c) => [c.id, c.domain, ...MATRIX_FWS.map((f) => ((c.map || {})[f] || []).join("|"))])), "controls.matrix.exported", `${DATA.controls.length} controls`));
+/** The cross-framework matrix as shown: one row per control mapped to a chosen catalogue, the requirement codes per catalogue. */
+export function exportMatrix(fws: string[]) {
+  const build = () => csv(["Control", "Title", "Domain", "Status", ...fws.map((f) => FW_SHORT[f] || f)],
+    scoped("controls", DATA.controls).filter((c) => fws.some((f) => ((c.map || {})[f] || []).length))
+      .map((c) => [c.id, c.title, c.domain, c.status, ...fws.map((f) => ((c.map || {})[f] || []).join("|"))]));
+  return viaApi(build, logged(build, "controls.matrix.exported", `${fws.length} catalogues`));
 }
 function workpaper(id: string) {
     const c = DATA.controls.find((x) => x.id === id)!;
     const tests = testsForControl(c.id);
-    return `LOCKED WORKPAPER — ${c.id} ${c.title}\nDomain: ${c.domain}\nOwner: ${c.owner}\nStatus: ${c.status}\nMappings: ${Object.keys(c.map || {}).map((k) => FW_SHORT[k] + " " + c.map[k].join("/")).join("; ")}\nAttestation: ${c.attestation ? c.attestation.by + " on " + c.attestation.at : "none"}\nTests:\n${tests.map((t) => " - " + t.id + " " + t.name + " [" + t.result + "]").join("\n") || " none"}\n\nDraft workpaper for audit support. Requires reviewer sign-off.`;
+    return `LOCKED WORKPAPER — ${c.id} ${c.title}\nDomain: ${c.domain}\nOwner: ${c.owner}\nStatus: ${c.status}\nMappings: ${mappedFws(c).map((k) => (FW_SHORT[k] || k) + " " + c.map[k].join("/")).join("; ")}\nAttestation: ${c.attestation ? c.attestation.by + " on " + c.attestation.at : "none"}\nTests:\n${tests.map((t) => " - " + t.id + " " + t.name + " [" + t.result + "]").join("\n") || " none"}\n\nDraft workpaper for audit support. Requires reviewer sign-off.`;
 }
 export function exportWorkpaper(id: string) {
   return viaApi(() => workpaper(id), logged(() => workpaper(id), "control.workpaper.exported", id));

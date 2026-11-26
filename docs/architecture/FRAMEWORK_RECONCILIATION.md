@@ -1,6 +1,6 @@
 # Framework library reconciliation (design brief Part K)
 
-Status: done in PR 4 of the design brief (November 2026). Generated from the two original sources and the app data; no requirement, title
+Status: done in PR 4 of the design brief (November 2026), then aligned to the Compliance Sources Register (see the last section). Generated from the two original sources and the app data; no requirement, title
 or mapping was written by hand.
 
 ## Sources
@@ -62,11 +62,56 @@ missing.
   evidence in production.
 - **Owners of the reinstated controls.** The dashboard source names people of a different demonstration company. Each reinstated control is
   given the app's existing owner for the same control domain (the owner who already holds most controls in that domain), so no new person is invented.
-- **UAE NIAF: metadata not carried.** Its 36 requirements carry a control type, priority (P1 to P3) and applicability in the
+- **UAE NIAF: metadata not carried.** (NIAF has since been removed; see the register section.) Its 36 requirements carry a control type, priority (P1 to P3) and applicability in the
   source. The app's requirement format has no field for these, so they are not shown. Flagged, not dropped silently: they can be added with a
   catalogue field later.
-- **Unresolved references already in the app: 78.** Some original control links use a short reference where the catalogue
+- **Unresolved references already in the app: 78 (72 after the register change removed `sbp` and `amlcft`).** Some original control links use a short reference where the catalogue
   has a longer id (for example `Art.5` where DORA lists `Art.5(1)`). They predate this change, nothing new adds to them, and they are left as
   they are rather than guessed at. By framework: soc2 13, uaeia 11, dora 8, nis2 8, pci 6, iso27005 5, sbp 4, sama 3, iso42001 3, nist80037 3, nist800207 3, gdpr 2, amlcft 2, euaiact 1, iso30107 1, iso27701 1, peca 1, iso29100 1, difc 1, uaepdpl 1. A unit test keeps the number from rising.
 - **The requirement-titles disclaimer was removed** from the Frameworks page, as asked. A one-line note on the page still says that requirement-to-control mappings and applicability decisions are drafts. Under the organisation's rules, qualified compliance staff review them before anyone relies on them.
 - **Nothing was invented.** Where the sources hold no data, the app holds none either.
+
+## Compliance Sources Register (November 2026)
+
+The library now matches the owner's Compliance Sources Register exactly: 25 entries. Each entry carries the register's short name, full
+form (`title`), publisher and latest version in `src/data/seed.json`, and the server library (`src/server/ws/catalogue.ts`) returns the same
+fields. The Frameworks list shows them under each name; a framework page shows them in its Source card.
+
+### Removed (not in the register)
+
+| Entry | Why | Effect |
+|---|---|---|
+| SBP AML/CFT/CPF Regulations (`sbp`) | Not in the register | Entry, 7 requirements and its control links removed; 4 of the unresolved short references went with it |
+| AML/CFT & Sanctions (`amlcft`) | Not in the register; a composite with no single official source | Entry, 7 requirements and its control links removed; 2 unresolved references went with it |
+| UAE National Information Assurance Framework (`uaeniaf`) | Replaced by register entry 21 (UAE Information Assurance Regulation v1.1) | Entry, 36 requirements and 69 control links removed. Control IR-6 ("Incident cost and impact are estimated and recorded") was mapped only to NIAF; it stays in the control library with no mapping, for a reviewer to map or retire |
+
+The company policy named "AML/CFT & Sanctions Policy" in the demonstration data is a policy, not a framework, and is unchanged.
+
+Totals after the change: 25 frameworks (8 standards, 8 frameworks, 9 regulations), 1878 requirements, 141 controls, 3071
+requirement-to-control links, 72 unresolved short references (was 78).
+
+### Requirements that reflect an earlier edition
+
+Relabelling an entry to the register's version does not change its requirement text. Where the modelled requirements predate that version,
+the entry carries `reqEdition`, the Frameworks list shows an "Earlier edition" badge and the framework page shows a "Requirements reflect an
+earlier edition" note. No requirement text was written to close these gaps: each one needs the official text and a qualified reviewer.
+
+| Entry | Register version | Requirements reflect | Gap for review |
+|---|---|---|---|
+| ISO/IEC 27001:2022 | Oct 2022 (Amd 1:2024) | 2022 text without the amendment | Amd 1:2024 adds climate change to clauses 4.1 and 4.2; neither the requirements nor their guidance mention it |
+| ISO 22301:2019 | Oct 2019 (Amd 1:2024) | 2019 text without the amendment | Same climate action amendment, not reflected |
+| ISO/IEC 27701:2025 | Oct 2025 | ISO/IEC 27701:2019 (clauses 5.2 to 7.4) | The 2025 edition is a standalone management system with a new clause structure; the 8 summary requirements follow the 2019 extension structure |
+| NIST SP 800-53 Rev. 5 | Sep 2020 (Release 5.2.0, Aug 2025) | Rev. 5 as first published | Controls and enhancements added or changed in later releases up to 5.2.0 are not modelled |
+| DIFC Data Protection Law No. 5 of 2020 | Jul 2020 (latest amendments 2025) | The law as enacted | The 2025 amendments are not modelled |
+| UAE Information Assurance Regulation v1.1 | Mar 2020 | UAE Information Assurance Standards (NESA, 2014), the dashboard source's document | Differences between the 2014 standards and Regulation v1.1 (control numbering, any added or removed controls) are not checked |
+
+Not flagged, but not verifiable from the sources: the portal source states no edition for SOC 2, ISO/IEC 27005, PCI DSS, GDPR, EU AI Act,
+UAE PDPL and SAMA CSF. Their short summary requirements show nothing that predates the register version; a reviewer should still confirm them.
+The other entries were built in the dashboard source from the edition the register names (for example ISO/IEC 29100:2024, ISO/IEC
+30107-1:2023, NIST CSF 2.0, PECA with its 2025 amendment, CTDISR 2025).
+
+### Recommended additions (not added)
+
+The register recommends these for a GCC-focused library. They are not in the library yet; each needs a sourced requirement list and a
+compliance review before it is added: NCA Essential Cybersecurity Controls (ECC-2:2024), Saudi Personal Data Protection Law (PDPL), ADGM
+Data Protection Regulations 2021, CIS Controls v8.1 (also available today as an "Add framework" template) and SWIFT CSCF.

@@ -42,8 +42,8 @@ test("controls: search, framework filter, status tabs, row opens the page, tests
   await p.getByRole("tab", { name: "Tests" }).click();
   await expect(table(p, "Tests")).toBeVisible();
   await searchNarrows(p, "Tests", "MFA");
-  await p.getByRole("tab", { name: "Matrix" }).click();
-  await expect(p.getByRole("columnheader", { name: "Domain" })).toBeVisible();
+  await p.getByRole("tab", { name: "Cross-framework matrix" }).click();
+  await expect(table(p, "Cross-framework matrix")).toBeVisible();
   expect(s.errors).toEqual([]);
   await s.close();
 });

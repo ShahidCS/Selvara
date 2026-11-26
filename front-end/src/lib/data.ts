@@ -21,6 +21,18 @@ export const FRAMEWORK_REQS: Record<string, { g: string[][]; r: string[][] }> = 
 export const ANNEXA: { id: string; title: string; theme: string }[] = annex as any;
 export const FW_SHORT: Record<string, string> = fwShort as any;
 export const FW_ID: Record<string, string> = Object.fromEntries(DATA.frameworks.map((f) => [f.id, f.name]));
+/** The frameworks a control maps to that are in the library (or the company's own). A mapping kept in a company's records for a framework the
+    library no longer lists (for example one removed by the Compliance Sources Register) is not shown. */
+/** A requirement's title in its framework's catalogue, or null when the reference does not resolve (a short legacy reference such as "Art.5"). */
+const REQ_TITLE = new Map<string, string>();
+export function reqTitle(fwId: string, reqId: string): string | null {
+  if (!REQ_TITLE.size) for (const [fw, cat] of Object.entries(FRAMEWORK_REQS)) for (const r of cat.r) REQ_TITLE.set(fw + "\u0000" + r[0], r[1]);
+  const hit = REQ_TITLE.get(fwId + "\u0000" + reqId);
+  if (hit) return hit;
+  const r = FRAMEWORK_REQS[fwId]?.r.find((x) => x[0] === reqId); // a catalogue registered after the first lookup (a company's own framework)
+  return r ? r[1] : null;
+}
+export const mappedFws = (c: { map?: Record<string, string[]> }): string[] => Object.keys(c.map || {}).filter((k) => k in FW_ID && (c.map![k] || []).length > 0);
 
 export const testsForControl = (cid: string) => DATA.tests.filter((t) => t.controls.includes(cid));
 export function controlsForFw(id: string) {

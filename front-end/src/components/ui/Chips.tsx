@@ -1,7 +1,7 @@
 import { Icon } from "./Icon";
 
-export function Chip({ cls, children, icon }: { cls: string; children: React.ReactNode; icon?: string }) {
-  return <span className={`chip ${cls}`}>{icon ? <Icon name={icon} /> : null}{children}</span>;
+export function Chip({ cls, children, icon, title }: { cls: string; children: React.ReactNode; icon?: string; title?: string }) {
+  return <span className={`chip ${cls}`} title={title}>{icon ? <Icon name={icon} /> : null}{children}</span>;
 }
 const STATUS: Record<string, [string, string]> = {
   Pass: ["ok", "check"], Passing: ["ok", "check"], OK: ["ok", "check"], Active: ["ok", "check"], Approved: ["ok", "check"], Compliant: ["ok", "check"], Paid: ["ok", "check"], Closed: ["ok", "check"], Complete: ["ok", "check"], Completed: ["ok", "check"], Applied: ["ok", "check"], Enrolled: ["ok", "check"], Done: ["ok", "check"],

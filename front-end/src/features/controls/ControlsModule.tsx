@@ -1,4 +1,4 @@
-import { DATA, FW_ID, FW_SHORT } from "@/lib/data";
+import { DATA, FW_ID, FW_SHORT, mappedFws } from "@/lib/data";
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import { uiMessage } from "@/lib/grcSod";
 import { wsLog } from "@/lib/audit";
@@ -11,6 +11,7 @@ import { testChip } from "./controlDialogs";
 import { AdoptForm } from "./AdoptForm";
 import { API_ON } from "@/lib/rbac";
 import { ControlDetail } from "./ControlDetail";
+import { MappingMatrix, matrixCols } from "./MappingViews";
 import { TestDetail } from "./TestDetail";
 import { ControlFormPage, ExceptionFormPage, TestFormPage } from "./ControlForms";
 import { scoped, scopedTests } from "@/services/audits";
@@ -19,11 +20,11 @@ import { scoped, scopedTests } from "@/services/audits";
 type Control = any;
 type Test = any;
 type View = "controls" | "tests" | "matrix";
-const VIEWS: [View, string][] = [["controls", "Controls"], ["tests", "Tests"], ["matrix", "Matrix"]];
+const VIEWS: [View, string][] = [["controls", "Controls"], ["tests", "Tests"], ["matrix", "Cross-framework matrix"]];
 const STATUSES = ["All", "Pass", "Needs evidence", "Fail"];
 
 function FwChips({ c, lim = 6 }: { c: any; lim?: number }) {
-  const keys = Object.keys(c.map || {});
+  const keys = mappedFws(c);
   const shown = keys.slice(0, lim), rest = keys.slice(lim);
   return (
     <>
@@ -52,6 +53,7 @@ function ControlsList() {
   const manageWhy = svc.whyCannotManage(), runWhy = svc.whyCannotRunTests();
   const controls: Control[] = scoped("controls", DATA.controls), tests: Test[] = scopedTests(DATA.tests); // an external auditor: only what is shared with them
   const [view, setView] = useModState<View>("controls.view", "controls");
+  const [mxSel, setMxSel] = useModState<string[] | null>("controls.mxSel", null);
 
   const seg = (
     <div className="seg" role="tablist" data-tour="controls-views">
@@ -68,7 +70,7 @@ function ControlsList() {
   };
   const matrixExport = async () => {
     try {
-      downloadText("cross-framework-matrix.csv", await svc.exportMatrix());
+      downloadText("cross-framework-matrix.csv", await svc.exportMatrix(matrixCols(controls, mxSel)));
       wsLog("controls.matrix.exported", controls.length + " controls", "Control");
       L.toast("Matrix exported");
     } catch (e) { L.toast(uiMessage(e), false); }
@@ -101,7 +103,7 @@ function ControlsList() {
     { key: "id", header: "Control", nowrap: true, value: (c) => c.id, locked: true, render: (c) => <span className="strong num">{c.id}</span> },
     { key: "title", header: "Title", value: (c) => c.title, render: (c) => c.title },
     { key: "domain", header: "Domain", value: (c) => c.domain, render: (c) => c.domain },
-    { key: "map", header: "Mapped to", value: (c) => Object.keys(c.map || {}).map((k) => FW_SHORT[k] || k).join(" "), render: (c) => <div style={{ maxWidth: 220 }}><FwChips c={c} /></div> },
+    { key: "map", header: "Mapped to", value: (c) => mappedFws(c).map((k) => FW_SHORT[k] || k).join(" "), render: (c) => <div style={{ maxWidth: 220 }}><FwChips c={c} /></div> },
     { key: "owner", header: "Owner", value: (c) => c.owner, render: (c) => <Person name={c.owner} /> },
     { key: "status", header: "Status", value: (c) => c.status, render: (c) => <StatusChip s={c.status} /> },
   ];
@@ -136,29 +138,11 @@ function ControlsList() {
   }
 
   if (view === "matrix") {
-    const fws = svc.MATRIX_FWS;
     return (
       <Page mod="controls" acts={acts}>
         <div className="card">
-          <div className="c-head">{seg}<div className="r"><span className="tag">Cross-framework matrix</span></div></div>
-          <div className="c-body scroll" id="matrixBody">
-            <div className="xscroll">
-              <table className="tbl" style={{ minWidth: 820 }}>
-                <thead><tr><th scope="col">Control</th><th scope="col">Domain</th>{fws.map((f) => <th scope="col" key={f}>{FW_SHORT[f]}</th>)}</tr></thead>
-                <tbody>
-                  {controls.map((c) => (
-                    <tr key={c.id}>
-                      <td className="strong num">{c.id}</td><td style={{ color: "var(--muted)" }}>{c.domain}</td>
-                      {fws.map((f) => {
-                        const refs: string[] | undefined = (c.map || {})[f];
-                        return <td key={f}>{refs ? refs.map((r, i) => <span key={i}>{i ? " " : ""}<span className="tag num">{r}</span></span>) : <span style={{ color: "var(--faint)" }}>—</span>}</td>;
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <div className="c-head">{seg}</div>
+          <div className="c-body scroll" id="matrixBody"><MappingMatrix controls={controls} sel={mxSel} setSel={setMxSel} /></div>
         </div>
       </Page>
     );
