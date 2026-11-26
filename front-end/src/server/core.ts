@@ -315,7 +315,17 @@ const join: H = async (d, r) => {
   let userId = existing?.id;
   if (!existing || existing.status === "Rejected") {
     if (existing) { await d.auth.setPassword(existing.id, password); await d.store.updateProfile(existing.id, { status: "Pending", requestedAt: d.now(), person: name }); }
-    else { userId = await d.auth.createUser(email, password, name); await d.store.insertProfile({ id: userId, email, person: name, status: "Pending", requestedAt: d.now() }); }
+    else {
+      // EDGE-2: a second, simultaneous request for the same new email (a double tap) finds the account the first one just made, and answers the same
+      try { userId = await d.auth.createUser(email, password, name); await d.store.insertProfile({ id: userId, email, person: name, status: "Pending", requestedAt: d.now() }); }
+      catch (e) {
+        const now = await d.store.profileByEmail(email);
+        // the account exists but its profile is still being written by the other request (or an earlier attempt left an auth user without a
+        // profile, which the operator sees in the log): the person gets the same answer as always
+        if (!now) { logFailure("POST auth/join-requests", e); return { status: 202 }; }
+        userId = now.id;
+      }
+    }
   } else if (await d.dir.platformRole(existing.id)) return { status: 202 };
   const who = existing && existing.status === "Active" ? existing.person : name;
   await d.dir.requestToJoin(tenantId, userId as string, d.now(), entry(d, r, { name: `${who} (not signed in)`, id: userId, tenantId }, "team.join.requested", `${who} <${email}>`));
