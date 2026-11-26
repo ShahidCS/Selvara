@@ -4,6 +4,9 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Changed
+- Docs: EX-08 is closed. The v0.3.3 release paused for the owner's approval at the `production` environment before deploying, and the rulesets on `main`, `staging` and release tags are active. EXCEPTIONS.md and PIPELINE.md record the evidence. The exception reopens if the repository goes private on the free plan.
+
 ## [0.3.3] - 2026-11-26
 
 The first release of these changes. Tag `v0.3.2` was pushed before the version bump was merged; it points at a commit still versioned 0.3.1, so the release workflow refused it and nothing was deployed. Tags are immutable, so the release is 0.3.3.
