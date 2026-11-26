@@ -20,8 +20,8 @@ describe("SEC-11: environment configuration", () => {
   it("holds no secret values: every SECRET line is empty", () => {
     const lines = ex.split("\n"); const bad: string[] = [];
     // "# SECRET" covers the next line, "# SECRET (both)" the next two
-    lines.forEach((l, i) => { if (/^#.*SECRET/.test(l)) for (const v of lines.slice(i + 1, i + (/\(both\)/.test(l) ? 3 : 2))) if (!/^[A-Z0-9_]+=$/.test(v)) bad.push(v.split("=")[0]); });
-    expect(lines.filter((l) => /^#.*SECRET/.test(l)).length).toBeGreaterThanOrEqual(10);
+    lines.forEach((l, i) => { if (/^# SECRET/.test(l)) for (const v of lines.slice(i + 1, i + (/\(both\)/.test(l) ? 3 : 2))) if (!/^[A-Z0-9_]+=$/.test(v)) bad.push(v.split("=")[0]); });
+    expect(lines.filter((l) => /^# SECRET/.test(l)).length).toBeGreaterThanOrEqual(10);
     expect(bad).toEqual([]);
   });
 });
