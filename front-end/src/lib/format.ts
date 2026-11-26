@@ -32,3 +32,6 @@ export function downloadText(fname: string, text: string, mime?: string): boolea
 /** HTML-escape for strings interpolated into generated HTML documents (board pack, reports). */
 export const esc = (s: unknown): string =>
   String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+
+/** The shared code column of a `.req-list` (requirement or control ids): as wide as its longest code, so the titles line up. */
+export const codeWidth = (codes: string[]): Record<string, string> => ({ "--code-w": `${Math.min(18, Math.max(5, ...codes.map((x) => x.length)) + 1)}ch` });

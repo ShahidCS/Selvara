@@ -5,7 +5,7 @@ import { useModState, setModState } from "@/lib/store";
 import {
   REQ_PAGE, REQ_ST, NOT_ASSESSED, fwAssessed, fwCanAdmin, fwEdits, fwGroupMap, fwGroupStat, fwReqControls, fwScore, fwSnoozed, reqStatus,
 } from "@/lib/frameworks";
-import { csvCell, downloadText } from "@/lib/format";
+import { codeWidth, csvCell, downloadText } from "@/lib/format";
 import { uiMessage } from "@/lib/grcSod";
 import * as fw from "./services/frameworks";
 import { useLayer } from "@/hooks/useLayer";
@@ -203,14 +203,20 @@ function ReqRow({ fwId, r }: { fwId: string; r: string[] }) {
       {isOpen ? (
         <div className="fwreq-body">
           <div style={{ fontSize: 13, color: "var(--ink-2)" }}>{gu || "No guidance recorded."}</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>Mapped controls:</span>
-            {mc.length ? mc.map((c) => (
-              <span key={c.id} style={{ display: "inline-flex", gap: 3, alignItems: "center" }}>
-                <button type="button" className="tag num" title={c.title} onClick={() => openCtrl(c.id)} style={{ cursor: "pointer", color: "var(--ink-2)" }}>{c.id} · {c.status}</button>
-                {admin ? <button className="btn btn-ghost sm" style={{ minHeight: 28, padding: "0 8px" }} onClick={() => mapCtrl(c.id)} aria-label={`Remove ${c.id} from ${id}`}>Remove</button> : null}
-              </span>
-            )) : <span style={{ fontSize: 12, color: "var(--bad-ink)" }}>None — this requirement is not assessed until a control is mapped.</span>}
+          <div className="stack" style={{ gap: 6 }}>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>Mapped controls ({mc.length})</span>
+            {mc.length ? (
+              <ul className="req-list ctrls" style={codeWidth(mc.map((c) => c.id))} aria-label={`Controls mapped to ${id}`}>
+                {mc.map((c) => (
+                  <li key={c.id}>
+                    <button type="button" className="req-code num" onClick={() => openCtrl(c.id)} aria-label={`Open control ${c.id}`}>{c.id}</button>
+                    <span className="req-title">{c.title}</span>
+                    <StatusChip s={c.status} />
+                    {admin ? <button className="btn btn-ghost sm" style={{ minHeight: 28, padding: "0 8px" }} onClick={() => mapCtrl(c.id)} aria-label={`Remove ${c.id} from ${id}`}>Remove</button> : <span />}
+                  </li>
+                ))}
+              </ul>
+            ) : <span style={{ fontSize: 12, color: "var(--bad-ink)" }}>None — this requirement is not assessed until a control is mapped.</span>}
           </div>
           {mod ? <div style={{ fontSize: 12, color: "var(--warn-ink)" }}>Mapping edited by {mod.by} on {mod.date}; draft until compliance review.</div> : null}
           {naRec ? <div style={{ background: "var(--surface-2)", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "var(--ink-2)" }}>Not applicable: {naRec.reason} ({naRec.by}, {naRec.date})</div> : null}

@@ -1,5 +1,6 @@
 import { inAuditorScope } from "@/services/audits";
-import { DATA, FW_ID, mappedFws, testsForControl } from "@/lib/data";
+import { DATA, mappedFws, testsForControl } from "@/lib/data";
+import { RequirementsSatisfied } from "./MappingViews";
 import { RecordHistory } from "@/components/kit/RecordHistory";
 import { bumpData, setModState, useApp, useData } from "@/lib/store";
 import { iAm, uiMessage } from "@/lib/grcSod";
@@ -31,6 +32,7 @@ export function ControlDetail({ id }: { id: string }) {
   const tests = testsForControl(c.id);
   const att = c.attestation;
   const keys = mappedFws(c);
+  const reqN = keys.reduce((a, k) => a + c.map[k].length, 0);
   const excs = svc.exceptionsOf(c);
 
   return (
@@ -49,6 +51,11 @@ export function ControlDetail({ id }: { id: string }) {
               {tests.length ? <p className="field help">Status follows {tests.length} automated test{tests.length > 1 ? "s" : ""} and cannot be overridden manually. To accept a known gap, request an exception with a compensating control (approved by a different person).</p>
                 : <div className="btngrp"><button className="btn btn-ghost sm" {...dis(statusWhy)} onClick={() => openStatusModal(L, id, refresh)}><Icon name="edit" />Change status (owner)</button></div>}
               {!tests.length && statusWhy ? <p className="field help" style={{ margin: "6px 0 0" }}>{statusWhy}</p> : null}
+            </div></div>
+
+            <div className="card" data-tour="control-mappings"><div className="c-head"><h3>Requirements satisfied</h3><span className="sub">{reqN}</span></div><div className="c-body">
+              {keys.length ? <RequirementsSatisfied c={c} /> : <Empty compact icon="controls" title="No mappings">Map this control to a framework requirement to count it there.</Empty>}
+              <div style={{ marginTop: 10 }}><button className="btn btn-ghost sm" {...dis(mapWhy)} onClick={() => openMappingModal(L, id)}><Icon name="plus" />Add mapping</button></div>
             </div></div>
 
             <div className="card"><div className="c-head"><h3>Exceptions &amp; waivers</h3></div><div className="c-body">
@@ -99,13 +106,6 @@ export function ControlDetail({ id }: { id: string }) {
               {attestWhy ? <p className="field help" style={{ margin: "6px 0 0" }}>{attestWhy}</p> : null}
             </div></div>
 
-            <div className="card"><div className="c-head"><h3>Framework mappings</h3></div><div className="c-body">
-              {keys.length ? keys.map((k) => (
-                <div key={k} style={{ marginBottom: 8 }}><div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 3 }}>{FW_ID[k] || k}</div>
-                  <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>{c.map[k].map((r: string, i: number) => <span key={i} className="tag num">{r}</span>)}</div></div>
-              )) : <Empty compact icon="controls" title="No mappings" />}
-              <button className="btn btn-ghost sm" {...dis(mapWhy)} onClick={() => openMappingModal(L, id)}><Icon name="plus" />Add mapping</button>
-            </div></div>
             <RecordHistory id={c.id} />
           </aside>
         </div>

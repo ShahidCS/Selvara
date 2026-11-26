@@ -99,7 +99,7 @@ Table state (tab, filters, sort, page, columns, selection) is kept per table id 
 | E | Settings group: team, integrations, api, billing, audit log, security | done (Security Controls is a read-only specification page and stays as it is) |
 | F | Admin Console and vendor portal (tokens and templates only) | not started |
 
-**Wave A conventions.** A register is a `DataTable` with `searchText`, status `tabs` where the module has a lifecycle, and `filters` for the fields people narrow by; the row opens the record (`onOpen`). Action buttons that already exist (Approve, Deny, Reset MFA) stay inside the row as a column with `hideHeader`, keep their segregation-of-duties reasons, and never open the row. A filter on a field with several values per row uses `test` (frameworks a control maps to) and `labels` for display text. A card that toggles a filter is a `KpiCard` with `pressed`. Tables that are not registers (the cross-framework matrix, the vendor request queue, the standard terms list, review checklists) keep the plain `Table`.
+**Wave A conventions.** A register is a `DataTable` with `searchText`, status `tabs` where the module has a lifecycle, and `filters` for the fields people narrow by; the row opens the record (`onOpen`). Action buttons that already exist (Approve, Deny, Reset MFA) stay inside the row as a column with `hideHeader`, keep their segregation-of-duties reasons, and never open the row. A filter on a field with several values per row uses `test` (frameworks a control maps to) and `labels` for display text. A card that toggles a filter is a `KpiCard` with `pressed`. Tables that are not registers (the vendor request queue, the standard terms list, review checklists) keep the plain `Table`.
 
 **Layout rule found in wave A.** Cards in a page column shrink when the page is full, which squashed a table card to its header. The rule is now enforced in `portal.css`: every direct child of `.page` and of a `.scroll` column keeps its height (`flex-shrink: 0`) and `.page` scrolls (`overflow-y: auto`) when its content is taller than the window. Regions built to fill the rest of the page still shrink and scroll inside: a `.scroll` region, `.rec-scroll`, `.empty`, and `.panels` or `.split` grids (with a 320px floor). The main register card keeps `flex: 1 1 auto` inline; nothing else needs `flex: 0 0 auto` any more.
 
@@ -149,7 +149,7 @@ A record that was a tabbed drawer (vendor) becomes sections in the two-column la
 | `/ws/evidence` | register: KPI strip, review tabs, type and collector filters |
 | `/ws/evidence/:id`, `/ws/evidence/new`, `/ws/evidence/:id/edit` | record, add, edit |
 
-Held back, still plain tables by design: the cross-framework matrix, review checklists, the vendor request queue and the standard terms list (not registers).
+Held back, still plain tables by design: review checklists, the vendor request queue and the standard terms list (not registers).
 
 ## Dashboards (wave C)
 
@@ -364,3 +364,13 @@ Recurring layout defects are fixed in the shared components and tokens, never sc
 - **Cells (I4):** cell content stays on one line and ends in an ellipsis; the full value is in the tooltip.
 - **Row actions (I5):** row actions sit in a visible, labelled "Actions" column, in the same order on every row. Frameworks moved Snooze and Bring in out of its Status and Scope columns.
 - **Audit logs (I1, I6):** the Admin Console page is called "Audit Logs" everywhere. A sign-in or account entry's Detail says what happened and how (method, device), never the actor's name again. Audit records can only be exported: there is no edit or delete action. An actor shown as "<Name>" was stored with those characters; React escapes every value, so this is data, not an escaping fault.
+
+## Mapping views (November 2026)
+
+The three mapping views follow the original sources (`GRC_Unified_Compliance_Dashboard.html`, "Controls and tests") and read each control's own mappings (`map`):
+
+- **Cross-framework matrix** (Controls & Tests, third tab): a `DataTable` with one column per chosen in-scope catalogue (the six with most mapped controls until the reader picks, with `fchip` toggles showing passing over mapped controls). A cell (`.mx-cell`) is the number of requirements the control satisfies there, with the control's status as its icon and tone, never colour alone; opening it shows the requirement ids and titles in a drawer. The CSV export uses the columns shown.
+- **Requirements satisfied** (a control's page, main column): mapped requirements grouped by framework, each id with its catalogue title (`.req-list`, shared code column from `codeWidth` in `lib/format.ts`); an id opens the framework page on that requirement. A legacy short reference that does not resolve is plain text, marked "kept for review".
+- **Mapped controls** (an opened requirement on a framework page): each control's id, title and status, with Remove for an admin.
+
+Every view carries the draft-for-compliance-review note.

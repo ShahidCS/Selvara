@@ -96,7 +96,7 @@ All screenshots use synthetic data (v0.3.1, 24 Nov 2026). The workspace screens 
 
 ### Assurance
 - **Frameworks library**: 25 catalogue entries (see the [coverage table](#standards-regulations-and-frameworks-covered)). Requirement-level scoring, N/A justification, gap-assessment export, and an "add a framework" flow with keyword-based control matching.
-- **Controls and tests**: control library with owners, cross-framework mappings, attestation, exceptions with expiry and compensating controls, automated test results, Statement-of-Applicability export, and a framework-by-control matrix.
+- **Controls and tests**: control library with owners, cross-framework mappings, attestation, exceptions with expiry and compensating controls, automated test results, Statement-of-Applicability export, a cross-framework matrix (choose the catalogues, open a cell for the requirements it counts), and per control the requirements it satisfies, grouped by framework.
 - **Evidence**: collection, review and acceptance with versioning, attachment validation and a request-deletion workflow.
 - **Policies**: full lifecycle (draft, review, approved, published), version history, change log, named approvers, acknowledgement tracking.
 - **Audits**: engagement pipeline, information requests (PBC), control testing, findings, auditor access windows and frozen populations.
