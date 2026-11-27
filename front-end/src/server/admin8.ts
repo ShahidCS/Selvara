@@ -22,6 +22,7 @@ import type { PActor, PTx, PlatStore } from "./platstore";
 import { MemoryPlatStore } from "./platstore";
 import type { AuditRow, Deps } from "./types";
 import { WsConflict, WsRefused } from "./ws/store";
+import { applyErasure, cancelErasure, completeErasure, ERASE_KIND, listErasures, requestErasure } from "./erasure";
 
 type H = (d: Deps, r: Req) => Promise<Res>;
 export interface Admin8Helpers { signed: (h: (d: Deps, r: Req, c: Ctx) => Promise<Res>) => H; entry: (d: Deps, r: Req, p: Ctx["p"], a: Ctx["a"], action: string, target: string) => AuditRow }
@@ -44,6 +45,7 @@ const invoiceView = (i: Invoice, now: number) => ({ ...i, status: shown(i, now),
 /* ---------------- what an approved group 8 request does (in the decision's transaction) ---------------- */
 export async function applyGroup8(d: Deps, q: Tx | null, a: ApprovalRow, approvers: string, decider: PActor) {
   const p = a.payload as Record<string, unknown>; const by = `requested by ${a.requestedByName}; approved by ${approvers}`;
+  if (a.kind === ERASE_KIND) { await within(d, q, decider, (t) => applyErasure(d, t, a, approvers)); return; }
   if (a.kind.startsWith("billing.") && a.kind !== "billing.pricing") {
     await within(d, q, decider, async (t) => {
       const rec = await t.get<Invoice>("billing-invoice", String(p.invoiceId)); if (!rec) throw new WsRefused("The invoice no longer exists.", 409);
@@ -349,6 +351,26 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
     await d.store.audit(h.entry(d, r, c.p, c.a, "auth.ip.unblocked", `${ip}: level ${was} lifted; reason: ${why}`));
     return ok({ ip });
   });
+  /* ---------- account erasure (EDGE-19, erasure.ts): elevated super admins; a second one approves ---------- */
+  const erasures = staff(async (d, r, c) => ok(await pstoreOf(d).tx(actorOf(c, r), d.now(), (t) => listErasures(d, t), { read: true })));
+  const erasureRequest = elevated(async (d, r, c) => {
+    const m = meta(r); if (m.bad) return err(400, m.bad);
+    const who = await requestErasure(d, s(r.body.email, 254)); if ("error" in who) return err(409, who.error);
+    if (who.userId === c.p.id) return err(403, "Segregation of duties: you cannot ask to erase your own account.");
+    const scheduled = (await pstoreOf(d).tx(actorOf(c, r), d.now(), (t) => listErasures(d, t), { read: true })).some((x) => x.userId === who.userId && x.status === "Scheduled");
+    if (scheduled) return err(409, "An erasure is already scheduled for this account.");
+    return request(d, r, c, ERASE_KIND, who.userId, `Erase account ${who.masked}; ticket ${m.ticket}`, { userId: who.userId, email: who.masked, reason: m.reason, ticket: m.ticket }, [who.userId]);
+  });
+  const erasureCancel = elevated(async (d, r, c) => {
+    const id = s(r.path[2], 40);
+    if (s(r.body.reason).length < MIN_REASON) return err(400, `Give a reason of at least ${MIN_REASON} characters.`);
+    await pstoreOf(d).tx(actorOf(c, r), d.now(), (t) => cancelErasure(d, t, id, c.p.person, s(r.body.reason)));
+    return ok();
+  });
+  const erasureComplete = elevated(async (d, r, c) => {
+    const id = s(r.path[2], 40);
+    return ok(await pstoreOf(d).tx(actorOf(c, r), d.now(), (t) => completeErasure(d, t, actorOf(c, r), id)));
+  });
   void reasonBlock; void ({} as Entry);
 
   return {
@@ -357,6 +379,7 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
     "GET admin/rates": ratesData, "POST admin/rates/refresh": refresh, "POST admin/rates/:code/:action": rateAction,
     "GET admin/mfa": mfaData, "POST admin/mfa/requests": mfaRequest, "POST admin/mfa/requests/:id/withdraw": mfaWithdraw,
     "GET admin/security/blocks": blocks, "POST admin/security/blocks/:ip/lift": lift,
+    "GET admin/erasures": erasures, "POST admin/erasures": erasureRequest, "POST admin/erasures/:id/cancel": erasureCancel, "POST admin/erasures/:id/complete": erasureComplete,
   };
 }
 

@@ -94,8 +94,8 @@ decision, 2026-11-26: this design in place of per-person encryption keys):
 |---|---|
 | Schedule, minimums, four-eyes shortening, legal hold (company workspace) | Built as configuration (`features/team/services/governance.ts`, `SOD_MATRIX` §14); production purge job not built (the demonstration previews only) |
 | Session, reset and code expiry | Built |
-| Account erasure and anonymisation | **Not built** (EDGE-19): needs the steps in section 3 |
-| Erasable audit entries (section 5) | **Built** for entries written after migration 0014; older entries kept as section 5 says. Erasure itself: not built yet |
+| Account erasure and anonymisation | **Built** (EDGE-19, migration 0015, control ACC-29): platform super admins only, four-eyes, blocked at once, erased after 14 days. Differences from section 3: requests reach the platform through support (no self-service); the person must first be offboarded by every company; deleted (tombstoned) workspace records keep the name until their purge; the sign-in account is emptied and blocked rather than deleted, because records keep its id |
+| Erasable audit entries (section 5) | **Built** for entries written after migration 0014; older entries kept as section 5 says |
 | Purge job (server, skips holds, audited) | **Not built** |
 | Backups at most 35 days | Provider setting: to confirm |
 | Records of processing (Art. 30) | The product has a RoPA module for customers; Selvara's own RoPA to be written from this schedule |

@@ -1,6 +1,7 @@
 /* Server-only. Supabase Auth and Postgres behind the AuthProvider and Store interfaces. Two clients: the public (anon) key for password sign-in,
    TOTP and reset emails as the user; the service key for admin actions and the tables. The service key never reaches the browser: this file is
    imported only by pages/api. Schema: supabase/migrations/0001_selvara_auth.sql to 0005_team_changes.sql. */
+import { randomBytes } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { logSignInRefused, upstream } from "./errors";
 import type { AuthProvider, NoticeRow, PasskeyRow, Profile, RecoveryRow, SessionRow, Store, AuditRow } from "./types";
@@ -40,6 +41,15 @@ export class SupabaseAuth implements AuthProvider {
   async mfaEnrolled(userId: string) {
     const { data, error } = await this.service().auth.admin.mfa.listFactors({ userId }); if (error) throw upstream("auth.mfa-list", error);
     return (data?.factors ?? []).some((f) => f.status === "verified");
+  }
+  async setBanned(userId: string, banned: boolean) {
+    const { error } = await this.service().auth.admin.updateUserById(userId, { ban_duration: banned ? "876000h" : "none" }); if (error) throw upstream("auth.ban", error);
+  }
+  async scrubUser(userId: string, placeholderEmail: string) {
+    await this.resetMfa(userId);
+    const password = randomBytes(32).toString("base64url");
+    const { error } = await this.service().auth.admin.updateUserById(userId, { email: placeholderEmail, email_confirm: true, password, user_metadata: {}, ban_duration: "876000h" });
+    if (error) throw upstream("auth.scrub", error);
   }
   async resetMfa(userId: string) {
     const { data, error } = await this.service().auth.admin.mfa.listFactors({ userId }); if (error) throw upstream("auth.mfa-list", error);
