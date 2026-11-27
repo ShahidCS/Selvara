@@ -49,7 +49,7 @@ export function ApiPurge({ s }: { s: ElevationState }) {
                 <Table cols={[{ t: "Run" }, { t: "Mode" }, { t: "Past their period", r: true }, { t: "Deleted", r: true }, { t: "" }]}>
                   {p.runs.slice(0, 14).map((x) => (
                     <tr key={x.id}>
-                      <td className="num" style={{ fontSize: 12 }}>{utcMin(x.at)}</td>
+                      <td className="num" style={{ fontSize: ".75rem" }}>{utcMin(x.at)}</td>
                       <td>{x.mode === "delete" ? <Chip cls="warn" icon="trash">Delete</Chip> : <Chip cls="" icon="eye">Report</Chip>}</td>
                       <td className="num r">{x.due}</td>
                       <td className="num r">{x.deleted}{x.files ? <div className="field help" style={{ margin: 0 }}>{x.files} file(s)</div> : null}</td>

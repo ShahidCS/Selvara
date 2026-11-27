@@ -61,9 +61,9 @@ export function PendingApprovals({ kinds, title = "Pending approval", subjectLab
             return (
               <tr key={a.id}>
                 <td className="strong num" style={{ whiteSpace: "nowrap" }}>{a.id}</td><td>{a.subject || "—"}</td>
-                <td style={{ fontSize: 12 }}>{handlerFor(a.kind)?.describe(a) || a.title}</td>
-                <td style={{ fontSize: 12 }}>{a.requestedBy}<div style={{ fontSize: 11, color: "var(--muted)" }}>{new Date(a.createdAt).toISOString().slice(0, 16).replace("T", " ")} UTC</div></td>
-                <td style={{ fontSize: 12 }}>{a.approvals.length}/{a.needs}{named ? <div style={{ fontSize: 11, color: "var(--muted)" }}>Named: {named}</div> : null}</td>
+                <td style={{ fontSize: ".75rem" }}>{handlerFor(a.kind)?.describe(a) || a.title}</td>
+                <td style={{ fontSize: ".75rem" }}>{a.requestedBy}<div style={{ fontSize: ".6875rem", color: "var(--muted)" }}>{new Date(a.createdAt).toISOString().slice(0, 16).replace("T", " ")} UTC</div></td>
+                <td style={{ fontSize: ".75rem" }}>{a.approvals.length}/{a.needs}{named ? <div style={{ fontSize: ".6875rem", color: "var(--muted)" }}>Named: {named}</div> : null}</td>
                 <td>{live ? <Chip cls="warn" icon="clock">Pending, expires in {hoursLeft(a)} h</Chip> : <Chip cls={a.status === "Approved" ? "ok" : "neutral"} icon={a.status === "Approved" ? "check" : "x"}>{a.status}</Chip>}</td>
                 <td className="r" style={{ whiteSpace: "nowrap" }}>
                   {live ? (mine ? (

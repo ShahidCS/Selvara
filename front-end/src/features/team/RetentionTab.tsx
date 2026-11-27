@@ -18,8 +18,8 @@ export function RetentionTab({ manage }: { manage: boolean }) {
           const prev = gov.retentionPreview(t.id);
           return (
             <tr key={t.id}>
-              <td className="strong">{t.label}<div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 400 }}>{t.basis}</div></td>
-              <td className="num">{years(t.months)}{t.pendingShorter ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{years(t.pendingShorter.months)} awaiting approval</div> : null}</td>
+              <td className="strong">{t.label}<div style={{ fontSize: ".71875rem", color: "var(--muted)", fontWeight: 400 }}>{t.basis}</div></td>
+              <td className="num">{years(t.months)}{t.pendingShorter ? <div style={{ fontSize: ".71875rem", color: "var(--muted)" }}>{years(t.pendingShorter.months)} awaiting approval</div> : null}</td>
               <td className="num">{years(t.floor)}</td>
               <td>{t.hold ? <Chip cls="warn" icon="alert">{t.hold.releaseApproval ? "Legal hold (release requested)" : "Legal hold"}</Chip> : <Chip cls="neutral" icon="dot">{prev.due ? `${prev.due} past retention` : "Nothing due"}</Chip>}</td>
               <td className="r">{manage ? (

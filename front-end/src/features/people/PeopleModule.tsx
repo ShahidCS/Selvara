@@ -33,7 +33,7 @@ function PeopleList() {
     { key: "name", header: "Name", value: (p) => p.name, locked: true, render: (p) => <span className="person"><Avatar name={p.name} /><span className="strong">{p.name}</span></span> },
     { key: "role", header: "Role", value: (p) => p.role, render: (p) => p.role },
     { key: "dept", header: "Department", value: (p) => p.dept, render: (p) => p.dept },
-    { key: "device", header: "Device", value: (p) => p.device, render: (p) => p.device === "Not connected" ? <span style={{ color: "var(--muted)", fontSize: 12 }}>Not connected</span> : <DeviceChip d={p.device} /> },
+    { key: "device", header: "Device", value: (p) => p.device, render: (p) => p.device === "Not connected" ? <span style={{ color: "var(--muted)", fontSize: ".75rem" }}>Not connected</span> : <DeviceChip d={p.device} /> },
     { key: "mfa", header: "MFA", value: (p) => (p.mfa ? "Enrolled" : "Not enrolled"), render: (p) => (p.mfa ? <Chip cls="ok" icon="check">Enrolled</Chip> : <Chip cls="neutral" icon="dot">Not enrolled</Chip>) },
     { key: "act", header: "Actions", align: "end", locked: true, render: (p) => (canAct ? (
       <button className="btn btn-ghost sm" data-tour="people-reset-mfa" disabled={!p.mfa || !!sodReason("self-service MFA reset is not allowed, ask another admin", p.name)} title={sodReason("self-service MFA reset is not allowed, ask another admin", p.name) || (p.mfa ? undefined : "Not enrolled in MFA, so there is nothing to reset.")} aria-label={`Reset MFA for ${p.name}`} onClick={() => resetMfa(p.id)}><Icon name="refresh" />Reset MFA</button>

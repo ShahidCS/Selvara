@@ -24,11 +24,11 @@ export function ApiRetention() {
       <Table cols={[{ t: "Records" }, { t: "Keep for" }, { t: "Minimum" }, { t: "Status" }, { t: "" }]}>
         {rows.map((t) => (
           <tr key={t.id}>
-            <td className="strong">{t.label}<div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 400 }}>{t.basis}</div></td>
-            <td className="num">{span(t.months)}{t.pendingMonths ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{span(t.pendingMonths)} awaiting approval</div> : null}</td>
+            <td className="strong">{t.label}<div style={{ fontSize: ".71875rem", color: "var(--muted)", fontWeight: 400 }}>{t.basis}</div></td>
+            <td className="num">{span(t.months)}{t.pendingMonths ? <div style={{ fontSize: ".71875rem", color: "var(--muted)" }}>{span(t.pendingMonths)} awaiting approval</div> : null}</td>
             <td className="num">{span(t.floor)}</td>
             <td>{t.hold ? <Chip cls="warn" icon="alert">{t.releaseRequested ? "Legal hold (release requested)" : "Legal hold"}</Chip> : <Chip cls="neutral" icon="dot">No hold</Chip>}
-              {t.hold ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>by {t.hold.by}: {t.hold.reason}</div> : null}</td>
+              {t.hold ? <div style={{ fontSize: ".71875rem", color: "var(--muted)" }}>by {t.hold.by}: {t.hold.reason}</div> : null}</td>
             <td className="r">
               <div className="btngrp" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
                 <button className="btn btn-ghost sm" aria-label={`Change retention: ${t.label}`} onClick={() => L.openModal(`Change retention: ${t.label}`, (close) => <Change t={t} close={close} />)}><Icon name="edit" />Change</button>

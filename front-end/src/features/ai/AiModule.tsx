@@ -47,7 +47,7 @@ function AiList() {
   });
   const open = (id: string) => go(`/ws/ai/${encodeURIComponent(id)}`);
   const cols: DTColumn<AiSys>[] = [
-    { key: "name", header: "System / model", value: (a) => a.name, locked: true, render: (a) => <span className="strong">{a.name}<div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 400 }}>{a.model} · {a.provider}</div></span> },
+    { key: "name", header: "System / model", value: (a) => a.name, locked: true, render: (a) => <span className="strong">{a.name}<div style={{ fontSize: ".75rem", color: "var(--muted)", fontWeight: 400 }}>{a.model} · {a.provider}</div></span> },
     { key: "surface", header: "Surface", value: (a) => a.surface, render: (a) => a.surface },
     { key: "eu", header: "EU AI Act", value: (a) => a.euClass || "Not classified", render: (a) => <><AiEuChip c={a.euClass} />{a.euState && a.euState.state === "Draft" ? <> <Chip cls="warn" icon="edit">Draft</Chip></> : null}</> },
     { key: "guard", header: "Guardrail", value: (a) => a.guardrail || "Controlled", render: (a) => <AiGuardChip g={a.guardrail} /> },
@@ -71,8 +71,8 @@ function AiList() {
             <KpiTile label="Shadow AI found" value={AI_SHADOW.length} delta={AI_SHADOW.length ? { tone: "watch", text: "Unregistered" } : { tone: "good", text: "None" }} caption="Awaiting registration" />
           </KpiStrip>
           <details className="card" data-tour="ai-review" style={{ flex: "0 0 auto", boxShadow: "none", background: "var(--surface-2)", borderColor: "transparent" }}>
-            <summary style={{ cursor: "pointer", padding: "10px 14px", fontSize: 12.5, color: "var(--muted)", display: "flex", gap: 8, alignItems: "center" }}><Icon name="shieldcheck" aria-hidden="true" style={{ width: 16, height: 16, flex: "0 0 auto" }} />Classifications and assessments are drafts for qualified compliance and legal review. <span style={{ color: "var(--ink-2)", textDecoration: "underline" }}>How decisions are made</span></summary>
-            <div style={{ padding: "0 14px 10px 38px", fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>Do not rely on a classification or assessment until that review is done. EU AI Act classifications must be confirmed by an admin or owner other than the drafter, impact assessments approved by someone other than the submitter, and guardrail changes and archiving approved by a second person. Registering a system does not approve it. Only the AI system owner, an admin or an owner can change a system or triage its signals.</div>
+            <summary style={{ cursor: "pointer", padding: "10px 14px", fontSize: ".78125rem", color: "var(--muted)", display: "flex", gap: 8, alignItems: "center" }}><Icon name="shieldcheck" aria-hidden="true" style={{ width: 16, height: 16, flex: "0 0 auto" }} />Classifications and assessments are drafts for qualified compliance and legal review. <span style={{ color: "var(--ink-2)", textDecoration: "underline" }}>How decisions are made</span></summary>
+            <div style={{ padding: "0 14px 10px 38px", fontSize: ".78125rem", color: "var(--ink-2)", lineHeight: 1.5 }}>Do not rely on a classification or assessment until that review is done. EU AI Act classifications must be confirmed by an admin or owner other than the drafter, impact assessments approved by someone other than the submitter, and guardrail changes and archiving approved by a second person. Registering a system does not approve it. Only the AI system owner, an admin or an owner can change a system or triage its signals.</div>
           </details>
           <div className="card" data-tour="ai-inventory"><div className="c-head"><h3>AI inventory</h3></div><div className="c-body flush" style={{ padding: 0 }}>
             <DataTable<AiSys> id="ai-inventory" label="AI inventory" rows={DATA.ai} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.id} ${a.name} ${a.model} ${a.provider} ${a.owner} ${a.surface}`}
@@ -87,7 +87,7 @@ function AiList() {
                 {AI_DISCOVERY.map((d) => (
                   <div key={d[0]} style={{ display: "flex", gap: 9 }}>
                     <span style={{ flex: "0 0 auto", width: 16, height: 16, color: "var(--accent)", marginTop: 1 }}><Icon name="search" /></span>
-                    <div style={{ minWidth: 0 }}><div style={{ fontWeight: 600, fontSize: 13 }}>{d[0]}</div><div style={{ fontSize: 12, color: "var(--muted)" }}>{d[1]}</div></div>
+                    <div style={{ minWidth: 0 }}><div style={{ fontWeight: 600, fontSize: ".8125rem" }}>{d[0]}</div><div style={{ fontSize: ".75rem", color: "var(--muted)" }}>{d[1]}</div></div>
                   </div>
                 ))}
               </div>
@@ -99,8 +99,8 @@ function AiList() {
                   <Table cols={[{ t: "AI found" }, { t: "Found by" }, { t: "Where" }, { t: "" }]}>
                     {AI_SHADOW.map((s) => (
                       <tr key={s.id}>
-                        <td className="strong" style={{ minWidth: 200 }}>{s.name}<div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 400 }}>{s.data} · {s.risk}</div></td>
-                        <td style={{ fontSize: 12 }}>{s.found}</td><td style={{ fontSize: 12, color: "var(--muted)" }}>{s.where}</td>
+                        <td className="strong" style={{ minWidth: 200 }}>{s.name}<div style={{ fontSize: ".71875rem", color: "var(--muted)", fontWeight: 400 }}>{s.data} · {s.risk}</div></td>
+                        <td style={{ fontSize: ".75rem" }}>{s.found}</td><td style={{ fontSize: ".75rem", color: "var(--muted)" }}>{s.where}</td>
                         <td className="r"><div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }}>
                           <button className="btn btn-ghost sm" disabled={!canReg} aria-label={`Register ${s.name}`} onClick={() => go(`/ws/ai/new/${encodeURIComponent(s.id)}`)}><Icon name="plus" />Register</button>
                           <button className="btn btn-ghost sm" disabled={!canReg} aria-label={`Dismiss ${s.name}`} onClick={() => dismiss(s.id, s.name)}><Icon name="x" />Dismiss</button>
@@ -116,9 +116,9 @@ function AiList() {
             <div className="c-body" style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
               <Ring pct={iso} size={72} color="var(--accent)" />
               <div style={{ flex: "1 1 220px" }}>
-                <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8 }}>AI management system implemented</div>
+                <div style={{ fontSize: ".8125rem", color: "var(--muted)", marginBottom: 8 }}>AI management system implemented</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 420 }}>
-                  {readiness.map((r) => <div key={r[0]} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 12.5 }}><span style={{ color: "var(--ink-2)" }}>{r[0]}</span><span className="strong num" style={{ whiteSpace: "nowrap" }}>{r[1]}</span></div>)}
+                  {readiness.map((r) => <div key={r[0]} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: ".78125rem" }}><span style={{ color: "var(--ink-2)" }}>{r[0]}</span><span className="strong num" style={{ whiteSpace: "nowrap" }}>{r[1]}</span></div>)}
                 </div>
               </div>
             </div>

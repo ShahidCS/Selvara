@@ -30,7 +30,7 @@ export function DenyForm({ id, L }: { id: string; L: LayerApi }) {
   return (
     <>
       <div>
-        <p style={{ margin: "0 0 8px", fontSize: 13 }}>Deny <strong>{r.who}</strong> access to {r.resource}. The requester is notified with your note.</p>
+        <p style={{ margin: "0 0 8px", fontSize: ".8125rem" }}>Deny <strong>{r.who}</strong> access to {r.resource}. The requester is notified with your note.</p>
         <div className="field"><label htmlFor="td-note">Note to requester</label><input className="input" id="td-note" data-focus maxLength={300} placeholder="e.g. Please request from a business email domain" value={note} onChange={(e) => setNote(e.target.value)} /></div>
       </div>
       <LayerFoot><button className="btn btn-secondary" onClick={() => L.closeLayer()}>Cancel</button><button className="btn btn-primary" onClick={submit}>Deny with notice</button></LayerFoot>
@@ -51,7 +51,7 @@ export function BlockDomainForm({ L }: { L: LayerApi }) {
   return (
     <>
       <div>
-        <p style={{ margin: "0 0 8px", fontSize: 13 }}>Access requests from this email domain are automatically flagged and cannot be approved.</p>
+        <p style={{ margin: "0 0 8px", fontSize: ".8125rem" }}>Access requests from this email domain are automatically flagged and cannot be approved.</p>
         <div className="field"><label htmlFor="tb-dom">Domain <Req /></label><input className="input" id="tb-dom" data-focus maxLength={253} placeholder="e.g. freemail.example" value={dom} onChange={(e) => setDom(e.target.value)} aria-invalid={err} aria-describedby={err ? "tb-err" : undefined} /></div>
         <p className="field help" id="tb-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>Enter a domain.</p>
       </div>
@@ -153,9 +153,9 @@ export function ApproveForm({ id, L }: { id: string; L: LayerApi }) {
   return (
     <>
       <div>
-        <p style={{ margin: "0 0 8px", fontSize: 13 }}><strong>{r.who}</strong> asked for {r.resource}. Reason: {r.reason}</p>
+        <p style={{ margin: "0 0 8px", fontSize: ".8125rem" }}><strong>{r.who}</strong> asked for {r.resource}. Reason: {r.reason}</p>
         <fieldset style={{ border: 0, padding: 0, margin: 0 }} aria-describedby={err ? "ta-err" : undefined}>
-          <legend style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>Documents under NDA to share <Req /></legend>
+          <legend style={{ fontWeight: 600, fontSize: ".8125rem", marginBottom: 6 }}>Documents under NDA to share <Req /></legend>
           {docs.length ? docs.map(({ t, i }) => (
             <label key={i} style={{ display: "flex", gap: 8, alignItems: "center", padding: "4px 0" }}>
               <input type="checkbox" checked={sel.includes(i)} onChange={(e) => { setErr(false); setSel((s) => (e.target.checked ? [...s, i] : s.filter((x) => x !== i))); }} />{t.name}

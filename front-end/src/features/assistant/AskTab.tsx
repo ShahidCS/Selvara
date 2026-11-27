@@ -45,7 +45,7 @@ function AskDemo({ scrollRef }: { scrollRef: React.RefObject<HTMLDivElement | nu
   return (
     <div style={{ maxWidth: 880, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 }}>
       {thread.length ? thread.map((mm, i) => mm.role === "user" ? (
-        <div key={i} style={{ alignSelf: "flex-end", maxWidth: "85%", background: "var(--accent-weak)", color: "var(--ink)", padding: "9px 13px", borderRadius: "13px 13px 3px 13px", fontSize: 13.5, lineHeight: 1.5, overflowWrap: "anywhere" }}>{mm.text}</div>
+        <div key={i} style={{ alignSelf: "flex-end", maxWidth: "85%", background: "var(--accent-weak)", color: "var(--ink)", padding: "9px 13px", borderRadius: "13px 13px 3px 13px", fontSize: ".84375rem", lineHeight: 1.5, overflowWrap: "anywhere" }}>{mm.text}</div>
       ) : (
         <div key={i} style={{ alignSelf: "flex-start", maxWidth: "94%" }}>
           <AIPanel source="Assistant" meta="Draft, review required" label="Assistant answer"
@@ -53,12 +53,12 @@ function AskDemo({ scrollRef }: { scrollRef: React.RefObject<HTMLDivElement | nu
               <button className="btn btn-ghost sm" onClick={() => copy(i)}><Icon name="copy" />Copy</button>
               {rev[i] ? <Chip cls="ok" icon="check">Reviewed by {rev[i]}</Chip> : <button className="btn btn-ghost sm" onClick={() => reviewed(i)}><Icon name="check" />Mark reviewed</button>}
             </>}>
-            <div style={{ fontSize: 13.5, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{mm.text}</div>
+            <div style={{ fontSize: ".84375rem", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{mm.text}</div>
           </AIPanel>
         </div>
       )) : (
         <AIPanel source="Assistant" meta="Draft, review required" label="Assistant introduction">
-          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>Based on current workspace data, {mtr.ctrlFail} of {mtr.ctrlTotal} controls need attention and {mtr.highRisk} of {mtr.risks} risks are rated high or critical. Ask me to summarise risks, draft a board update, or explain your posture. Every answer is a draft for your review.</p>
+          <p style={{ margin: 0, fontSize: ".84375rem", lineHeight: 1.55 }}>Based on current workspace data, {mtr.ctrlFail} of {mtr.ctrlTotal} controls need attention and {mtr.highRisk} of {mtr.risks} risks are rated high or critical. Ask me to summarise risks, draft a board update, or explain your posture. Every answer is a draft for your review.</p>
         </AIPanel>
       )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{SUGG.map((s) => <button key={s} className="fchip" onClick={() => ask(s)}>{s}</button>)}</div>

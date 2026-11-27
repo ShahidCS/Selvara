@@ -27,7 +27,7 @@ export function CredentialPolicy({ manage }: { manage: boolean }) {
     <div style={{ marginTop: 24 }}>
       <div className="sectitle" style={{ marginTop: 0 }}>Password policy and sign-in security</div>
       <p className="field help" style={{ margin: "0 0 10px" }}>Fixed policy that follows OWASP ASVS 2.1 and NIST SP 800-63B. It applies to every account and cannot be weakened.</p>
-      <dl style={{ margin: "0 0 12px", display: "grid", gridTemplateColumns: "110px 1fr", gap: "6px 12px", fontSize: 13 }}>
+      <dl style={{ margin: "0 0 12px", display: "grid", gridTemplateColumns: "110px 1fr", gap: "6px 12px", fontSize: ".8125rem" }}>
         {FIXED.map(([k, v]) => <><dt key={k + "k"} style={{ color: "var(--muted)" }}>{k}</dt><dd key={k + "v"} style={{ margin: 0 }}>{v}</dd></>)}
       </dl>
       <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>

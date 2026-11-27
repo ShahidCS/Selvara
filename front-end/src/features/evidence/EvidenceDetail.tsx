@@ -51,7 +51,7 @@ export function EvidenceDetail({ id }: { id: string }) {
         {pend ? (
           <div className="card" style={{ background: "var(--warn-bg)", borderColor: "var(--warn-ink)", marginBottom: 12 }} role="status"><div className="c-body" style={{ padding: 12 }}>
             <div style={{ fontWeight: 600 }}><Icon name="alert" /> Deletion requested by {pend.requestedBy}</div>
-            <div style={{ fontSize: 12.5, color: "var(--muted)", margin: "3px 0 8px" }}>Reason: {e.deleteRequest?.reason}. A second admin must approve; nothing is deleted yet.</div>
+            <div style={{ fontSize: ".78125rem", color: "var(--muted)", margin: "3px 0 8px" }}>Reason: {e.deleteRequest?.reason}. A second admin must approve; nothing is deleted yet.</div>
             <div className="btngrp">
               {btn("Approve deletion", "check", decideWhy, () => decide("approve"), "btn-danger")}
               {btn("Reject", "x", decideWhy, () => decide("reject"), "btn-secondary")}

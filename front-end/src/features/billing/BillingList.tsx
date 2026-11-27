@@ -40,7 +40,7 @@ export function BillingList() {
       <div className="split" style={{ gridTemplateColumns: "minmax(0, 1.6fr) minmax(0, 1fr)" }}>
         <div className="card" data-tour="billing-table">
           <div className="c-head" style={{ flexWrap: "wrap", gap: 8 }}><h3>Customers</h3>
-            <div className="field" style={{ marginLeft: "auto" }}><input className="input" id="billQ" aria-label="Search customers" placeholder="Search customers…" maxLength={100} style={{ width: 200, height: 32 }} value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} /></div></div>
+            <div className="field" style={{ marginLeft: "auto" }}><input className="input" id="billQ" aria-label="Search customers" placeholder="Search customers…" maxLength={100} style={{ width: 200, height: "2rem" }} value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} /></div></div>
           <div className="c-body flush scroll" style={{ padding: 0 }} id="billTable">
             {rows.length ? (
               <Table cols={[{ t: "Customer" }, { t: "Plan" }, { t: "Balance", r: true }, { t: "Last invoice" }, { t: "Payment" }]}>
@@ -72,7 +72,7 @@ export function BillingList() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}><div className="skel" style={{ height: 22, width: "60%" }} /><div className="skel" style={{ height: 14, width: "40%" }} /><div className="skel" style={{ height: 90 }} /><div className="skel" style={{ height: 120 }} /></div>
               ) : (
                 <>
-                  <div style={{ display: "flex", alignItems: "start", gap: 10, marginBottom: 10 }}><div><div style={{ fontSize: 16, fontWeight: 600 }}>{c.name}</div><div style={{ fontSize: 12.5, color: "var(--muted)" }}>{c.address}</div></div><div style={{ marginLeft: "auto" }}><StatusChip s={pill(c, "Active")} /></div></div>
+                  <div style={{ display: "flex", alignItems: "start", gap: 10, marginBottom: 10 }}><div><div style={{ fontSize: "1rem", fontWeight: 600 }}>{c.name}</div><div style={{ fontSize: ".78125rem", color: "var(--muted)" }}>{c.address}</div></div><div style={{ marginLeft: "auto" }}><StatusChip s={pill(c, "Active")} /></div></div>
                   <dl className="meta-grid"><dt>Plan</dt><dd>{c.plan}, {c.cycle}</dd><dt>Billing contact</dt><dd>{c.contact.name}</dd><dt>Email</dt><dd>{c.contact.email}</dd><dt>Currency</dt><dd>{c.currency}{rate ? `, ${rate.tax.type} ${rate.tax.rate}%` : ""}</dd><dt>Outstanding</dt><dd><BalanceFigure balance={c.balance} currency={c.currency} /></dd></dl>
                   <div className="hr" /><div className="sectitle">Invoices</div>
                   {c.invoices.length ? (

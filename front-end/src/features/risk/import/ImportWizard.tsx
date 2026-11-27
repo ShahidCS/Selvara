@@ -20,8 +20,8 @@ const SAMPLE_CSV = "Risk ID,Risk Scenario,Category,Owner,Likelihood,Impact,Resid
   + ",Model drift in automated screening,AI,Data science,3,4,2,3,Mitigate,Open,2026-05-20,Bias testing\n"
   + "RK-01,Ransomware via unpatched edge service,Technology,J. Avery,5,5,2,4,Mitigate,Open,2026-01-31,Patch SLA";
 
-const thStyle: React.CSSProperties = { textAlign: "left", padding: "7px 10px", fontSize: 11, color: "var(--muted)", fontWeight: 600 };
-const thSticky: React.CSSProperties = { textAlign: "left", padding: "7px 10px", fontSize: 11, color: "var(--muted)", position: "sticky", top: 0, background: "var(--surface-2)" };
+const thStyle: React.CSSProperties = { textAlign: "left", padding: "7px 10px", fontSize: ".6875rem", color: "var(--muted)", fontWeight: 600 };
+const thSticky: React.CSSProperties = { textAlign: "left", padding: "7px 10px", fontSize: ".6875rem", color: "var(--muted)", position: "sticky", top: 0, background: "var(--surface-2)" };
 
 const bandTint = (col: string, p: number) => `color-mix(in srgb, ${col} ${p}%, var(--surface))`;
 const bandText = (col: string) => `color-mix(in srgb, ${col} 50%, var(--ink))`;
@@ -40,8 +40,8 @@ function Stepper({ step }: { step: number }) {
         return (
           <span key={s} style={{ display: "contents" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 7, background: cur ? "var(--accent-weak)" : "transparent", borderRadius: 8, padding: "5px 9px" }} aria-current={cur ? "step" : undefined}>
-              <span style={{ flex: "0 0 auto", width: 21, height: 21, borderRadius: 999, background: dot, color: dc, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 11.5, fontWeight: 600 }}>{done ? "✓" : n}</span>
-              <span style={{ fontSize: 12.5, fontWeight: cur ? 600 : 500, color: cur ? "var(--ink)" : "var(--muted)", whiteSpace: "nowrap" }}>{s}</span>
+              <span style={{ flex: "0 0 auto", width: 21, height: 21, borderRadius: 999, background: dot, color: dc, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: ".71875rem", fontWeight: 600 }}>{done ? "✓" : n}</span>
+              <span style={{ fontSize: ".78125rem", fontWeight: cur ? 600 : 500, color: cur ? "var(--ink)" : "var(--muted)", whiteSpace: "nowrap" }}>{s}</span>
             </div>
             {n < 3 ? <span style={{ flex: "0 0 auto", color: "var(--faint)" }}><Icon name="chevron" /></span> : null}
           </span>
@@ -130,8 +130,8 @@ export function ImportWizard({ L, onDone }: { L: LayerApi; onDone?: () => void }
         <>
           <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 9, border: "1.5px dashed var(--line-2)", borderRadius: 12, padding: "30px 16px", cursor: "pointer", background: "var(--surface-2)", textAlign: "center", outline: dropFocus ? "2px solid var(--accent)" : undefined, outlineOffset: 2 }}>
             <span style={{ width: 34, height: 34, color: "var(--accent)" }}><Icon name="download" /></span>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>Choose your risk register file</div>
-            <div style={{ fontSize: 12.5, color: "var(--muted)", maxWidth: 430 }}>Excel .xlsx or .csv, first sheet, one risk per row, headers in the first row. Up to {LIMITS.maxRows.toLocaleString("en-US")} rows, {LIMITS.maxFileBytes / 1024 / 1024} MB.</div>
+            <div style={{ fontWeight: 600, fontSize: ".875rem" }}>Choose your risk register file</div>
+            <div style={{ fontSize: ".78125rem", color: "var(--muted)", maxWidth: 430 }}>Excel .xlsx or .csv, first sheet, one risk per row, headers in the first row. Up to {LIMITS.maxRows.toLocaleString("en-US")} rows, {LIMITS.maxFileBytes / 1024 / 1024} MB.</div>
             <input type="file" data-focus accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-label="Choose your risk register file"
               style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden", clip: "rect(0 0 0 0)" }}
               onFocus={() => setDropFocus(true)} onBlur={() => setDropFocus(false)} onChange={(e) => onFile(e.currentTarget)} />
@@ -145,7 +145,7 @@ export function ImportWizard({ L, onDone }: { L: LayerApi; onDone?: () => void }
       )}
       {step === 2 && grid && (
         <>
-          <p style={{ margin: "0 0 12px", fontSize: 13 }}><span className="strong">{fileName}</span> · {grid.rows.length} row{grid.rows.length !== 1 ? "s" : ""}, {grid.headers.length} columns. We matched {autoCount} column{autoCount !== 1 ? "s" : ""} automatically; check them.</p>
+          <p style={{ margin: "0 0 12px", fontSize: ".8125rem" }}><span className="strong">{fileName}</span> · {grid.rows.length} row{grid.rows.length !== 1 ? "s" : ""}, {grid.headers.length} columns. We matched {autoCount} column{autoCount !== 1 ? "s" : ""} automatically; check them.</p>
           <div style={{ border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead><tr style={{ background: "var(--surface-2)" }}><th scope="col" style={thStyle}>Field</th><th scope="col" style={thStyle}>Column in file</th><th scope="col" style={thStyle}>Sample</th></tr></thead>
@@ -155,7 +155,7 @@ export function ImportWizard({ L, onDone }: { L: LayerApi; onDone?: () => void }
                   const sampleV = ci >= 0 && grid.rows.length ? String(grid.rows[0][ci] == null ? "" : grid.rows[0][ci]).trim() : "";
                   return (
                     <tr key={f.k} style={{ borderTop: "1px solid var(--line)" }}>
-                      <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}><span className="strong" style={{ fontSize: 13 }}>{f.label}</span>{f.req ? <> <span style={{ color: "var(--bad-ink)" }}>*</span></> : null}</td>
+                      <td style={{ padding: "7px 10px", whiteSpace: "nowrap" }}><span className="strong" style={{ fontSize: ".8125rem" }}>{f.label}</span>{f.req ? <> <span style={{ color: "var(--bad-ink)" }}>*</span></> : null}</td>
                       <td style={{ padding: "7px 10px" }}>
                         <SelectList id={`iw-col-${f.k}`} aria-label={`Column for ${f.label}`} value={ci}
                           onChange={(e) => { const v = +e.target.value; setMap({ ...map, [f.k]: Number.isInteger(v) && v >= -1 && v < grid.headers.length ? v : -1 }); }}>
@@ -163,7 +163,7 @@ export function ImportWizard({ L, onDone }: { L: LayerApi; onDone?: () => void }
                           {grid.headers.map((h, idx) => <option key={idx} value={idx}>{h}</option>)}
                         </SelectList>
                       </td>
-                      <td style={{ padding: "7px 10px", fontSize: 12, color: "var(--muted)", maxWidth: 170, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "7px 10px", fontSize: ".75rem", color: "var(--muted)", maxWidth: 170, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {ci >= 0 ? (sampleV.slice(0, 40) || <span style={{ color: "var(--faint)" }}>(empty)</span>) : "—"}
                       </td>
                     </tr>
@@ -180,12 +180,12 @@ export function ImportWizard({ L, onDone }: { L: LayerApi; onDone?: () => void }
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
             {([[counts.total, "Rows read", ""], [counts.nNew, "New risks", "var(--ok-ink)"], [counts.nUpd, "Update existing", "var(--info-ink)"], [counts.nWarn, "With warnings", "var(--warn-ink)"], [counts.nErr, "Skipped, errors", "var(--bad-ink)"]] as [number, string, string][]).map(([v, l, cl]) => (
               <div key={l} style={{ flex: "1 1 92px", background: "var(--surface-2)", borderRadius: 10, padding: "10px 12px" }}>
-                <div style={{ fontSize: 20, fontWeight: 600, color: cl || "var(--ink)" }}>{v}</div>
-                <div style={{ fontSize: 12, color: "var(--muted)" }}>{l}</div>
+                <div style={{ fontSize: "1.25rem", fontWeight: 600, color: cl || "var(--ink)" }}>{v}</div>
+                <div style={{ fontSize: ".75rem", color: "var(--muted)" }}>{l}</div>
               </div>
             ))}
           </div>
-          <div role="radiogroup" aria-label="When a Risk ID already exists" style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", marginBottom: 12, fontSize: 13 }}>
+          <div role="radiogroup" aria-label="When a Risk ID already exists" style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center", marginBottom: 12, fontSize: ".8125rem" }}>
             <span className="strong">When a Risk ID already exists</span>
             <label style={{ display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}><input type="radio" name="impconf" checked={conflict === "update"} onChange={() => { setConflict("update"); runCompute("update"); }} /> Update the existing risk</label>
             <label style={{ display: "flex", gap: 6, alignItems: "center", cursor: "pointer" }}><input type="radio" name="impconf" checked={conflict === "new"} onChange={() => { setConflict("new"); runCompute("new"); }} /> Add as a new risk with a new ID</label>
@@ -199,13 +199,13 @@ export function ImportWizard({ L, onDone }: { L: LayerApi; onDone?: () => void }
               <tbody>
                 {parsed.slice(0, 150).map((p, k) => (
                   <tr key={k} style={{ borderTop: "1px solid var(--line)" }}>
-                    <td style={{ padding: "6px 10px", color: "var(--muted)", fontSize: 12 }}>{p.row}</td>
+                    <td style={{ padding: "6px 10px", color: "var(--muted)", fontSize: ".75rem" }}>{p.row}</td>
                     <td style={{ padding: "6px 10px" }}>{p.result === "New" ? <Chip cls="ok">New</Chip> : p.result === "Update" ? <Chip cls="info">Update</Chip> : <Chip cls="bad">Skip</Chip>}</td>
-                    <td style={{ padding: "6px 10px" }}><div className="strong" style={{ fontSize: 12.5 }}>{p.title}</div><div style={{ fontSize: 11, color: "var(--muted)" }}>{p.id || "—"}{p.cat ? " · " + p.cat : ""}</div></td>
-                    <td style={{ padding: "6px 10px", fontSize: 12 }}>{p.owner || ""}</td>
+                    <td style={{ padding: "6px 10px" }}><div className="strong" style={{ fontSize: ".78125rem" }}>{p.title}</div><div style={{ fontSize: ".6875rem", color: "var(--muted)" }}>{p.id || "—"}{p.cat ? " · " + p.cat : ""}</div></td>
+                    <td style={{ padding: "6px 10px", fontSize: ".75rem" }}>{p.owner || ""}</td>
                     <td style={{ padding: "6px 10px" }}>{p.inh ? <ScoreChip score={p.inh as number} /> : "—"}</td>
                     <td style={{ padding: "6px 10px" }}>{p.res ? <ScoreChip score={p.res as number} /> : "—"}</td>
-                    <td style={{ padding: "6px 10px", fontSize: 11.5, color: p.result === "Skip" ? "var(--bad-ink)" : "var(--muted)" }}>{p.notes || ""}</td>
+                    <td style={{ padding: "6px 10px", fontSize: ".71875rem", color: p.result === "Skip" ? "var(--bad-ink)" : "var(--muted)" }}>{p.notes || ""}</td>
                   </tr>
                 ))}
               </tbody>

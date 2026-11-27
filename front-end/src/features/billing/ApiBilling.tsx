@@ -75,8 +75,8 @@ export function ApiBilling({ param }: { param?: string | null }) {
 function Accounts({ b, lock }: { b: api.Billing; lock?: string }) {
   const go = useGo(); const L = useLayer();
   const cols: DTColumn<api.Account>[] = [
-    { key: "company", header: "Company", value: (a) => a.company, locked: true, render: (a) => <><span className="strong">{a.company}</span><div style={{ fontSize: 12, color: "var(--muted)" }}>{a.ref}</div></> },
-    { key: "plan", header: "Plan", value: (a) => a.plan, render: (a) => <>{a.plan}{a.pendingPlan ? <div style={{ fontSize: 12, color: "var(--muted)" }}>{`${a.pendingPlan.plan} from the next period`}</div> : null}</> },
+    { key: "company", header: "Company", value: (a) => a.company, locked: true, render: (a) => <><span className="strong">{a.company}</span><div style={{ fontSize: ".75rem", color: "var(--muted)" }}>{a.ref}</div></> },
+    { key: "plan", header: "Plan", value: (a) => a.plan, render: (a) => <>{a.plan}{a.pendingPlan ? <div style={{ fontSize: ".75rem", color: "var(--muted)" }}>{`${a.pendingPlan.plan} from the next period`}</div> : null}</> },
     { key: "cycle", header: "Cycle", value: (a) => a.cycle, render: (a) => a.cycle },
     { key: "currency", header: "Currency", value: (a) => a.currency, render: (a) => <span className="num">{a.currency}</span> },
     { key: "next", header: "Next period", value: (a) => a.nextPeriod, render: (a) => <span className="num">{a.nextPeriod}</span> },
@@ -158,10 +158,10 @@ function Ledger({ b, rows }: { b: api.Billing; rows: api.Entry[] }) {
     { key: "at", header: "When", value: (e) => e.at, render: (e) => <span className="num">{utcMin(e.at)}</span> },
     { key: "inv", header: "Invoice", value: (e) => e.invoiceId, locked: true, render: (e) => <span className="strong num">{e.invoiceId}</span> },
     { key: "company", header: "Company", value: (e) => inv.get(e.invoiceId)?.company ?? "", render: (e) => inv.get(e.invoiceId)?.company ?? "" },
-    { key: "type", header: "Entry", value: (e) => e.type, render: (e) => <>{e.type === "unmatched" ? <Chip cls="warn" icon="alert">Received, not applied</Chip> : <Chip cls={e.type === "payment" || e.type === "markpaid" ? "ok" : e.type === "writeoff" || e.type === "void" ? "bad" : "info"} icon={e.type === "payment" || e.type === "markpaid" ? "check" : "dot"}>{ENTRY_LABEL[e.type] ?? e.type}</Chip>}{e.review ? <div style={{ fontSize: 12, color: "var(--warn-ink)", marginTop: 4 }}>{`Needs review: ${e.review}`}</div> : null}</> },
+    { key: "type", header: "Entry", value: (e) => e.type, render: (e) => <>{e.type === "unmatched" ? <Chip cls="warn" icon="alert">Received, not applied</Chip> : <Chip cls={e.type === "payment" || e.type === "markpaid" ? "ok" : e.type === "writeoff" || e.type === "void" ? "bad" : "info"} icon={e.type === "payment" || e.type === "markpaid" ? "check" : "dot"}>{ENTRY_LABEL[e.type] ?? e.type}</Chip>}{e.review ? <div style={{ fontSize: ".75rem", color: "var(--warn-ink)", marginTop: 4 }}>{`Needs review: ${e.review}`}</div> : null}</> },
     { key: "amount", header: "Amount", align: "end", value: (e) => e.amount, render: (e) => <span className="num">{minorMoney(e.amount, e.currency)}</span> },
-    { key: "by", header: "By", value: (e) => e.by, render: (e) => <span style={{ fontSize: 12.5 }}>{e.by}</span> },
-    { key: "reason", header: "Reason", value: (e) => e.reason, defaultHidden: true, render: (e) => <span style={{ fontSize: 12.5 }}>{e.reason}{e.ticket ? ` (${e.ticket})` : ""}</span> },
+    { key: "by", header: "By", value: (e) => e.by, render: (e) => <span style={{ fontSize: ".78125rem" }}>{e.by}</span> },
+    { key: "reason", header: "Reason", value: (e) => e.reason, defaultHidden: true, render: (e) => <span style={{ fontSize: ".78125rem" }}>{e.reason}{e.ticket ? ` (${e.ticket})` : ""}</span> },
   ];
   if (!rows.length) return <Empty icon="log" title="No ledger entries yet">Payments, credits, refunds, write-offs and voids are recorded here, each with who, why and the ticket.</Empty>;
   return <DataTable<api.Entry> id="billing-ledger-api" label="Ledger" rows={rows} rowKey={(e) => e.id} columns={cols} searchText={(e) => `${e.invoiceId} ${e.by} ${e.reason} ${e.ticket}`}
@@ -178,7 +178,7 @@ function PlanRequests({ b, lock }: { b: api.Billing; lock?: string }) {
         const acc = b.accounts.find((a) => a.tenantId === r.tenantId);
         return (
           <div key={r.id} className="listrow" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-            <div style={{ flex: "1 1 280px" }}><span className="strong">{acc?.company ?? r.company ?? "Company"}</span>: {acc?.plan ?? "?"} → <b>{r.plan}</b><div style={{ fontSize: 12, color: "var(--muted)" }}>Asked by {r.byName ?? "a company admin"}, {utcMin(r.at)}</div></div>
+            <div style={{ flex: "1 1 280px" }}><span className="strong">{acc?.company ?? r.company ?? "Company"}</span>: {acc?.plan ?? "?"} → <b>{r.plan}</b><div style={{ fontSize: ".75rem", color: "var(--muted)" }}>Asked by {r.byName ?? "a company admin"}, {utcMin(r.at)}</div></div>
             <div className="btngrp">
               <button className="btn btn-ghost sm" disabled={!!lock} title={lock} aria-label={`Accept plan change to ${r.plan} for ${acc?.company ?? ""}`} onClick={() => L.openModal(`Accept ${r.plan} for ${acc?.company ?? ""}`, (close) => <PlanDecide id={r.id} accept close={close} />)}><Icon name="check" />Accept</button>
               <button className="btn btn-ghost sm" disabled={!!lock} title={lock} aria-label={`Decline plan change to ${r.plan} for ${acc?.company ?? ""}`} onClick={() => L.openModal(`Decline ${r.plan} for ${acc?.company ?? ""}`, (close) => <PlanDecide id={r.id} accept={false} close={close} />)}><Icon name="x" />Decline</button>
@@ -305,7 +305,7 @@ function IssueForm({ b, close }: { b: api.Billing; close: () => void }) {
   if (out) return (
     <>
       <p style={{ marginTop: 0 }}>{out.issued.length ? `Issued: ${out.issued.join(", ")}.` : "No invoice was due."}</p>
-      {out.skipped.length ? <><div className="sectitle">Not issued</div><ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>{out.skipped.map((x) => <li key={x}>{x}</li>)}</ul></> : null}
+      {out.skipped.length ? <><div className="sectitle">Not issued</div><ul style={{ margin: 0, paddingLeft: 18, fontSize: ".8125rem" }}>{out.skipped.map((x) => <li key={x}>{x}</li>)}</ul></> : null}
       <p className="field help">{out.mail ? `${out.emailed} of ${out.issued.length} emailed to the billing contacts. Any not emailed can be sent again from the Invoices list.` : "Email is not set up for the platform yet, so nothing was emailed: send the invoices from the Invoices list (Download) or with a payment link."}</p>
       <LayerFoot><button className="btn btn-primary" onClick={close}>Done</button></LayerFoot>
     </>

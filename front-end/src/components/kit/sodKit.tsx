@@ -34,7 +34,7 @@ function DecideForm({ a, decision }: { a: Approval; decision: Decision }) {
   return (
     <>
       <div>
-        <p style={{ margin: "0 0 8px", fontSize: 13 }}>{VERB[decision]}: <strong>{a.title}</strong></p>
+        <p style={{ margin: "0 0 8px", fontSize: ".8125rem" }}>{VERB[decision]}: <strong>{a.title}</strong></p>
         <p className="field help" style={{ margin: "0 0 10px" }}>Requested by {a.requestedBy} · {a.id}. {decision === "approve" ? (a.needs > 1 ? `Needs ${a.needs} different approvers (${a.approvals.length} recorded).` : "Your decision is recorded in the audit log with your name and reason.") : decision === "reject" ? "The change will not be applied." : "Withdrawing is not a rejection."}</p>
         {decision !== "withdraw" ? (
           <div className="field"><label htmlFor="ap-reason">Reason <span style={{ color: "var(--bad-ink)" }}>*</span></label><textarea className="input" id="ap-reason" data-focus rows={3} maxLength={300} style={{ resize: "vertical" }} value={reason} onChange={(e) => { setReason(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "ap-err" : undefined} /></div>
@@ -69,8 +69,8 @@ export function ApprovalsPanel({ prefix, title = "Pending approvals" }: { prefix
           return (
             <div key={a.id} style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", padding: "9px 0", borderTop: "1px solid var(--line)" }}>
               <div style={{ flex: "1 1 260px", minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, overflowWrap: "anywhere" }}>{a.title}</div>
-                <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{a.id} · requested by {a.requestedBy} · {a.approvals.length}/{a.needs} approval{a.needs > 1 ? "s" : ""}{a.approvals.length ? " (" + a.approvals.map((x) => x.by).join(", ") + ")" : ""}{a.decidedReason ? " · " + a.decidedReason : ""}</div>
+                <div style={{ fontWeight: 600, fontSize: ".8125rem", overflowWrap: "anywhere" }}>{a.title}</div>
+                <div style={{ fontSize: ".71875rem", color: "var(--muted)" }}>{a.id} · requested by {a.requestedBy} · {a.approvals.length}/{a.needs} approval{a.needs > 1 ? "s" : ""}{a.approvals.length ? " (" + a.approvals.map((x) => x.by).join(", ") + ")" : ""}{a.decidedReason ? " · " + a.decidedReason : ""}</div>
                 {isPending && why ? <div className="field help" style={{ margin: "3px 0 0" }}>{why}</div> : null}
               </div>
               {statusChip(a.status)}

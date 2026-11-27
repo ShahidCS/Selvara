@@ -29,7 +29,7 @@ const box: React.CSSProperties = { border: "1px solid var(--line)", borderRadius
 /* the Board / CEO rung is not selectable: at or below the Board threshold the ladder applies, above it Board approval evidence replaces the choice */
 const AUTHS = Object.keys(ACCEPT_AUTH).map((k) => ACCEPT_AUTH[k]).filter((v, i, a) => a.indexOf(v) === i && v !== "Board / CEO");
 
-const errStyle: React.CSSProperties = { color: "var(--bad-ink)", fontSize: 12, fontWeight: 600 };
+const errStyle: React.CSSProperties = { color: "var(--bad-ink)", fontSize: ".75rem", fontWeight: 600 };
 function AcceptForm({ id, needAuth, scRes, block, onDone }: { id: string; needAuth: string; scRes: number; block: string | null; onDone: () => void }) {
   const L = useLayer();
   const board = riskNeedsBoard(scRes);
@@ -46,7 +46,7 @@ function AcceptForm({ id, needAuth, scRes, block, onDone }: { id: string; needAu
     <div style={{ display: "flex", flexDirection: "column", gap: 8, border: "1px solid var(--line)", borderRadius: 12, padding: 12 }}>
       {board ? (
         <>
-          <div style={{ fontSize: 12.5, color: "var(--warn-ink)", fontWeight: 600 }}>Residual {scRes} is above {SOD.RISK_BOARD_THRESHOLD}. The Board must have approved this acceptance. Enter the evidence; a second person verifies it before the acceptance takes effect.</div>
+          <div style={{ fontSize: ".78125rem", color: "var(--warn-ink)", fontWeight: 600 }}>Residual {scRes} is above {SOD.RISK_BOARD_THRESHOLD}. The Board must have approved this acceptance. Enter the evidence; a second person verifies it before the acceptance takes effect.</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <label className="field" style={{ flex: "1 1 150px", margin: 0 }}><span className="flab">Board decision reference</span><input className="input" id="rk-bd-ref" maxLength={20} placeholder="BRD-2026-04" disabled={off} value={ref} onChange={(e) => setRef(e.target.value)} /></label>
             <label className="field" style={{ flex: "1 1 140px", margin: 0 }}><span className="flab">Decision date</span><input className="input" type="date" id="rk-bd-date" disabled={off} value={date} onChange={(e) => setDate(e.target.value)} /></label>
@@ -67,7 +67,7 @@ function AcceptForm({ id, needAuth, scRes, block, onDone }: { id: string; needAu
       <label className="field" style={{ margin: 0 }}><span className="flab">{board ? <>Reason (at least 20 characters) <Req /></> : <>Rationale <Req /></>}</span><textarea className="input" id="rk-acc-why" rows={2} maxLength={1000} disabled={off} style={{ resize: "vertical" }} value={why} onChange={(e) => setWhy(e.target.value)} /></label>
       <label className="field" style={{ margin: 0 }}><span className="flab">Compensating controls</span><input className="input" id="rk-acc-comp" maxLength={500} disabled={off} value={comp} onChange={(e) => setComp(e.target.value)} /></label>
       <div id="rk-acc-err" role="alert" style={{ ...errStyle, display: err ? "block" : "none" }}>{err}</div>
-      {block ? <div style={{ fontSize: 12, color: "var(--muted)" }}>{block}</div> : null}
+      {block ? <div style={{ fontSize: ".75rem", color: "var(--muted)" }}>{block}</div> : null}
       <button className="btn btn-secondary sm" style={{ alignSelf: "flex-start" }} disabled={off} title={block || undefined} onClick={submit}>{board ? "Record Board evidence" : "Record acceptance"}</button>
     </div>
   );
@@ -90,12 +90,12 @@ function VerifyBox({ r }: { r: any }) {
     L.toast("Board evidence withdrawn"); bumpData();
   });
   return (
-    <div style={{ background: "var(--warn-bg)", borderRadius: 12, padding: 12, fontSize: 13, display: "flex", flexDirection: "column", gap: 6 }}>
+    <div style={{ background: "var(--warn-bg)", borderRadius: 12, padding: 12, fontSize: ".8125rem", display: "flex", flexDirection: "column", gap: 6 }}>
       <div><Chip cls="warn" icon="clock">Awaiting evidence verification</Chip></div>
       <div className="strong">{ev.body} decision {ev.ref} · {ev.date}</div>
       <div>Minutes: {ev.minutes}</div>
       <div>Reason: {p.note}</div>
-      <div style={{ fontSize: 12, color: "var(--muted)" }}>Recorded by {p.recordedBy} · valid until {p.until} · request {p.approvalId}. The acceptance is not effective until a second person verifies the evidence.</div>
+      <div style={{ fontSize: ".75rem", color: "var(--muted)" }}>Recorded by {p.recordedBy} · valid until {p.until} · request {p.approvalId}. The acceptance is not effective until a second person verifies the evidence.</div>
       {mine || hasRole(role, "admin", "owner") ? (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
           <label className="field" style={{ flex: "1 1 220px", margin: 0 }}><span className="flab">Reason (at least 10 characters)</span><input className="input" id="rk-bd-reason" maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} /></label>
@@ -104,7 +104,7 @@ function VerifyBox({ r }: { r: any }) {
           {mine ? <button className="btn btn-ghost sm" onClick={withdraw}>Withdraw</button> : null}
         </div>
       ) : null}
-      {block ? <div style={{ fontSize: 12, color: "var(--muted)" }}>{block}</div> : null}
+      {block ? <div style={{ fontSize: ".75rem", color: "var(--muted)" }}>{block}</div> : null}
     </div>
   );
 }
@@ -112,7 +112,7 @@ function VerifyBox({ r }: { r: any }) {
 function ScoreCard({ id, label, lk, ik, fl, fi, canEdit, onSet }: { id: string; label: string; lk: number; ik: number; fl: string; fi: string; canEdit: boolean; onSet: (f: string, v: string) => void }) {
   return (
     <div style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><strong style={{ fontSize: 13 }}>{label}</strong><BandPill score={lk * ik} /></div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><strong style={{ fontSize: ".8125rem" }}>{label}</strong><BandPill score={lk * ik} /></div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
         <label className="field" style={{ margin: 0 }}><span className="flab">Likelihood</span><select className="select" id={`${id}-${fl}`} value={lk} disabled={!canEdit} onChange={(e) => onSet(fl, e.target.value)}>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} · {Lb[n - 1]}</option>)}</select></label>
         <label className="field" style={{ margin: 0 }}><span className="flab">Impact</span><select className="select" id={`${id}-${fi}`} value={ik} disabled={!canEdit} onChange={(e) => onSet(fi, e.target.value)}>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} · {Ib[n - 1]}</option>)}</select></label>
@@ -178,12 +178,12 @@ export default function RiskDetail({ id }: { id: string }) {
     const exp: string | undefined = r.acceptance.until; const soon = expiresSoon(exp); const bd = r.acceptance.board;
     acceptBlock = (
       <>
-        <div style={{ background: "var(--accent-weak)", borderRadius: 12, padding: 12, fontSize: 13 }}>
+        <div style={{ background: "var(--accent-weak)", borderRadius: 12, padding: 12, fontSize: ".8125rem" }}>
           <div className="strong">Accepted by {r.acceptance.by}{bd ? <> <Chip cls="ok" icon="check">Board approved · {bd.ref} · {bd.date}</Chip></> : null}</div>
           {bd ? <div>{bd.body} · minutes: {bd.minutes}{bd.verifiedBy ? " · evidence verified by " + bd.verifiedBy : ""}</div> : null}
           <div>Rationale: {r.acceptance.note}</div>
           {r.acceptance.comp ? <div>Compensating controls: {r.acceptance.comp}</div> : null}
-          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>Recorded {r.acceptance.at}{r.acceptance.recordedBy ? " by " + r.acceptance.recordedBy : ""}{exp ? " · valid until " + exp : ""}{soon ? <> <span style={{ color: "var(--bad-ink)", fontWeight: 600 }}>(expires within 60 days)</span></> : null}</div>
+          <div style={{ fontSize: ".75rem", color: "var(--muted)", marginTop: 4 }}>Recorded {r.acceptance.at}{r.acceptance.recordedBy ? " by " + r.acceptance.recordedBy : ""}{exp ? " · valid until " + exp : ""}{soon ? <> <span style={{ color: "var(--bad-ink)", fontWeight: 600 }}>(expires within 60 days)</span></> : null}</div>
           {riskNeedsBoard(scRes) && !bd ? <div role="alert" style={{ ...errStyle, marginTop: 4 }}>Residual {scRes} is above {SOD.RISK_BOARD_THRESHOLD} and this acceptance has no Board approval evidence.</div> : null}
         </div>
         {canEdit ? <button className="btn btn-secondary sm" style={{ alignSelf: "flex-start" }} onClick={reopen}><Icon name="back" />Reopen risk</button> : null}
@@ -194,10 +194,10 @@ export default function RiskDetail({ id }: { id: string }) {
   } else if (canEdit && riskOpen(r)) {
     acceptBlock = (
       <>
-        <div style={{ fontSize: 12, color: "var(--muted)" }}>Residual is <strong>{resBand} ({scRes})</strong>. {riskNeedsBoard(scRes)
+        <div style={{ fontSize: ".75rem", color: "var(--muted)" }}>Residual is <strong>{resBand} ({scRes})</strong>. {riskNeedsBoard(scRes)
           ? <>Above {SOD.RISK_BOARD_THRESHOLD}: <strong>Board approval evidence is required</strong> and a second person must verify it.</>
           : <>Lowest authority that can accept: <strong>{needAuth}</strong>. Up to {SOD.RISK_BOARD_THRESHOLD} no Board approval is needed.</>} Acceptance lasts at most 12 months.</div>
-        {r.invalidatedAcceptance ? <div style={{ fontSize: 12, color: "var(--warn-ink)" }}>Previous acceptance was withdrawn on {r.invalidatedAcceptance.invalidatedAt}: {r.invalidatedAcceptance.invalidatedReason}.</div> : null}
+        {r.invalidatedAcceptance ? <div style={{ fontSize: ".75rem", color: "var(--warn-ink)" }}>Previous acceptance was withdrawn on {r.invalidatedAcceptance.invalidatedAt}: {r.invalidatedAcceptance.invalidatedReason}.</div> : null}
         <AcceptForm key={id + ":" + needAuth + ":" + riskNeedsBoard(scRes)} id={r.id} needAuth={needAuth} scRes={scRes} block={accBlock} onDone={bumpData} />
       </>
     );
@@ -213,7 +213,7 @@ export default function RiskDetail({ id }: { id: string }) {
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end", background: "var(--surface-2)", borderRadius: 12, padding: 12 }}>
         <label className="field" style={{ flex: "1 1 220px", margin: 0 }}><span className="flab">Note (required to request changes)</span><input className="input" id="rk-rev-note" maxLength={500} value={revNote} onChange={(e) => setRevNote(e.target.value)} /></label>
         <button className="btn btn-primary btn-decide sm" disabled={!!approveBlock} title={approveBlock || undefined} onClick={approve}>Approve</button><button className="btn btn-secondary sm" onClick={reqChanges}>Request changes</button>
-        {approveBlock ? <span style={{ flexBasis: "100%", fontSize: 12, color: "var(--muted)" }}>{approveBlock}</span> : null}
+        {approveBlock ? <span style={{ flexBasis: "100%", fontSize: ".75rem", color: "var(--muted)" }}>{approveBlock}</span> : null}
       </div>
     ) : <p className="field help" style={{ margin: 0 }}>Submitted for approval. Awaiting a company admin.</p>;
   }
@@ -222,21 +222,21 @@ export default function RiskDetail({ id }: { id: string }) {
     <section className="card"><div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ minWidth: 0, flex: "1 1 420px" }}>
-          <div style={{ fontSize: 13, color: "var(--muted)" }}>{r.id} · {r.cat} · {r.register}{r.parent ? " · " + r.parent.id + " " + r.parent.title : ""}</div>
-          <h2 style={{ margin: "2px 0 8px", fontSize: 22, fontWeight: 600 }}>{r.title}</h2>
+          <div style={{ fontSize: ".8125rem", color: "var(--muted)" }}>{r.id} · {r.cat} · {r.register}{r.parent ? " · " + r.parent.id + " " + r.parent.title : ""}</div>
+          <h2 style={{ margin: "2px 0 8px", fontSize: "1.375rem", fontWeight: 600 }}>{r.title}</h2>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <Chip cls={reviewTone}>{r.review}</Chip><StatusChip s={r.status} />{acState === "Effective" && r.acceptance?.board ? <Chip cls="ok" icon="check">Board approved · {r.acceptance.board.ref} · {r.acceptance.board.date}</Chip> : null}{acState === "Awaiting evidence verification" ? <Chip cls="warn" icon="clock">Awaiting evidence verification</Chip> : null}<BandPill score={scInh} label="Inherent" /><BandPill score={scCur} label="Current" /><BandPill score={scRes} label="Residual" /><span className="tag">Priority {riskPriority(r)}</span>
           </div>
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ fontSize: 13, color: "var(--ink-2)", maxWidth: 280, textAlign: "right" }}>Accountable <strong>{r.owner}</strong> ({r.team}, {r.jur})</div>
+          <div style={{ fontSize: ".8125rem", color: "var(--ink-2)", maxWidth: 280, textAlign: "right" }}>Accountable <strong>{r.owner}</strong> ({r.team}, {r.jur})</div>
           <button className="btn btn-ghost sm" onClick={closePanel}><Icon name="x" />Close</button>
         </div>
       </div>
       <Stepper label="Approval progress" steps={flow.map((s) => ({ key: s, label: s }))} current={Math.max(0, curStep)} />
-      {r.desc ? <p style={{ margin: 0, fontSize: 13, color: "var(--ink-2)" }}>{r.desc}</p> : null}
-      {failing.length ? <div role="alert" style={{ background: "var(--bad-bg)", color: "var(--bad-ink)", borderRadius: 10, padding: "10px 14px", fontSize: 13, fontWeight: 600 }}>{failing.length} mapped control{failing.length > 1 ? "s are" : " is"} not passing ({failing.map((x: any) => x.cid).join(", ")}); current exposure relies on {failing.length > 1 ? "them" : "it"}.</div> : null}
-      {checks.length ? <div style={{ background: "var(--warn-bg)", color: "var(--warn-ink)", borderRadius: 10, padding: "10px 14px", fontSize: 13 }}><strong>Data quality:</strong> {checks.join("; ")}.</div> : null}
+      {r.desc ? <p style={{ margin: 0, fontSize: ".8125rem", color: "var(--ink-2)" }}>{r.desc}</p> : null}
+      {failing.length ? <div role="alert" style={{ background: "var(--bad-bg)", color: "var(--bad-ink)", borderRadius: 10, padding: "10px 14px", fontSize: ".8125rem", fontWeight: 600 }}>{failing.length} mapped control{failing.length > 1 ? "s are" : " is"} not passing ({failing.map((x: any) => x.cid).join(", ")}); current exposure relies on {failing.length > 1 ? "them" : "it"}.</div> : null}
+      {checks.length ? <div style={{ background: "var(--warn-bg)", color: "var(--warn-ink)", borderRadius: 10, padding: "10px 14px", fontSize: ".8125rem" }}><strong>Data quality:</strong> {checks.join("; ")}.</div> : null}
       {wf ? <div>{wf}</div> : null}
       <ExplainCard e={explainRisk(r)} record={{ mod: "risk", id: r.id }} />
       <div className="rgrid3">
@@ -245,8 +245,8 @@ export default function RiskDetail({ id }: { id: string }) {
         <ScoreCard id={r.id} label="Residual (after treatment)" lk={r.rl} ik={r.ri} fl="rl" fi="ri" canEdit={canEdit} onSet={setScore} />
       </div>
       <div className="rgrid2">
-        <div style={box}><h3 style={{ margin: 0, fontSize: 15 }}>Mapped platform controls</h3>
-          <div style={{ fontSize: 12, color: "var(--muted)" }}>The owner is alerted when a mapped control fails, because the current score relies on it.</div>
+        <div style={box}><h3 style={{ margin: 0, fontSize: ".9375rem" }}>Mapped platform controls</h3>
+          <div style={{ fontSize: ".75rem", color: "var(--muted)" }}>The owner is alerted when a mapped control fails, because the current score relies on it.</div>
           {links.length ? links.map((x: any) => (
             <div key={x.cid} style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderTop: "1px solid var(--line)" }}>
               <button className="linkbtn" disabled={!x.c} onClick={() => x.c && openCtrl(x.cid)} style={{ font: "inherit", background: "none", border: 0, textAlign: "left", cursor: x.c ? "pointer" : "default", color: "var(--ink)", minWidth: 0 }}>
@@ -254,7 +254,7 @@ export default function RiskDetail({ id }: { id: string }) {
               </button>
               <span style={{ display: "flex", gap: 6, alignItems: "center" }}>{x.c ? <StatusChip s={x.c.status} /> : <Chip cls="neutral">—</Chip>}{canEdit ? <button className="btn btn-ghost sm" aria-label={`Unmap ${x.cid}`} onClick={() => unmap(x.cid)}>Unmap</button> : null}</span>
             </div>
-          )) : <div style={{ fontSize: 13, color: "var(--bad-ink)" }}>No platform control mapped. Map at least one before approval.</div>}
+          )) : <div style={{ fontSize: ".8125rem", color: "var(--bad-ink)" }}>No platform control mapped. Map at least one before approval.</div>}
           {canEdit ? (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
               <select className="select" id="rk-mapsel" aria-label="Map a control" style={{ flex: "1 1 220px" }} value={mapSel} onChange={(e) => setMapSel(e.target.value)}>
@@ -264,36 +264,36 @@ export default function RiskDetail({ id }: { id: string }) {
             </div>
           ) : null}
         </div>
-        <div style={box}><h3 style={{ margin: 0, fontSize: 15 }}>Treatment actions</h3>
-          <div style={{ fontSize: 12, color: "var(--muted)" }}>When every action is done, exposure moves to the residual score.</div>
+        <div style={box}><h3 style={{ margin: 0, fontSize: ".9375rem" }}>Treatment actions</h3>
+          <div style={{ fontSize: ".75rem", color: "var(--muted)" }}>When every action is done, exposure moves to the residual score.</div>
           {acts.length ? acts.map((a, ai) => (
             <label key={ai} className="listrow" style={{ border: "1px solid var(--line)", borderRadius: 8, marginBottom: 6, display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", cursor: "pointer" }}>
               <input type="checkbox" checked={!!a.done} disabled={!canEdit || !!a.cancelled} onChange={() => toggle(ai)} />
-              <span style={{ flex: 1, minWidth: 0, ...(a.done || a.cancelled ? { textDecoration: "line-through", color: "var(--muted)" } : {}) }}>{a.text}<span style={{ display: "block", fontSize: 12, color: "var(--muted)" }}>{a.owner || "Unassigned"}{a.due ? " · due " + a.due : ""}{a.cancelled ? " · cancelled: " + a.cancelReason : ""}</span></span>
+              <span style={{ flex: 1, minWidth: 0, ...(a.done || a.cancelled ? { textDecoration: "line-through", color: "var(--muted)" } : {}) }}>{a.text}<span style={{ display: "block", fontSize: ".75rem", color: "var(--muted)" }}>{a.owner || "Unassigned"}{a.due ? " · due " + a.due : ""}{a.cancelled ? " · cancelled: " + a.cancelReason : ""}</span></span>
               {canEdit && !a.done && !a.cancelled ? <button type="button" className="btn btn-ghost sm" aria-label={`Cancel action ${a.text}`} onClick={(e) => { e.preventDefault(); cancelAct(ai, a.text); }}>Cancel</button> : null}
             </label>
           )) : <Empty compact icon="risk" title="No treatment actions yet" />}
-          {allDone || (acts.length > 0 && openActs.length === 0) ? <div style={{ fontSize: 12, color: "var(--ok-ink)", fontWeight: 600 }}>All actions complete — exposure at residual.</div> : null}
+          {allDone || (acts.length > 0 && openActs.length === 0) ? <div style={{ fontSize: ".75rem", color: "var(--ok-ink)", fontWeight: 600 }}>All actions complete — exposure at residual.</div> : null}
           {canEdit ? <button className="btn btn-ghost sm" style={{ alignSelf: "flex-start" }} onClick={addAction}><Icon name="plus" />Add action</button> : null}
         </div>
       </div>
       <div className="rgrid2">
-        <div style={box}><h3 style={{ margin: 0, fontSize: 15 }}>Risk acceptance</h3>{acceptBlock}
+        <div style={box}><h3 style={{ margin: 0, fontSize: ".9375rem" }}>Risk acceptance</h3>{acceptBlock}
           {canEdit && riskOpen(r) ? (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end", borderTop: "1px solid var(--line)", paddingTop: 10 }}>
               <label className="field" style={{ flex: "1 1 220px", margin: 0 }}><span className="flab">Reason for closing</span><input className="input" id="rk-close-why" maxLength={300} value={closeWhy} onChange={(e) => setCloseWhy(e.target.value)} /></label>
               <button className="btn btn-ghost sm" disabled={!!closeBlock} title={closeBlock || undefined} onClick={closeRisk}>Close risk</button>
-              {closeBlock ? <span style={{ flexBasis: "100%", fontSize: 12, color: "var(--muted)" }}>{closeBlock}</span> : null}
+              {closeBlock ? <span style={{ flexBasis: "100%", fontSize: ".75rem", color: "var(--muted)" }}>{closeBlock}</span> : null}
             </div>
           ) : null}
         </div>
-        <div style={{ ...box, gap: 4 }}><h3 style={{ margin: "0 0 4px", fontSize: 15 }}>Interested parties</h3>
+        <div style={{ ...box, gap: 4 }}><h3 style={{ margin: "0 0 4px", fontSize: ".9375rem" }}>Interested parties</h3>
           {parties.length ? parties.map((p) => (
-            <div key={p.party} style={{ fontSize: 13, padding: "5px 0", borderTop: "1px solid var(--line)" }}><strong>{p.party}</strong> <span style={{ color: "var(--muted)" }}>({p.loc})</span><div style={{ fontSize: 12, color: "var(--ink-2)" }}>{p.req}</div></div>
+            <div key={p.party} style={{ fontSize: ".8125rem", padding: "5px 0", borderTop: "1px solid var(--line)" }}><strong>{p.party}</strong> <span style={{ color: "var(--muted)" }}>({p.loc})</span><div style={{ fontSize: ".75rem", color: "var(--ink-2)" }}>{p.req}</div></div>
           )) : <Empty compact icon="risk" title="No interested party linked">Link on the Interested parties tab.</Empty>}
-          <h3 style={{ margin: "10px 0 4px", fontSize: 15 }}>History</h3>
+          <h3 style={{ margin: "10px 0 4px", fontSize: ".9375rem" }}>History</h3>
           {(r.history || []).slice().reverse().map((h: any, k: number) => (
-            <div key={k} style={{ fontSize: 12, color: "var(--ink-2)", padding: "4px 0", borderTop: "1px solid var(--line)" }}>{h.ts} · {h.by} · {h.a}</div>
+            <div key={k} style={{ fontSize: ".75rem", color: "var(--ink-2)", padding: "4px 0", borderTop: "1px solid var(--line)" }}>{h.ts} · {h.by} · {h.a}</div>
           ))}
         </div>
       </div>

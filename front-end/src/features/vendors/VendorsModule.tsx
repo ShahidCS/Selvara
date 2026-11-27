@@ -81,9 +81,9 @@ function VendorsList() {
                 return (
                   <tr key={r.id}>
                     <td className="strong num">{r.id}</td>
-                    <td className="strong">{r.name}<div style={{ fontSize: 11.5, color: "var(--muted)" }}>{r.cat} · {r.crit} tier{r.data ? <> · <span style={{ color: "var(--warn-ink)" }}>processes our data</span></> : null}</div></td>
-                    <td style={{ fontSize: 12.5 }}>{r.reason}</td>
-                    <td style={{ fontSize: 12, color: "var(--muted)" }}>{r.requester}<div style={{ fontSize: 11 }}>{r.at}</div></td>
+                    <td className="strong">{r.name}<div style={{ fontSize: ".71875rem", color: "var(--muted)" }}>{r.cat} · {r.crit} tier{r.data ? <> · <span style={{ color: "var(--warn-ink)" }}>processes our data</span></> : null}</div></td>
+                    <td style={{ fontSize: ".78125rem" }}>{r.reason}</td>
+                    <td style={{ fontSize: ".75rem", color: "var(--muted)" }}>{r.requester}<div style={{ fontSize: ".6875rem" }}>{r.at}</div></td>
                     <td className="r"><div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }}>
                       <button className="btn btn-ghost sm" disabled={!!why} aria-describedby={why ? "vrw-" + r.id : undefined} aria-label={`${crit ? "Request approval to add" : "Add"} ${r.name} to inventory`} onClick={() => approve(r.id)}><Icon name="check" />{crit ? "Request approval" : "Add to inventory"}</button>
                       <button className="btn btn-ghost sm" disabled={waiting} aria-label={`Dismiss request ${r.id}`} onClick={() => dismiss(r.id)}><Icon name="x" />Dismiss</button>

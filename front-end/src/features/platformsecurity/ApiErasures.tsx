@@ -36,7 +36,7 @@ export function ApiErasures({ s }: { s: ElevationState }) {
                 <tr key={x.userId + x.scheduledAt}>
                   <td><div className="strong">{x.person}</div><div className="field help" style={{ margin: 0 }}>{x.email}</div></td>
                   <td>{x.status === "Completed" ? <Chip cls="ok" icon="check">Erased</Chip> : x.status === "Cancelled" ? <Chip cls="" icon="x">Cancelled</Chip> : x.due ? <Chip cls="warn" icon="alert">Due</Chip> : <Chip cls="warn" icon="clock">Blocked, waiting</Chip>}</td>
-                  <td className="num" style={{ fontSize: 12 }}>{x.status === "Completed" && x.completedAt ? `done ${utcMin(x.completedAt)}` : utcMin(x.dueAt)}</td>
+                  <td className="num" style={{ fontSize: ".75rem" }}>{x.status === "Completed" && x.completedAt ? `done ${utcMin(x.completedAt)}` : utcMin(x.dueAt)}</td>
                   <td className="num">{x.ticket}</td>
                   <td className="r">{s.canElevate && x.status === "Scheduled" ? (
                     <div className="btngrp" style={{ justifyContent: "flex-end" }}>

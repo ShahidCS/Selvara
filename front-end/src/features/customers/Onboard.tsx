@@ -60,7 +60,7 @@ export function OnboardForm({ close }: { close: () => void }) {
       <div className="field" style={{ marginTop: 12 }}><label id="oModsLbl">Modules to enable</label>
         <div id="oMods" role="group" aria-labelledby="oModsLbl" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 14px", marginTop: 4 }}>
           {svc.PLAN_MODULES.map((m, i) => (
-            <label key={m} htmlFor={`om-${i}`} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, padding: "3px 0", cursor: "pointer" }}>
+            <label key={m} htmlFor={`om-${i}`} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".8125rem", padding: "3px 0", cursor: "pointer" }}>
               <input type="checkbox" id={`om-${i}`} checked={mods.includes(m)} onChange={(x) => setMods(x.target.checked ? mods.concat([m]) : mods.filter((y) => y !== m))} /><span>{m}</span>
             </label>
           ))}

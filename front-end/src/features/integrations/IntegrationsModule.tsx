@@ -26,7 +26,7 @@ function IntegrationsList() {
     { key: "order", header: "#", value: (r) => r.order, render: (r) => <span className="num" style={{ color: "var(--muted)" }}>{r.order}</span> },
     { key: "name", header: "Integration", value: (r) => r.name, locked: true, render: (r) => <span className="strong" style={{ whiteSpace: "nowrap" }}>{r.name}</span> },
     { key: "cat", header: "Category", value: (r) => r.cat, render: (r) => r.cat },
-    { key: "scope", header: "Scope", value: (r) => r.scope, render: (r) => <span title={r.scope} style={{ color: "var(--ink-2)", fontSize: 12.5, display: "block", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.scope}</span> },
+    { key: "scope", header: "Scope", value: (r) => r.scope, render: (r) => <span title={r.scope} style={{ color: "var(--ink-2)", fontSize: ".78125rem", display: "block", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.scope}</span> },
     { key: "last", header: "Last sync", value: (r) => r.lastSync, render: (r) => <span style={{ color: "var(--muted)" }}>{r.lastSync}</span> },
     { key: "records", header: "Records", defaultHidden: true, value: (r) => r.records, render: (r) => <span className="num" style={{ color: "var(--muted)" }}>{r.records}</span> },
     { key: "status", header: "Status", value: (r) => r.status, render: (r) => (r.status === "Connected" ? <HealthChip h={r.health} /> : <Chip cls="neutral" icon="x">Not connected</Chip>) },
@@ -46,7 +46,7 @@ function IntegrationsList() {
         <KpiTile label="Access" value={"Read\u2011only"} caption="Least privilege, scoped per connector" />
       </KpiStrip>
       <div className="card" style={{ background: "var(--surface-2)", borderColor: "transparent", flex: "0 0 auto" }}>
-        <div className="c-body" style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.5 }}>
+        <div className="c-body" style={{ fontSize: ".8125rem", color: "var(--ink-2)", lineHeight: 1.5 }}>
           <div className="sectitle" style={{ marginTop: 0 }}>Recommended connection order</div>
           Connect identity first (Arbor Identity), then cloud logs and monitoring, then source control, scanners and training. Connectors are <b>read-only</b> and scoped to the least privilege needed.
         </div>

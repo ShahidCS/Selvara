@@ -32,14 +32,14 @@ function ResetFormBody({ intro, facts, approvers, submit, close }: {
       <p className="field help" style={{ marginBottom: 12 }}>{intro}</p>
       <dl className="meta-grid lstart" style={{ marginBottom: 12 }}>{facts.map(([k, v]) => <Fragment key={k}><dt>{k}</dt><dd>{v}</dd></Fragment>)}</dl>
       <div className="sectitle" style={{ marginTop: 0 }}>Effects when approved</div>
-      <ul style={{ margin: "0 0 12px", paddingLeft: 18, fontSize: 12.5, lineHeight: 1.6 }}>{svc.MFA_EFFECTS.map((x) => <li key={x}>{x}</li>)}</ul>
+      <ul style={{ margin: "0 0 12px", paddingLeft: 18, fontSize: ".78125rem", lineHeight: 1.6 }}>{svc.MFA_EFFECTS.map((x) => <li key={x}>{x}</li>)}</ul>
       <fieldset style={{ border: 0, margin: "0 0 14px", padding: 0, minWidth: 0 }} aria-describedby={checksErr ? "mfaErr" : undefined}>
         <legend className="sectitle" style={{ padding: 0 }}>Identity checks (all three required)</legend>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {svc.MFA_CHECKS.map((c, i) => (
             <label key={c.key} className="listrow" style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer" }}>
               <input type="checkbox" id={"mfaChk" + c.key} data-focus={i === 0 ? true : undefined} style={{ marginTop: 3 }} checked={checks[c.key]} onChange={(e) => { setChecks({ ...checks, [c.key]: e.target.checked }); setErr(""); }} />
-              <span style={{ fontSize: 12.5 }}>{c.label}</span>
+              <span style={{ fontSize: ".78125rem" }}>{c.label}</span>
             </label>
           ))}
         </div>

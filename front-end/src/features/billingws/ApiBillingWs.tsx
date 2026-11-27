@@ -90,7 +90,7 @@ export function ApiBillingWs() {
               ) : null}
               {d.requests.some((r) => r.answer) ? (
                 <div className="card"><div className="c-head"><h3>Plan change requests</h3></div><div className="c-body">
-                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.6 }}>{d.requests.filter((r) => r.answer).map((r) => <li key={r.id}>{r.plan} ({r.at}, {r.by}): {r.answer!.accepted ? "accepted, from the next period" : "declined"}; {r.answer!.reason}</li>)}</ul>
+                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: ".8125rem", lineHeight: 1.6 }}>{d.requests.filter((r) => r.answer).map((r) => <li key={r.id}>{r.plan} ({r.at}, {r.by}): {r.answer!.accepted ? "accepted, from the next period" : "declined"}; {r.answer!.reason}</li>)}</ul>
                 </div></div>
               ) : null}
             </>
@@ -116,7 +116,7 @@ function PlanForm({ d, close }: { d: Data; close: () => void }) {
         {d.plans.map((p) => (
           <label key={p.name} className="listrow" style={{ display: "flex", gap: 10, alignItems: "center", cursor: "pointer", marginBottom: 6 }}>
             <input type="radio" name="plan" checked={plan === p.name} onChange={() => { setPlan(p.name); setErr(""); }} style={{ accentColor: "var(--accent)" }} />
-            <span style={{ flex: 1 }}><span className="strong">{p.name}</span>{p.name === cur ? " (current)" : ""}<div style={{ fontSize: 12, color: "var(--muted)" }}>Up to {p.seats} seats</div></span>
+            <span style={{ flex: 1 }}><span className="strong">{p.name}</span>{p.name === cur ? " (current)" : ""}<div style={{ fontSize: ".75rem", color: "var(--muted)" }}>Up to {p.seats} seats</div></span>
             <span className="num">{minorMoney(p.monthlyUsd, "USD")} a month</span>
           </label>
         ))}

@@ -18,7 +18,7 @@ export function EvidenceView({ onGenerate, can }: { onGenerate: () => void; can:
           {ex.length ? (
             <Table cols={[{ t: "Package" }, { t: "Generated" }, { t: "By" }, { t: "Entries" }, { t: API_ON ? "SHA-256" : "Package hash (demo)" }]} minw={860}>
               {(API_ON ? ex.slice() : ex.slice().reverse()).map((e) => (
-                <tr key={e.id}><td className="strong num">{e.id}</td><td className="num" style={{ color: "var(--muted)" }}>{e.at}</td><td>{e.by}</td><td className="num">{e.entries}</td><td className="num" style={{ fontSize: 11, color: "var(--muted)" }}>{e.sha}</td></tr>
+                <tr key={e.id}><td className="strong num">{e.id}</td><td className="num" style={{ color: "var(--muted)" }}>{e.at}</td><td>{e.by}</td><td className="num">{e.entries}</td><td className="num" style={{ fontSize: ".6875rem", color: "var(--muted)" }}>{e.sha}</td></tr>
               ))}
             </Table>
           ) : <Empty icon="download" title="No packages yet">Generate a package to seal the current log and RoPA register for an auditor.</Empty>}

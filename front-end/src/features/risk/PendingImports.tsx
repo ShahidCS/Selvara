@@ -36,7 +36,7 @@ export default function PendingImports() {
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
               <span className="strong">{a.title}</span><Chip cls="warn" icon="clock">Awaiting approval</Chip>
             </div>
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>{a.id} · imported by {a.requestedBy} · {p.nUpd} update{p.nUpd !== 1 ? "s" : ""}, {p.nNew} new{p.ids ? " · " + p.ids.slice(0, 8).join(", ") + (p.ids.length > 8 ? " …" : "") : ""}</div>
+            <div style={{ fontSize: ".75rem", color: "var(--muted)" }}>{a.id} · imported by {a.requestedBy} · {p.nUpd} update{p.nUpd !== 1 ? "s" : ""}, {p.nNew} new{p.ids ? " · " + p.ids.slice(0, 8).join(", ") + (p.ids.length > 8 ? " …" : "") : ""}</div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
               <label className="field" style={{ flex: "1 1 220px", margin: 0 }}><span className="flab">Reason (at least 10 characters)</span>
                 <input className="input" maxLength={300} disabled={!!why} value={reasons[a.id] || ""} onChange={(e) => setReasons((x) => ({ ...x, [a.id]: e.target.value }))} /></label>
@@ -44,7 +44,7 @@ export default function PendingImports() {
               <button className="btn btn-secondary sm" disabled={!!why} title={why || undefined} onClick={() => decide(a.id, "reject")}>Reject</button>
               {mine ? <button className="btn btn-ghost sm" onClick={() => wd(a.id)}>Withdraw</button> : null}
             </div>
-            {why ? <div style={{ fontSize: 12, color: "var(--muted)" }}>{why}</div> : null}
+            {why ? <div style={{ fontSize: ".75rem", color: "var(--muted)" }}>{why}</div> : null}
           </div>
         );
       })}

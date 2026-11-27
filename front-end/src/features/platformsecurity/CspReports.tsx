@@ -32,11 +32,11 @@ export function CspReports() {
                 {rows.map((r) => (
                   <tr key={`${r.directive}|${r.blocked}|${r.page}|${r.source}|${r.line}`}>
                     <td className="strong">{r.blocked === "inline" || r.blocked === "eval" ? <Chip cls="bad" icon="alert">{r.blocked === "inline" ? "Inline code" : "eval"}</Chip> : <span className="num">{r.blocked}</span>}</td>
-                    <td className="num" style={{ fontSize: 12 }}>{r.directive}</td>
-                    <td className="num" style={{ fontSize: 12 }}>{r.page}</td>
-                    <td className="num" style={{ fontSize: 12 }}>{r.source ? `${r.source}${r.line ? `:${r.line}` : ""}` : "—"}</td>
+                    <td className="num" style={{ fontSize: ".75rem" }}>{r.directive}</td>
+                    <td className="num" style={{ fontSize: ".75rem" }}>{r.page}</td>
+                    <td className="num" style={{ fontSize: ".75rem" }}>{r.source ? `${r.source}${r.line ? `:${r.line}` : ""}` : "—"}</td>
                     <td className="num r">{r.hits}</td>
-                    <td className="num" style={{ fontSize: 12 }}>{utcMin(r.lastAt)}</td>
+                    <td className="num" style={{ fontSize: ".75rem" }}>{utcMin(r.lastAt)}</td>
                   </tr>
                 ))}
               </Table>

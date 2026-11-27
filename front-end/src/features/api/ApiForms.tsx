@@ -96,7 +96,7 @@ export function NewWebhookPage() {
             <legend className="vh">Events</legend>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {svc.WH_EVENTS.map((x) => (
-                <label key={x} style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 400, fontSize: 13 }}>
+                <label key={x} style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 400, fontSize: ".8125rem" }}>
                   <input type="checkbox" className="wh-ev" style={{ accentColor: "var(--accent)" }} value={x} checked={sel.includes(x)} onChange={(ev) => setSel((p) => (ev.target.checked ? [...p, x] : p.filter((y) => y !== x)))} /> {x}
                 </label>
               ))}

@@ -49,7 +49,7 @@ export function IssueDetail({ id }: { id: string }) {
         {pend ? (
           <div className="card" style={{ background: "var(--warn-bg)", borderColor: "var(--warn-ink)", marginBottom: 12 }} role="alert"><div className="c-body" style={{ padding: 12 }}>
             <div style={{ fontWeight: 600 }}><Icon name="clock" /> Closure awaiting verification</div>
-            <div style={{ fontSize: 12.5, color: "var(--muted)", margin: "3px 0 8px" }}>Proposed by {pend.requestedBy}: {i.closure?.note}</div>
+            <div style={{ fontSize: ".78125rem", color: "var(--muted)", margin: "3px 0 8px" }}>Proposed by {pend.requestedBy}: {i.closure?.note}</div>
             <div className="btngrp">
               <button className="btn btn-primary btn-decide sm" {...dis(verifyWhy)} onClick={() => openDecideClosure(L, id, "verify")}><Icon name="check" />Verify and close</button>
               <button className="btn btn-secondary sm" {...dis(verifyWhy)} onClick={() => openDecideClosure(L, id, "reject")}><Icon name="x" />Reject</button>
@@ -66,8 +66,8 @@ export function IssueDetail({ id }: { id: string }) {
                 <Stepper label="Issue progress" steps={STEPS} current={step} overdue={/Overdue/.test(i.due) && i.status !== "Closed"} />
                 {/* the current status is a state, not a button; only the other statuses are offered as moves */}
                 <div className="btngrp" style={{ marginTop: 12, alignItems: "center" }}>
-                  <span style={{ fontSize: 13, color: "var(--muted)" }}>Status</span> <StatusChip s={i.status} />
-                  <span style={{ fontSize: 13, color: "var(--muted)", marginLeft: 8 }}>Move to</span>
+                  <span style={{ fontSize: ".8125rem", color: "var(--muted)" }}>Status</span> <StatusChip s={i.status} />
+                  <span style={{ fontSize: ".8125rem", color: "var(--muted)", marginLeft: 8 }}>Move to</span>
                   {svc.ISSUE_STATUSES.filter((s) => s !== i.status).map((s) => {
                     const toClosed = s === "Closed" && high;
                     const why = toClosed ? proposeWhy : pend ? "A closure is awaiting verification." : writeWhy;
@@ -104,7 +104,7 @@ export function IssueDetail({ id }: { id: string }) {
             </div></div>
             <div className="card"><div className="c-head"><h3>Linked controls &amp; risks</h3></div><div className="c-body">
               <div className="btngrp" style={{ marginBottom: 8 }}>
-                {i.linkedControls.length + i.linkedRisks.length === 0 ? <span style={{ color: "var(--muted)", fontSize: 13 }}>Nothing linked</span> : null}
+                {i.linkedControls.length + i.linkedRisks.length === 0 ? <span style={{ color: "var(--muted)", fontSize: ".8125rem" }}>Nothing linked</span> : null}
                 {i.linkedControls.map((c: string) => <button key={"c" + c} className="fchip" onClick={() => go(`/ws/controls/${encodeURIComponent(c)}`)}><Icon name="controls" />{c}</button>)}
                 {i.linkedRisks.map((r: string) => <button key={"r" + r} className="fchip" onClick={() => openRisk(r)}><Icon name="risk" />{r}</button>)}
               </div>

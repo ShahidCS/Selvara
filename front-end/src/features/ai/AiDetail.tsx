@@ -17,7 +17,7 @@ import { askReason } from "@/components/kit/ReasonDialog";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const AI_TABS: [string, string][] = [["over", "Overview"], ["eu", "EU AI Act"], ["fria", "Impact"], ["bias", "Bias"], ["signals", "Signals"]];
-const GATE = <p style={{ fontSize: 12, color: "var(--muted)", margin: "10px 0 0" }}>Read-only — only the AI system owner, an admin or an owner can change this.</p>;
+const GATE = <p style={{ fontSize: ".75rem", color: "var(--muted)", margin: "10px 0 0" }}>Read-only — only the AI system owner, an admin or an owner can change this.</p>;
 const pendingOf = (ref: unknown) => (ref ? getApproval(String(ref))?.status === "Pending" : false);
 const card = (bg: string, extra?: object) => ({ boxShadow: "none", background: bg, borderColor: "transparent", ...extra });
 
@@ -61,12 +61,12 @@ export function AiDetail({ id }: { id: string }) {
         <div className="hr" /><div className="sectitle">Guardrail tier</div>
         <div style={{ border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}><AiGuardChip g={a.guardrail} /></div>
-          <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>{gr[1]}</div>
+          <div style={{ fontSize: ".78125rem", color: "var(--ink-2)", lineHeight: 1.5 }}>{gr[1]}</div>
           {manage ? <button className="btn btn-ghost sm" style={{ marginTop: 8 }} disabled={pendingOf(a.guardrailPending)} onClick={() => openGuard(L, id)}><Icon name="edit" />{pendingOf(a.guardrailPending) ? "Change awaiting approval" : "Request guardrail change"}</button> : null}
         </div>
         <div className="hr" /><div className="sectitle">ISO/IEC 42001 &amp; EU AI Act obligations</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {a.obligations.map((o: string[]) => <div key={o[0]} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", fontSize: 13 }}><span style={{ color: "var(--ink-2)" }}>{o[0]}</span><Chip cls={o[1] === "Met" ? "ok" : o[1] === "Partial" ? "warn" : "bad"}>{o[1]}</Chip></div>)}
+          {a.obligations.map((o: string[]) => <div key={o[0]} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", fontSize: ".8125rem" }}><span style={{ color: "var(--ink-2)" }}>{o[0]}</span><Chip cls={o[1] === "Met" ? "ok" : o[1] === "Partial" ? "warn" : "bad"}>{o[1]}</Chip></div>)}
         </div>
         <button className="btn btn-ghost sm" style={{ marginTop: 10 }} onClick={() => go("/ws/frameworks")}><Icon name="frameworks" />Open ISO 42001 / EU AI Act framework</button>
         {manage ? (
@@ -94,14 +94,14 @@ export function AiDetail({ id }: { id: string }) {
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
           <AiEuChip c={a.euClass} /> {st.state === "Confirmed" ? <Chip cls="ok" icon="check">Confirmed</Chip> : st.state === "Draft" ? <Chip cls="warn" icon="clock">Draft — needs confirming</Chip> : <Chip cls="neutral">Not classified</Chip>}
         </div>
-        <p style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.55 }}>{a.euRationale || aiEuRationale(a.euClass)}</p>
-        {a.euDraftClass ? <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "6px 0" }}><span style={{ fontSize: 12.5, color: "var(--muted)" }}>Proposed by the draft:</span><AiEuChip c={a.euDraftClass} /><span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{a.euDraftRationale}</span></div> : null}
+        <p style={{ fontSize: ".8125rem", color: "var(--ink-2)", lineHeight: 1.55 }}>{a.euRationale || aiEuRationale(a.euClass)}</p>
+        {a.euDraftClass ? <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", margin: "6px 0" }}><span style={{ fontSize: ".78125rem", color: "var(--muted)" }}>Proposed by the draft:</span><AiEuChip c={a.euDraftClass} /><span style={{ fontSize: ".78125rem", color: "var(--ink-2)" }}>{a.euDraftRationale}</span></div> : null}
         <dl className="meta-grid lstart" style={{ marginTop: 8 }}>
           <dt>Basis</dt><dd>Art. 5 (prohibited), Art. 6 with Annexes I &amp; III (high-risk), Art. 50 (transparency)</dd>
           <dt>Drafted by</dt><dd>{st.draftBy || a.owner}</dd>
           <dt>Confirmed by</dt><dd>{st.state === "Confirmed" ? st.by + (st.at ? " · " + st.at : "") : <span style={{ color: "var(--muted)" }}>Awaiting a second person</span>}</dd>
         </dl>
-        {st.state === "Draft" ? <div className="card" style={card("var(--warn-bg)", { marginTop: 10 })}><div className="c-body" style={{ padding: "10px 12px", fontSize: 12.5, color: "var(--warn-ink)" }}>Draft legal determination. It must be confirmed by an admin or owner other than the drafter (and not the system owner) before the tier, guardrail and the ISO 42001 AI-inventory test take effect.</div></div> : null}
+        {st.state === "Draft" ? <div className="card" style={card("var(--warn-bg)", { marginTop: 10 })}><div className="c-body" style={{ padding: "10px 12px", fontSize: ".78125rem", color: "var(--warn-ink)" }}>Draft legal determination. It must be confirmed by an admin or owner other than the drafter (and not the system owner) before the tier, guardrail and the ISO 42001 AI-inventory test take effect.</div></div> : null}
         <div className="hr" /><div className="sectitle">What the categories mean</div>
         <dl className="meta-grid lstart"><dt>Prohibited</dt><dd>Unacceptable-risk uses — not permitted.</dd><dt>High-risk</dt><dd>Full obligations: risk management, data governance, documentation, human oversight, logging.</dd><dt>Limited risk</dt><dd>Transparency — users are told they interact with AI.</dd><dt>Minimal risk</dt><dd>No specific obligations; voluntary codes.</dd></dl>
         {manage ? (
@@ -125,10 +125,10 @@ export function AiDetail({ id }: { id: string }) {
         <div className="sectitle">AI impact assessment (FRIA / DPIA)</div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}><AiFriaChip f={f} /> {revChip}</div>
         <dl className="meta-grid lstart"><dt>Completed</dt><dd>{f.date ? f.date : "—"}</dd><dt>Submitted by</dt><dd>{f.submittedBy ? f.submittedBy : "—"}</dd><dt>Approved by</dt><dd>{f.approvedBy ? f.approvedBy : <span style={{ color: "var(--muted)" }}>—</span>}</dd></dl>
-        {f.summary ? <p style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 8, lineHeight: 1.55 }}>{f.summary}</p> : null}
-        {f.returnReason && rev === "Changes requested" ? <div className="card" style={card("var(--bad-bg)", { marginTop: 8 })}><div className="c-body" style={{ padding: "10px 12px", fontSize: 12.5, color: "var(--bad-ink)" }}>Returned: {f.returnReason}</div></div> : null}
-        <div className="card" style={{ boxShadow: "none", background: "var(--surface-2)", marginTop: 10 }}><div className="c-body" style={{ padding: "10px 12px", fontSize: 12, color: "var(--muted)" }}>{API_ON ? <>Version {f.version || 1}. Attach the signed assessment as evidence on the Overview tab. </> : <>Approval updates evidence <strong>D-07 (AI system impact assessment)</strong> and counts toward ISO/IEC 42001 clause 6.1.4. </>}The approver must be an admin or owner other than the submitter, the author and the system owner. An approved assessment is never edited in place: changes start a new version.</div></div>
-        {rev === "Submitted" ? <div className="card" style={card("var(--warn-bg)", { marginTop: 8 })}><div className="c-body" style={{ padding: "10px 12px", fontSize: 12.5, color: "var(--warn-ink)" }}>Submitted by {f.submittedBy || "—"}, awaiting a second approver.</div></div> : null}
+        {f.summary ? <p style={{ fontSize: ".8125rem", color: "var(--ink-2)", marginTop: 8, lineHeight: 1.55 }}>{f.summary}</p> : null}
+        {f.returnReason && rev === "Changes requested" ? <div className="card" style={card("var(--bad-bg)", { marginTop: 8 })}><div className="c-body" style={{ padding: "10px 12px", fontSize: ".78125rem", color: "var(--bad-ink)" }}>Returned: {f.returnReason}</div></div> : null}
+        <div className="card" style={{ boxShadow: "none", background: "var(--surface-2)", marginTop: 10 }}><div className="c-body" style={{ padding: "10px 12px", fontSize: ".75rem", color: "var(--muted)" }}>{API_ON ? <>Version {f.version || 1}. Attach the signed assessment as evidence on the Overview tab. </> : <>Approval updates evidence <strong>D-07 (AI system impact assessment)</strong> and counts toward ISO/IEC 42001 clause 6.1.4. </>}The approver must be an admin or owner other than the submitter, the author and the system owner. An approved assessment is never edited in place: changes start a new version.</div></div>
+        {rev === "Submitted" ? <div className="card" style={card("var(--warn-bg)", { marginTop: 8 })}><div className="c-body" style={{ padding: "10px 12px", fontSize: ".78125rem", color: "var(--warn-ink)" }}>Submitted by {f.submittedBy || "—"}, awaiting a second approver.</div></div> : null}
         {manage ? (
           <>
             <div className="btngrp" style={{ marginTop: 12 }}>
@@ -152,15 +152,15 @@ export function AiDetail({ id }: { id: string }) {
       <>
         <div className="sectitle">Bias &amp; validation testing</div>
         <dl className="meta-grid lstart"><dt>Result</dt><dd><AiBiasChip b={bz} /></dd><dt>Last tested</dt><dd>{bz.last ? bz.last : "—"}</dd></dl>
-        {bz.result ? <p style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 6, lineHeight: 1.55 }}>{bz.result}</p> : null}
+        {bz.result ? <p style={{ fontSize: ".8125rem", color: "var(--ink-2)", marginTop: 6, lineHeight: 1.55 }}>{bz.result}</p> : null}
         {manage ? <button className="btn btn-secondary sm" style={{ marginTop: 8 }} onClick={() => openBias(L, id)}><Icon name="play" />Log bias / validation test</button> : null}
         <div className="hr" /><div className="sectitle">Human oversight</div>
-        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: "var(--ink-2)", display: "flex", flexDirection: "column", gap: 5 }}>{a.oversight.map((o: string, k: number) => <li key={k}>{o}</li>)}</ul>
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: ".8125rem", color: "var(--ink-2)", display: "flex", flexDirection: "column", gap: 5 }}>{a.oversight.map((o: string, k: number) => <li key={k}>{o}</li>)}</ul>
         {manage ? <button className="btn btn-ghost sm" style={{ marginTop: 10 }} onClick={() => openOversight(L, id)}><Icon name="edit" />Edit oversight measures</button> : GATE}
       </>
     );
   } else if (!a.signals.length) {
-    body = <><div className="sectitle">Signals</div><p style={{ fontSize: 13, color: "var(--muted)" }}>No open signals for this system. {API_ON ? "Signals arrive from the AI Assistant's PII blocker; other sources arrive with integrations." : "Signals arrive from DLP, vendor monitoring and the device monitor."}</p></>;
+    body = <><div className="sectitle">Signals</div><p style={{ fontSize: ".8125rem", color: "var(--muted)" }}>No open signals for this system. {API_ON ? "Signals arrive from the AI Assistant's PII blocker; other sources arrive with integrations." : "Signals arrive from DLP, vendor monitoring and the device monitor."}</p></>;
   } else {
     body = (
       <>
@@ -172,18 +172,18 @@ export function AiDetail({ id }: { id: string }) {
             return (
               <div key={s.id ?? si} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "11px 13px" }}>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 5 }}>
-                  <Chip cls={sevc}>{s.sev}</Chip><span style={{ fontSize: 11.5, color: "var(--muted)" }}>{s.at} · {s.source}{s.count > 1 ? ` · ${s.count} times` : ""}</span>
+                  <Chip cls={sevc}>{s.sev}</Chip><span style={{ fontSize: ".71875rem", color: "var(--muted)" }}>{s.at} · {s.source}{s.count > 1 ? ` · ${s.count} times` : ""}</span>
                   {done ? <Chip cls={s.status === "Dismissed" ? "neutral" : "ok"} icon={s.status === "Dismissed" ? "x" : "check"}>{s.status}</Chip> : null}
                 </div>
-                <div style={{ fontSize: 13, color: "var(--ink)" }}>{s.text}</div>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>Recommended: {s.rec || "Triage and record a decision"}</div>
+                <div style={{ fontSize: ".8125rem", color: "var(--ink)" }}>{s.text}</div>
+                <div style={{ fontSize: ".75rem", color: "var(--muted)", marginTop: 4 }}>Recommended: {s.rec || "Triage and record a decision"}</div>
                 {(manage && !done) ? (
                   <div className="btngrp" style={{ marginTop: 9 }}>
                     <button className="btn btn-secondary sm" onClick={() => act(() => svc.signalRaiseRisk(id, si), (r) => { aiLog("ai.signal.risk_raised", a.name); bumpData(); L.toast("Risk " + r.ref + " raised from signal (draft)"); })}><Icon name="risk" />Raise risk</button>
                     <button className="btn btn-secondary sm" onClick={() => act(() => svc.signalRaiseIssue(id, si), (r) => { aiLog("ai.signal.issue_raised", a.name); bumpData(); L.toast("Issue " + r.ref + " raised from signal"); })}><Icon name="flag" />Raise issue</button>
                     <button className="btn btn-ghost sm" onClick={() => API_ON ? withReason("Dismiss signal", "Why no action is needed", "Dismiss", (reason) => svc.signalDismiss(id, si, reason), "Signal dismissed") : act(() => svc.signalDismiss(id, si), () => { aiLog("ai.signal.dismissed", a.name); bumpData(); L.toast("Signal dismissed"); })}>Dismiss</button>
                   </div>
-                ) : (done && (s.ref || s.reason) ? <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6 }}>{s.ref ? `→ ${s.ref}` : `Dismissed${s.by ? ` by ${s.by}` : ""}: ${s.reason}`}</div> : null)}
+                ) : (done && (s.ref || s.reason) ? <div style={{ fontSize: ".71875rem", color: "var(--muted)", marginTop: 6 }}>{s.ref ? `→ ${s.ref}` : `Dismissed${s.by ? ` by ${s.by}` : ""}: ${s.reason}`}</div> : null)}
               </div>
             );
           })}

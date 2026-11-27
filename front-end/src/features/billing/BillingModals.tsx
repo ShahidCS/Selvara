@@ -20,8 +20,8 @@ export function PricingForm({ close }: { close: () => void }) {
   const [err, setErr] = useState<string | null>(null);
   const row = (label: string, unit: string, id: string, val: string, set: (v: string) => void, step?: string, max?: number) => (
     <div key={id} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 9 }}>
-      <label htmlFor={id} style={{ flex: 1, minWidth: 0, fontSize: 13, color: "var(--ink-2)" }}>{label}</label>
-      <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>{unit}</span>
+      <label htmlFor={id} style={{ flex: 1, minWidth: 0, fontSize: ".8125rem", color: "var(--ink-2)" }}>{label}</label>
+      <span style={{ fontSize: ".75rem", color: "var(--muted)", whiteSpace: "nowrap" }}>{unit}</span>
       <input className="input" id={id} type="number" min={0} max={max} step={step} inputMode="decimal" value={val} onChange={(e) => set(e.target.value)} style={{ width: 132, flex: "0 0 auto" }} />
     </div>
   );

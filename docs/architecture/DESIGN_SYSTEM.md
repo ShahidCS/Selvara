@@ -20,6 +20,7 @@ Tailwind 4 utilities for the same tokens are declared in `front-end/src/styles/g
 - **A pill only on one line.** `--radius-control` and `--radius-chip` (both `--radius-full`) are for one-line buttons, chips, badges, toggles and segmented controls. Anything that holds a list or can wrap uses a fixed radius: menus and listboxes `--radius-menu` (10px), their option rows `--radius-option` (the menu radius less its padding, so the corners nest), and text boxes such as `.note` `--radius-box` (10px). A pill on a list box with `overflow` set turns it into an oval and clips its first and last rows (the listbox fault fixed in 2026-11). `e2e/ui-regressions.spec.ts` checks this.
 - **Numbers lead.** Overline (11px, uppercase, +0.6px) above a light tabular figure. Use `.eyebrow` (not `.overline`: Tailwind owns that name and draws a line over the text), `.tabular`, and `.mono` for timestamps, hashes and audit entries.
 - **Weights 300 to 600 only.**
+- **Type sizes in rem, so text follows the browser's text-size setting (EDGE-13).** 1rem is 16px at the default setting, so the sizes in this document read as px (13px is `.8125rem`). `font-size` and `line-height` in the stylesheets, the type token `--fs-help` and React style objects use rem: a number in a style object is px (write `fontSize: ".75rem"`, not `fontSize: 12`). Controls that hold text take rem heights too, so they grow with it: buttons, fields, chips, badges, pagination, sort buttons, the approvals pill, the account button and the top bar (`--topbar-h`). Icons, icon-only buttons, avatars, borders, spacing and breakpoints stay in px. `tests/unit/typeScale.test.ts` refuses px type; `e2e/edge-layout.spec.ts` sets the browser's text size to 200%. Exceptions: e-mail templates (`server/mail.ts`, rem is unreliable in e-mail clients) and the board pack (`overview/lib/boardPack.ts`, laid out for print).
 
 ## Deviations from the blueprint (deliberate)
 
@@ -316,7 +317,7 @@ The sidebar takes about 280px when open, so the content of a 1024px window is na
 Rules that changed after the owner's screen-by-screen review (before/after evidence in the PR):
 - **Cards keep the height of their content.** `.panels` no longer stretches to the bottom of the window, and module cards no longer carry `flex: 1 1 auto`; a long register grows and the page scrolls. Cards side by side in one row share the tallest card's height. Only the chat assistant keeps a full-height panel.
 - ~~Running text is justified, with hyphenation~~ (reversed on 2026-11-26, see "Fix once, apply everywhere" below: all text is left-aligned and never hyphenated). Form text runs the full card width; the class `.fields-cap` keeps only inputs, selects and button rows at a readable width (640px).
-- **One helper text size**, `--fs-help` (13px), for help text and banners.
+- **One helper text size**, `--fs-help` (13px, `.8125rem`), for help text and banners.
 - **Plain forms space their fields** (12px between a field and what follows) unless the form lays itself out (`.rec-form`, or a `gap` of its own).
 - **One empty state.** `Empty` has a `compact` form (icon, title, one line) for empty lists inside a card; no plain "No …" sentences.
 - **Tables** drop a column that is empty in every row (`emptyWhen`), and a name cell does not repeat a value that has its own column.

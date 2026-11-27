@@ -56,7 +56,7 @@ function ConnectionList() {
   const start = (p: G7Provider) => attempt(L, async () => { const r = await svc.startConnection(p.id); go(`${LIST}/${encodeURIComponent(r.id)}`); });
   const syncAll = () => attempt(L, async () => { const r = await svc.syncAllConnections(); L.toast(r.of ? `${r.synced} of ${r.of} synced` : "Nothing to sync: every connection synced in the last 5 minutes"); });
   const cols: DTColumn<Conn>[] = [
-    { key: "label", header: "Connection", value: (c) => c.label, locked: true, render: (c) => <span className="strong">{c.label}<div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 400 }}>{c.name} · {c.type}</div></span> },
+    { key: "label", header: "Connection", value: (c) => c.label, locked: true, render: (c) => <span className="strong">{c.label}<div style={{ fontSize: ".75rem", color: "var(--muted)", fontWeight: 400 }}>{c.name} · {c.type}</div></span> },
     { key: "status", header: "Status", value: (c) => `${c.status} ${c.health}`, render: (c) => <HealthOf c={c} /> },
     { key: "checks", header: "Checks", value: (c) => c.checks.length, render: (c) => (c.checks.length ? <span className="num">{c.checks.filter((x: Conn) => x.result === "Pass").length} pass · {c.checks.filter((x: Conn) => x.result === "Fail").length} fail</span> : <span style={{ color: "var(--faint)" }}>—</span>) },
     { key: "last", header: "Last sync", value: (c) => c.lastSync, render: (c) => <span style={{ color: "var(--muted)" }}>{c.lastSync}</span> },
@@ -98,7 +98,7 @@ function ConnectionList() {
             : <Empty icon="ext" title="No connections yet">Set up a connector above. Each one is read-only and is approved by a second admin before it reads anything.</Empty>}
         </div></div>
         {runs.length ? <div className="card"><div className="c-head"><h3>Recent syncs</h3></div><div className="c-body" style={{ padding: "8px 14px" }}>
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: "var(--ink-2)", display: "flex", flexDirection: "column", gap: 3 }}>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: ".78125rem", color: "var(--ink-2)", display: "flex", flexDirection: "column", gap: 3 }}>
             {runs.slice(0, 10).map((r: Conn) => <li key={r.id}><span className="num">{r.when}</span> {connections.find((c: Conn) => c.id === r.conn)?.label ?? r.conn}: {r.ok ? `${r.pass} pass, ${r.fail} fail, ${r.needs} need data` : `failed: ${r.error}`} ({r.by})</li>)}
           </ul></div></div> : null}
       </div>
@@ -122,9 +122,9 @@ function SetupForm({ c }: { c: Conn }) {
   };
   return (
     <div className="card"><div className="c-head"><h3>Set up {c.name}</h3></div><div className="c-body fields-cap" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.55, display: "flex", flexDirection: "column", gap: 6, overflowWrap: "anywhere" }}>{c.instructions.map((s: string, i: number) => <li key={i}>{s}</li>)}</ol>
+      <ol style={{ margin: 0, paddingLeft: 20, fontSize: ".8125rem", lineHeight: 1.55, display: "flex", flexDirection: "column", gap: 6, overflowWrap: "anywhere" }}>{c.instructions.map((s: string, i: number) => <li key={i}>{s}</li>)}</ol>
       {c.externalId ? <div className="field"><label htmlFor="int-ext">External id (for the role&apos;s trust policy)</label><div style={{ display: "flex", gap: 8 }}><input className="input num" id="int-ext" readOnly value={c.externalId} /><button className="btn btn-secondary sm" onClick={() => copy(c.externalId)}><Icon name="copy" />Copy</button></div></div> : null}
-      {c.jwk ? <div className="field"><label htmlFor="int-jwk">Public key for Okta (JSON)</label><div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}><textarea className="input num" id="int-jwk" readOnly rows={3} value={c.jwk} style={{ fontSize: 11.5 }} /><button className="btn btn-secondary sm" onClick={() => copy(c.jwk)}><Icon name="copy" />Copy</button></div><p className="field help">Selvara keeps the matching private key sealed; it is never shown.</p></div> : null}
+      {c.jwk ? <div className="field"><label htmlFor="int-jwk">Public key for Okta (JSON)</label><div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}><textarea className="input num" id="int-jwk" readOnly rows={3} value={c.jwk} style={{ fontSize: ".71875rem" }} /><button className="btn btn-secondary sm" onClick={() => copy(c.jwk)}><Icon name="copy" />Copy</button></div><p className="field help">Selvara keeps the matching private key sealed; it is never shown.</p></div> : null}
       {c.verify ? <div><a className="btn btn-primary" href={c.verify.url}><Icon name="access" />{c.verify.label}</a><p className="field help">You return here afterwards. Selvara keeps only what the provider says about your organisation, never your password.</p></div> : null}
       {c.verified ? <p className="field help" style={{ margin: 0 }}><Chip cls="ok" icon="check">Organisation confirmed</Chip> by {c.verified.by}, {c.verified.at}{c.verified.config ? `: ${Object.values(c.verified.config).join(", ")}` : ""}</p> : null}
       {choices.length > 1 ? <div className="field"><label htmlFor="int-inst">Installation</label><select className="select" id="int-inst" value={pick} onChange={(e) => setPick(e.target.value)}>{choices.map((ch) => <option key={ch.id} value={ch.id}>{ch.label} (installation {ch.id})</option>)}</select></div> : null}
@@ -153,7 +153,7 @@ function ConnectionPage({ id }: { id: string }) {
     intro: "The control then follows this check's result (with the other tests linked to it).", run: async (_t, pick) => { await svc.linkCheck(t.id, pick, true); return "Linked"; } });
   const unlink = (t: Conn, ctl: string) => attempt(L, async () => { await svc.linkCheck(t.id, ctl, false); L.toast("Link removed"); });
   const accCols: DTColumn<Conn>[] = [
-    { key: "name", header: "Account", value: (a) => a.name, locked: true, render: (a) => <span className="strong">{a.name}{a.email && a.email !== a.name ? <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 400 }}>{a.email}</div> : null}</span> },
+    { key: "name", header: "Account", value: (a) => a.name, locked: true, render: (a) => <span className="strong">{a.name}{a.email && a.email !== a.name ? <div style={{ fontSize: ".75rem", color: "var(--muted)", fontWeight: 400 }}>{a.email}</div> : null}</span> },
     { key: "status", header: "Status", value: (a) => a.status, render: (a) => (a.status === "Active" ? <Chip cls="ok" icon="dot">Active</Chip> : <Chip cls="neutral" icon="dot">{a.status}</Chip>) },
     { key: "mfa", header: "MFA", value: (a) => String(a.mfa), render: (a) => (a.mfa === true ? <Chip cls="ok" icon="check">Enrolled</Chip> : a.mfa === false ? <Chip cls="bad" icon="x">None</Chip> : <span style={{ color: "var(--faint)" }}>Unknown</span>) },
     { key: "admin", header: "Admin", value: (a) => (a.admin ? "Yes" : "No"), render: (a) => (a.admin ? "Yes" : "No") },
@@ -168,8 +168,8 @@ function ConnectionPage({ id }: { id: string }) {
       <div className="scroll" style={{ flex: "1 1 auto" }}><div style={{ display: "flex", flexDirection: "column", gap: 14, paddingRight: 2 }}>
         <ApprovalsPanel prefix="integration." title="Connection approvals (second admin)" />
         {setup ? <SetupForm c={c} /> : null}
-        {c.status === "Disconnected" ? <div className="card" style={{ boxShadow: "none", background: "var(--surface-2)" }}><div className="c-body" style={{ padding: "10px 14px", fontSize: 13 }}>Disconnected by {c.disconnectedBy}: {c.disconnectReason}. Its account list was erased.</div></div> : null}
-        {c.lastError ? <div className="card" style={{ boxShadow: "none", background: "var(--bad-bg)", borderColor: "transparent" }}><div className="c-body" role="alert" style={{ padding: "10px 14px", fontSize: 13, color: "var(--bad-ink)" }}>The last sync failed: {c.lastError}</div></div> : null}
+        {c.status === "Disconnected" ? <div className="card" style={{ boxShadow: "none", background: "var(--surface-2)" }}><div className="c-body" style={{ padding: "10px 14px", fontSize: ".8125rem" }}>Disconnected by {c.disconnectedBy}: {c.disconnectReason}. Its account list was erased.</div></div> : null}
+        {c.lastError ? <div className="card" style={{ boxShadow: "none", background: "var(--bad-bg)", borderColor: "transparent" }}><div className="c-body" role="alert" style={{ padding: "10px 14px", fontSize: ".8125rem", color: "var(--bad-ink)" }}>The last sync failed: {c.lastError}</div></div> : null}
         <div className="card"><div className="c-head"><h3>Details</h3></div><div className="c-body"><dl className="meta-grid">
           <dt>Reads</dt><dd>{c.scope}</dd><dt>Set up by</dt><dd>{c.createdBy}</dd><dt>Approved by</dt><dd>{c.approvedBy ?? "—"}</dd><dt>Connected</dt><dd>{c.connected || "—"}</dd><dt>Last sync</dt><dd>{c.lastSync}</dd>
           {Object.keys(c.counts ?? {}).length ? <><dt>Last read</dt><dd>{Object.entries(c.counts).map(([k, n]) => `${n} ${n === 1 ? String(k).replace(/ies$/, "y").replace(/s$/, "") : k}`).join(", ")}</dd></> : null}
@@ -177,11 +177,11 @@ function ConnectionPage({ id }: { id: string }) {
         {c.checks.length ? <div className="card"><div className="c-head"><h3>Checks</h3></div><div className="c-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {c.checks.map((t: Conn) => (
             <div key={t.id} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px" }}>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><ResultChip r={t.result} /><span className="strong">{t.name}</span><span style={{ fontSize: 11.5, color: "var(--muted)", marginLeft: "auto" }}>{t.id} · {t.last}</span></div>
-              {t.note ? <div style={{ fontSize: 12.5, color: "var(--ink-2)", marginTop: 4 }}>{t.note}</div> : null}
-              {t.items?.length && t.result === "Fail" ? <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12, color: "var(--ink-2)" }}>{t.items.map((it: Conn, i: number) => <li key={i}>{it.item}</li>)}</ul> : null}
+              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><ResultChip r={t.result} /><span className="strong">{t.name}</span><span style={{ fontSize: ".71875rem", color: "var(--muted)", marginLeft: "auto" }}>{t.id} · {t.last}</span></div>
+              {t.note ? <div style={{ fontSize: ".78125rem", color: "var(--ink-2)", marginTop: 4 }}>{t.note}</div> : null}
+              {t.items?.length && t.result === "Fail" ? <ul style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: ".75rem", color: "var(--ink-2)" }}>{t.items.map((it: Conn, i: number) => <li key={i}>{it.item}</li>)}</ul> : null}
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 8 }}>
-                <span style={{ fontSize: 12, color: "var(--muted)" }}>Controls:</span>
+                <span style={{ fontSize: ".75rem", color: "var(--muted)" }}>Controls:</span>
                 {t.controls.map((ctl: string) => <span key={ctl} className="tag" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>{ctl}<button className="icon-btn" style={{ width: 20, height: 20 }} aria-label={`Unlink ${ctl}`} onClick={() => unlink(t, ctl)}><Icon name="x" /></button></span>)}
                 <button className="btn btn-ghost sm" aria-label={`Link a control to: ${t.name}`} onClick={() => link(t)}><Icon name="plus" />Link control</button>
               </div>
@@ -193,7 +193,7 @@ function ConnectionPage({ id }: { id: string }) {
             tabs={[{ key: "nomfa", label: "No MFA", match: (a: Conn) => a.status === "Active" && a.mfa === false }, { key: "admin", label: "Admins", match: (a: Conn) => a.admin }, { key: "unmatched", label: "Not matched", match: (a: Conn) => !a.member }]} />
         </div></div> : null}
         {runs.some((r: Conn) => r.conn === c.id) ? <div className="card"><div className="c-head"><h3>Sync history</h3></div><div className="c-body" style={{ padding: "8px 14px" }}>
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: "var(--ink-2)" }}>{runs.filter((r: Conn) => r.conn === c.id).slice(0, 15).map((r: Conn) => <li key={r.id}><span className="num">{r.when}</span> {r.ok ? `${r.pass} pass, ${r.fail} fail, ${r.needs} need data` : `failed: ${r.error}`} ({r.by})</li>)}</ul>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: ".78125rem", color: "var(--ink-2)" }}>{runs.filter((r: Conn) => r.conn === c.id).slice(0, 15).map((r: Conn) => <li key={r.id}><span className="num">{r.when}</span> {r.ok ? `${r.pass} pass, ${r.fail} fail, ${r.needs} need data` : `failed: ${r.error}`} ({r.by})</li>)}</ul>
         </div></div> : null}
       </div></div>
     </Page>

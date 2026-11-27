@@ -10,11 +10,11 @@ export default function MyRemarks({ role }: { role: string }) {
         {remarks.length === 0 ? <p className="sub" style={{ margin: 0 }}>You have not added any remarks.</p> : remarks.map((r) => (
           <div key={r.id} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-              <span style={{ fontSize: 12, fontWeight: 600 }}>{r.policy} · {r.section}</span>
+              <span style={{ fontSize: ".75rem", fontWeight: 600 }}>{r.policy} · {r.section}</span>
               <Chip cls={r.status === "Overdue" ? "bad" : "info"}>{r.status}</Chip>
             </div>
-            <div style={{ fontSize: 13 }}>{r.text}</div>
-            <div className="sub" style={{ fontSize: 12 }}>Owner to review by {r.due}</div>
+            <div style={{ fontSize: ".8125rem" }}>{r.text}</div>
+            <div className="sub" style={{ fontSize: ".75rem" }}>Owner to review by {r.due}</div>
           </div>
         ))}
       </div>

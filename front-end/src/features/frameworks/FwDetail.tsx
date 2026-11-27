@@ -197,14 +197,14 @@ function ReqRow({ fwId, r }: { fwId: string; r: string[] }) {
   return (
     <div className={`fwreq${isOpen ? " open" : ""}${na ? " na" : ""}`}>
       <button type="button" className="fwreq-head" aria-expanded={isOpen} onClick={toggle}>
-        <span className="rh-main"><span className="rh-top"><span className="num strong" style={{ fontSize: 12 }}>{id}</span> <span style={{ fontWeight: 500 }}>{title}</span></span><span className="rh-meta">{meta}</span></span>
+        <span className="rh-main"><span className="rh-top"><span className="num strong" style={{ fontSize: ".75rem" }}>{id}</span> <span style={{ fontWeight: 500 }}>{title}</span></span><span className="rh-meta">{meta}</span></span>
         <ReqStatusPill st={st} /><Icon name="chevd" className="rh-chev" />
       </button>
       {isOpen ? (
         <div className="fwreq-body">
-          <div style={{ fontSize: 13, color: "var(--ink-2)" }}>{gu || "No guidance recorded."}</div>
+          <div style={{ fontSize: ".8125rem", color: "var(--ink-2)" }}>{gu || "No guidance recorded."}</div>
           <div className="stack" style={{ gap: 6 }}>
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>Mapped controls ({mc.length})</span>
+            <span style={{ fontSize: ".75rem", color: "var(--muted)" }}>Mapped controls ({mc.length})</span>
             {mc.length ? (
               <ul className="req-list ctrls" style={codeWidth(mc.map((c) => c.id))} aria-label={`Controls mapped to ${id}`}>
                 {mc.map((c) => (
@@ -216,10 +216,10 @@ function ReqRow({ fwId, r }: { fwId: string; r: string[] }) {
                   </li>
                 ))}
               </ul>
-            ) : <span style={{ fontSize: 12, color: "var(--bad-ink)" }}>None — this requirement is not assessed until a control is mapped.</span>}
+            ) : <span style={{ fontSize: ".75rem", color: "var(--bad-ink)" }}>None — this requirement is not assessed until a control is mapped.</span>}
           </div>
-          {mod ? <div style={{ fontSize: 12, color: "var(--warn-ink)" }}>Mapping edited by {mod.by} on {mod.date}; draft until compliance review.</div> : null}
-          {naRec ? <div style={{ background: "var(--surface-2)", borderRadius: 8, padding: "8px 12px", fontSize: 13, color: "var(--ink-2)" }}>Not applicable: {naRec.reason} ({naRec.by}, {naRec.date})</div> : null}
+          {mod ? <div style={{ fontSize: ".75rem", color: "var(--warn-ink)" }}>Mapping edited by {mod.by} on {mod.date}; draft until compliance review.</div> : null}
+          {naRec ? <div style={{ background: "var(--surface-2)", borderRadius: 8, padding: "8px 12px", fontSize: ".8125rem", color: "var(--ink-2)" }}>Not applicable: {naRec.reason} ({naRec.by}, {naRec.date})</div> : null}
           {admin ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, borderTop: "1px dashed var(--line-2)", paddingTop: 10, marginTop: 2 }}>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
@@ -237,7 +237,7 @@ function ReqRow({ fwId, r }: { fwId: string; r: string[] }) {
                   <button className="btn btn-secondary sm" onClick={toggleNA}>Mark not applicable</button>
                 </div>
               )}
-              {err[id] ? <div role="alert" style={{ color: "var(--bad-ink)", fontSize: 12, fontWeight: 600 }}>{err[id]}</div> : null}
+              {err[id] ? <div role="alert" style={{ color: "var(--bad-ink)", fontSize: ".75rem", fontWeight: 600 }}>{err[id]}</div> : null}
             </div>
           ) : null}
         </div>

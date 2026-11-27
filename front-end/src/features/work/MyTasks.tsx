@@ -38,10 +38,10 @@ export default function MyTasks({ role }: { role: string }) {
               <li key={t.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", padding: "10px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><Chip cls={KIND[t.kind] || "neutral"}>{t.kind}</Chip><span style={{ fontWeight: 600 }}>{t.title}</span></div>
-                  <div className="sub" style={{ fontSize: 12, marginTop: 2 }}>{t.detail}</div>
+                  <div className="sub" style={{ fontSize: ".75rem", marginTop: 2 }}>{t.detail}</div>
                 </div>
                 <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", color: t.isDone ? "var(--ok-ink)" : t.late ? "var(--bad-ink)" : "var(--muted)" }}>{t.isDone ? "Completed" : t.due}</span>
+                  <span style={{ fontSize: ".75rem", fontWeight: 600, whiteSpace: "nowrap", color: t.isDone ? "var(--ok-ink)" : t.late ? "var(--bad-ink)" : "var(--muted)" }}>{t.isDone ? "Completed" : t.due}</span>
                   <button className={`btn sm ${t.isDone ? "btn-secondary" : "btn-primary"}`} disabled={t.isDone} onClick={() => run(t)}>{t.isDone ? "Done" : t.btn}</button>
                 </div>
               </li>

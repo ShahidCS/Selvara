@@ -63,7 +63,7 @@ export function UsersTab({ cid }: { cid: string }) {
     ];
   };
   const cols: DTColumn<User>[] = [
-    { key: "name", header: "User", locked: true, value: (u) => u.name, render: (u) => <><div className="strong">{u.name}</div><div style={{ fontSize: 11.5, color: "var(--muted)" }}>{u.email}</div></> },
+    { key: "name", header: "User", locked: true, value: (u) => u.name, render: (u) => <><div className="strong">{u.name}</div><div style={{ fontSize: ".71875rem", color: "var(--muted)" }}>{u.email}</div></> },
     { key: "role", header: "Role", value: (u) => u.role, render: (u) => u.role },
     { key: "country", header: "Location", value: (u) => u.country, render: (u) => u.country },
     { key: "status", header: "Status", value: (u) => u.status, render: (u) => <StatusChip s={u.status} /> },

@@ -117,13 +117,13 @@ export default function TrustPublic({ L, manage, back }: { L: LayerApi; manage: 
           <div id="tq-ans" style={{ marginTop: 12 }} aria-live="polite">
             {shown ? (shown.ans ? (
               <AIPanel source="Trust Center assistant" meta="From published material" label="Assistant answer">
-                <p style={{ margin: "6px 0 0", fontSize: 13.5 }}>{shown.reply}</p>
-                <p style={{ margin: "6px 0 0", fontSize: 11.5, color: "var(--muted)" }}>For anything binding, request documents under NDA.</p>
+                <p style={{ margin: "6px 0 0", fontSize: ".84375rem" }}>{shown.reply}</p>
+                <p style={{ margin: "6px 0 0", fontSize: ".71875rem", color: "var(--muted)" }}>For anything binding, request documents under NDA.</p>
               </AIPanel>
             ) : (
               <div className="card" style={{ boxShadow: "none", background: "var(--surface-2)" }}><div className="c-body" style={{ padding: "12px 14px" }}>
-                <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>Forwarded to the security team</div>
-                <div style={{ fontSize: 13.5 }}>{shown.reply}</div>
+                <div style={{ fontSize: ".75rem", color: "var(--muted)", marginBottom: 5 }}>Forwarded to the security team</div>
+                <div style={{ fontSize: ".84375rem" }}>{shown.reply}</div>
               </div></div>
             )) : null}
           </div>

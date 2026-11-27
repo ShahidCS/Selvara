@@ -70,7 +70,7 @@ export function PlatformSecurity() {
   return (
     <div data-tour="security-rules" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Rules title="Password baseline (all companies)" rules={PWD_RULES}>
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 14, fontSize: 13 }}>
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 14, fontSize: ".8125rem" }}>
           <button className="linkbtn inline" onClick={() => go("/auth")}>Try the live password check</button>
           {spec ? <button className="linkbtn inline" onClick={() => go("/ws/appsec")}>Full application security controls</button> : null}
         </div>

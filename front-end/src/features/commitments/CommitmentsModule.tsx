@@ -49,7 +49,7 @@ export default function CommitmentsModule() {
     <div className="card" data-tour="commitments-incident-banner" style={{ background: "var(--bad-bg,var(--warn-bg))", borderColor: "transparent", marginBottom: 12 }}>
       <div className="c-body" style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 10, color: "var(--bad-ink)" }} role="alert">
         <Icon name="alert" />
-        <div style={{ flex: "1 1 auto" }}><div style={{ fontWeight: 600 }}>Incident mode active</div><div style={{ fontSize: 12.5 }}>{INCIDENT.summary ? <div style={{ fontWeight: 500 }}>{INCIDENT.summary}</div> : null}Breach clock started {stampText(INCIDENT.started)}{INCIDENT.startedBy ? " by " + INCIDENT.startedBy : ""}. Customer notice obligations are in effect (48h){deadline ? <>: <strong>notify affected customers by {deadline}</strong></> : ""}.{INCIDENT.overdue ? " The notice deadline has passed." : ""}</div></div>
+        <div style={{ flex: "1 1 auto" }}><div style={{ fontWeight: 600 }}>Incident mode active</div><div style={{ fontSize: ".78125rem" }}>{INCIDENT.summary ? <div style={{ fontWeight: 500 }}>{INCIDENT.summary}</div> : null}Breach clock started {stampText(INCIDENT.started)}{INCIDENT.startedBy ? " by " + INCIDENT.startedBy : ""}. Customer notice obligations are in effect (48h){deadline ? <>: <strong>notify affected customers by {deadline}</strong></> : ""}.{INCIDENT.overdue ? " The notice deadline has passed." : ""}</div></div>
         <button className="btn btn-secondary sm" disabled={!can} title={why} onClick={closeIncident}><Icon name="check" />Close incident</button>
       </div>
     </div>

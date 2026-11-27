@@ -30,7 +30,7 @@ export function ApiBlocks({ s }: { s: ElevationState }) {
                 <tr key={r.ip}>
                   <td className="strong num">{r.ip}</td>
                   <td>{r.level >= LEVEL_LABEL.length ? <Chip cls="bad" icon="alert">{LEVEL_LABEL[LEVEL_LABEL.length - 1]}</Chip> : <Chip cls="warn" icon="clock">{LEVEL_LABEL[Math.max(0, r.level - 1)]}</Chip>}</td>
-                  <td className="num" style={{ fontSize: 12 }}>{utcMin(r.until)}</td>
+                  <td className="num" style={{ fontSize: ".75rem" }}>{utcMin(r.until)}</td>
                   <td className="num">{r.blocks}</td>
                   <td className="r">{s.canElevate ? <button className="btn btn-ghost sm" disabled={!!lock} title={lock} aria-label={`Lift block: ${r.ip}`} onClick={() => L.openModal(`Lift block on ${r.ip}`, (close) => <Lift ip={r.ip} close={close} />)}><Icon name="unlock" />Lift block</button> : null}</td>
                 </tr>

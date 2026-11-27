@@ -12,7 +12,7 @@ export default function EvidenceUpload({ qid, file, onPick, hint }: { qid: strin
       <button type="button" className="btn btn-secondary" aria-label={`Attach evidence for ${qid}`} onClick={() => ref.current?.click()}>Attach evidence</button>
       <input ref={ref} type="file" hidden accept=".pdf,.docx,.xlsx,.png,.jpg" aria-label={`Evidence file for ${qid}`}
         onChange={(e) => { const f = e.target.files && e.target.files[0]; if (f) onPick(f); e.target.value = ""; }} />
-      {hint ? <span style={{ fontSize: 12, color: "var(--muted)" }}>Suggested: {hint}</span> : null}
+      {hint ? <span style={{ fontSize: ".75rem", color: "var(--muted)" }}>Suggested: {hint}</span> : null}
       {file ? <span className={"chip " + cls} role="status" style={{ height: "auto", minHeight: 22, whiteSpace: "normal", padding: "3px 8px" }}><Icon name={file.status === "clean" ? "check" : file.status === "blocked" ? "x" : "clock"} />{text}</span> : null}
     </div>
   );

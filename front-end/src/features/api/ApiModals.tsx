@@ -19,7 +19,7 @@ export function KeyCreated({ full, label, scope, close }: { full: string; label:
   return (
     <>
       <p style={{ margin: "0 0 10px" }}>Copy this key now. For security it will not be shown again.</p>
-      <div className="field"><input ref={ref} className="input num" id="ak-full" readOnly value={full} style={{ fontSize: 12 }} aria-label={API_ON ? "New API key" : "New API key (demo)"} autoComplete="off" spellCheck={false} /></div>
+      <div className="field"><input ref={ref} className="input num" id="ak-full" readOnly value={full} style={{ fontSize: ".75rem" }} aria-label={API_ON ? "New API key" : "New API key (demo)"} autoComplete="off" spellCheck={false} /></div>
       <p className="field help">{label} · {scope} scope</p>
       <p className="field help">{API_ON ? "Selvara keeps only a fingerprint of this key: if it is lost, revoke it and create a new one." : "Demo key only: generated in this browser, accepted by nothing."}</p>
       <LayerFoot><button className="btn btn-secondary" onClick={copy}><Icon name="copy" />Copy key</button><button className="btn btn-primary" onClick={close}>Done</button></LayerFoot>
@@ -70,7 +70,7 @@ export function RevealSecretModal({ id, close }: { id: string; close: () => void
   if (s) return (
     <>
       <p style={{ margin: "0 0 10px" }}>Copy this signing secret now and store it where your endpoint verifies signatures. It will not be shown again.</p>
-      <div className="field"><input ref={ref} className="input num" readOnly value={s} style={{ fontSize: 12 }} aria-label="Webhook signing secret" autoComplete="off" spellCheck={false} /></div>
+      <div className="field"><input ref={ref} className="input num" readOnly value={s} style={{ fontSize: ".75rem" }} aria-label="Webhook signing secret" autoComplete="off" spellCheck={false} /></div>
       <LayerFoot><button className="btn btn-secondary" onClick={copy}><Icon name="copy" />Copy secret</button><button className="btn btn-primary" onClick={() => { setS(null); close(); }}>Done</button></LayerFoot>
     </>
   );

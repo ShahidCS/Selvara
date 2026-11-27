@@ -33,7 +33,7 @@ function DemoRates() {
     { key: "status", header: "Status", value: (r) => r.status, render: (r) => (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
         <span style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>{r.status === "Held" ? <span className="chip warn"><Icon name="alert" />Held for review</span> : <StatusChip s="Applied" />}{pending.has(r.code) ? <span className="chip info"><Icon name="clock" />Pending approval</span> : null}</span>
-        {r.status === "Held" && r.reason ? <span style={{ fontSize: 12, color: "var(--muted)", maxWidth: "36ch" }}>{r.reason}</span> : null}
+        {r.status === "Held" && r.reason ? <span style={{ fontSize: ".75rem", color: "var(--muted)", maxWidth: "36ch" }}>{r.reason}</span> : null}
       </div>
     ) },
     { key: "act", header: "Actions", locked: true, align: "end", render: (r) => {
@@ -81,9 +81,9 @@ function DemoRates() {
         <summary className="c-head" style={{ cursor: "pointer", listStyle: "none", display: "flex", alignItems: "center", gap: 8 }}>
           <Icon name="chevron" style={{ transform: rules ? "rotate(90deg)" : undefined, transition: "transform var(--dur, 150ms)" }} />
           <h3 style={{ margin: 0 }}>How rates are refreshed and held</h3>
-          <span style={{ marginLeft: "auto", fontSize: 12.5, color: "var(--accent-ink)", textDecoration: "underline" }}>{rules ? "Hide details" : "Show details"}</span>
+          <span style={{ marginLeft: "auto", fontSize: ".78125rem", color: "var(--accent-ink)", textDecoration: "underline" }}>{rules ? "Hide details" : "Show details"}</span>
         </summary>
-        <div className="c-body" style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.55 }}>
+        <div className="c-body" style={{ fontSize: ".8125rem", color: "var(--ink-2)", lineHeight: 1.55 }}>
           <p style={{ margin: "0 0 8px" }}>Rates refresh automatically every 12 hours while a super admin is signed in, cross-checked across two feeds.{held ? <> <b>{held} rate{held !== 1 ? "s are" : " is"} held for review.</b></> : null}</p>
           <ul style={{ margin: 0, paddingLeft: 18, maxWidth: "72ch" }}>
             <li>Two feeds: the first is used; the second cross-checks and takes over if the first fails.</li>

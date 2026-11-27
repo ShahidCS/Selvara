@@ -15,15 +15,15 @@ export function ChainView({ ok, onVerify, can }: { ok: boolean; onVerify: () => 
         <div className="c-body" style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 12 }}>
           <Icon name={ok ? "check" : "alert"} style={{ color: ok ? "var(--ok-ink)" : "var(--bad-ink)" }} />
           <div style={{ flex: "1 1 240px", minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 15, color: ok ? "var(--ok-ink)" : "var(--bad-ink)" }} role="status">{ok ? "Chain intact" : "Chain broken — tampering detected"}</div>
-            <div style={{ fontSize: 12.5, color: "var(--ink-2)", overflowWrap: "anywhere" }}>{WS_AUDIT.length} entries sealed. Anchored head: <span className="num">{wsLastHash()}</span></div>
+            <div style={{ fontWeight: 600, fontSize: ".9375rem", color: ok ? "var(--ok-ink)" : "var(--bad-ink)" }} role="status">{ok ? "Chain intact" : "Chain broken — tampering detected"}</div>
+            <div style={{ fontSize: ".78125rem", color: "var(--ink-2)", overflowWrap: "anywhere" }}>{WS_AUDIT.length} entries sealed. Anchored head: <span className="num">{wsLastHash()}</span></div>
           </div>
           <button className="btn btn-primary sm" disabled={!can} onClick={onVerify}><Icon name="check" />Verify chain</button>
         </div>
       </div>
       <p className="field help" style={{ margin: 0, maxWidth: "none" }}>{API_ON ? "The server seals every entry with SHA-256 over its fields and the previous entry's hash, per company, and the database refuses any change or deletion. Verify chain asks the database to recompute the whole chain." : DEMO_HASH_NOTE}</p>
       <div className="panels" style={{ gridTemplateColumns: "1.5fr 1fr", alignItems: "stretch" }}>
-        <div className="card"><div className="c-head"><h3>How the chain of evidence works</h3></div><div className="c-body"><ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7, color: "var(--ink-2)", fontSize: 13 }}>
+        <div className="card"><div className="c-head"><h3>How the chain of evidence works</h3></div><div className="c-body"><ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7, color: "var(--ink-2)", fontSize: ".8125rem" }}>
           <li>Each workspace event records the time, actor, action, target and category, and the GDPR Article 30 processing activity it belongs to.</li>
           <li>Each entry is sealed by hashing its fields plus the previous entry&apos;s hash, so any later edit or deletion breaks every hash after it.</li>
           <li>The log is append-only. Verifying walks the chain from the genesis hash to the anchored head.</li>
@@ -43,7 +43,7 @@ export function ChainView({ ok, onVerify, can }: { ok: boolean; onVerify: () => 
                 <td>{linkOk(l, i) ? <Chip cls="ok" icon="check">Sealed</Chip> : <Chip cls="bad" icon="x">Broken</Chip>}</td>
                 <td className="num" style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{l.at}</td>
                 <td className="strong" style={{ whiteSpace: "nowrap" }}>{l.actor}</td><td className="num">{l.action}</td><td>{l.target}</td>
-                <td className="num" title={l.prev} style={{ color: "var(--muted)", fontSize: 11 }}>{short(l.prev)}</td><td className="num" title={l.hash} style={{ fontSize: 11 }}>{short(l.hash)}</td>
+                <td className="num" title={l.prev} style={{ color: "var(--muted)", fontSize: ".6875rem" }}>{short(l.prev)}</td><td className="num" title={l.hash} style={{ fontSize: ".6875rem" }}>{short(l.hash)}</td>
               </tr>
             ))}
           </Table>

@@ -27,7 +27,7 @@ export function SupportGrants() {
             return (
               <tr key={g.id}>
                 <td className="strong num" style={{ whiteSpace: "nowrap" }}>{g.id}</td><td>{CUSTOMERS[g.custId] ? CUSTOMERS[g.custId].name : "Unknown customer"}</td>
-                <td style={{ fontSize: 12 }}>{g.approvedBy}</td><td className="num">{fmtUtc(g.approvedAt)}</td><td>{g.scope}</td><td className="num">{fmtUtc(g.expiresAt)}</td>
+                <td style={{ fontSize: ".75rem" }}>{g.approvedBy}</td><td className="num">{fmtUtc(g.approvedAt)}</td><td>{g.scope}</td><td className="num">{fmtUtc(g.expiresAt)}</td>
                 <td>{live ? <Chip cls="ok" icon="clock">Active</Chip> : <Chip cls="neutral" icon="dot">Expired</Chip>}</td>
               </tr>
             );

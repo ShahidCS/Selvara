@@ -26,7 +26,7 @@ export default function VerifyEmail({ onVerify, demoHint }: { onVerify: (email: 
             value={email} onChange={(e) => { setEmail(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "vp-email-err" : undefined} style={{ height: 44 }} />
         </div>
         <div id="vp-email-err"><ErrLine msg={err} /></div>
-        <button type="submit" className="btn btn-primary lg" disabled={busy} style={{ height: 48, borderRadius: 999 }}>Continue</button>
+        <button type="submit" className="btn btn-primary lg" disabled={busy} style={{ height: "3rem", borderRadius: 999 }}>Continue</button>
         {demoHint ? <Hint>Demo: the request was sent to <code>{demoHint}</code>. Personal and temporary email addresses are rejected; a different address gets the same generic message as an invalid link.</Hint> : null}
       </form>
     </Section>

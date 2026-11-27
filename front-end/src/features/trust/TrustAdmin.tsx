@@ -64,7 +64,7 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
         {DATA.trust.map((t, i) => (
           <div className="card" key={i}><div className="c-body">
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "start" }}><div style={{ fontWeight: 600 }}>{t.name}</div><StatusChip s={t.status} /></div>
-            <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 8 }}><Icon name={t.access === "Public" ? "check" : "access"} /> {t.access}{API_ON && t.file ? ` · ${t.file.name}` : ""}</div>
+            <div style={{ fontSize: ".78125rem", color: "var(--muted)", marginTop: 8 }}><Icon name={t.access === "Public" ? "check" : "access"} /> {t.access}{API_ON && t.file ? ` · ${t.file.name}` : ""}</div>
             <div className="btngrp" style={{ marginTop: 12 }}>
               {API_ON ? <>
                 <button className="btn btn-secondary sm" disabled={!t.file} title={t.file ? undefined : "No file attached yet"} onClick={() => attempt(L, async () => { const { url } = await svc.resourceLink(i); window.open(url, "_blank", "noopener"); })}><Icon name="ext" />View</button>
@@ -87,8 +87,8 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
               {TRUST.requests.map((r) => (
                 <tr key={r.id}>
                   <td className="strong num">{r.id}</td>
-                  <td>{r.who}{svc.isBlockedWho(r.who) ? <> <span className="chip bad" style={{ marginLeft: 4 }}><Icon name="alert" />Blocked domain</span></> : null}<div style={{ fontSize: 11.5, color: "var(--muted)" }}>{r.company} · {r.at}</div></td>
-                  <td>{r.resource}</td><td style={{ fontSize: 12, color: "var(--muted)" }}>{r.reason}</td>
+                  <td>{r.who}{svc.isBlockedWho(r.who) ? <> <span className="chip bad" style={{ marginLeft: 4 }}><Icon name="alert" />Blocked domain</span></> : null}<div style={{ fontSize: ".71875rem", color: "var(--muted)" }}>{r.company} · {r.at}</div></td>
+                  <td>{r.resource}</td><td style={{ fontSize: ".75rem", color: "var(--muted)" }}>{r.reason}</td>
                   <td className="r">
                     {(() => { const why = svc.approveBlockReason(r); return (<><div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "flex-end" }}>
                       <button className="btn btn-ghost sm" disabled={!!why} aria-describedby={why ? "tra-" + r.id : undefined} onClick={() => approve(r.id)}><Icon name="check" />Approve</button>
@@ -106,12 +106,12 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
           <Table cols={[{ t: "Account" }, { t: "Viewers and their NDA" }, { t: "Access to" }, { t: "Status" }, { t: "" }]}>
             {TRUST.accounts.map((a, i) => (
               <tr key={i}>
-                <td className="strong">{a.company}<div style={{ fontSize: 11.5, color: "var(--muted)" }}>{a.domain}</div></td>
-                <td style={{ fontSize: 12 }}>{a.viewers.length ? (a.people ?? a.viewers.map((email) => ({ email, nda: "Pending" }))).map((v, j) => (
+                <td className="strong">{a.company}<div style={{ fontSize: ".71875rem", color: "var(--muted)" }}>{a.domain}</div></td>
+                <td style={{ fontSize: ".75rem" }}>{a.viewers.length ? (a.people ?? a.viewers.map((email) => ({ email, nda: "Pending" }))).map((v, j) => (
                   <div key={j} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", padding: "2px 0" }}>{v.email}
                     {v.nda.startsWith("Accepted") ? <Chip cls="ok" icon="check">NDA {v.nda.toLowerCase()}</Chip> : <Chip cls="warn" icon="clock">NDA pending</Chip>}</div>
                 )) : <span style={{ color: "var(--muted)" }}>None yet</span>}</td>
-                <td style={{ fontSize: 12 }}>{Array.isArray(a.access) ? a.access.join(", ") || "—" : a.access}</td><td><StatusChip s={a.status} /></td>
+                <td style={{ fontSize: ".75rem" }}>{Array.isArray(a.access) ? a.access.join(", ") || "—" : a.access}</td><td><StatusChip s={a.status} /></td>
                 <td className="r">{a.status === "Active" ? <button className="btn btn-ghost sm" disabled={!canAct} title={noRole || undefined} onClick={() => revoke(i)}>Revoke</button> : null}</td>
               </tr>
             ))}
@@ -123,9 +123,9 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
               <Table cols={[{ t: "When" }, { t: "Requester" }, { t: "Resource" }, { t: "Decision" }, { t: "By" }, { t: "Note" }]}>
                 {TRUST.decisions.map((d, i) => (
                   <tr key={i}>
-                    <td style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>{dayText(d.at)}</td><td style={{ fontSize: 12 }}>{d.who}</td><td style={{ fontSize: 12 }}>{d.resource}</td>
+                    <td style={{ fontSize: ".75rem", color: "var(--muted)", whiteSpace: "nowrap" }}>{dayText(d.at)}</td><td style={{ fontSize: ".75rem" }}>{d.who}</td><td style={{ fontSize: ".75rem" }}>{d.resource}</td>
                     <td>{d.decision === "Approved" ? <Chip cls="ok" icon="check">Approved</Chip> : <Chip cls="bad" icon="x">Denied</Chip>}</td>
-                    <td style={{ fontSize: 12 }}>{shortName(d.by)}</td><td style={{ fontSize: 11.5, color: "var(--muted)" }}>{d.note || "—"}</td>
+                    <td style={{ fontSize: ".75rem" }}>{shortName(d.by)}</td><td style={{ fontSize: ".71875rem", color: "var(--muted)" }}>{d.note || "—"}</td>
                   </tr>
                 ))}
               </Table>
@@ -136,7 +136,7 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
               {TRUST.blocked.length ? TRUST.blocked.map((d) => (
                 <span className="chip neutral" key={d} style={{ paddingRight: 2 }}>{d} <button type="button" className="btn btn-ghost sm" onClick={() => unblock(d)} aria-label={"Unblock " + d} title={"Unblock " + d} disabled={!canAct}
                   style={{ minWidth: 24, minHeight: 24, width: 24, height: 24, padding: 0, justifyContent: "center" }}><Icon name="x" aria-hidden="true" /></button></span>
-              )) : <span style={{ fontSize: 12.5, color: "var(--muted)" }}>No blocked domains.</span>}
+              )) : <span style={{ fontSize: ".78125rem", color: "var(--muted)" }}>No blocked domains.</span>}
             </div>
             <button className="btn btn-secondary sm" disabled={!canAct} title={noRole || undefined} onClick={() => L.openModal("Block a domain", <BlockDomainForm L={L} />)}><Icon name="plus" />Block a domain</button>
           </section>
@@ -148,7 +148,7 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
       <div className="split" style={{ gridTemplateColumns: "1.3fr 1fr" }}>
         <section><div className="sectitle" style={SEC}>Recent viewer activity</div>
           <Table cols={[{ t: "When" }, { t: "Viewer" }, { t: "Activity" }]}>
-            {TRUST.activity.map((a, i) => <tr key={i}><td style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>{a.at}</td><td className="strong" style={{ fontSize: 12.5 }}>{a.who}</td><td>{a.what}</td></tr>)}
+            {TRUST.activity.map((a, i) => <tr key={i}><td style={{ fontSize: ".75rem", color: "var(--muted)", whiteSpace: "nowrap" }}>{a.at}</td><td className="strong" style={{ fontSize: ".78125rem" }}>{a.who}</td><td>{a.what}</td></tr>)}
           </Table>
         </section>
         <section><div className="sectitle" style={SEC}>Public-page change history</div>
@@ -170,9 +170,9 @@ export default function TrustAdmin({ L, setPublic }: { L: LayerApi; setPublic: (
         <div className="sectitle" style={SEC}>Conversation log</div>
         {TRUST.chats.length ? TRUST.chats.map((c, i) => (
           <div key={i} style={{ marginBottom: 12 }}>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 4 }}>{dayText(c.at)} · visitor ({c.who})</div>
+            <div style={{ fontSize: ".75rem", color: "var(--muted)", marginBottom: 4 }}>{dayText(c.at)} · visitor ({c.who})</div>
             <div style={{ fontWeight: 500, marginBottom: 6 }}>{c.q}</div>
-            <AIPanel source="Trust Center chatbot" label={"Chatbot answer to: " + c.q}><p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--ink-2)" }}>{c.a}</p></AIPanel>
+            <AIPanel source="Trust Center chatbot" label={"Chatbot answer to: " + c.q}><p style={{ margin: "6px 0 0", fontSize: ".8125rem", color: "var(--ink-2)" }}>{c.a}</p></AIPanel>
           </div>
         )) : <Empty compact icon="message" title="No conversations yet" />}
       </div>
@@ -206,7 +206,7 @@ function PublicPageCard({ canAct, noRole }: { canAct: boolean; noRole?: string |
       <div className="c-body" style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 320px" }}>
           <div style={{ fontWeight: 600 }}>Public page for visitors without an account</div>
-          <div style={{ fontSize: 12.5, color: "var(--muted)" }}>{pg.on ? <>On since {pg.since} (approved by {pg.by}): <a href={url} target="_blank" rel="noopener noreferrer">{url}</a></> : pg.pending ? "Turning it on is waiting for a second admin or owner (Approvals)." : "Off. When on, anyone can see the sections you publish (What visitors can see, on the Resources tab)."}
+          <div style={{ fontSize: ".78125rem", color: "var(--muted)" }}>{pg.on ? <>On since {pg.since} (approved by {pg.by}): <a href={url} target="_blank" rel="noopener noreferrer">{url}</a></> : pg.pending ? "Turning it on is waiting for a second admin or owner (Approvals)." : "Off. When on, anyone can see the sections you publish (What visitors can see, on the Resources tab)."}
             {" The address uses your company code, which is also what people type to ask to join your workspace; a join request always needs an admin's approval."}
             {!pg.mail ? " Email is not set up for the platform, so visitors cannot verify an address to request documents or subscribe." : " Visitors confirm a work email with a code before they request a document, accept the NDA or subscribe."}</div>
         </div>

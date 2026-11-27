@@ -71,15 +71,15 @@ function FrameworksList() {
           {f.reqEdition ? <Chip cls="warn" icon="alert" title={`Requirements reflect an earlier edition: ${f.reqEdition}`}>Earlier edition</Chip> : null}</div>
         {f.title ? <div className="fw-full">{f.title}</div> : null}
         {f.publisher || f.version ? <div className="fw-src">{[f.publisher, f.version].filter(Boolean).join(" · ")}</div> : null}
-        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>{cat ? cat.r.length + " requirements, " : ""}{f.mapped} mapped controls{f.audit ? ", " + f.audit : ""}</div>
+        <div style={{ fontSize: ".75rem", color: "var(--muted)", marginTop: 2 }}>{cat ? cat.r.length + " requirements, " : ""}{f.mapped} mapped controls{f.audit ? ", " + f.audit : ""}</div>
       </>);
     } },
     { key: "region", header: "Region", width: 80, value: (f) => f.region || "-", render: (f) => f.region || "-" },
     { key: "ready", header: "Readiness", width: 170, value: (f) => pctOf(f), render: (f) => {
       const p = pctOf(f);
       return (<div>
-        <div style={{ display: "flex", gap: 10, alignItems: "center" }}><FwSegsBar fwId={f.id} />{fwAssessed(f.id) ? <span className="num" style={{ fontSize: 13, fontWeight: 600, color: readinessTone(p), width: 38, textAlign: "right" }}>{p}%</span> : <span className="num" title={NOT_ASSESSED} aria-label={NOT_ASSESSED} style={{ fontSize: 13, color: "var(--muted)", width: 38, textAlign: "right" }}>—</span>}</div>
-        <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3 }}>{fwLegend(f.id)}</div>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}><FwSegsBar fwId={f.id} />{fwAssessed(f.id) ? <span className="num" style={{ fontSize: ".8125rem", fontWeight: 600, color: readinessTone(p), width: 38, textAlign: "right" }}>{p}%</span> : <span className="num" title={NOT_ASSESSED} aria-label={NOT_ASSESSED} style={{ fontSize: ".8125rem", color: "var(--muted)", width: 38, textAlign: "right" }}>—</span>}</div>
+        <div style={{ fontSize: ".71875rem", color: "var(--muted)", marginTop: 3 }}>{fwLegend(f.id)}</div>
       </div>);
     } },
     { key: "status", header: "Status", width: 100, value: (f) => (fwSnoozed(f.id) ? "Snoozed" : "Active"), render: (f) => { const sn = fwSnoozed(f.id); return <Chip cls={sn ? "neutral" : "ok"} icon={sn ? "clock" : "check"}>{sn ? "Snoozed" : "Active"}</Chip>; } },

@@ -24,7 +24,7 @@ export function AccessRequests({ canAct }: { canAct: boolean }) {
   if (!ACCESS_REQUESTS.length) return <Empty icon="access" title="No requests">No access requests are open.</Empty>;
   const cols: DTColumn<Req>[] = [
     { key: "id", header: "ID", nowrap: true, value: (r) => r.id, locked: true, render: (r) => <span className="strong num">{r.id}</span> },
-    { key: "user", header: "User", value: (r) => r.user, render: (r) => <>{r.user}{r.requester && r.requester !== r.user ? <div style={{ fontSize: 11, color: "var(--muted)" }}>requested by {r.requester}</div> : null}</> },
+    { key: "user", header: "User", value: (r) => r.user, render: (r) => <>{r.user}{r.requester && r.requester !== r.user ? <div style={{ fontSize: ".6875rem", color: "var(--muted)" }}>requested by {r.requester}</div> : null}</> },
     { key: "system", header: "System", value: (r) => r.system, render: (r) => r.system },
     { key: "level", header: "Level", value: (r) => r.level, render: (r) => r.level },
     { key: "reason", header: "Reason", value: (r) => r.reason, render: (r) => r.reason },
@@ -33,7 +33,7 @@ export function AccessRequests({ canAct }: { canAct: boolean }) {
       return (
         <>
           {r.status === "Approved" ? <Chip cls="ok" icon="check">Approved</Chip> : r.status === "Denied" ? <Chip cls="bad" icon="x">Denied</Chip> : r.status === "Expired" ? <Chip cls="neutral" icon="clock">Expired</Chip> : <Chip cls="warn" icon="clock">{r.stage === "second" ? "Awaiting 2nd approver" : "Pending"}</Chip>}
-          {two ? <div style={{ fontSize: 11, color: "var(--muted)" }}>Two approvers required{r.firstApprover ? `; first: ${r.firstApprover}` : ""}</div> : null}
+          {two ? <div style={{ fontSize: ".6875rem", color: "var(--muted)" }}>Two approvers required{r.firstApprover ? `; first: ${r.firstApprover}` : ""}</div> : null}
         </>
       );
     } },
@@ -44,7 +44,7 @@ export function AccessRequests({ canAct }: { canAct: boolean }) {
           <button className="btn btn-ghost sm" disabled={!!why} title={why || undefined} aria-label={`Approve ${r.id}`} onClick={() => decide(r, "Approved")}><Icon name="check" />Approve</button>
           <button className="btn btn-ghost sm" disabled={!!why} title={why || undefined} aria-label={`Deny ${r.id}`} onClick={() => decide(r, "Denied")}><Icon name="x" />Deny</button>
         </div>
-      ) : <span style={{ color: "var(--muted)", fontSize: 12 }}>Read-only</span>) : null;
+      ) : <span style={{ color: "var(--muted)", fontSize: ".75rem" }}>Read-only</span>) : null;
     } },
   ];
   return (

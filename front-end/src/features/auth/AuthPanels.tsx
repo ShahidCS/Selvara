@@ -13,7 +13,7 @@ export function AuthCard({ children }: { children: ReactNode }) {
   return (
     <div style={{ maxWidth: 380, margin: "24px auto" }}>
       <div className="card"><div className="c-body" style={{ padding: 22 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16 }}><BrandMark size={28} className="" /><div style={{ fontWeight: 600, fontSize: 16 }}>Selvara</div></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16 }}><BrandMark size={28} className="" /><div style={{ fontWeight: 600, fontSize: "1rem" }}>Selvara</div></div>
         {children}
       </div></div>
       <p className="field help" style={{ textAlign: "center", marginTop: 12 }}>Preview of the hosted sign-in experience. Every customer gets the same enforced security.</p>
@@ -46,7 +46,7 @@ export function SignIn({ api }: { api: PanelApi }) {
         <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }}>Sign in</button>
         <button type="button" className="btn btn-secondary" style={{ ...full, marginTop: 8 }} onClick={() => api.toast("Passkey challenge started")}><Icon name="shieldcheck" />Sign in with a passkey</button>
         <p className="field help" style={{ marginTop: 10 }}>After {POLICY.lockoutAttempts} failed attempts sign-in slows down. The message is the same whether or not the account exists.</p>
-        <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}><button type="button" className="linkbtn" onClick={() => api.go("reset")}>Forgot password?</button></div>
+        <div style={{ textAlign: "center", marginTop: 12, fontSize: ".8125rem" }}><button type="button" className="linkbtn" onClick={() => api.go("reset")}>Forgot password?</button></div>
       </form>
     </>
   );
@@ -68,10 +68,10 @@ export function Challenge({ api }: { api: PanelApi }) {
     <>
       <Head h="Two-factor authentication" sub="Enter the 6-digit code from your authenticator app." />
       <form onSubmit={submit} noValidate>
-        <div className="field"><label htmlFor="au-otp">Authentication code</label><input ref={ref} className="input" id="au-otp" inputMode="numeric" autoComplete="one-time-code" spellCheck={false} maxLength={6} placeholder="123456" style={{ textAlign: "center", letterSpacing: 6, fontSize: 18 }} value={v} disabled={locked} onChange={(e) => setV(e.target.value)} aria-invalid={err ? true : undefined} aria-describedby={err ? "au-otperr" : undefined} /></div>
+        <div className="field"><label htmlFor="au-otp">Authentication code</label><input ref={ref} className="input" id="au-otp" inputMode="numeric" autoComplete="one-time-code" spellCheck={false} maxLength={6} placeholder="123456" style={{ textAlign: "center", letterSpacing: 6, fontSize: "1.125rem" }} value={v} disabled={locked} onChange={(e) => setV(e.target.value)} aria-invalid={err ? true : undefined} aria-describedby={err ? "au-otperr" : undefined} /></div>
         <ErrP id="au-otperr" msg={err} />
         <button type="submit" className="btn btn-primary" disabled={locked} style={{ ...full, marginTop: 10 }}>Verify &amp; sign in</button>
-        <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}><button type="button" className="linkbtn" onClick={() => api.toast("Recovery code entry (demo). Each code works once.")}>Use a recovery code</button> · <button type="button" className="linkbtn" onClick={() => api.go("signin")}>Back to sign in</button></div>
+        <div style={{ textAlign: "center", marginTop: 12, fontSize: ".8125rem" }}><button type="button" className="linkbtn" onClick={() => api.toast("Recovery code entry (demo). Each code works once.")}>Use a recovery code</button> · <button type="button" className="linkbtn" onClick={() => api.go("signin")}>Back to sign in</button></div>
       </form>
     </>
   );
@@ -133,7 +133,7 @@ export function SetPassword({ api, pfx }: { api: PanelApi; pfx: "ap" | "rp" }) {
       <>
         <Head h="Confirm it's you" sub="Enter the 6-digit code from your authenticator app. We only accept the new password after this step." />
         <form onSubmit={confirmMfa} noValidate>
-          <div className="field"><label htmlFor="rp-otp">Authentication code</label><input ref={rc} className="input" id="rp-otp" inputMode="numeric" autoComplete="one-time-code" spellCheck={false} maxLength={6} placeholder="123456" style={{ textAlign: "center", letterSpacing: 6, fontSize: 18 }} value={code} onChange={(e) => setCode(e.target.value)} aria-invalid={codeErr ? true : undefined} aria-describedby={codeErr ? "rp-otperr" : undefined} /></div>
+          <div className="field"><label htmlFor="rp-otp">Authentication code</label><input ref={rc} className="input" id="rp-otp" inputMode="numeric" autoComplete="one-time-code" spellCheck={false} maxLength={6} placeholder="123456" style={{ textAlign: "center", letterSpacing: 6, fontSize: "1.125rem" }} value={code} onChange={(e) => setCode(e.target.value)} aria-invalid={codeErr ? true : undefined} aria-describedby={codeErr ? "rp-otperr" : undefined} /></div>
           <ErrP id="rp-otperr" msg={codeErr} />
           <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }}>Verify &amp; update password</button>
         </form>
@@ -160,7 +160,7 @@ export function SetPassword({ api, pfx }: { api: PanelApi; pfx: "ap" | "rp" }) {
         <p className="field help" role="status" style={{ color: "var(--bad-ink)", display: pw2 && !st.match ? "block" : "none", margin: "-2px 0 10px" }}>{pw2 && !st.match ? "The two passwords do not match yet." : ""}</p>
         <ErrP id={`${pfx}-err`} msg={err} />
         <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 4 }}>Continue</button>
-        {pfx === "rp" ? <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}><button type="button" className="linkbtn" onClick={() => api.go("signin")}>Back to sign in</button></div> : null}
+        {pfx === "rp" ? <div style={{ textAlign: "center", marginTop: 12, fontSize: ".8125rem" }}><button type="button" className="linkbtn" onClick={() => api.go("signin")}>Back to sign in</button></div> : null}
       </form>
     </>
   );
@@ -181,7 +181,7 @@ export function Reset({ api }: { api: PanelApi }) {
         <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }}>Send reset link</button>
         <div role="status" aria-live="polite">{sent ? <p className="field help" style={{ marginTop: 10 }}>{RESET_ACK} The link works once and expires in {POLICY.resetTokenMinutes} minutes. Resetting signs you out everywhere and needs your authenticator.</p> : null}</div>
         {sent ? <button type="button" className="btn btn-secondary" style={{ ...full, marginTop: 8 }} onClick={() => api.go("resetpw", () => document.getElementById("rp-pw")?.focus())}>Open the reset link (demo)</button> : null}
-        <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}><button type="button" className="linkbtn" onClick={() => api.go("signin")}>Back to sign in</button></div>
+        <div style={{ textAlign: "center", marginTop: 12, fontSize: ".8125rem" }}><button type="button" className="linkbtn" onClick={() => api.go("signin")}>Back to sign in</button></div>
       </form>
     </>
   );
@@ -214,7 +214,7 @@ function RecoveryCodes({ codes, done }: { api: PanelApi; codes: string[]; done: 
   return (
     <>
       <Head h="Save your recovery codes" sub={`${codes.length} single-use codes. Each works once if you lose your device. Store them in a password manager. We will not show them again.`} />
-      <ul aria-label="Recovery codes" style={{ listStyle: "none", margin: "0 0 12px", padding: 12, background: "var(--surface-2)", borderRadius: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontFamily: "monospace", fontSize: 14 }}>
+      <ul aria-label="Recovery codes" style={{ listStyle: "none", margin: "0 0 12px", padding: 12, background: "var(--surface-2)", borderRadius: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontFamily: "monospace", fontSize: ".875rem" }}>
         {codes.map((c) => <li key={c}>{c}</li>)}
       </ul>
       <button type="button" className="btn btn-primary" style={full} onClick={done}>I have saved these codes</button>
@@ -231,11 +231,11 @@ function Totp({ onDone }: { onDone: () => void }) {
   return (
     <>
       <div style={{ background: "var(--surface-2)", borderRadius: 8, padding: 12, textAlign: "center", marginBottom: 12 }}>
-        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>Scan with your authenticator</div>
+        <div style={{ fontSize: ".75rem", color: "var(--muted)", marginBottom: 6 }}>Scan with your authenticator</div>
         <div style={{ width: 120, height: 120, margin: "0 auto", background: "repeating-conic-gradient(var(--ink) 0 25%, var(--surface) 0 50%) 50%/12px 12px", borderRadius: 6 }} role="img" aria-label="Setup QR code (demo)" />
       </div>
       <form onSubmit={submit} noValidate>
-        <div className="field"><label htmlFor="au-totp">Enter the 6-digit code</label><input ref={ref} className="input" id="au-totp" inputMode="numeric" autoComplete="one-time-code" spellCheck={false} maxLength={6} placeholder="123456" style={{ textAlign: "center", letterSpacing: 6, fontSize: 18 }} value={v} onChange={(e) => setV(e.target.value)} aria-invalid={err ? true : undefined} aria-describedby={err ? "au-totperr" : undefined} /></div>
+        <div className="field"><label htmlFor="au-totp">Enter the 6-digit code</label><input ref={ref} className="input" id="au-totp" inputMode="numeric" autoComplete="one-time-code" spellCheck={false} maxLength={6} placeholder="123456" style={{ textAlign: "center", letterSpacing: 6, fontSize: "1.125rem" }} value={v} onChange={(e) => setV(e.target.value)} aria-invalid={err ? true : undefined} aria-describedby={err ? "au-totperr" : undefined} /></div>
         <ErrP id="au-totperr" msg={err} />
         <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 4 }}>Verify &amp; finish</button>
       </form>

@@ -45,7 +45,7 @@ export function PlanPage() {
                     <span style={{ fontWeight: 600 }}>{pn}</span>{cur ? <Chip cls="ok" icon="check">Current</Chip> : null}
                     <span style={{ marginLeft: "auto" }} className="num">{money(p.price)}/mo</span>
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6, paddingLeft: 24 }}>{p.seats} seats · {p.modules.length} modules included</div>
+                  <div style={{ fontSize: ".75rem", color: "var(--muted)", marginTop: 6, paddingLeft: 24 }}>{p.seats} seats · {p.modules.length} modules included</div>
                 </label>
               );
             })}

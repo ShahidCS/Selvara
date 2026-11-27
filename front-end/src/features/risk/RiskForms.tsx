@@ -109,7 +109,7 @@ export function CancelActionForm({ id, ai, text, close }: { id: string; ai: numb
   return (
     <>
       <div>
-        <p style={{ margin: "0 0 10px", fontSize: 13 }}>Cancel the action <strong>{text}</strong>? It stays in the history.</p>
+        <p style={{ margin: "0 0 10px", fontSize: ".8125rem" }}>Cancel the action <strong>{text}</strong>? It stays in the history.</p>
         <div className="field"><label htmlFor="rkc-why">Reason (at least 10 characters)</label><input className="input" id="rkc-why" data-focus maxLength={300} value={why} onChange={(e) => setWhy(e.target.value)} /></div>
         <p className="field help" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
       </div>

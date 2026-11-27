@@ -42,19 +42,19 @@ export default function RiskParties() {
   return (
     <div className="rcaps">
       <section className="card"><div className="c-body">
-        <div style={{ marginBottom: 10 }}><h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>Interested parties</h2>
+        <div style={{ marginBottom: 10 }}><h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 600 }}>Interested parties</h2>
           <p className="sub" style={{ margin: "4px 0 0" }}>Parties whose requirements the register must address (ISO/IEC 27001 clause 4.2), with the risks that affect them.</p></div>
         <Table cols={[{ t: "Interested party" }, { t: "Requirement or expectation" }, { t: "Location" }, { t: "Linked risks" }]} minw={820}>
           {RISK_PARTIES.map((p, pi) => (
             <tr key={pi}>
-              <td className="strong">{p.party}</td><td style={{ fontSize: 13, color: "var(--ink-2)" }}>{p.req}</td><td>{p.loc}</td>
+              <td className="strong">{p.party}</td><td style={{ fontSize: ".8125rem", color: "var(--ink-2)" }}>{p.req}</td><td>{p.loc}</td>
               <td><div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
                 {p.links.length ? p.links.map((l) => (
                   <span key={l} style={{ display: "inline-flex", gap: 2, alignItems: "center" }}>
                     <button className="tag num" style={{ cursor: "pointer" }} onClick={() => riskOpenDetail(l)}>{l}</button>
                     {admin ? <button className="btn btn-ghost sm" onClick={() => unlink(pi, l)} aria-label={`Unlink ${l} from ${p.party}`} title={`Unlink ${l}`} style={{ minWidth: 24, minHeight: 24, width: 24, height: 24, padding: 0, justifyContent: "center" }}><Icon name="x" /></button> : null}
                   </span>
-                )) : <span style={{ color: "var(--muted)", fontSize: 12 }}>None</span>}
+                )) : <span style={{ color: "var(--muted)", fontSize: ".75rem" }}>None</span>}
                 {admin ? (
                   <button className="btn btn-ghost sm" aria-label={`Link a risk to ${p.party}`} disabled={!DATA.risks.some((r) => !p.links.includes(r.id))}
                     onClick={() => L.openModal(`Link a risk to ${p.party}`, (close) => <LinkRiskForm options={DATA.risks.filter((r) => !p.links.includes(r.id)).map((r) => ({ id: String(r.id), title: String(r.title) }))} close={close} onLink={(rid) => { close(); link(pi, rid); }} />)}><Icon name="plus" />Link risk</button>

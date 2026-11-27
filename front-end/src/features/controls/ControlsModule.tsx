@@ -112,7 +112,7 @@ function ControlsList() {
   const testLabel = (r: string) => (r === "Pass" ? "Pass" : r === "Fail" ? "Fail" : "Needs evidence");
   const testTabs = ["Pass", "Needs evidence", "Fail"].filter((x) => tests.some((t: Test) => testLabel(t.result) === x));
   const testCols: DTColumn<Test>[] = [
-    { key: "name", header: "Test", value: (t) => t.name, locked: true, render: (t) => <><div className="strong">{t.name}</div><div style={{ fontSize: 11.5, color: "var(--muted)" }}>{t.id}</div></> },
+    { key: "name", header: "Test", value: (t) => t.name, locked: true, render: (t) => <><div className="strong">{t.name}</div><div style={{ fontSize: ".71875rem", color: "var(--muted)" }}>{t.id}</div></> },
     { key: "source", header: "Source", value: (t) => t.source, render: (t) => t.source },
     { key: "supports", header: "Supports", value: (t) => t.controls.join(" "), render: (t) => <>{t.controls.map((c: string, i: number) => <span key={c}>{i ? " " : ""}<span className="tag num">{c}</span></span>)}</> },
     { key: "cadence", header: "Cadence", value: (t) => t.cadence, render: (t) => t.cadence },

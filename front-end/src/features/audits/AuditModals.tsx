@@ -46,7 +46,7 @@ export function AuditReportBody({ id }: { id: string }) {
   if (!a) return null;
   const open = a.findings.filter(svc.isOpenFinding).length;
   return (
-    <div style={{ fontSize: 13, lineHeight: 1.6 }}>
+    <div style={{ fontSize: ".8125rem", lineHeight: 1.6 }}>
       <div className="sectitle" style={{ marginTop: 0 }}>Summary</div>
       <dl className="meta-grid">
         <dt>Framework</dt><dd>{a.fw}</dd><dt>Auditor</dt><dd>{a.auditor}</dd><dt>Stage</dt><dd>{a.stage}</dd><dt>Scope</dt><dd>{a.scope}</dd>

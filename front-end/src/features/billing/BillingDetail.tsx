@@ -92,7 +92,7 @@ export function BillingDetail({ id }: { id: string }) {
 export function BalanceFigure({ balance, currency, big }: { balance: number; currency: string; big?: boolean }) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-      <span className="num" style={{ color: balance ? "var(--bad-ink)" : "var(--ink)", fontSize: big ? 16 : undefined }}>{money(balance || 0, currency)}</span>
+      <span className="num" style={{ color: balance ? "var(--bad-ink)" : "var(--ink)", fontSize: big ? "1rem" : undefined }}>{money(balance || 0, currency)}</span>
       {balance ? <Chip cls="bad" icon="alert">Past due</Chip> : <Chip cls="ok" icon="check">Paid up</Chip>}
     </span>
   );

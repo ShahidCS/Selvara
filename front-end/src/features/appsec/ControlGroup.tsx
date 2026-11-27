@@ -20,8 +20,8 @@ export function ControlGroup({ g, n, open, onToggle }: { g: Group; n: number; op
         <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "0 16px 16px" }}>
           <p style={{ margin: 0, color: "var(--ink-2)" }}><strong>Threat:</strong> {g.threat}</p>
           <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.7, color: "var(--ink-2)" }}>{g.controls.map((c, i) => <li key={i}>{c}</li>)}</ul>
-          <p style={{ margin: 0, fontSize: 12.5, color: "var(--muted)" }}><strong>Maps to:</strong> {g.refs}</p>
-          <p style={{ margin: 0, fontSize: 12.5, color: "var(--muted)" }}><strong>Test:</strong> {g.test}</p>
+          <p style={{ margin: 0, fontSize: ".78125rem", color: "var(--muted)" }}><strong>Maps to:</strong> {g.refs}</p>
+          <p style={{ margin: 0, fontSize: ".78125rem", color: "var(--muted)" }}><strong>Test:</strong> {g.test}</p>
         </div>
       </div>
     </section>

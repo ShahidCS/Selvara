@@ -17,7 +17,7 @@ export function ReleaseGate({ items }: { items: string[] }) {
           </li>
         ))}
       </ul>
-      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 8 }} aria-live="polite">{n} of {items.length} ticked on this screen</div>
+      <div style={{ fontSize: ".75rem", color: "var(--muted)", marginTop: 8 }} aria-live="polite">{n} of {items.length} ticked on this screen</div>
     </div>
   );
 }

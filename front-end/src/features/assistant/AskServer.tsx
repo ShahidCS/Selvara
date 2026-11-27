@@ -76,16 +76,16 @@ export function AskServer({ scrollRef }: { scrollRef: React.RefObject<HTMLDivEle
   };
   return (
     <div style={{ maxWidth: 880, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 }}>
-      {off ? <div className="card" style={{ boxShadow: "none", background: "var(--warn-bg)", borderColor: "transparent" }}><div className="c-body" style={{ padding: "10px 14px", fontSize: 13, color: "var(--warn-ink)", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      {off ? <div className="card" style={{ boxShadow: "none", background: "var(--warn-bg)", borderColor: "transparent" }}><div className="c-body" style={{ padding: "10px 14px", fontSize: ".8125rem", color: "var(--warn-ink)", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <span style={{ flex: "1 1 260px" }}>{off}</span>{s?.configured ? <button className="btn btn-secondary sm" onClick={() => setModState("assistant.view", "settings")}>Open Settings</button> : null}</div></div> : null}
       {turns.length ? turns.map((m, i) => m.role === "user" ? (
         <div key={i} style={{ alignSelf: "flex-end", maxWidth: "85%" }}>
-          <div style={{ background: "var(--accent-weak)", color: "var(--ink)", padding: "9px 13px", borderRadius: "13px 13px 3px 13px", fontSize: 13.5, lineHeight: 1.5, overflowWrap: "anywhere" }}>{m.text}</div>
-          <div style={{ fontSize: 11.5, color: "var(--muted)", textAlign: "right", marginTop: 3 }}>{m.notSent ? "Not sent" : m.records?.length ? `Sent with ${m.records.length} record${m.records.length === 1 ? "" : "s"}: ${m.records.join(", ")}` : "No records sent"}</div>
+          <div style={{ background: "var(--accent-weak)", color: "var(--ink)", padding: "9px 13px", borderRadius: "13px 13px 3px 13px", fontSize: ".84375rem", lineHeight: 1.5, overflowWrap: "anywhere" }}>{m.text}</div>
+          <div style={{ fontSize: ".71875rem", color: "var(--muted)", textAlign: "right", marginTop: 3 }}>{m.notSent ? "Not sent" : m.records?.length ? `Sent with ${m.records.length} record${m.records.length === 1 ? "" : "s"}: ${m.records.join(", ")}` : "No records sent"}</div>
         </div>
       ) : m.blocked ? (
         <div key={i} role="alert" className="card" style={{ alignSelf: "flex-start", maxWidth: "94%", boxShadow: "none", background: "var(--bad-bg)", borderColor: "transparent" }}>
-          <div className="c-body" style={{ padding: "10px 14px", fontSize: 13, color: "var(--bad-ink)" }}>
+          <div className="c-body" style={{ padding: "10px 14px", fontSize: ".8125rem", color: "var(--bad-ink)" }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}><Icon name="alert" /><strong>Blocked by the PII blocker</strong></div>
             <p style={{ margin: "0 0 6px" }}>{m.blocked.message}</p>
             <ul style={{ margin: 0, paddingLeft: 18 }}>{m.blocked.findings.map((f, k) => <li key={k}>{f.where}: {f.kind}</li>)}</ul>
@@ -99,19 +99,19 @@ export function AskServer({ scrollRef }: { scrollRef: React.RefObject<HTMLDivEle
               <button className="btn btn-ghost sm" onClick={() => copy(m.text)}><Icon name="copy" />Copy</button>
               {m.reviewed ? <Chip cls="ok" icon="check">Reviewed</Chip> : <button className="btn btn-ghost sm" onClick={() => reviewed(i)}><Icon name="check" />Mark reviewed</button>}
             </>}>
-            <div style={{ fontSize: 13.5, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{m.text}</div>
+            <div style={{ fontSize: ".84375rem", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{m.text}</div>
           </AIPanel>
         </div>
       )) : (
         <AIPanel source="Assistant" meta="Draft, review required" label="Assistant introduction">
-          <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55 }}>Ask about the records you choose below: only those are sent, without names of owners or authors. A PII blocker checks every request first{s?.mode === "mask" ? " and masks personal data it finds" : " and stops it if it finds personal data, saying what and where"}. Every answer is a draft for your review. Nothing is used to train AI models.</p>
+          <p style={{ margin: 0, fontSize: ".84375rem", lineHeight: 1.55 }}>Ask about the records you choose below: only those are sent, without names of owners or authors. A PII blocker checks every request first{s?.mode === "mask" ? " and masks personal data it finds" : " and stops it if it finds personal data, saying what and where"}. Every answer is a draft for your review. Nothing is used to train AI models.</p>
         </AIPanel>
       )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{SUGG.map((x) => <button key={x.q} className="fchip" onClick={() => { setText(x.q); setRecords([]); add(x.pick()); }}>{x.q}</button>)}</div>
 
       <div className="card" style={{ boxShadow: "none" }} data-tour="assistant-records"><div className="c-body" style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <strong style={{ fontSize: 13 }}>Records sent with your question</strong><span className="tag">{records.length} of {max}</span>
+          <strong style={{ fontSize: ".8125rem" }}>Records sent with your question</strong><span className="tag">{records.length} of {max}</span>
           {records.length ? <button className="btn btn-ghost sm" style={{ marginLeft: "auto" }} onClick={() => setRecords([])}>Remove all</button> : null}
         </div>
         {records.length ? <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{records.map((r) => (

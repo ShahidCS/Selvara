@@ -10,15 +10,15 @@ export function AdminChainView({ ok, onVerify, can }: { ok: boolean; onVerify: (
         <div className="c-body" style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <Icon name={ok ? "check" : "alert"} style={{ color: ok ? "var(--ok-ink)" : "var(--bad-ink)", flex: "none" }} />
           <div style={{ flex: "1 1 240px", minWidth: 0 }}>
-            <div style={{ fontWeight: 600, fontSize: 15, color: ok ? "var(--ok-ink)" : "var(--bad-ink)" }} role="status">{ok ? "Chain intact" : "Chain broken — tampering detected"}</div>
-            <div style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{ADMIN_AUDIT.length} entries sealed. Anchored head: <span className="num">{lastHash()}</span></div>
+            <div style={{ fontWeight: 600, fontSize: ".9375rem", color: ok ? "var(--ok-ink)" : "var(--bad-ink)" }} role="status">{ok ? "Chain intact" : "Chain broken — tampering detected"}</div>
+            <div style={{ fontSize: ".78125rem", color: "var(--ink-2)" }}>{ADMIN_AUDIT.length} entries sealed. Anchored head: <span className="num">{lastHash()}</span></div>
           </div>
           <button className="btn btn-primary sm" disabled={!can} onClick={onVerify}><Icon name="check" />Verify chain</button>
         </div>
       </div>
       <p className="field help" style={{ margin: "0 0 14px" }}>{DEMO_HASH_NOTE}</p>
       <div className="sectitle">How the chain of evidence works</div>
-      <ul style={{ margin: "0 0 14px", paddingLeft: 18, lineHeight: 1.7, color: "var(--ink-2)", maxWidth: "72ch", fontSize: 13 }}>
+      <ul style={{ margin: "0 0 14px", paddingLeft: 18, lineHeight: 1.7, color: "var(--ink-2)", maxWidth: "72ch", fontSize: ".8125rem" }}>
         <li>Each entry records the UTC time, the actor and role, the tenant, the action and object, the before and after state, the lawful basis, the data categories and the GDPR Article 30 processing activity it belongs to.</li>
         <li>The entry is sealed: its fields plus the previous entry&apos;s hash are hashed into this entry&apos;s hash, so any later edit or deletion breaks every hash after it.</li>
         <li>The log is append-only. Verifying walks the chain from the genesis hash to the anchored head and confirms every link.</li>
@@ -28,7 +28,7 @@ export function AdminChainView({ ok, onVerify, can }: { ok: boolean; onVerify: (
         {ADMIN_AUDIT.map((l, i) => ({ l, i })).reverse().map(({ l, i }) => (
           <tr key={l.seq}>
             <td className="num" style={{ color: "var(--muted)" }}>{l.seq}</td><td className="num" style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{l.at}</td><td className="num">{l.action}</td>
-            <td className="num" style={{ color: "var(--muted)", fontSize: 11 }}>{l.prev}</td><td className="num" style={{ fontSize: 11 }}>{l.hash}</td>
+            <td className="num" style={{ color: "var(--muted)", fontSize: ".6875rem" }}>{l.prev}</td><td className="num" style={{ fontSize: ".6875rem" }}>{l.hash}</td>
             <td>{linkOk(l, i) ? <Chip cls="ok" icon="check">Sealed</Chip> : <Chip cls="bad" icon="x">Broken</Chip>}</td>
           </tr>
         ))}
@@ -51,7 +51,7 @@ export function AdminExportsView({ onGenerate, can }: { onGenerate: () => void; 
       {ex.length ? (
         <Table cols={[{ t: "Package" }, { t: "Generated (UTC)" }, { t: "By" }, { t: "Entries" }, { t: "Package hash (demo)" }]}>
           {ex.slice().reverse().map((e) => (
-            <tr key={e.id}><td className="strong num">{e.id}</td><td className="num" style={{ color: "var(--muted)" }}>{e.at}</td><td>{e.by}</td><td className="num">{e.entries}</td><td className="num" style={{ fontSize: 11, color: "var(--muted)" }}>{e.sha}</td></tr>
+            <tr key={e.id}><td className="strong num">{e.id}</td><td className="num" style={{ color: "var(--muted)" }}>{e.at}</td><td>{e.by}</td><td className="num">{e.entries}</td><td className="num" style={{ fontSize: ".6875rem", color: "var(--muted)" }}>{e.sha}</td></tr>
           ))}
         </Table>
       ) : <Empty icon="download" title="No packages yet">Generate a package to seal the current log and RoPA register for an auditor.</Empty>}

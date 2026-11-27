@@ -18,8 +18,8 @@ export function CustomerProfile({ c }: { c: any }) {
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
-        <span className="avatar" style={{ width: 40, height: 40, fontSize: 15 }}>{c.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2)}</span>
-        <div><div style={{ fontSize: 17, fontWeight: 600 }}>{c.name}</div><div style={{ fontSize: 12.5, color: "var(--muted)" }}>{c.id}, {c.region}, {c.contact.email}</div></div>
+        <span className="avatar" style={{ width: 40, height: 40, fontSize: ".9375rem" }}>{c.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2)}</span>
+        <div><div style={{ fontSize: "1.0625rem", fontWeight: 600 }}>{c.name}</div><div style={{ fontSize: ".78125rem", color: "var(--muted)" }}>{c.id}, {c.region}, {c.contact.email}</div></div>
         <div style={{ marginLeft: "auto" }}><StatusChip s={c.status} /></div>
       </div>
       <div role="group" aria-label="Customer summary" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, margin: "10px 0 14px" }}>{tiles.map((x) => <Kpi key={x[0]} icon={x[2]} label={x[0]} value={x[1]} tone="neutral" />)}</div>
