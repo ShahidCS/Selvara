@@ -283,7 +283,9 @@ main#content{grid-area:main;min-width:0;min-height:0;overflow:hidden;display:fle
 .btngrp{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 
 /* segmented control */
-.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-control);padding:3px;gap:3px}
+/* The radius is half the height of one row (button: at least 28px, or its 1em line plus 10px padding; plus 3px padding and 1px border on
+   each side), so one row is exactly a pill at any text size, and a control that wraps to two rows is a rounded box, never an oval. */
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:calc(max(28px, .8125rem + 10px) / 2 + 4px);padding:3px;gap:3px}
 .seg button{border:0;background:none;cursor:pointer;color:var(--muted);font-size:.8125rem;font-weight:500;letter-spacing:-.005em;padding:5px 11px;border-radius:var(--radius-chip);display:inline-flex;align-items:center;gap:7px;line-height:1;min-height:28px}
 .seg button:hover{color:var(--ink)}
 .seg button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm)}
@@ -1416,3 +1418,31 @@ th:hover .col-rs::after,.col-rs:focus-visible::after{opacity:1}
 .col-rs:focus-visible{outline:2px solid var(--ring);outline-offset:-2px}
 .row-acts{display:flex;gap:var(--space-1);justify-content:flex-end;align-items:center}
 .tbl.dt-fixed td .dt-c.dt-c-act,.tbl.dt-fixed td .dt-c.dt-c-act>*{overflow:visible;text-overflow:clip}
+
+/* ============================ LARGE TEXT (EDGE-13) ============================
+   <html data-text="large"> when the browser's text size is above its default (hooks/useLargeText.ts; page zoom does not set it).
+   The default size keeps its one-line design; with large text nothing ends in "…" and no count covers its icon. */
+.rem-probe{position:absolute;inset-block-start:0;inset-inline-start:0;width:1rem;height:0;visibility:hidden;pointer-events:none}
+/* one-line labels wrap */
+:root[data-text="large"] :is(.kpi-head .eyebrow,.kpi-cap,.nav-item .lbl,.subitem .slbl,.covlbl,.tabbar-l,.crumbs .cur,.crumbs a){
+  white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:break-word}
+:root[data-text="large"] .tabbar-l{text-align:center;line-height:1.15}
+/* a KPI's change chip moves under its label when both do not fit; on phones the strip is one column */
+:root[data-text="large"] .kpi-head{flex-wrap:wrap}
+:root[data-text="large"] .kpi-head .eyebrow{flex-basis:8em}
+@container (max-width:559px){:root[data-text="large"] .kpi-strip:not([data-n="1"]){--cols:1}}
+/* the top bar: the current page only (the company is in the sidebar and the page heading repeats the name), and the account button shows
+   the avatar only, as on narrow screens (its name is in its label and its menu) */
+:root[data-text="large"] .crumbs{flex:1 1 auto}
+:root[data-text="large"] .crumbs>a:first-child,:root[data-text="large"] .crumbs>a:first-child+.sep{display:none}
+/* a narrow top bar has no room left beside its buttons: the page heading right below names the page */
+@container topbar (max-width:560px){:root[data-text="large"] .crumbs{display:none}}
+:root[data-text="large"] .top-user .tu-who,:root[data-text="large"] .top-user .tu-chev,:root[data-text="large"] .top-div{display:none}
+:root[data-text="large"] .top-user{padding:0;width:auto;aspect-ratio:1;justify-content:center}
+/* avatars grow with their initials */
+:root[data-text="large"] .avatar{width:2.5em;height:2.5em}
+/* counts sit beside their icon instead of over it */
+:root[data-text="large"] .icon-btn:has(>.nbadge){width:auto;padding-inline:.375rem;gap:.25rem}
+:root[data-text="large"] .nbadge{position:static;box-shadow:none}
+:root[data-text="large"] .tabbar-ic{width:auto;min-width:44px;height:auto;min-height:28px;padding-inline:.5rem;display:flex;align-items:center;gap:.25rem}
+:root[data-text="large"] .tabbar-b{position:static}

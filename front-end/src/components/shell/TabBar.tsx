@@ -9,8 +9,10 @@ import { TITLE, allowedSpaces, modAllowed } from "@/lib/rbac";
 import { useGo, useRoute } from "@/lib/route";
 import { wsMeta } from "@/services/ws";
 import { Icon } from "@/components/ui";
+import { useLargeText } from "@/hooks/useLargeText";
 
-/** The places offered, in order of preference; the first four the role can open are shown. */
+/** The places offered, in order of preference; the first four the role can open are shown (two with large text, EDGE-13, so each label
+    has room; the rest stay one tap away under More). */
 const PREF: Record<"ws" | "admin", string[]> = {
   ws: ["overview", "work", "issues", "risk", "controls", "evidence", "policies", "vendors", "audits", "frameworks"],
   admin: ["customers", "billing", "security", "adminlog", "elevation", "rates", "mfa"],
@@ -18,13 +20,14 @@ const PREF: Record<"ws" | "admin", string[]> = {
 const SHORT: Record<string, string> = { risk: "Risks", controls: "Controls", work: "My Work", customers: "Customers", security: "Security", adminlog: "Log", elevation: "Elevation", rates: "Rates", mfa: "MFA" };
 const ICON: Record<string, string> = { adminlog: "log", security: "shieldcheck", elevation: "unlock", mfa: "access" };
 const MAX = 4;
+const MAX_LARGE_TEXT = 2;
 
 export function TabBar() {
   useData(); useSyncExternalStore(wsMeta.subscribe, () => wsMeta.get(), () => wsMeta.get());
   const role = useApp((s) => s.role); const mobOpen = useApp((s) => s.mobOpen);
-  const route = useRoute(); const go = useGo();
+  const route = useRoute(); const go = useGo(); const largeText = useLargeText();
   const space: "ws" | "admin" = route.space === "admin" || (route.space === "auth" && !allowedSpaces(role).includes("ws")) ? "admin" : "ws";
-  const keys = PREF[space].filter((k) => TITLE[k] && modAllowed(role, space, k)).slice(0, MAX);
+  const keys = PREF[space].filter((k) => TITLE[k] && modAllowed(role, space, k)).slice(0, largeText ? MAX_LARGE_TEXT : MAX);
   /** A count beside a tab; the link's name says what it counts (never the number alone). */
   const badge = (k: string): { n: number; say: string; tone?: "bad" } | null => {
     if (space !== "ws") return null;

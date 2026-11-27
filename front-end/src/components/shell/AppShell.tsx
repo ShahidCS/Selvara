@@ -22,6 +22,7 @@ import { openShortcuts } from "./Shortcuts";
 import { TourHost, startTour, tourRunning } from "@/components/kit/Tour";
 import { MODULE_TOURS } from "@/data/tours";
 import { loadTourPrefs, resetTourPrefs, shouldAutoStart, useTourPrefs } from "@/lib/tours";
+import { useLargeText } from "@/hooks/useLargeText";
 
 function Frame({ children }: { children: ReactNode }) {
   const router = useRouter(); const go = useGo(); const L = useLayer();
@@ -80,6 +81,13 @@ function Frame({ children }: { children: ReactNode }) {
   }, [brand]);
   // density -> <html data-density>
   useEffect(() => { document.documentElement.setAttribute("data-density", s.density); }, [s.density]);
+  // the browser's text size above its default -> <html data-text="large"> (EDGE-13: labels wrap, counts sit beside their icon)
+  const largeText = useLargeText();
+  useEffect(() => {
+    const root = document.documentElement;
+    if (largeText) root.setAttribute("data-text", "large"); else root.removeAttribute("data-text");
+    return () => root.removeAttribute("data-text");
+  }, [largeText]);
   // print is always the light theme on white, whatever the screen theme is (restored afterwards)
   useEffect(() => {
     const root = document.documentElement; let prev: string | null = null;
