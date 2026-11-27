@@ -1,6 +1,7 @@
 /* Automation rules and data retention (phase 5, DRAFT for compliance review: docs/security/SOD_MATRIX.md sections 13 and 14).
    Deny by default, company admins only, audited. Anything that makes the system act on its own or keep data for less time is four-eyes; anything
    that stops it (pause, lengthen, hold) is immediate. The real API must enforce every rule and run rules and purges as server jobs. */
+import { RETENTION_DEFS, type RetentionDef } from "@/lib/retention";
 import { DATA } from "@/lib/data";
 import { registerKind } from "@/lib/approvalFlow";
 import { getApproval, requestApproval } from "@/lib/approvals";
@@ -101,19 +102,9 @@ export function runRule(id: string) {
 }
 
 /* ---------- retention ---------- */
-export interface RetentionType { id: string; label: string; months: number; floor: number; basis: string; hold?: { by: string; at: number; reason: string; releaseApproval?: string }; pendingShorter?: { months: number; approvalId: string } }
-/** Defaults and floors are DRAFTS. Floors reflect common record-keeping duties (for example FATF Recommendation 11: at least five years for
- *  customer due diligence and transaction records) and must be confirmed per regulator by compliance. */
-export const RETENTION: RetentionType[] = [
-  { id: "audit", label: "Audit logs", months: 84, floor: 60, basis: "Evidence of who did what; AML record keeping (draft floor 5 years)" },
-  { id: "evidence", label: "Control evidence", months: 84, floor: 60, basis: "Audit and certification evidence" },
-  { id: "risks", label: "Closed risks and acceptances", months: 84, floor: 60, basis: "Risk decisions and their approvals" },
-  { id: "policies", label: "Retired policy versions", months: 120, floor: 60, basis: "What rule applied when" },
-  { id: "issues", label: "Closed issues", months: 36, floor: 12, basis: "Remediation history" },
-  { id: "access", label: "Access reviews", months: 36, floor: 12, basis: "Access recertification evidence" },
-  { id: "security", label: "Sign-in history and security alerts", months: 12, floor: 6, basis: "Account security investigations" },
-  { id: "joins", label: "Rejected requests to join", months: 3, floor: 1, basis: "Data minimisation: personal data not needed after the decision" },
-];
+export interface RetentionType extends RetentionDef { hold?: { by: string; at: number; reason: string; releaseApproval?: string }; pendingShorter?: { months: number; approvalId: string } }
+/** The demonstration's own copy of the shared definitions (lib/retention.ts), changed in the browser. */
+export const RETENTION: RetentionType[] = RETENTION_DEFS.map((d) => ({ ...d }));
 const findType = (id: string) => { const t = RETENTION.find((x) => x.id === id); if (!t) throw new SodError("Unknown record type."); return t; };
 /** Longer is immediate. Shorter is four-eyes and never below the floor. */
 export function setRetention(id: string, monthsIn: number, reason: string) {
