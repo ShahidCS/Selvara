@@ -4,6 +4,18 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-27
+
+The security and edge-case audit of 26 November and the work that followed from the owner's decisions: audit fixes and guard tests, active-content checks on uploads, rules for requests to join, audit entries that can be erased, account erasure, retention settings, legal holds and the daily purge job. Also the Compliance Sources Register framework library with the original mapping views, and four UI fixes. A minor version because it adds features and five migrations.
+
+**Deploy notes (production):**
+1. Run migrations `0013_join_domains.sql` to `0017_retention_purge.sql` on the production database, in order, before approving the release (schema version 17; this server answers 503 on an older database). Steps: [docs/guides/SUPABASE.md](docs/guides/SUPABASE.md).
+2. Set `CRON_SECRET` (at least 32 random characters) for the Production environment in Vercel, or the purge job does not run. `MATCH_KEY_SECRET` is recommended; set it once and keep it.
+3. The purge job only reports for the 30 days after its first run; deleting then needs two platform super admins.
+4. Password reset links requested before this release stop working; people ask for a new one.
+5. Records that name a framework removed from the library (SBP AML/CFT/CPF Regulations, AML/CFT & Sanctions, UAE NIAF) are kept but no longer shown.
+6. The browser now sends `X-Time-Zone`, and records returned by the API carry an additive `_v` field.
+
 ### Fixed (UI)
 Each fix is in a shared style, token or component. Checked in light and dark themes at 1280 px and 390 px wide (`e2e/ui-regressions.spec.ts`, `tests/unit/greeting.test.ts`).
 - **Demo code notice** (sign-in second step; the passkey screen's demo fallback uses the same component): the heading on its own line, then the statement, the code (centred, monospace, tabular figures, slightly larger, letter-spaced, still selectable) and the closing line (justified), one line apart through a flex-column gap. Files: new `front-end/src/components/kit/DemoCodeNotice.tsx`; `front-end/src/features/auth/LoginPage.tsx` (both notices); `front-end/src/styles/portal.css`: `.banner.demo-code`, `.banner.demo-code .demo-code-body`, `.demo-code-value`, `.demo-code-tail`; `front-end/e2e/helpers.ts` and `e2e/passkeys.spec.ts` read the code from `.demo-code-value`.
