@@ -5,7 +5,7 @@ import { currentAccount } from "@/lib/session";
 import { useData } from "@/lib/store";
 
 const cell: React.CSSProperties = { background: "var(--surface-2)", borderRadius: 8, padding: 12 };
-const lbl: React.CSSProperties = { fontSize: 12, color: "var(--muted)" };
+const lbl: React.CSSProperties = { fontSize: ".75rem", color: "var(--muted)" };
 
 /** Summary of the person's own account security. Changes happen on the account page (Sign-in & security), which re-checks the password first. */
 export default function AccountSecurity() {

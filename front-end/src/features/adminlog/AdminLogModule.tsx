@@ -60,7 +60,7 @@ function DemoAdminLogModule() {
   const cols: DTColumn<Entry>[] = [
     { key: "seq", header: "#", value: (l) => l.seq, render: (l) => <span className="num" style={{ color: "var(--muted)" }}>{l.seq}</span>, locked: true },
     { key: "at", header: "Timestamp (UTC)", value: (l) => l.at, render: (l) => <span className="num" style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{l.at}</span> },
-    { key: "actor", header: "Actor / role", value: (l) => `${l.actor} (${l.role})`, render: (l) => <><div className="strong" style={{ whiteSpace: "nowrap" }} title={l.actor}>{svc.actorDisplay(l.actor)}</div><div style={{ fontSize: 11, color: "var(--muted)" }}>{l.role}</div></> },
+    { key: "actor", header: "Actor / role", value: (l) => `${l.actor} (${l.role})`, render: (l) => <><div className="strong" style={{ whiteSpace: "nowrap" }} title={l.actor}>{svc.actorDisplay(l.actor)}</div><div style={{ fontSize: ".6875rem", color: "var(--muted)" }}>{l.role}</div></> },
     { key: "tenant", header: "Tenant", value: (l) => svc.tenantName(l.tenant), render: (l) => svc.tenantName(l.tenant) },
     { key: "action", header: "Action", value: (l) => l.action, render: (l) => <span className="num">{l.action}</span> },
     { key: "object", header: "Object", value: (l) => l.object, render: (l) => l.object },
@@ -71,7 +71,7 @@ function DemoAdminLogModule() {
     { key: "basis", header: "Basis", defaultHidden: true, value: (l) => l.basis, render: (l) => l.basis },
     { key: "cats", header: "Categories", defaultHidden: true, value: (l) => (l.categories || []).join("; "), render: (l) => <>{(l.categories || []).map((c, i) => <span key={i}>{i ? " " : ""}<span className="tagchip">{c}</span></span>)}</> },
     { key: "ip", header: "IP", defaultHidden: true, value: (l) => l.ip, render: (l) => <span className="num" style={{ color: "var(--muted)" }}>{l.ip}</span> },
-    { key: "hash", header: "Hash", defaultHidden: true, value: (l) => l.hash, render: (l) => <span className="num" style={{ fontSize: 11, color: "var(--muted)" }}>{l.hash}</span> },
+    { key: "hash", header: "Hash", defaultHidden: true, value: (l) => l.hash, render: (l) => <span className="num" style={{ fontSize: ".6875rem", color: "var(--muted)" }}>{l.hash}</span> },
   ];
   const filters = [
     { key: "tenant", label: "Tenant", options: tenants, get: (l: Entry) => svc.tenantName(l.tenant) },
@@ -90,7 +90,7 @@ function DemoAdminLogModule() {
       <div className="card" data-tour="adminlog-table" style={{ minHeight: 0 }}>
         <div className="c-head" style={{ flexWrap: "wrap", gap: 8 }}>
           <div className="seg" role="tablist" data-tour="adminlog-views">{VIEWS.map((x) => <button key={x[0]} role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div>
-          <span id="alChain" role="status" data-tour="adminlog-chain" style={{ marginLeft: "auto", fontSize: 12 }}>
+          <span id="alChain" role="status" data-tour="adminlog-chain" style={{ marginLeft: "auto", fontSize: ".75rem" }}>
             {chainOk ? <span style={{ color: "var(--ok-ink)" }}><Icon name="check" /> Chain intact, {ADMIN_AUDIT.length} entries</span> : <span style={{ color: "var(--bad-ink)" }}><Icon name="alert" /> Chain broken</span>}
           </span>
         </div>

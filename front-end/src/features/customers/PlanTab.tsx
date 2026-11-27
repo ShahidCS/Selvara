@@ -15,7 +15,7 @@ export function Meter({ label, used, limit }: { label: string; used: number; lim
   const col = over ? "var(--bad-ink)" : near ? "var(--warn-ink)" : "var(--accent)";
   return (
     <div style={{ marginBottom: 11 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: 12.5, marginBottom: 4 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, fontSize: ".78125rem", marginBottom: 4 }}>
         <span style={{ color: "var(--ink-2)" }}>{label}</span>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           {over ? <Chip cls="bad" icon="alert">Over plan</Chip> : near ? <Chip cls="warn" icon="clock">Near limit</Chip> : null}
@@ -48,7 +48,7 @@ export function ChangePlanForm({ id, close }: { id: string; close: () => void })
           return (
             <label key={pn} className="listrow" style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "11px 12px", border: `1px solid ${c.plan === pn ? "var(--accent)" : "var(--line)"}`, borderRadius: 10, cursor: "pointer" }}>
               <input type="radio" name="planpick" value={pn} checked={pick === pn} onChange={() => setPick(pn)} style={{ marginTop: 3 }} />
-              <div><div style={{ fontWeight: 600 }}>{pn} · {money(p.price)}/mo</div><div style={{ fontSize: 12, color: "var(--muted)" }}>{p.seats} seats · {p.modules.length} modules · {num(p.limits.screenings)} screenings/mo</div></div>
+              <div><div style={{ fontWeight: 600 }}>{pn} · {money(p.price)}/mo</div><div style={{ fontSize: ".75rem", color: "var(--muted)" }}>{p.seats} seats · {p.modules.length} modules · {num(p.limits.screenings)} screenings/mo</div></div>
             </label>
           );
         })}
@@ -73,8 +73,8 @@ export function PlanTab({ c }: { c: any }) {
     <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
       <div><div className="sectitle" style={{ marginTop: 0 }}>Plan</div>
         <div style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 14, marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}><span style={{ fontSize: 18, fontWeight: 600 }}>{c.plan}</span><StatusChip s={c.status} /></div>
-          <div style={{ fontSize: 13, color: "var(--muted)" }}>{money(p.price)}/mo base · {c.cycle} billing · {c.seatLimit} seats · {c.modules.length} modules</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}><span style={{ fontSize: "1.125rem", fontWeight: 600 }}>{c.plan}</span><StatusChip s={c.status} /></div>
+          <div style={{ fontSize: ".8125rem", color: "var(--muted)" }}>{money(p.price)}/mo base · {c.cycle} billing · {c.seatLimit} seats · {c.modules.length} modules</div>
           <button className="btn btn-secondary sm" style={{ marginTop: 10 }} disabled={gate.locked} title={gate.title} onClick={() => L.openModal("Change plan — " + c.name, (close) => <ChangePlanForm id={c.id} close={close} />)}><Icon name="edit" />Change plan</button>
         </div>
         <div className="sectitle">Usage against plan limits</div>

@@ -194,7 +194,7 @@ function Palette({ close }: { close: () => void }) {
             <div key={x.path} id={`pal-${x.space}-${x.key}`} role="option" aria-selected={i === idx} className={`ritem${i === idx ? " cur" : ""}`} onMouseMove={() => setCur(i)} onClick={() => pick(x)}>
               <span className="ic"><Icon name={x.icon} /></span>{x.label}<span className="meta">{x.space === "admin" ? "Admin, " : ""}{x.group}</span>
             </div>
-          )) : <div style={{ padding: 16, color: "var(--muted)", fontSize: 13 }}>No module matches that.</div>}
+          )) : <div style={{ padding: 16, color: "var(--muted)", fontSize: ".8125rem" }}>No module matches that.</div>}
         </div>
       </div>
     </div>

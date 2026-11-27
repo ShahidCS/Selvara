@@ -45,7 +45,7 @@ export function SettingsTab() {
       <div className="note">
         What is sent: your question, earlier turns of the conversation and the records you attach, read from the server without owners&apos; or authors&apos; names. Agents send only their trigger&apos;s records. Questions and answers are not stored by Selvara; the audit log records who asked, which records were sent, the model and the token counts. The AI provider does not use these requests to train its models (commercial API terms). Every answer is a draft for a person to review.
       </div>
-      {s.history.length ? <div><div className="sectitle">Changes</div><ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: "var(--ink-2)" }}>{s.history.map((h, i) => <li key={i}><span className="num">{h.at}</span> {h.what}</li>)}</ul></div> : null}
+      {s.history.length ? <div><div className="sectitle">Changes</div><ul style={{ margin: 0, paddingLeft: 18, fontSize: ".78125rem", color: "var(--ink-2)" }}>{s.history.map((h, i) => <li key={i}><span className="num">{h.at}</span> {h.what}</li>)}</ul></div> : null}
     </div>
   );
 }

@@ -108,9 +108,9 @@ export default function ReportsModule() {
                 {!SCHED_PACKS.length ? <tr><td colSpan={4} style={{ color: "var(--muted)" }}>No packs are scheduled yet.</td></tr> : null}
                 {SCHED_PACKS.map((r, i) => (
                   <tr key={r.id ?? i}>
-                    <td><div className="strong">{r.name}</div><div style={{ fontSize: 12, color: "var(--muted)" }}>To {r.recip}</div>{r.external ? <div style={{ fontSize: 11, color: "var(--muted)" }}>External · approved{r.approvedBy ? " by " + r.approvedBy : ""}</div> : null}</td>
-                    <td>{r.freq}{r.detail ? <div style={{ fontSize: 11, color: "var(--muted)" }}>{r.detail}</div> : null}</td>
-                    <td style={{ fontSize: 12, whiteSpace: "nowrap" }}>{r.next}</td>
+                    <td><div className="strong">{r.name}</div><div style={{ fontSize: ".75rem", color: "var(--muted)" }}>To {r.recip}</div>{r.external ? <div style={{ fontSize: ".6875rem", color: "var(--muted)" }}>External · approved{r.approvedBy ? " by " + r.approvedBy : ""}</div> : null}</td>
+                    <td>{r.freq}{r.detail ? <div style={{ fontSize: ".6875rem", color: "var(--muted)" }}>{r.detail}</div> : null}</td>
+                    <td style={{ fontSize: ".75rem", whiteSpace: "nowrap" }}>{r.next}</td>
                     <td className="r"><button className="btn btn-ghost sm" disabled={!can} title={why ?? `Remove the schedule for ${r.name}`} onClick={() => unschedule(i)} aria-label={`Remove schedule for ${r.name}`}><Icon name="trash" /></button></td>
                   </tr>
                 ))}

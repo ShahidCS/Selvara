@@ -40,7 +40,7 @@ function DemoMfa() {
               <Table cols={[{ t: "Admin" }, { t: "Customer" }, { t: "Role" }, { t: "MFA" }, { t: "Last sign-in" }, { t: "" }]}>
                 {TENANT_ADMINS.map((a) => (
                   <tr key={a.id}>
-                    <td className="strong">{a.name}<div style={{ fontSize: 12, color: "var(--muted)" }}>{a.email}</div></td>
+                    <td className="strong">{a.name}<div style={{ fontSize: ".75rem", color: "var(--muted)" }}>{a.email}</div></td>
                     <td>{cn(a.custId)}</td><td>{a.role}</td>
                     <td style={{ whiteSpace: "nowrap" }}>{a.mfa === "Enrolled" ? <StatusChip s="Enrolled" /> : a.mfa === "Reset pending" ? <Chip cls="warn" icon="clock">Reset pending</Chip> : <Chip cls="neutral" icon="dot">Not enrolled</Chip>}</td>
                     <td>{a.last}</td>
@@ -57,9 +57,9 @@ function DemoMfa() {
                 <Table cols={[{ t: "Request" }, { t: "Admin" }, { t: "Customer" }, { t: "Reason" }, { t: "Verified by" }, { t: "Ticket" }, { t: "Decision" }, { t: "Decided by" }]}>
                   {history.slice().reverse().map((r) => (
                     <tr key={r.id}>
-                      <td className="strong num" style={{ whiteSpace: "nowrap" }}>{r.id}</td><td>{r.subject}</td><td>{cn(r.custId)}</td><td style={{ fontSize: 12 }}>{r.reason}</td><td style={{ fontSize: 12 }}>{r.method || "—"}</td><td className="num" style={{ fontSize: 12 }}>{r.ticket || "—"}</td>
+                      <td className="strong num" style={{ whiteSpace: "nowrap" }}>{r.id}</td><td>{r.subject}</td><td>{cn(r.custId)}</td><td style={{ fontSize: ".75rem" }}>{r.reason}</td><td style={{ fontSize: ".75rem" }}>{r.method || "—"}</td><td className="num" style={{ fontSize: ".75rem" }}>{r.ticket || "—"}</td>
                       <td>{r.status === "Approved" ? <Chip cls="ok" icon="check">Approved</Chip> : r.status === "Rejected" ? <Chip cls="bad" icon="x">Rejected</Chip> : <Chip cls="neutral" icon={r.status === "Expired" ? "clock" : "x"}>{r.status}</Chip>}</td>
-                      <td style={{ fontSize: 12 }}>{r.decidedBy || "—"}<div style={{ fontSize: 11, color: "var(--muted)" }}>{r.decidedAt || ""}</div></td>
+                      <td style={{ fontSize: ".75rem" }}>{r.decidedBy || "—"}<div style={{ fontSize: ".6875rem", color: "var(--muted)" }}>{r.decidedAt || ""}</div></td>
                     </tr>
                   ))}
                 </Table>

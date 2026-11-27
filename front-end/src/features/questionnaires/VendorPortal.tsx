@@ -52,8 +52,8 @@ function AssignedForm({ q, L }: { q: WsVendorQ; L: LayerApi }) {
   return (
     <>
       <div className="card" data-tour="questionnaires-portal" style={{ background: "var(--accent-weak)", borderColor: "transparent", marginBottom: 14 }}><div className="c-body" style={{ padding: 18 }}>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><div style={{ fontWeight: 600, fontSize: 17 }}>Security questionnaire — {q.customer}</div><StatusChip s={locked ? "Complete" : q.status === "Reopened" ? "Review" : "Pending"} /></div>
-        <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>About {q.vendor}, sent {q.at} by {q.sentBy}. {answered}/{q.questions.length} answered.</div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><div style={{ fontWeight: 600, fontSize: "1.0625rem" }}>Security questionnaire — {q.customer}</div><StatusChip s={locked ? "Complete" : q.status === "Reopened" ? "Review" : "Pending"} /></div>
+        <div style={{ fontSize: ".78125rem", color: "var(--muted)", marginTop: 2 }}>About {q.vendor}, sent {q.at} by {q.sentBy}. {answered}/{q.questions.length} answered.</div>
         {q.status === "Reopened" && q.note ? <p className="field help" style={{ margin: "8px 0 0" }}>Clarification requested: {q.note}</p> : null}
         {locked ? <p className="field help" style={{ margin: "8px 0 0" }}>Submitted {q.submittedAt}. Your customer can reopen it if they need more.</p> : null}
       </div></div>
@@ -96,8 +96,8 @@ function VendorPortalDemo({ L }: { L: LayerApi }) {
     <Page mod="questionnaires" title={PORTAL_TITLE} sub={PORTAL_SUB} acts={<span className="tag"><Icon name="access" />Vendor portal</span>}>
       <div className="scroll" style={{ overflow: "auto" }}><div style={{ maxWidth: 760, margin: "0 auto" }}>
         <div className="card" data-tour="questionnaires-portal" style={{ background: "var(--accent-weak)", borderColor: "transparent", marginBottom: 14 }}><div className="c-body" style={{ padding: 18 }}>
-          <div style={{ fontWeight: 600, fontSize: 17 }}>Security questionnaire — ACME Ltd</div>
-          <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>Requested from your organisation. {answered}/{total} answered.</div>
+          <div style={{ fontWeight: 600, fontSize: "1.0625rem" }}>Security questionnaire — ACME Ltd</div>
+          <div style={{ fontSize: ".78125rem", color: "var(--muted)", marginTop: 2 }}>Requested from your organisation. {answered}/{total} answered.</div>
           <div className="bar-track" style={{ marginTop: 10 }}>{answered > 0 ? <span className="bar-fill" style={{ width: `${Math.round((answered / total) * 100)}%`, background: "var(--accent)" }}></span> : null}</div>
         </div></div>
         {VENDOR_Q.map((q, i) => (

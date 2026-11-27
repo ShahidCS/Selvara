@@ -33,10 +33,10 @@ export function RulesTab({ manage }: { manage: boolean }) {
             const [cls, icon] = STATUS[r.status]; const last = r.runs[0];
             return (
               <tr key={r.id}>
-                <td className="strong">{r.name}<div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 400 }}>{r.id} · by {r.createdBy}{r.approvedBy ? ` · approved by ${r.approvedBy}` : ""}</div></td>
-                <td style={{ fontSize: 12.5 }}>{gov.triggerLabel(r.trigger)} → {gov.actionLabel(r.action).toLowerCase()}</td>
+                <td className="strong">{r.name}<div style={{ fontSize: ".71875rem", color: "var(--muted)", fontWeight: 400 }}>{r.id} · by {r.createdBy}{r.approvedBy ? ` · approved by ${r.approvedBy}` : ""}</div></td>
+                <td style={{ fontSize: ".78125rem" }}>{gov.triggerLabel(r.trigger)} → {gov.actionLabel(r.action).toLowerCase()}</td>
                 <td><Chip cls={cls} icon={icon}>{r.status}</Chip></td>
-                <td style={{ fontSize: 12 }}>{last ? `${fmt(last.at)}: ${last.acted} of ${last.matched}${last.capped ? " (capped)" : ""}` : "Never"}</td>
+                <td style={{ fontSize: ".75rem" }}>{last ? `${fmt(last.at)}: ${last.acted} of ${last.matched}${last.capped ? " (capped)" : ""}` : "Never"}</td>
                 <td className="r">{manage ? (
                   <div className="btngrp" style={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
                     <button className="btn btn-ghost sm" aria-label={`Preview: ${r.name}`} onClick={() => L.openModal(`Preview: ${r.name}`, <Preview id={r.id} />)}>Preview</button>
@@ -59,8 +59,8 @@ function Preview({ id }: { id: string }) {
   const p = gov.previewRule(id);
   return (
     <>
-      <p style={{ margin: "0 0 8px", fontSize: 13 }}>{p.matches.length ? `It would act on ${p.matches.length} record${p.matches.length === 1 ? "" : "s"} now${p.capped ? `, ${gov.RULE_LIMITS.MAX_ACTIONS_PER_RUN} per run` : ""}. Nothing is changed by a preview.` : "Nothing matches now."}</p>
-      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, maxHeight: 240, overflow: "auto" }}>{p.matches.map((m) => <li key={m.id}>{m.id}: {m.title} ({m.owner})</li>)}</ul>
+      <p style={{ margin: "0 0 8px", fontSize: ".8125rem" }}>{p.matches.length ? `It would act on ${p.matches.length} record${p.matches.length === 1 ? "" : "s"} now${p.capped ? `, ${gov.RULE_LIMITS.MAX_ACTIONS_PER_RUN} per run` : ""}. Nothing is changed by a preview.` : "Nothing matches now."}</p>
+      <ul style={{ margin: 0, paddingLeft: 18, fontSize: ".8125rem", maxHeight: 240, overflow: "auto" }}>{p.matches.map((m) => <li key={m.id}>{m.id}: {m.title} ({m.owner})</li>)}</ul>
     </>
   );
 }

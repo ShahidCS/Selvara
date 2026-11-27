@@ -123,11 +123,11 @@ function VendorPortalDemo() {
           <div aria-hidden="true" style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent)", color: "var(--text-inverse)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="shieldcheck" /></div>
           <div>
             <div style={{ fontWeight: 600 }}>Vendor assessment portal</div>
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>Selvara · requested by {INVITE.customerName}</div>
+            <div style={{ fontSize: ".75rem", color: "var(--muted)" }}>Selvara · requested by {INVITE.customerName}</div>
           </div>
         </div>
         {authed ? (
-          <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 13, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: ".8125rem", flexWrap: "wrap" }}>
             <span style={{ color: "var(--muted)" }}>Signed in as {masked} · session ends after 15 min idle</span>
             <button type="button" className="btn btn-secondary sm" style={{ borderRadius: 999 }} onClick={() => signOut("Signed out. Your answers were saved.")}>Sign out</button>
           </div>
@@ -149,7 +149,7 @@ function VendorPortalDemo() {
           <aside aria-label="Access and security" style={{ flex: "1 1 300px", minWidth: 0, display: "flex", flexDirection: "column", gap: 14 }}>
             <div className="card" style={{ padding: "16px 18px", gap: 8 }}>
               <div style={{ fontWeight: 600 }}>What you can see</div>
-              <div style={{ fontSize: 13, color: "var(--ink-2)" }}>Only this questionnaire and the files you upload. You cannot see {INVITE.customerName}&apos;s data, other vendors or your organisation&apos;s risk rating. Once submitted, your answers can&apos;t be changed without a new request.</div>
+              <div style={{ fontSize: ".8125rem", color: "var(--ink-2)" }}>Only this questionnaire and the files you upload. You cannot see {INVITE.customerName}&apos;s data, other vendors or your organisation&apos;s risk rating. Once submitted, your answers can&apos;t be changed without a new request.</div>
             </div>
             <SecurityPanel controls={CONTROLS} />
           </aside>

@@ -61,3 +61,42 @@ test("an Arabic phone in an extreme time zone: the English UI stays consistent (
     await ctx.close();
   }
 });
+
+/** The browser's own text-size setting (Chromium: Settings, Appearance, Font size), not page zoom: standard 16px is the default. */
+async function textSize(p: Page, standard: number) {
+  const cdp = await p.context().newCDPSession(p);
+  await cdp.send("Page.enable");
+  await cdp.send("Page.setFontSizes", { fontSizes: { standard, fixed: Math.round(standard * 0.8125) } });
+}
+
+test("EDGE-13: the browser's text size at 200% doubles the text; controls grow with it, nothing is cut off and no page scrolls sideways", async ({ browser }, ti) => {
+  for (const vp of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
+    const s = await openAs(browser, ti, "admin", vp);
+    await textSize(s.page, 32);
+    for (const path of ["/ws/overview", "/ws/risk", "/ws/team", "/ws/controls"]) {
+      await gotoModule(s.page, path);
+      const m = await s.page.evaluate(() => {
+        const cut: string[] = [];
+        for (const el of document.querySelectorAll(".btn, .chip, .fchip, .input, .select, .pg-b, .appr-pill, .top-user, .nav-item .cnt, .dt-sortbtn")) {
+          const cs = getComputedStyle(el); const b = el.getBoundingClientRect();
+          if (cs.display === "none" || !b.height || el.closest(".vh")) continue;
+          if (b.height + 0.5 < parseFloat(cs.fontSize)) cut.push(`${el.className} ${b.height.toFixed(1)} < ${cs.fontSize}`);
+        }
+        const bar = document.querySelector("header#topbar")!.getBoundingClientRect();
+        const inBar = [...document.querySelectorAll("header#topbar .top-user, header#topbar .appr-pill")].every((e) => { const r = e.getBoundingClientRect(); return !r.height || (r.top >= bar.top - 0.5 && r.bottom <= bar.bottom + 0.5); });
+        return { body: getComputedStyle(document.body).fontSize, cut, inBar, wide: document.scrollingElement!.scrollWidth > window.innerWidth + 1 };
+      });
+      expect(m.body, `${vp.width} ${path}`).toBe("28px");
+      expect(m.cut, `${vp.width} ${path}`).toEqual([]);
+      expect(m.inBar, `${vp.width} ${path}: the top bar holds the account button and the approvals pill`).toBe(true);
+      expect(m.wide, `${vp.width} ${path}`).toBe(false);
+    }
+    expect(s.errors).toEqual([]);
+    await s.close();
+  }
+  // the default setting is unchanged: 14px body text
+  const d = await openAs(browser, ti, "admin");
+  await gotoModule(d.page, "/ws/overview");
+  expect(await d.page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe("14px");
+  await d.close();
+});

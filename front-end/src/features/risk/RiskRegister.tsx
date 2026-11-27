@@ -64,7 +64,7 @@ export default function RiskRegister() {
           <button className={`fchip ${RF.mine ? "on" : ""}`} aria-pressed={RF.mine} onClick={() => patch({ mine: !RF.mine })}>Only mine</button>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-          <span style={{ fontSize: 13, color: "var(--ink-2)" }}><span className="strong">{list.length}</span> of {DATA.risks.length} risks</span>
+          <span style={{ fontSize: ".8125rem", color: "var(--ink-2)" }}><span className="strong">{list.length}</span> of {DATA.risks.length} risks</span>
           {RF.cell ? <button className="fchip on" onClick={() => patch({ cell: null })}>{cellLabel} ×</button> : null}
           {hasFilter ? <button className="btn btn-ghost sm" onClick={riskClearFilters}>Clear filters</button> : null}
         </div>
@@ -74,11 +74,11 @@ export default function RiskRegister() {
               {list.map((r) => (
                 <tr key={r.id} className={`clickable ${sel === r.id ? "sel" : ""}`} aria-selected={sel === r.id} {...activate(() => riskOpenDetail(r.id))}>
                   <td className="strong num" style={{ whiteSpace: "nowrap" }}>{r.id}</td>
-                  <td><div className="strong">{r.title}</div><div style={{ fontSize: 11.5, color: "var(--muted)" }}>{r.cat}{r.parent ? " · " + r.parent.id : ""}{r.imported ? <> · <span style={{ color: "var(--accent-ink)", fontWeight: 600 }}>Imported</span></> : null}</div></td>
-                  <td style={{ fontSize: 12 }}>{r.team}</td><td style={{ fontSize: 12 }}>{r.jur}</td>
+                  <td><div className="strong">{r.title}</div><div style={{ fontSize: ".71875rem", color: "var(--muted)" }}>{r.cat}{r.parent ? " · " + r.parent.id : ""}{r.imported ? <> · <span style={{ color: "var(--accent-ink)", fontWeight: 600 }}>Imported</span></> : null}</div></td>
+                  <td style={{ fontSize: ".75rem" }}>{r.team}</td><td style={{ fontSize: ".75rem" }}>{r.jur}</td>
                   <td><ScoreBars score={sInh(r)} /></td><td><ScoreBars score={sCur(r)} /></td><td><ScoreBars score={sRes(r)} /></td>
-                  <td><span className="tag">{riskPriority(r)}</span></td><td style={{ fontSize: 12 }}>{r.treat}</td><td><StatusChip s={r.status} /></td>
-                  <td style={{ fontSize: 12 }}>{riskNextStep(r) || <span style={{ color: "var(--faint)" }}>None</span>}</td>
+                  <td><span className="tag">{riskPriority(r)}</span></td><td style={{ fontSize: ".75rem" }}>{r.treat}</td><td><StatusChip s={r.status} /></td>
+                  <td style={{ fontSize: ".75rem" }}>{riskNextStep(r) || <span style={{ color: "var(--faint)" }}>None</span>}</td>
                 </tr>
               ))}
             </Table>

@@ -71,7 +71,7 @@ function ApiTabs() {
     { key: "url", header: "Endpoint", value: (w) => w.url, locked: true, render: (w) => <span className="num">{w.url}</span> },
     { key: "events", header: "Events", value: (w) => w.events.join(" "), render: (w) => <>{w.events.map((e) => <span key={e} className="tag num" style={{ margin: "1px 2px 1px 0" }}>{e}</span>)}</> },
     { key: "sig", header: "Signature", defaultHidden: true, value: () => "HMAC-SHA256", render: () => <span className="num" style={{ whiteSpace: "nowrap" }}>HMAC-SHA256</span> },
-    { key: "last", header: "Last delivery", value: (w) => w.lastDelivery || "", render: (w) => <span style={{ color: "var(--muted)" }}>{w.lastDelivery || "—"}{w.failures ? <div style={{ color: "var(--bad-ink)", fontSize: 11.5 }}>{w.failures} failed in a row</div> : null}</span> },
+    { key: "last", header: "Last delivery", value: (w) => w.lastDelivery || "", render: (w) => <span style={{ color: "var(--muted)" }}>{w.lastDelivery || "—"}{w.failures ? <div style={{ color: "var(--bad-ink)", fontSize: ".71875rem" }}>{w.failures} failed in a row</div> : null}</span> },
     { key: "status", header: "Status", value: (w) => w.status, render: (w) => (w.status === "Active" ? <Chip cls="ok" icon="check">Active</Chip> : w.status === "Pending approval" ? <Chip cls="warn" icon="clock">Pending approval</Chip> : w.status === "Not approved" ? <Chip cls="neutral" icon="x">Not approved</Chip> : <Chip cls="neutral" icon="dot">Paused</Chip>) },
     { key: "act", header: "Actions", align: "end", locked: true, render: (w) => (manage ? (
       <div className="btngrp" style={{ justifyContent: "flex-end", flexWrap: "nowrap", whiteSpace: "nowrap" }}>
@@ -100,7 +100,7 @@ function ApiTabs() {
     { key: "res", header: "Resource", value: (r) => r.res, render: (r) => <span className="num">{r.res}</span> },
     ...(API_ON ? [{ key: "dir", header: "Direction", value: (r: Ev) => r.dir || "", render: (r: Ev) => (r.dir === "Out" ? "Delivered to webhook" : "Pushed to Selvara") }] : []),
     { key: "http", header: "HTTP", value: (r) => r.http, render: (r) => (/^2\d\d$/.test(r.http) ? <Chip cls="ok" icon="check">{r.http}</Chip> : <Chip cls="bad" icon="x">{r.http}</Chip>) },
-    ...(API_ON ? [{ key: "detail", header: "Detail", value: (r: Ev) => r.detail || "", render: (r: Ev) => <span style={{ color: "var(--muted)", fontSize: 12 }}>{r.detail}</span> }] : []),
+    ...(API_ON ? [{ key: "detail", header: "Detail", value: (r: Ev) => r.detail || "", render: (r: Ev) => <span style={{ color: "var(--muted)", fontSize: ".75rem" }}>{r.detail}</span> }] : []),
     { key: "lat", header: "Latency", value: (r) => r.lat, render: (r) => <span className="num">{r.lat}</span> },
     { key: "when", header: "When", value: (r) => r.when, render: (r) => <span style={{ color: "var(--muted)" }}>{r.when}</span> },
   ];
@@ -133,7 +133,7 @@ function ApiTabs() {
             <DataTable<Test> id="custom-tests" label="Custom tests" rows={svc.API.tests} rowKey={(x) => x.id} columns={testCols} searchText={(x) => `${x.name} ${x.target}`} exportName="custom-tests" />
           ) : (
             <>
-              <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--muted)" }}>{API_ON ? <>Events your systems pushed to Selvara (<code>POST /api/v1/events</code> with a read/write key) and deliveries to your webhooks, newest first:</> : "Push API: private resources can be pushed to Selvara over the event stream for custom tests. Recent deliveries:"}</div>
+              <div style={{ padding: "10px 12px", fontSize: ".75rem", color: "var(--muted)" }}>{API_ON ? <>Events your systems pushed to Selvara (<code>POST /api/v1/events</code> with a read/write key) and deliveries to your webhooks, newest first:</> : "Push API: private resources can be pushed to Selvara over the event stream for custom tests. Recent deliveries:"}</div>
               <DataTable<Ev> id="api-events" label="Event stream" rows={svc.API.events} rowKey={(r) => r.id ?? `${r.ev}|${r.res}|${r.when}`} columns={evCols} searchText={(r) => `${r.ev} ${r.res}`} exportName="api-events"
                 emptyText="No events yet. Events appear here when your systems push to Selvara or a webhook is delivered." />
             </>

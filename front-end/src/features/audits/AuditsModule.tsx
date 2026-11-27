@@ -47,7 +47,7 @@ export default function AuditsModule({ param: propParam }: { param?: string | nu
         {auditorView ? (
           <div className="card" role="note" data-tour="audits-auditor-note" style={{ background: "var(--surface-2)", borderColor: "var(--line)", marginBottom: 12 }}><div className="c-body" style={{ padding: 14 }}>
             <div style={{ fontWeight: 600, display: "flex", gap: 6, alignItems: "center" }}><Icon name="eye" /> Audits assigned to you</div>
-            <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 2 }}>As external auditor you have read-only access to each engagement&apos;s framework and the controls, evidence and policies management shares with it, while your access is live. You can raise information requests and draft findings; management accepts a finding into an issue. You cannot advance stages, freeze populations, end access, create issues or change management requests.</div>
+            <div style={{ fontSize: ".78125rem", color: "var(--muted)", marginTop: 2 }}>As external auditor you have read-only access to each engagement&apos;s framework and the controls, evidence and policies management shares with it, while your access is live. You can raise information requests and draft findings; management accepts a finding into an issue. You cannot advance stages, freeze populations, end access, create issues or change management requests.</div>
           </div></div>
         ) : null}
         <DataTable<Audit> id="audits" label="Audits" rows={pool} rowKey={(a) => a.id} columns={cols} searchText={(a) => `${a.name} ${a.fw} ${a.auditor}`}

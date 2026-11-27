@@ -67,9 +67,9 @@ function BillingOverview() {
                   const p = Math.min(100, Math.round(u.used / u.limit * 100));
                   return (
                     <div key={u.k}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 13, marginBottom: 6 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: ".8125rem", marginBottom: 6 }}>
                         <span style={{ color: "var(--ink-2)", fontWeight: 500 }}>{u.k}</span>
-                        <span className="num" style={{ color: "var(--muted)", fontSize: 12.5 }}>{num(u.used)}{u.unit} / {num(u.limit)}{u.unit} · {p}%</span>
+                        <span className="num" style={{ color: "var(--muted)", fontSize: ".78125rem" }}>{num(u.used)}{u.unit} / {num(u.limit)}{u.unit} · {p}%</span>
                       </div>
                       <Meter used={u.used} limit={u.limit} label={`${u.k} used`} />
                     </div>

@@ -63,9 +63,9 @@ export function ControlDetail({ id }: { id: string }) {
                 const st = svc.exceptionState(x); const dw = svc.whyCannotDecideException(c, x);
                 return (
                   <div key={x.id} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: "8px 10px", marginBottom: 6 }}>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><span className="tag num">{x.id}</span><StatusChip s={st === "Active" ? "Approved" : st === "Expired" ? "Overdue" : st} /><span style={{ fontSize: 12, color: "var(--muted)" }}>until {x.expires}, requested by {x.requestedBy}</span></div>
-                    <div style={{ fontSize: 12.5, marginTop: 4 }}>{x.reason}</div>
-                    <div style={{ fontSize: 12.5, color: "var(--muted)" }}>Compensating control: {x.compensating}</div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><span className="tag num">{x.id}</span><StatusChip s={st === "Active" ? "Approved" : st === "Expired" ? "Overdue" : st} /><span style={{ fontSize: ".75rem", color: "var(--muted)" }}>until {x.expires}, requested by {x.requestedBy}</span></div>
+                    <div style={{ fontSize: ".78125rem", marginTop: 4 }}>{x.reason}</div>
+                    <div style={{ fontSize: ".78125rem", color: "var(--muted)" }}>Compensating control: {x.compensating}</div>
                     {st === "Pending" ? (
                       <div className="btngrp" style={{ marginTop: 6 }}>
                         <button className="btn btn-primary btn-decide sm" {...dis(dw)} onClick={() => openReasonModal(L, "Approve exception " + x.id, "Approval reason", "Approve", async (r) => { await svc.decideException(id, x.id, "approve", r); return "Exception approved"; }, refresh)}><Icon name="check" />Approve</button>
@@ -99,7 +99,7 @@ export function ControlDetail({ id }: { id: string }) {
               {att ? (
                 <div className="card" style={{ boxShadow: "none", background: "var(--accent-weak)", borderColor: "transparent" }}><div className="c-body" style={{ padding: 11 }}>
                   <div style={{ fontWeight: 500 }}><Icon name="check" /> Attested by {att.by}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{att.at}: &quot;{att.note}&quot;</div>
+                  <div style={{ fontSize: ".75rem", color: "var(--muted)", marginTop: 3 }}>{att.at}: &quot;{att.note}&quot;</div>
                 </div></div>
               ) : <Empty compact icon="controls" title="No current attestation">The control owner should confirm the control is designed and operating.</Empty>}
               <div style={{ marginTop: 8 }}><button className="btn btn-secondary sm" {...dis(attestWhy)} onClick={() => openAttestModal(L, id)}><Icon name="check" />Record attestation</button></div>

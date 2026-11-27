@@ -43,8 +43,8 @@ export function ApiRates() {
     { key: "tax", header: "Tax", nowrap: true, value: (r) => `${r.taxType} ${r.taxRate}%`, render: (r) => `${r.taxType} ${r.taxRate} %` },
     { key: "eff", header: "Tax from", value: (r) => r.taxEffective, defaultHidden: true, render: (r) => <span className="num">{r.taxEffective}</span> },
     { key: "status", header: "Status", value: (r) => r.status, render: (r) => (r.status === "Held" ? <Chip cls="warn" icon="alert">Held for review</Chip> : r.status === "Reference" ? <Chip cls="neutral" icon="dot">Reference only</Chip> : <StatusChip s="Applied" />) },
-    { key: "source", header: "Source", value: (r) => r.source, defaultHidden: true, render: (r) => <span style={{ fontSize: 12.5 }}>{r.source}{r.at ? `, ${utcMin(r.at)}` : ""}</span> },
-    { key: "why", header: "Why held", emptyWhen: (r) => !r.candidate?.reason, value: (r) => r.candidate?.reason ?? "", render: (r) => <span style={{ fontSize: 12.5 }}>{r.candidate?.reason ?? ""}</span> },
+    { key: "source", header: "Source", value: (r) => r.source, defaultHidden: true, render: (r) => <span style={{ fontSize: ".78125rem" }}>{r.source}{r.at ? `, ${utcMin(r.at)}` : ""}</span> },
+    { key: "why", header: "Why held", emptyWhen: (r) => !r.candidate?.reason, value: (r) => r.candidate?.reason ?? "", render: (r) => <span style={{ fontSize: ".78125rem" }}>{r.candidate?.reason ?? ""}</span> },
   ];
   return (
     <Page mod="rates" sub="Exchange rates and tax used when invoices are issued." acts={!s.loaded || s.canElevate ? <button className="btn btn-primary" data-tour="rates-refresh" onClick={refresh} disabled={busy || !!lock} title={lock} aria-busy={busy}>{busy ? <span className="spin" /> : <Icon name="refresh" />}Refresh rates</button> : undefined}>

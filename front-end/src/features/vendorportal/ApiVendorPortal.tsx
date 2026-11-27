@@ -77,10 +77,10 @@ export default function ApiVendorPortal() {
       <header style={{ background: "var(--surface)", borderBottom: "1px solid var(--line)", padding: "14px 24px", display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div aria-hidden="true" style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent)", color: "var(--text-inverse)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="shieldcheck" /></div>
-          <div><div style={{ fontWeight: 600 }}>Vendor assessment portal</div><div style={{ fontSize: 12, color: "var(--muted)" }}>Selvara{info ? ` · requested by ${info.customer} for ${info.vendor}` : ""}</div></div>
+          <div><div style={{ fontWeight: 600 }}>Vendor assessment portal</div><div style={{ fontSize: ".75rem", color: "var(--muted)" }}>Selvara{info ? ` · requested by ${info.customer} for ${info.vendor}` : ""}</div></div>
         </div>
         {authed ? (
-          <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 13, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", fontSize: ".8125rem", flexWrap: "wrap" }}>
             <span style={{ color: "var(--muted)" }}>Signed in{masked ? ` as ${masked}` : ""} · ends after 15 minutes idle</span>
             <button type="button" className="btn btn-secondary sm" onClick={() => signOut("Signed out. Your answers were saved.")}>Sign out</button>
           </div>
@@ -102,7 +102,7 @@ export default function ApiVendorPortal() {
           <aside aria-label="Access and security" style={{ flex: "1 1 300px", minWidth: 0, display: "flex", flexDirection: "column", gap: 14 }}>
             <div className="card" style={{ padding: "16px 18px", gap: 8 }}>
               <div style={{ fontWeight: 600 }}>What you can see</div>
-              <div style={{ fontSize: 13, color: "var(--ink-2)" }}>Only this questionnaire and the files you add. You cannot see {info?.customer ?? "your customer"}&apos;s data, other vendors or your risk rating.</div>
+              <div style={{ fontSize: ".8125rem", color: "var(--ink-2)" }}>Only this questionnaire and the files you add. You cannot see {info?.customer ?? "your customer"}&apos;s data, other vendors or your risk rating.</div>
             </div>
             <SecurityPanel controls={CONTROLS} />
           </aside>
@@ -113,7 +113,7 @@ export default function ApiVendorPortal() {
 }
 
 function Notice({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="card" style={{ padding: "20px 22px", gap: 8 }}><h2 style={{ fontSize: 18, margin: 0 }}>{title}</h2><p style={{ margin: 0, color: "var(--ink-2)", lineHeight: 1.55 }}>{children}</p></section>;
+  return <section className="card" style={{ padding: "20px 22px", gap: 8 }}><h2 style={{ fontSize: "1.125rem", margin: 0 }}>{title}</h2><p style={{ margin: 0, color: "var(--ink-2)", lineHeight: 1.55 }}>{children}</p></section>;
 }
 
 function Answers({ p, setP, onSubmit, busy, onToast }: { p: Portal; setP: (x: Portal) => void; onSubmit: () => void; busy: boolean; onToast: (m: string, tone?: VpTone) => void }) {
@@ -141,24 +141,24 @@ function Answers({ p, setP, onSubmit, busy, onToast }: { p: Portal; setP: (x: Po
   return (
     <>
       <section className="card" style={{ padding: "18px 20px", gap: 6 }}>
-        <h2 style={{ fontSize: 18, margin: 0 }}>{p.status === "Reopened" ? "Clarification requested" : "Security questionnaire"}</h2>
+        <h2 style={{ fontSize: "1.125rem", margin: 0 }}>{p.status === "Reopened" ? "Clarification requested" : "Security questionnaire"}</h2>
         <p style={{ margin: 0, color: "var(--ink-2)" }}>{p.customer} asks {p.vendor} to answer{p.due ? ` by ${p.due}` : ""}. Required items are marked; a &ldquo;Yes&rdquo; on them needs evidence. Answers are saved as you go{saving === "saving" ? " (saving…)" : saving === "saved" ? " (saved)" : ""}.</p>
         {p.status === "Reopened" ? <div className="banner warn" role="status" style={{ marginTop: 6 }}><b>Note from {p.customer}:</b> {p.clarifyNote} Only the {p.clarify.length} questions marked below can change.</div> : null}
       </section>
       {domains.map((dom) => (
         <section key={dom} className="card" style={{ padding: "16px 20px", gap: 12 }} aria-labelledby={`dom-${dom}`}>
-          <h3 id={`dom-${dom}`} style={{ margin: 0, fontSize: 15 }}>{dom}</h3>
+          <h3 id={`dom-${dom}`} style={{ margin: 0, fontSize: ".9375rem" }}>{dom}</h3>
           {p.questions.filter((q) => q.domain === dom).map((q) => {
             const it = items[q.id]; const can = editable.includes(q.id);
             return (
               <fieldset key={q.id} disabled={!can} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "12px 14px", margin: 0, opacity: can ? 1 : 0.7 }}>
-                <legend style={{ fontWeight: 600, fontSize: 13.5, padding: "0 4px" }}>{q.id}. {q.text}{q.critical ? " (required)" : ""}{p.status === "Reopened" && can ? " · reopened" : ""}</legend>
+                <legend style={{ fontWeight: 600, fontSize: ".84375rem", padding: "0 4px" }}>{q.id}. {q.text}{q.critical ? " (required)" : ""}{p.status === "Reopened" && can ? " · reopened" : ""}</legend>
                 <div role="radiogroup" aria-label={`Answer to ${q.id}`} style={{ display: "flex", gap: 14, flexWrap: "wrap", margin: "6px 0 8px" }}>
-                  {ANSWERS.map(([v, l]) => <label key={v} style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13.5 }}><input type="radio" name={`a-${q.id}`} checked={it.answer === v} onChange={() => save({ ...items, [q.id]: { ...it, answer: v } })} />{l}</label>)}
+                  {ANSWERS.map(([v, l]) => <label key={v} style={{ display: "flex", gap: 6, alignItems: "center", fontSize: ".84375rem" }}><input type="radio" name={`a-${q.id}`} checked={it.answer === v} onChange={() => save({ ...items, [q.id]: { ...it, answer: v } })} />{l}</label>)}
                 </div>
                 <label className="vh" htmlFor={`c-${q.id}`}>Comment on {q.id}</label>
                 <textarea className="input" id={`c-${q.id}`} rows={2} maxLength={2000} placeholder="Comment (optional)" value={it.comment} onChange={(e) => save({ ...items, [q.id]: { ...it, comment: e.target.value } })} />
-                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 8, fontSize: 12.5 }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 8, fontSize: ".78125rem" }}>
                   <span style={{ color: "var(--muted)" }}>Evidence: {q.evidence}</span>
                   {it.file ? <span className="chip ok"><Icon name="check" />{it.file.name}</span> : q.critical && it.answer === "Y" ? <span className="chip warn"><Icon name="alert" />Evidence needed</span> : null}
                   {can ? <label className="btn btn-ghost sm" style={{ cursor: "pointer" }}><Icon name="plus" />{it.file ? "Replace file" : "Add file"}<input type="file" className="vh" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg" aria-label={`Evidence for ${q.id}`} onChange={(e) => { upload(q.id, e.target.files?.[0]); e.target.value = ""; }} /></label> : null}

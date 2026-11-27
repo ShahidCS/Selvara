@@ -71,7 +71,7 @@ export function VendorRequestForm({ close }: { close: () => void }) {
   return (
     <>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <p style={{ margin: 0, fontSize: 13 }}>Ask Security to assess a new supplier before procurement. Your request enters the vendor review queue.</p>
+      <p style={{ margin: 0, fontSize: ".8125rem" }}>Ask Security to assess a new supplier before procurement. Your request enters the vendor review queue.</p>
       <div className={err.name ? "field err" : "field"}><label htmlFor="vr-name">Vendor name <Req /></label><input className="input" id="vr-name" data-focus maxLength={120} placeholder="e.g. Northstar Analytics" value={name} onChange={(e) => setName(e.target.value)} aria-invalid={err.name} aria-describedby={err.name ? "vr-name-err" : undefined} />
         {err.name ? <p className="field help" id="vr-name-err" role="alert" style={{ color: "var(--bad-ink)" }}>Enter the vendor name.</p> : null}</div>
       <div className="grid2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>

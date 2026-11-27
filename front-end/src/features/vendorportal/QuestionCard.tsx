@@ -4,7 +4,7 @@ import EvidenceUpload from "./EvidenceUpload";
 
 export function AnswerSelect({ qid, value, onChange }: { qid: string; value: string; onChange: (v: string) => void }) {
   return (
-    <select className="select" aria-label={`Answer for ${qid}`} value={value} onChange={(e) => onChange(e.target.value)} style={{ width: 170, height: 44, borderRadius: 999 }}>
+    <select className="select" aria-label={`Answer for ${qid}`} value={value} onChange={(e) => onChange(e.target.value)} style={{ width: 170, height: "2.75rem", borderRadius: 999 }}>
       <option value="">Select an answer</option>
       {ANSWERS.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
     </select>
@@ -20,16 +20,16 @@ export default function QuestionCard({ q, value, note, file, prefilled, needsEvi
     <section id={`vp-q-${q.id}`} tabIndex={-1} className="card" aria-label={`${q.domain} ${q.id}`} style={{ padding: "16px 18px", gap: 10, borderColor: needsEvidence ? "var(--warn-ink)" : undefined }}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "10px 16px", alignItems: "flex-start" }}>
         <div style={{ flex: "999 1 380px", minWidth: 0 }}>
-          <div style={{ fontSize: 12, color: "var(--muted)" }}>{q.domain} · {q.id}</div>
-          <div style={{ fontSize: 14, fontWeight: 600 }}>{q.text} {q.critical ? <span className="chip warn" style={{ height: 20, fontSize: 11 }}><Icon name="evidence" />Evidence required</span> : null}</div>
-          {needsEvidence ? <div style={{ fontSize: 12, fontWeight: 600, color: "var(--warn-ink)", marginTop: 4, display: "flex", gap: 6, alignItems: "center" }}><Icon name="alert" style={{ width: 14, height: 14 }} />Attach evidence for this &quot;Yes&quot; answer before you submit.</div> : null}
-          {prefilled ? <div style={{ fontSize: 12, fontWeight: 600, color: "var(--info-ink)", marginTop: 2 }}>Prefilled from your upload, please check</div> : null}
+          <div style={{ fontSize: ".75rem", color: "var(--muted)" }}>{q.domain} · {q.id}</div>
+          <div style={{ fontSize: ".875rem", fontWeight: 600 }}>{q.text} {q.critical ? <span className="chip warn" style={{ height: "1.25rem", fontSize: ".6875rem" }}><Icon name="evidence" />Evidence required</span> : null}</div>
+          {needsEvidence ? <div style={{ fontSize: ".75rem", fontWeight: 600, color: "var(--warn-ink)", marginTop: 4, display: "flex", gap: 6, alignItems: "center" }}><Icon name="alert" style={{ width: 14, height: 14 }} />Attach evidence for this &quot;Yes&quot; answer before you submit.</div> : null}
+          {prefilled ? <div style={{ fontSize: ".75rem", fontWeight: 600, color: "var(--info-ink)", marginTop: 2 }}>Prefilled from your upload, please check</div> : null}
         </div>
         <AnswerSelect qid={q.id} value={value} onChange={onAnswer} />
       </div>
       <div className="field">
-        <label htmlFor={`vp-note-${q.id}`} style={{ fontSize: 12, fontWeight: 600 }}>Comment (optional)</label>
-        <textarea id={`vp-note-${q.id}`} className="input" rows={2} maxLength={MAX_COMMENT} value={note} onChange={(e) => onNote(e.target.value)} style={{ height: "auto", padding: "8px 10px", fontSize: 13, resize: "vertical" }} />
+        <label htmlFor={`vp-note-${q.id}`} style={{ fontSize: ".75rem", fontWeight: 600 }}>Comment (optional)</label>
+        <textarea id={`vp-note-${q.id}`} className="input" rows={2} maxLength={MAX_COMMENT} value={note} onChange={(e) => onNote(e.target.value)} style={{ height: "auto", padding: "8px 10px", fontSize: ".8125rem", resize: "vertical" }} />
       </div>
       <EvidenceUpload qid={q.id} file={file} onPick={onPick} hint={q.evidence} />
     </section>

@@ -23,7 +23,7 @@ function ReasonForm(o: Opts) {
   return (
     <>
       <div>
-        {o.intro ? <div style={{ margin: "0 0 10px", fontSize: 13 }}>{o.intro}</div> : null}
+        {o.intro ? <div style={{ margin: "0 0 10px", fontSize: ".8125rem" }}>{o.intro}</div> : null}
         {o.select ? (
           <div className="field"><label htmlFor="rd-pick">{o.selectLabel ?? "Choose"}</label>
             <SelectList className="select" id="rd-pick" value={pick} onChange={(e) => setPick(e.target.value)}>{o.select.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</SelectList></div>

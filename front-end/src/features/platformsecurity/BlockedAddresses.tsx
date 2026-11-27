@@ -30,7 +30,7 @@ export function BlockedAddresses() {
                 <tr key={r.ip}>
                   <td className="strong num">{r.ip}</td>
                   <td>{r.level >= LEVEL_LABEL.length ? <Chip cls="bad" icon="alert">{LEVEL_LABEL[r.level - 1]}</Chip> : <Chip cls="warn" icon="clock">{LEVEL_LABEL[r.level - 1]}</Chip>}</td>
-                  <td className="num" style={{ fontSize: 12 }}>{fmt(r.until)}</td>
+                  <td className="num" style={{ fontSize: ".75rem" }}>{fmt(r.until)}</td>
                   <td className="num">{r.blocks}</td>
                   <td className="r">{isSuper ? <button className="btn btn-ghost sm" disabled={gate.locked} title={gate.title} aria-label={`Lift block: ${r.ip}`} onClick={() => L.openModal(`Lift block on ${r.ip}`, (close) => <Lift ip={r.ip} close={close} />)}><Icon name="unlock" />Lift block</button> : null}</td>
                 </tr>
@@ -39,9 +39,9 @@ export function BlockedAddresses() {
           </div>
         )}
         {!isSuper ? <p className="field help" style={{ margin: 0 }}>Read-only for your role: only a platform super admin can lift a block.</p> : null}
-        <h4 style={{ margin: "8px 0 0", fontSize: 13 }}>Address reputation</h4>
+        <h4 style={{ margin: "8px 0 0", fontSize: ".8125rem" }}>Address reputation</h4>
         <p className="field help" style={{ margin: 0 }}>Hosting, VPN and proxy networks are blocked after {thresholdFor(REPUTATION[0].prefix + "1")} failures instead of {IP_POLICY.THRESHOLD}, and always get the extra check before a sign-in. In production this list comes from an IP intelligence feed; here the ranges are synthetic.</p>
-        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>{REPUTATION.map((r) => <li key={r.prefix}>{r.label}</li>)}</ul>
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: ".8125rem" }}>{REPUTATION.map((r) => <li key={r.prefix}>{r.label}</li>)}</ul>
       </div>
     </section>
   );

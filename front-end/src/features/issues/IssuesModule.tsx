@@ -78,12 +78,12 @@ function IssuesList() {
                     {items.length ? items.map((i) => (
                       <div key={i.id} className="card clickable" style={{ marginBottom: 8 }} {...activate(() => open(i.id))}>
                         <div className="c-body" style={{ padding: 11 }}>
-                          <div style={{ fontWeight: 500, fontSize: 13, marginBottom: 6 }}>{i.title}</div>
+                          <div style={{ fontWeight: 500, fontSize: ".8125rem", marginBottom: 6 }}>{i.title}</div>
                           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}><SeverityBars level={i.sev} /><span className="tag num">{i.id}</span></div>
-                          <div style={{ display: "flex", gap: 8, justifyContent: "space-between", flexWrap: "wrap", marginTop: 6, fontSize: 12, color: "var(--muted)" }}><Person name={i.owner} size={22} /><DueText due={i.due} /></div>
+                          <div style={{ display: "flex", gap: 8, justifyContent: "space-between", flexWrap: "wrap", marginTop: 6, fontSize: ".75rem", color: "var(--muted)" }}><Person name={i.owner} size={22} /><DueText due={i.due} /></div>
                         </div>
                       </div>
-                    )) : <div style={{ color: "var(--faint)", fontSize: 12, padding: 8 }}>Nothing here.</div>}
+                    )) : <div style={{ color: "var(--faint)", fontSize: ".75rem", padding: 8 }}>Nothing here.</div>}
                   </div>
                 );
               })}

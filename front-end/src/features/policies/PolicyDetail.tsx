@@ -54,7 +54,7 @@ export function PolicyDetail({ id }: { id: string }) {
           return (
             <div key={x.id} className="card" style={{ boxShadow: "none", background: "var(--warn-bg)", borderColor: "var(--warn-ink)", marginBottom: 12 }} role="alert"><div className="c-body" style={{ padding: 12 }}>
               <div style={{ fontWeight: 600 }}><Icon name="alert" /> Emergency change v{x.ver}: retrospective approval {st === "Overdue" ? "OVERDUE" : "required"} by {x.dueBy}</div>
-              <div style={{ fontSize: 12.5, color: "var(--muted)", margin: "3px 0 8px" }}>Published by {x.by} on {x.at} ({x.id}). Reason: {x.reason}. A different admin/owner must approve within {svc.EMERGENCY_DAYS} business days.</div>
+              <div style={{ fontSize: ".78125rem", color: "var(--muted)", margin: "3px 0 8px" }}>Published by {x.by} on {x.at} ({x.id}). Reason: {x.reason}. A different admin/owner must approve within {svc.EMERGENCY_DAYS} business days.</div>
               <div className="btngrp">
                 {btn("Approve retrospectively", "check", why, () => reasonModal(L, "Retrospective approval, " + x.id, { label: "Approval reason", min: 10, confirm: "Approve", run: async (r) => { await svc.decideException(id, x.id, "approve", r); return "Emergency change approved retrospectively"; } }), "btn-primary")}
                 {btn("Reject", "x", why, () => reasonModal(L, "Reject emergency change, " + x.id, { label: "Reason", min: 10, confirm: "Reject", danger: true, run: async (r) => { await svc.decideException(id, x.id, "reject", r); return "Emergency change rejected"; } }))}
@@ -138,7 +138,7 @@ export function PolicyDetail({ id }: { id: string }) {
                 <>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                     <Ring pct={a.required ? Math.round((a.done / a.required) * 100) : 0} size={60} color="var(--accent)" />
-                    <div><div style={{ fontWeight: 600 }}>{a.done} / {a.required} accepted</div><div style={{ fontSize: 12, color: "var(--muted)" }}>{API_ON ? `Active members who acknowledged v${live.ver}` : `Workforce acknowledgement of v${live.ver} (demo figures)`}</div></div>
+                    <div><div style={{ fontWeight: 600 }}>{a.done} / {a.required} accepted</div><div style={{ fontSize: ".75rem", color: "var(--muted)" }}>{API_ON ? `Active members who acknowledged v${live.ver}` : `Workforce acknowledgement of v${live.ver} (demo figures)`}</div></div>
                   </div>
                   <div className="btngrp">
                     {manager ? btn("Remind outstanding", "bell", null, () => remind(), "btn-ghost") : null}
@@ -152,7 +152,7 @@ export function PolicyDetail({ id }: { id: string }) {
 
             <div className="card"><div className="c-head"><h3>Mapped controls</h3></div><div className="c-body">
               <div className="btngrp" style={{ marginBottom: 8 }}>
-                {mapped.length ? mapped.map((c: string, i: number) => <span key={i} className="tag num">{c}</span>) : <span style={{ color: "var(--muted)", fontSize: 13 }}>None mapped</span>}
+                {mapped.length ? mapped.map((c: string, i: number) => <span key={i} className="tag num">{c}</span>) : <span style={{ color: "var(--muted)", fontSize: ".8125rem" }}>None mapped</span>}
               </div>
               {manager ? <button className="btn btn-ghost sm" onClick={() => openMapControl(L, id)}><Icon name="plus" />Map control</button> : null}
             </div></div>

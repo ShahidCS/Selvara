@@ -11,7 +11,7 @@ interface Add { tpl: string | null; short: string; fname: string; kind: string; 
 const Req = () => <span style={{ color: "var(--bad-ink)" }} aria-hidden="true">*</span>;
 /** Which field a save error belongs to, so the message sits under that field. */
 const errField = (m: string) => (/short name|already in the library/i.test(m) ? "short" : /requirement/i.test(m) ? "text" : "form");
-const errStyle = { color: "var(--bad-ink)", fontSize: 13, fontWeight: 600, margin: "6px 0 0" } as const;
+const errStyle = { color: "var(--bad-ink)", fontSize: ".8125rem", fontWeight: 600, margin: "6px 0 0" } as const;
 const EMPTY: Add = { tpl: null, short: "", fname: "", kind: "Framework", region: "Global", version: "", text: "", err: "" };
 
 /** "Add a regulation, standard or guideline": templates + keyword mapping preview (prototype: renderFwAdd / fwAddPick / fwAddSave). */
@@ -65,7 +65,7 @@ export function FwAdd({ onAdded }: { onAdded: (id: string) => void }) {
       {rows.length ? (
         <>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: 4 }}>
-            <strong style={{ fontSize: 13 }}>{mappedN} of {rows.length} requirements map to existing control domains</strong>
+            <strong style={{ fontSize: ".8125rem" }}>{mappedN} of {rows.length} requirements map to existing control domains</strong>
             <Chip cls={cov >= 80 ? "ok" : cov >= 50 ? "warn" : "bad"}>{cov}% covered</Chip>
           </div>
           <div className="scroll" style={{ maxHeight: 220, border: "1px solid var(--line)", borderRadius: 8, marginTop: 8 }}>

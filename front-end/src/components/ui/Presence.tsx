@@ -20,7 +20,7 @@ export function Presence() {
   const name = (o: PresenceEntry) => (o.person === me ? "You, in another tab" : o.person);
   const iEdit = /\/(edit|exception)$/.test(path);
   return (
-    <div className={`banner ${iEdit && editingOthers.length ? "warn" : "info"}`} role="status" style={{ margin: "0 0 12px", display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
+    <div className={`banner ${iEdit && editingOthers.length ? "warn" : "info"}`} role="status" style={{ margin: "0 0 12px", display: "flex", gap: 8, alignItems: "center", fontSize: ".8125rem" }}>
       <Icon name="user" />
       <span>{iEdit && editingOthers.length ? <><b>{editingOthers.map(name).join(", ")}</b> {editingOthers.length === 1 ? "is" : "are"} also editing this record. Save carefully: the last save wins.</>
         : <>Also here: {others.map((o) => <b key={o.id}>{name(o)}{o.editing ? " (editing)" : ""}</b>).reduce<React.ReactNode[]>((acc, el, i) => (i ? [...acc, ", ", el] : [el]), [])}</>}</span>

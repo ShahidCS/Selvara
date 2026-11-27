@@ -49,7 +49,7 @@ export function AgentsTab({ manage }: { manage: boolean }) {
             {pending ? <Chip cls="warn" icon="clock">Raise requested</Chip> : null}
             <CertChip a={a} />
           </div>
-          {t ? <span style={{ fontSize: 11.5, color: "var(--muted)" }}>{t.approved} of {n} approved suggestions</span> : null}
+          {t ? <span style={{ fontSize: ".71875rem", color: "var(--muted)" }}>{t.approved} of {n} approved suggestions</span> : null}
           {manage && !pending && a.status !== "Pending approval" ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 2 }}>{up
               ? <button className="btn btn-ghost sm" aria-label={`Raise autonomy: ${a.name}`} onClick={() => raise(a)}>Raise</button>
@@ -66,7 +66,7 @@ export function AgentsTab({ manage }: { manage: boolean }) {
         <button className="btn btn-ghost sm" disabled={a.status === "Pending approval"} title={a.status === "Pending approval" ? "Waiting for a different admin or owner to approve" : undefined} onClick={() => toggle(a.id)}>{a.status === "Active" ? "Pause" : a.status === "Pending approval" ? "Awaiting approval" : "Request enable"}</button>
         <button className="btn btn-ghost sm" title="Delete agent" aria-label={`Delete agent ${a.name}`} onClick={() => del(a)}><Icon name="trash" /></button>
       </div>
-    ) : <span style={{ color: "var(--faint)", fontSize: 12 }}>View only</span>);
+    ) : <span style={{ color: "var(--faint)", fontSize: ".75rem" }}>View only</span>);
   const cols: DTColumn<Agent>[] = [
     { key: "name", header: "Agent", value: (a) => a.name, locked: true, render: (a) => <span className="strong">{a.name}</span> },
     { key: "trigger", header: "Trigger", value: (a) => a.trigger, render: (a) => a.trigger },
@@ -100,7 +100,7 @@ function CertChip({ a }: { a: Agent }) {
   if (a.pendingRecert && getApproval(a.pendingRecert)?.status === "Pending") return <Chip cls="warn" icon="clock">Recertification requested</Chip>;
   if (st === "transition") return <Chip cls="warn" icon="alert">Recertify by {certDate(a.certifiedUntil as number)}</Chip>;
   if (st === "due") return <Chip cls="warn" icon="clock">Recertification due {certDate(a.certifiedUntil as number)}</Chip>;
-  if (st === "valid") return <span style={{ fontSize: 11.5, color: "var(--muted)" }}>Certified until {certDate(a.certifiedUntil as number)}</span>;
+  if (st === "valid") return <span style={{ fontSize: ".71875rem", color: "var(--muted)" }}>Certified until {certDate(a.certifiedUntil as number)}</span>;
   return null;
 }
 
@@ -204,7 +204,7 @@ function DecideRunForm({ id, decision }: { id: string; decision: "Approved & app
   return (
     <>
       <div>
-        <p style={{ margin: "0 0 8px", fontSize: 13 }}>{approving ? "Approve and apply" : "Reject"} this proposed change?</p>
+        <p style={{ margin: "0 0 8px", fontSize: ".8125rem" }}>{approving ? "Approve and apply" : "Reject"} this proposed change?</p>
         <dl className="meta-grid lstart"><dt>Agent</dt><dd>{r.agent}</dd><dt>Proposed change</dt><dd>{r.change}</dd><dt>Triggered by</dt><dd>{r.requestedBy || "Agent trigger"}</dd></dl>
         <div className="field" style={{ marginTop: 10 }}><label htmlFor="rd-reason">Reason <span style={{ color: "var(--bad-ink)" }}>*</span></label><textarea className="input" id="rd-reason" data-focus rows={3} maxLength={300} style={{ resize: "vertical" }} value={reason} onChange={(e) => { setReason(e.target.value); setErr(""); }} aria-invalid={!!err} aria-describedby={err ? "rd-err" : undefined} /></div>
         <p className="field help" id="rd-err" role="alert" style={{ color: "var(--bad-ink)", display: err ? "block" : "none" }}>{err}</p>
@@ -223,9 +223,9 @@ export function RunLogTab({ manage }: { manage: boolean }) {
   const open = (id: string, decision: "Approved & applied" | "Rejected") => L.openModal(decision === "Rejected" ? "Reject proposed change" : "Approve proposed change", () => <DecideRunForm id={id} decision={decision} />);
   const cols: DTColumn<Run>[] = [
     { key: "when", header: "When", value: (r) => r.when, render: (r) => <span style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>{r.when}</span> },
-    { key: "agent", header: "Agent", value: (r) => r.agent, locked: true, render: (r) => <span className="strong">{r.agent}{r.requestedBy ? <div style={{ fontSize: 11.5, color: "var(--muted)", fontWeight: 400 }}>run by {r.requestedBy}</div> : null}</span> },
+    { key: "agent", header: "Agent", value: (r) => r.agent, locked: true, render: (r) => <span className="strong">{r.agent}{r.requestedBy ? <div style={{ fontSize: ".71875rem", color: "var(--muted)", fontWeight: 400 }}>run by {r.requestedBy}</div> : null}</span> },
     { key: "change", header: "Proposed change", value: (r) => r.change, render: (r) => r.change },
-    { key: "decision", header: "Decision", value: (r) => r.decision, render: (r) => (<>{r.decision === "Waiting" ? <Chip cls="warn" icon="clock">Waiting</Chip> : r.decision === "Rejected" || r.decision === REJECTED_AFTER ? <Chip cls="bad" icon="x">{r.decision}</Chip> : r.decision === "Blocked" ? <Chip cls="bad" icon="alert">Blocked (personal data)</Chip> : r.decision === "No change" ? <Chip cls="neutral" icon="dot">No change</Chip> : <Chip cls="ok" icon="check">{r.decision}</Chip>}{r.decidedBy ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>by {r.decidedBy}</div> : null}</>) },
+    { key: "decision", header: "Decision", value: (r) => r.decision, render: (r) => (<>{r.decision === "Waiting" ? <Chip cls="warn" icon="clock">Waiting</Chip> : r.decision === "Rejected" || r.decision === REJECTED_AFTER ? <Chip cls="bad" icon="x">{r.decision}</Chip> : r.decision === "Blocked" ? <Chip cls="bad" icon="alert">Blocked (personal data)</Chip> : r.decision === "No change" ? <Chip cls="neutral" icon="dot">No change</Chip> : <Chip cls="ok" icon="check">{r.decision}</Chip>}{r.decidedBy ? <div style={{ fontSize: ".71875rem", color: "var(--muted)" }}>by {r.decidedBy}</div> : null}</>) },
     { key: "act", header: "Actions", align: "end", locked: true, render: (r) => {
       if (manage && r.decision === "Auto-applied") return <button className="btn btn-ghost sm" aria-label={`Reject applied change: ${r.change}`} onClick={() => flag(r)}><Icon name="x" />Reject applied change</button>;
       const why = manage && r.decision === "Waiting" ? svc.runBlockReason(r) : null;

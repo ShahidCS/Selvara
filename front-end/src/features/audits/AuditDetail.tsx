@@ -109,7 +109,7 @@ export function AuditDetail({ id }: { id: string }) {
           </div>
           {API_ON && a.access?.auditor ? <p className="field help" style={{ margin: "0 0 8px" }}>{a.access.auditor}, {a.access.from} to {a.access.until}{a.access.endedAt ? ` (ended ${a.access.endedAt} by ${a.access.endedBy})` : ""}.{a.frozenAt ? ` Populations frozen ${String(a.frozenAt).slice(0, 10)} by ${a.frozenBy}.` : ""}</p> : null}
           {API_ON && a.snapshots?.length ? <div style={{ margin: "0 0 10px" }}><div className="sectitle" style={{ margin: "0 0 6px" }}>Risk register snapshots shared with the auditor</div>
-            {a.snapshots.map((s: any) => <div key={s.id} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}><span className="num strong">{s.id}</span> {s.at} · {s.count} risks · SHA-256 {s.hash}
+            {a.snapshots.map((s: any) => <div key={s.id} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: ".8125rem" }}><span className="num strong">{s.id}</span> {s.at} · {s.count} risks · SHA-256 {s.hash}
               <button className="btn btn-ghost sm" onClick={() => attempt(L, async () => { downloadText(safeFileName(`${s.id}.json`), await svc.sharedSnapshot(id, s.id)); })}>Download</button></div>)}</div> : null}
           {canManage ? (
             <>
@@ -155,7 +155,7 @@ export function AuditDetail({ id }: { id: string }) {
         {a.irs.length ? (
           <Table cols={[{ t: "ID" }, { t: "Request" }, { t: "Raised by" }, { t: "Status" }, { t: "Response" }, { t: "" }]}>
             {a.irs.map((r: any) => (
-              <tr key={r.id}><td className="strong num">{r.id}</td><td>{r.item}</td><td>{r.by}<div style={{ fontSize: 11.5, color: "var(--muted)" }}>{r.at}</div></td>
+              <tr key={r.id}><td className="strong num">{r.id}</td><td>{r.item}</td><td>{r.by}<div style={{ fontSize: ".71875rem", color: "var(--muted)" }}>{r.at}</div></td>
                 <td><IrChip s={r.status} /></td><td>{r.response || "—"}</td>
                 <td className="r"><div className="btngrp" style={{ justifyContent: "flex-end" }}>
                   {r.status === "Open" ? <button className="btn btn-ghost sm" {...dis(manageWhy)} onClick={() => openRespondIr(L, id, r.id)}><Icon name="check" />Respond</button> : null}
@@ -194,8 +194,8 @@ export function AuditDetail({ id }: { id: string }) {
             {a.findings.map((f: any) => (
               <tr key={f.id}>
                 <td className="strong num">{f.id}</td>
-                <td><div>{f.title}</div><div style={{ fontSize: 11.5, color: "var(--muted)" }}>{f.rec}</div></td>
-                <td><SeverityBars level={f.sev} /></td><td><StatusChip s={f.status} />{f.status === "Draft" ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>by {f.draftedBy}</div> : null}{f.status === "Rejected" ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{f.rejectedReason}</div> : null}</td>
+                <td><div>{f.title}</div><div style={{ fontSize: ".71875rem", color: "var(--muted)" }}>{f.rec}</div></td>
+                <td><SeverityBars level={f.sev} /></td><td><StatusChip s={f.status} />{f.status === "Draft" ? <div style={{ fontSize: ".71875rem", color: "var(--muted)" }}>by {f.draftedBy}</div> : null}{f.status === "Rejected" ? <div style={{ fontSize: ".71875rem", color: "var(--muted)" }}>{f.rejectedReason}</div> : null}</td>
                 <td className="num">{f.issue ? <Link href={`/ws/issues/${encodeURIComponent(f.issue)}`} onClick={(e) => { e.preventDefault(); go(`/ws/issues/${encodeURIComponent(f.issue)}`); }}>{f.issue}</Link> : <span style={{ color: "var(--muted)" }}>—</span>}</td>
                 <td className="r">{f.issue || f.status === "Closed" || f.status === "Rejected" ? null : (
                   <div className="btngrp" style={{ justifyContent: "flex-end" }}>

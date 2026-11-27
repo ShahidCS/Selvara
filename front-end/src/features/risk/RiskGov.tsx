@@ -30,7 +30,7 @@ export default function RiskGov() {
   return (
     <div className="rcaps">
       <section className="card"><div className="c-body"><h3 style={{ margin: "0 0 10px" }}>Register details</h3>
-        <div className="rgrid-meta">{meta.map((x) => <div key={x[0]} style={{ background: "var(--surface-2)", borderRadius: 10, padding: "10px 12px" }}><div style={{ fontSize: 12, color: "var(--muted)" }}>{x[0]}</div><div style={{ fontSize: 13, fontWeight: 500 }}>{String(x[1])}</div></div>)}</div></div></section>
+        <div className="rgrid-meta">{meta.map((x) => <div key={x[0]} style={{ background: "var(--surface-2)", borderRadius: 10, padding: "10px 12px" }}><div style={{ fontSize: ".75rem", color: "var(--muted)" }}>{x[0]}</div><div style={{ fontSize: ".8125rem", fontWeight: 500 }}>{String(x[1])}</div></div>)}</div></div></section>
       <section className="card"><div className="c-body"><h3 style={{ margin: "0 0 2px" }}>Enterprise risks</h3>
         <p className="sub" style={{ margin: "0 0 10px" }}>Each scenario rolls up to one enterprise risk; the enterprise view shows the highest current exposure among its scenarios.</p>
         {!RISK_ENT.length ? <Empty compact icon="risk" title="No enterprise risks are defined for this register yet" /> : null}
@@ -39,11 +39,11 @@ export default function RiskGov() {
           const top = kids.length ? Math.max(...kids.map(sCur)) : 0;
           return (
             <div key={e.id} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><span style={{ fontSize: 12, color: "var(--muted)" }}>{e.id} · Owner {e.owner}</span><ScoreChip score={top} label="Top" /></div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}><span style={{ fontSize: ".75rem", color: "var(--muted)" }}>{e.id} · Owner {e.owner}</span><ScoreChip score={top} label="Top" /></div>
               <div className="strong">{e.title}</div>
               {kids.map((k) => (
                 <button key={k.id} className="linkbtn" onClick={() => riskOpenDetail(k.id)} style={{ font: "inherit", display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", cursor: "pointer", color: "var(--ink)" }}>
-                  <span style={{ minWidth: 0, fontSize: 13, textAlign: "left" }}><span className="num strong">{k.id}</span> {k.title}</span><ScoreChip score={sCur(k)} />
+                  <span style={{ minWidth: 0, fontSize: ".8125rem", textAlign: "left" }}><span className="num strong">{k.id}</span> {k.title}</span><ScoreChip score={sCur(k)} />
                 </button>
               ))}
             </div>
@@ -53,21 +53,21 @@ export default function RiskGov() {
         <section className="card"><div className="c-body">
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 6 }}><h3 style={{ margin: 0 }}>Register snapshots</h3>
             {admin ? <div className="btngrp"><button className="btn btn-primary sm" onClick={() => snap("approved")}>Snapshot approved</button><button className="btn btn-secondary sm" onClick={() => snap("all")}>Snapshot all</button></div> : null}</div>
-          <div style={{ fontSize: 12, color: "var(--muted)" }}>{API_ON ? "Locked point-in-time copies of the register, sealed with a SHA-256 hash over every score, decision, date and status. Download one to keep it with your audit evidence." : "Locked point-in-time copies with a content hash over every score, decision, date and status. Snapshots taken inside an audit window are shared with the auditor automatically."}</div>
+          <div style={{ fontSize: ".75rem", color: "var(--muted)" }}>{API_ON ? "Locked point-in-time copies of the register, sealed with a SHA-256 hash over every score, decision, date and status. Download one to keep it with your audit evidence." : "Locked point-in-time copies with a content hash over every score, decision, date and status. Snapshots taken inside an audit window are shared with the auditor automatically."}</div>
           {!admin ? <p className="field help" style={{ margin: "6px 0 0" }}>Read-only: only a company admin can take snapshots.</p> : null}
           {RISK_SNAPSHOTS.length ? RISK_SNAPSHOTS.map((s) => (
             <div key={s.id} style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 8, padding: "10px 0", borderTop: "1px solid var(--line)" }}>
-              <span><span className="num strong">{s.id}</span> <span style={{ fontSize: 13 }}>{s.at} · {s.count} risks · {s.scope}</span><span style={{ display: "block", fontSize: 12, color: "var(--muted)" }}>{s.sha256 ? "SHA-256 " : "Hash "}{s.hash} · by {s.by}</span></span>
+              <span><span className="num strong">{s.id}</span> <span style={{ fontSize: ".8125rem" }}>{s.at} · {s.count} risks · {s.scope}</span><span style={{ display: "block", fontSize: ".75rem", color: "var(--muted)" }}>{s.sha256 ? "SHA-256 " : "Hash "}{s.hash} · by {s.by}</span></span>
               <span style={{ display: "flex", gap: 6, alignItems: "center" }}>{API_ON && admin ? <button className="btn btn-ghost sm" onClick={() => download(s.id)}>Download</button> : null}{s.shared ? <Chip cls="info" icon="check">Shared with auditor</Chip> : <Chip cls="neutral" icon="dot">Not in audit window</Chip>}</span>
             </div>
           )) : <Empty compact icon="risk" title="No snapshots taken yet" />}
         </div></section>
         <section className="card"><div className="c-body"><h3 style={{ margin: "0 0 2px" }}>Risk acceptances</h3>
-          <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>Acceptance lasts at most 12 months and names an authority at or above the level the rating requires. Those ending within 60 days are highlighted.</div>
+          <div style={{ fontSize: ".75rem", color: "var(--muted)", marginBottom: 6 }}>Acceptance lasts at most 12 months and names an authority at or above the level the rating requires. Those ending within 60 days are highlighted.</div>
           {accs.length ? accs.map((r) => (
             <button key={r.id} className="linkbtn" onClick={() => riskOpenDetail(r.id)} style={row}>
               <span style={{ display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}><span className="strong">{r.id} {r.title}</span>{expiresSoon(r.acceptance.until) ? <Chip cls="warn" icon="clock">Expires &lt;60d</Chip> : <Chip cls="ok" icon="check">Valid</Chip>}</span>
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>By {r.acceptance.by}{r.acceptance.board ? " (Board approved " + r.acceptance.board.ref + ", " + r.acceptance.board.date + ")" : ""} · residual {sRes(r)} · valid until {r.acceptance.until || "—"}</span>
+              <span style={{ fontSize: ".75rem", color: "var(--muted)" }}>By {r.acceptance.by}{r.acceptance.board ? " (Board approved " + r.acceptance.board.ref + ", " + r.acceptance.board.date + ")" : ""} · residual {sRes(r)} · valid until {r.acceptance.until || "—"}</span>
             </button>
           )) : <Empty compact icon="risk" title="No accepted risks" />}
         </div></section>

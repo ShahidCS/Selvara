@@ -10,7 +10,7 @@ import { useResetMfa } from "./actions";
 const DEVICE: Record<string, [string, string]> = { Compliant: ["ok", "check"], "At risk": ["warn", "alert"] };
 export const DeviceChip = ({ d }: { d: string }) => { const [c, i] = DEVICE[d] || ["bad", "x"]; return <Chip cls={c} icon={i}>{d}</Chip>; };
 const Row = ({ k, v, ok }: { k: string; v: string; ok: boolean }) => (
-  <div className="bar-row" style={{ marginBottom: 6, alignItems: "center" }}><span className="nm" style={{ width: 150 }}>{k}</span><StatusChip s={ok ? "Pass" : "Fail"} /> <span style={{ color: "var(--muted)", fontSize: 12, marginLeft: 6 }}>{v}</span></div>
+  <div className="bar-row" style={{ marginBottom: 6, alignItems: "center" }}><span className="nm" style={{ width: 150 }}>{k}</span><StatusChip s={ok ? "Pass" : "Fail"} /> <span style={{ color: "var(--muted)", fontSize: ".75rem", marginLeft: 6 }}>{v}</span></div>
 );
 
 /** A person as a page (`/ws/people/:id`): device posture and owned accounts. Reset MFA opens its request dialog; offboarding is a confirmation dialog. */

@@ -14,10 +14,10 @@ export function AuthenticatorSetup({ secret, uri, email }: { secret: string; uri
       {show === "qr" ? (
         <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
           <QrCode value={uri} label="QR code to add Selvara to your authenticator app" />
-          <p style={{ margin: 0, fontSize: 13, maxWidth: "34ch", lineHeight: 1.5, textAlign: "left", hyphens: "manual" }}>Open your authenticator app (such as Microsoft Authenticator, Google Authenticator or 1Password), choose to add an account, and scan this code.</p>
+          <p style={{ margin: 0, fontSize: ".8125rem", maxWidth: "34ch", lineHeight: 1.5, textAlign: "left", hyphens: "manual" }}>Open your authenticator app (such as Microsoft Authenticator, Google Authenticator or 1Password), choose to add an account, and scan this code.</p>
         </div>
       ) : (
-        <div style={{ display: "grid", gap: 8, fontSize: 13 }}>
+        <div style={{ display: "grid", gap: 8, fontSize: ".8125rem" }}>
           <p style={{ margin: 0, lineHeight: 1.5 }}>In your authenticator app, choose to add an account and enter it manually: type the key below, choose <b>time-based</b>, 6 digits, every 30 seconds.</p>
           {email ? <div><span style={{ color: "var(--muted)" }}>Account name:</span> <span className="num">{email}</span></div> : null}
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -27,7 +27,7 @@ export function AuthenticatorSetup({ secret, uri, email }: { secret: string; uri
           </div>
         </div>
       )}
-      <p style={{ margin: 0, fontSize: 13 }}><a href={uri}>Open in an authenticator app on this device</a></p>
+      <p style={{ margin: 0, fontSize: ".8125rem" }}><a href={uri}>Open in an authenticator app on this device</a></p>
     </div>
   );
 }

@@ -171,7 +171,7 @@ function WorkLive() {
               ))}
               {(w?.actions ?? []).map((a, n) => (
                 <tr key={a.riskId + n} className={canRisk ? "clickable" : undefined} {...(canRisk ? activate(() => go("/ws/risk")) : {})}>
-                  <td className="strong num" style={ID_CELL}>{a.riskId}</td><td>{a.text}<div style={{ fontSize: 11, color: "var(--muted)" }}>Treatment action{a.risk ? " · " + a.risk : ""}</div></td><td>—</td>
+                  <td className="strong num" style={ID_CELL}>{a.riskId}</td><td>{a.text}<div style={{ fontSize: ".6875rem", color: "var(--muted)" }}>Treatment action{a.risk ? " · " + a.risk : ""}</div></td><td>—</td>
                   <td>{a.due || "—"}</td>
                 </tr>
               ))}

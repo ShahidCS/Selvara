@@ -34,7 +34,7 @@ export function AdoptForm({ close }: { close: () => void }) {
           <label key={c.id} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "8px 10px", borderBottom: "1px solid var(--line)" }}>
             <input type="checkbox" checked={pick.has(c.id)} onChange={() => flip(c.id)} style={{ marginTop: 3 }} />
             <span style={{ minWidth: 0 }}><span className="tag num">{c.id}</span> <span className="strong">{c.title}</span><br />
-              <span style={{ fontSize: 12, color: "var(--muted)" }}>{c.domain} · {mappedFws(c).map((k) => FW_SHORT[k] || k).slice(0, 6).join(", ") || "No mappings"}</span></span>
+              <span style={{ fontSize: ".75rem", color: "var(--muted)" }}>{c.domain} · {mappedFws(c).map((k) => FW_SHORT[k] || k).slice(0, 6).join(", ") || "No mappings"}</span></span>
           </label>
         ))}
       </div>

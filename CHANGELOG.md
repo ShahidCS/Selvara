@@ -4,6 +4,9 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Fixed (Accessibility)
+- Text follows the browser's text-size setting (EDGE-13; it was ignored because every size was in px). Type sizes are now rem: `front-end/src/styles/portal.css` (182 `font-size`, 12 `line-height`, `--fs-help`, `--topbar-h`, and the heights of controls that hold text: `.btn`, `.btn.sm`, `.btn.lg`, `.input`, `.select`, `.chip`, `.kpi-badge .chip`, `.fchip`, `.fchip.sm`, `.cmd input`, `.nav-item .cnt`, `.nbadge`, `.tabbar-b`, `.sc-key`, `.pg-b`, `.dt-rows .select`, `.dt-bulk-b`, `.ai-badge`, `.appr-pill`, `.dt-sortbtn`, `.top-user`, `.help-search .input`, `.settings-sec a`, `.cal-head`, `.covcell`, `.mx-cell`) and 479 inline `fontSize` values in 114 component files (plus six inline control heights in the vendor portal and billing list). At the default setting nothing moves: 24,741 elements on 32 screens measured identical to the previous build. At 200% the text doubles, controls grow with it, and no page scrolls sideways. Guards: `tests/unit/typeScale.test.ts`, `e2e/edge-layout.spec.ts`. Still open: one-line labels truncate at large sizes; avatars and icons keep their size.
+
 ## [0.4.1] - 2026-11-27
 
 The first release of these changes. Tag `v0.4.0` was pushed before the version bump was merged; it points at a commit still versioned 0.3.3, so the release workflow refused it and nothing was deployed. Tags are immutable, so the release is 0.4.1.

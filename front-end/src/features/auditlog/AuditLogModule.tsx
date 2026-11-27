@@ -45,14 +45,14 @@ export default function AuditLogModule() {
       const rp = ropaById(ropaFor(l));
       return rp ? <span className="tag num" style={{ cursor: "pointer" }} aria-label={`Open RoPA register, ${rp.id}`} {...activate(() => setV("ropa"))}>{rp.id}</span> : <span style={{ color: "var(--faint)" }}>—</span>;
     } },
-    { key: "hash", header: "Hash", value: (l) => l.hash, render: (l) => <span className="num" title={l.hash} style={{ fontSize: 11, color: "var(--muted)" }}>{API_ON && l.hash ? l.hash.slice(0, 12) + "…" : l.hash}</span> },
+    { key: "hash", header: "Hash", value: (l) => l.hash, render: (l) => <span className="num" title={l.hash} style={{ fontSize: ".6875rem", color: "var(--muted)" }}>{API_ON && l.hash ? l.hash.slice(0, 12) + "…" : l.hash}</span> },
   ];
   return (
     <Page mod="auditlog" acts={acts}>
       <div className="card" style={{ flex: "0 1 auto", minHeight: 0 }}>
         <div className="c-head" style={{ flexWrap: "wrap", gap: 8 }}>
           <div className="tabs" role="tablist" aria-label="Audit log views" data-tour="auditlog-views">{VIEWS.map((x) => <button key={x[0]} className="tab" role="tab" aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div>
-          <span className="r" style={{ marginLeft: "auto", fontSize: 12 }} role="status" data-tour="auditlog-status">
+          <span className="r" style={{ marginLeft: "auto", fontSize: ".75rem" }} role="status" data-tour="auditlog-status">
             {API_ON && !svc.lastVerified() ? <span style={{ color: "var(--muted)" }}><Icon name="clock" /> Not verified yet: use Chain integrity</span>
               : chainOk ? <span style={{ color: "var(--ok-ink)" }}><Icon name="check" /> {API_ON ? `Verified ${svc.lastVerified()}, ` : ""}Chain intact, {WS_AUDIT.length}{API_ON && WS_AUDIT.length >= 500 ? "+ (newest 500 shown; export for all)" : ""} entries</span> : <span style={{ color: "var(--bad-ink)" }}><Icon name="alert" /> Chain broken</span>}
           </span>

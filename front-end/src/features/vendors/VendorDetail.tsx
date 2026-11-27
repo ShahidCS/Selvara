@@ -76,7 +76,7 @@ export function VendorDetail({ id }: { id: string }) {
           <div className="rec-main">
             <div className="card">{head("Risk and procurement gate")}<div className="c-body">
               <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 12 }}>
-                <div><div style={{ fontSize: 13, color: "var(--muted)" }}>Risk score <span style={{ fontSize: 12 }}>(higher is better)</span></div><div style={{ fontSize: 22, fontWeight: 600 }}>{v.score}/100</div><div style={{ marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap" }}><ScoreChip s={v.score} /><StatusChip s={v.status} /></div></div>
+                <div><div style={{ fontSize: ".8125rem", color: "var(--muted)" }}>Risk score <span style={{ fontSize: ".75rem" }}>(higher is better)</span></div><div style={{ fontSize: "1.375rem", fontWeight: 600 }}>{v.score}/100</div><div style={{ marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap" }}><ScoreChip s={v.score} /><StatusChip s={v.status} /></div></div>
               </div>
               <dl className="meta-grid"><dt>Category</dt><dd>{v.cat}</dd><dt>Tier</dt><dd>{v.tier}</dd><dt>Reassessment cadence</dt><dd>{TIER_CADENCE[v.tier]}</dd><dt>Review due</dt><dd>{dueText(v)}</dd>{API_ON ? null : <><dt>DPA</dt><dd>{v.tier === "Low" ? "Missing" : "On file"}</dd></>}<dt>Procurement gate</dt><dd><Chip cls={GATE_CHIP[gateVal][0]} icon={GATE_CHIP[gateVal][1]}>{gateVal}</Chip></dd></dl>
               <div className="btngrp" style={{ marginTop: 12 }}>
@@ -95,7 +95,7 @@ export function VendorDetail({ id }: { id: string }) {
                 {pendingOf(v.waiverPending) ? <p className="field help" style={{ padding: "10px 14px 0" }}>A waiver is awaiting approval by someone other than the requester.</p> : null}
                 {v.certs.length ? (
                   <Table cols={[{ t: "Type" }, { t: "Expires" }, { t: "Status" }]}>
-                    {v.certs.map((c: any, i: number) => <tr key={i}><td className="strong">{c.type}{c.waiver ? <div style={{ fontSize: 11.5, color: "var(--muted)" }}>Waiver {c.waiver.approvalId}, approved by {c.waiver.approvedBy}: {c.waiver.reason}</div> : null}</td><td>{c.expires}</td><td>{(() => { const [cl, ic] = CERT_CHIP[c.status] || ["bad", "alert"]; return <Chip cls={cl} icon={ic}>{c.status || "Expired"}</Chip>; })()}</td></tr>)}
+                    {v.certs.map((c: any, i: number) => <tr key={i}><td className="strong">{c.type}{c.waiver ? <div style={{ fontSize: ".71875rem", color: "var(--muted)" }}>Waiver {c.waiver.approvalId}, approved by {c.waiver.approvedBy}: {c.waiver.reason}</div> : null}</td><td>{c.expires}</td><td>{(() => { const [cl, ic] = CERT_CHIP[c.status] || ["bad", "alert"]; return <Chip cls={cl} icon={ic}>{c.status || "Expired"}</Chip>; })()}</td></tr>)}
                   </Table>
                 ) : <Empty icon="evidence" title="No certificates">No certificates are on file for this vendor.</Empty>}
               </div></div>

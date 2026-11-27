@@ -32,7 +32,7 @@ export default function AppSecModule() {
   const ql = q.trim().toLowerCase();
   const list = GROUPS.map((g, i) => ({ g, n: i + 1 })).filter(({ g }) => !ql || groupText(g).includes(ql));
   const secHead = (id: string, t: string, sub?: string) => (
-    <div style={{ marginBottom: 10 }}><h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>{t}</h2>{sub ? <p className="sub" style={{ margin: "4px 0 0" }}>{sub}</p> : null}</div>
+    <div style={{ marginBottom: 10 }}><h2 style={{ margin: 0, fontSize: "1.125rem", fontWeight: 600 }}>{t}</h2>{sub ? <p className="sub" style={{ margin: "4px 0 0" }}>{sub}</p> : null}</div>
   );
 
   return (
@@ -45,7 +45,7 @@ export default function AppSecModule() {
         </nav>
 
         <section className="card" style={{ flex: "0 0 auto" }} id="appsec-core" tabIndex={-1} aria-labelledby="appsec-core-h"><div className="c-body" tabIndex={0}>
-          <h2 id="appsec-core-h" style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>{spec.coreRule.heading}</h2>
+          <h2 id="appsec-core-h" style={{ margin: 0, fontSize: "1.125rem", fontWeight: 600 }}>{spec.coreRule.heading}</h2>
           <p style={{ margin: "6px 0 0", color: "var(--ink-2)" }}>{spec.coreRule.body}</p>
         </div></section>
 
@@ -61,7 +61,7 @@ export default function AppSecModule() {
               <input className="input" type="search" value={q} maxLength={80} onChange={(e) => setQ(e.target.value)} placeholder="IDOR, lockout, CSRF, API3…" /></label>
             <button type="button" className="btn btn-ghost sm" onClick={() => setOpen(Object.fromEntries(GROUPS.map((g) => [g.id, true])))}>Expand all</button>
             <button type="button" className="btn btn-ghost sm" onClick={() => setOpen({})}>Collapse all</button>
-            <span style={{ fontSize: 12, color: "var(--muted)", paddingBottom: 9 }} aria-live="polite">{list.length} of {GROUPS.length} shown</span>
+            <span style={{ fontSize: ".75rem", color: "var(--muted)", paddingBottom: 9 }} aria-live="polite">{list.length} of {GROUPS.length} shown</span>
           </div>
           {list.length === 0 ? <Empty title="No matching controls">Try a different search term.</Empty> :
             list.map(({ g, n }) => <ControlGroup key={g.id} g={g} n={n} open={!!open[g.id] || !!ql} onToggle={() => setOpen({ ...open, [g.id]: !open[g.id] })} />)}

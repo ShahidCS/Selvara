@@ -45,7 +45,7 @@ export function LoginPage() {
     <main id="content" style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: "24px 16px" }}>
       <div style={{ width: "100%", maxWidth: 420 }}>
         <div className="card auth-card"><div className="c-body" style={{ padding: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 18 }}><BrandMark size={28} className="" /><span style={{ fontWeight: 600, fontSize: 16 }}>Selvara</span></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 18 }}><BrandMark size={28} className="" /><span style={{ fontWeight: 600, fontSize: "1rem" }}>Selvara</span></div>
           {mode === "signin" ? <SignInForm onJoin={() => setMode("join")} onForgot={() => setMode("forgot")} onHold={setHold} />
             : mode === "join" ? <JoinForm invite={invite} onBack={() => { setInvite(""); setMode("signin"); }} />
             : mode === "forgot" ? <ForgotForm onBack={() => setMode("signin")} onOpen={(t) => { setToken(t); setMode("reset"); }} />
@@ -97,7 +97,7 @@ function SignInForm({ onJoin, onForgot, onHold }: { onJoin: () => void; onForgot
   if (step) return <SecondStep step={step} onHold={onHold} onCodes={setCodes} onRestart={restart} onNext={setStep} />;
   if (check) return (
     <>
-      <h1 className="auth-h" style={{ fontSize: 20 }}>Quick check</h1>
+      <h1 className="auth-h" style={{ fontSize: "1.25rem" }}>Quick check</h1>
       <p className="sub" style={{ margin: "0 0 16px" }}>There were several failed sign-ins. Before you try again, your browser does a short calculation that slows down automated guessing. It takes a moment and needs nothing from you.</p>
       <p className="field help" role="status" aria-live="polite" style={{ margin: "0 0 12px", display: check === "running" ? "block" : "none" }}>{check === "running" ? "Checking…" : ""}</p>
       <ErrP id="li-check-err" msg={check === "failed" ? err : ""} mt={0} />
@@ -107,7 +107,7 @@ function SignInForm({ onJoin, onForgot, onHold }: { onJoin: () => void; onForgot
   );
   return (
     <>
-      <h1 className="auth-h" style={{ fontSize: 20 }}>Sign in</h1>
+      <h1 className="auth-h" style={{ fontSize: "1.25rem" }}>Sign in</h1>
       <p className="sub" style={{ margin: "0 0 16px" }}>Use your work account.</p>
       <form onSubmit={submit} noValidate>
         <EmailField ref={emRef} id="li-email" label="Work email" value={em} onChange={setEm} forced={forced} onTouch={() => setForced(false)} />
@@ -115,8 +115,8 @@ function SignInForm({ onJoin, onForgot, onHold }: { onJoin: () => void; onForgot
         <ErrP id="li-err" msg={err} />
         <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }} disabled={busy}>Sign in</button>
       </form>
-      <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}><button type="button" className="linkbtn" onClick={onForgot}>Forgot password?</button></div>
-      <p style={{ textAlign: "center", marginTop: 10, fontSize: 13 }}>New to your company&apos;s workspace? <button type="button" className="linkbtn inline" onClick={onJoin}>Request to join</button></p>
+      <div style={{ textAlign: "center", marginTop: 12, fontSize: ".8125rem" }}><button type="button" className="linkbtn" onClick={onForgot}>Forgot password?</button></div>
+      <p style={{ textAlign: "center", marginTop: 10, fontSize: ".8125rem" }}>New to your company&apos;s workspace? <button type="button" className="linkbtn inline" onClick={onJoin}>Request to join</button></p>
     </>
   );
 }
@@ -145,10 +145,10 @@ function PasskeyStep({ step, onRestart, onNext }: { step: Extract<SignInStep, { 
   const submitCode = async (e: React.FormEvent) => { e.preventDefault(); setErr(""); try { await auth.completeSignIn(step.ticket, code); } catch (x) { setErr(msg(x, "Could not verify the code.")); setCode(""); } };
   return (
     <>
-      <h1 className="auth-h" style={{ fontSize: 20 }}>{step.register ? "Add a passkey" : "Use your passkey"}</h1>
+      <h1 className="auth-h" style={{ fontSize: "1.25rem" }}>{step.register ? "Add a passkey" : "Use your passkey"}</h1>
       <p className="sub" style={{ margin: "0 0 12px" }}>{step.register ? "Platform administrators sign in with a passkey: your device's fingerprint, face or PIN, or a security key. It cannot be phished. Add one now; you will use it at every sign-in." : "Confirm with the passkey on this device or your security key."}</p>
       {!useCode ? <>
-        {supported ? null : <p className="banner warn" style={{ margin: "0 0 12px", fontSize: 13 }}>This browser cannot use passkeys. Use a current version of Chrome, Edge, Safari or Firefox.</p>}
+        {supported ? null : <p className="banner warn" style={{ margin: "0 0 12px", fontSize: ".8125rem" }}>This browser cannot use passkeys. Use a current version of Chrome, Edge, Safari or Firefox.</p>}
         <button ref={btn} type="button" className="btn btn-primary" style={full} disabled={busy || !supported} onClick={go}>{busy ? "Waiting for your passkey…" : step.register ? "Add a passkey" : "Use passkey"}</button>
         <ErrP id="pk-err" msg={err} />
       </> : (
@@ -159,8 +159,8 @@ function PasskeyStep({ step, onRestart, onNext }: { step: Extract<SignInStep, { 
           <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }}>Verify</button>
         </form>
       )}
-      {step.demoCode ? <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}><button type="button" className="linkbtn" onClick={() => { setUseCode((v) => !v); setErr(""); }}>{useCode ? "Use a passkey" : "No passkey on this device? Demo code"}</button></div> : null}
-      <div style={{ textAlign: "center", marginTop: 8, fontSize: 13 }}><button type="button" className="linkbtn" onClick={onRestart}>Start again</button></div>
+      {step.demoCode ? <div style={{ textAlign: "center", marginTop: 12, fontSize: ".8125rem" }}><button type="button" className="linkbtn" onClick={() => { setUseCode((v) => !v); setErr(""); }}>{useCode ? "Use a passkey" : "No passkey on this device? Demo code"}</button></div> : null}
+      <div style={{ textAlign: "center", marginTop: 8, fontSize: ".8125rem" }}><button type="button" className="linkbtn" onClick={onRestart}>Start again</button></div>
     </>
   );
 }
@@ -181,7 +181,7 @@ function CodeStep({ step, onHold, onCodes, onRestart }: { step: Exclude<SignInSt
   const title = step.step === "enroll" ? "Set up your authenticator" : "Two-step verification";
   return (
     <>
-      <h1 className="auth-h" style={{ fontSize: 20 }}>{title}</h1>
+      <h1 className="auth-h" style={{ fontSize: "1.25rem" }}>{title}</h1>
       {step.step === "enroll" ? (
         <>
           <p className="sub" style={{ margin: "0 0 10px" }}>Your account needs a second step at every sign-in. Add Selvara to an authenticator app by scanning the QR code or entering the key, then type the 6-digit code it shows.</p>
@@ -197,8 +197,8 @@ function CodeStep({ step, onHold, onCodes, onRestart }: { step: Exclude<SignInSt
         <ErrP id="mf-err" msg={err} />
         <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }} disabled={busy}>Verify</button>
       </form>
-      {step.step === "mfa" && step.method === "totp" ? <div style={{ textAlign: "center", marginTop: 12, fontSize: 13 }}><button type="button" className="linkbtn" onClick={() => { setRecovery((r) => !r); setCode(""); setErr(""); }}>{recovery ? "Use your authenticator app" : "Use a recovery code instead"}</button></div> : null}
-      <div style={{ textAlign: "center", marginTop: 8, fontSize: 13 }}><button type="button" className="linkbtn" onClick={onRestart}>Start again</button></div>
+      {step.step === "mfa" && step.method === "totp" ? <div style={{ textAlign: "center", marginTop: 12, fontSize: ".8125rem" }}><button type="button" className="linkbtn" onClick={() => { setRecovery((r) => !r); setCode(""); setErr(""); }}>{recovery ? "Use your authenticator app" : "Use a recovery code instead"}</button></div> : null}
+      <div style={{ textAlign: "center", marginTop: 8, fontSize: ".8125rem" }}><button type="button" className="linkbtn" onClick={onRestart}>Start again</button></div>
     </>
   );
 }
@@ -209,10 +209,10 @@ function RecoveryCodes({ codes, done }: { codes: string[]; done: () => void }) {
   useEffect(() => { ref.current?.focus(); }, []);
   return (
     <>
-      <h1 className="auth-h" style={{ fontSize: 20 }} tabIndex={-1} ref={ref}>Save your recovery codes</h1>
+      <h1 className="auth-h" style={{ fontSize: "1.25rem" }} tabIndex={-1} ref={ref}>Save your recovery codes</h1>
       <p className="sub" style={{ margin: "0 0 12px" }}>If you lose your authenticator, each code signs you in once. They are shown only now; we keep only a scrambled copy.</p>
-      <ul aria-label="Recovery codes" style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontFamily: "var(--mono, monospace)" }}>{codes.map((c) => <li key={c} className="tagchip" style={{ fontSize: 13, textAlign: "center" }}>{c}</li>)}</ul>
-      <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12, fontSize: 13 }}><input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} />I have stored my recovery codes</label>
+      <ul aria-label="Recovery codes" style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontFamily: "var(--mono, monospace)" }}>{codes.map((c) => <li key={c} className="tagchip" style={{ fontSize: ".8125rem", textAlign: "center" }}>{c}</li>)}</ul>
+      <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12, fontSize: ".8125rem" }}><input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} />I have stored my recovery codes</label>
       <button type="button" className="btn btn-primary" style={{ ...full, marginTop: 12 }} disabled={!saved} onClick={done}>Continue</button>
     </>
   );
@@ -231,11 +231,11 @@ function ForgotForm({ onBack, onOpen }: { onBack: () => void; onOpen: (token: st
   };
   if (sent) return (
     <>
-      <h1 className="auth-h" style={{ fontSize: 20 }} tabIndex={-1} ref={doneRef}>Check your email</h1>
+      <h1 className="auth-h" style={{ fontSize: "1.25rem" }} tabIndex={-1} ref={doneRef}>Check your email</h1>
       <p className="sub" style={{ margin: "0 0 12px" }}>{RESET_SENT} You will also need your authenticator app or a recovery code.</p>
-      {sent.demo ? <div className="banner info" style={{ margin: "0 0 12px", fontSize: 13 }}>{DEMO_RESET_NOTE}</div>
+      {sent.demo ? <div className="banner info" style={{ margin: "0 0 12px", fontSize: ".8125rem" }}>{DEMO_RESET_NOTE}</div>
         : sent.token ? <>
-          <div className="banner warn" style={{ margin: "0 0 12px", fontSize: 13 }}><b>Demo only.</b> There is no email in this build. The email would contain the link below.</div>
+          <div className="banner warn" style={{ margin: "0 0 12px", fontSize: ".8125rem" }}><b>Demo only.</b> There is no email in this build. The email would contain the link below.</div>
           <button type="button" className="btn btn-primary" style={full} onClick={() => onOpen(sent.token as string)}>Open the reset link</button>
         </> : null}
       <button type="button" className="btn btn-secondary" style={{ ...full, marginTop: 8 }} onClick={onBack}>Back to sign in</button>
@@ -243,14 +243,14 @@ function ForgotForm({ onBack, onOpen }: { onBack: () => void; onOpen: (token: st
   );
   return (
     <>
-      <h1 className="auth-h" style={{ fontSize: 20 }}>Reset your password</h1>
+      <h1 className="auth-h" style={{ fontSize: "1.25rem" }}>Reset your password</h1>
       <p className="sub" style={{ margin: "0 0 16px" }}>We will email you a link. You will also need your authenticator app or a recovery code.</p>
       <form onSubmit={submit} noValidate>
         <EmailField ref={emRef} id="fp-email" label="Work email" value={em} onChange={setEm} forced={forced} onTouch={() => setForced(false)} />
         <ErrP id="fp-err" msg={err} />
         <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }}>Send link</button>
       </form>
-      <div style={{ textAlign: "center", marginTop: 14, fontSize: 13 }}><button type="button" className="linkbtn" onClick={onBack}>Back to sign in</button></div>
+      <div style={{ textAlign: "center", marginTop: 14, fontSize: ".8125rem" }}><button type="button" className="linkbtn" onClick={onBack}>Back to sign in</button></div>
     </>
   );
 }
@@ -270,21 +270,21 @@ function ResetForm({ token, onBack }: { token: string; onBack: () => void }) {
   if (valid === null) return <p className="field help" role="status">Checking the link…</p>;
   if (done) return (
     <>
-      <h1 className="auth-h" style={{ fontSize: 20 }} tabIndex={-1} ref={doneRef}>Password reset</h1>
+      <h1 className="auth-h" style={{ fontSize: "1.25rem" }} tabIndex={-1} ref={doneRef}>Password reset</h1>
       <p className="sub" style={{ margin: "0 0 16px" }}>Every session on your account has been signed out. Sign in with your new password.</p>
       <button type="button" className="btn btn-primary" style={full} onClick={onBack}>Back to sign in</button>
     </>
   );
   if (!valid) return (
     <>
-      <h1 className="auth-h" style={{ fontSize: 20 }}>Link not valid</h1>
+      <h1 className="auth-h" style={{ fontSize: "1.25rem" }}>Link not valid</h1>
       <p className="sub" style={{ margin: "0 0 16px" }}>This link is not valid or has expired. Links work once, for 15 minutes. Ask for a new one.</p>
       <button type="button" className="btn btn-secondary" style={full} onClick={onBack}>Back to sign in</button>
     </>
   );
   return (
     <>
-      <h1 className="auth-h" style={{ fontSize: 20 }}>Choose a new password</h1>
+      <h1 className="auth-h" style={{ fontSize: "1.25rem" }}>Choose a new password</h1>
       <p className="sub" style={{ margin: "0 0 16px" }}>Enter the code from your authenticator app (or a recovery code), then your new password.</p>
       <form onSubmit={submit} noValidate>
         <div className="field"><label htmlFor="rs-code">Authentication or recovery code</label><input ref={codeRef} className="input num" id="rs-code" autoComplete="one-time-code" maxLength={12} value={code} onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 12))} /></div>
@@ -319,21 +319,21 @@ function JoinForm({ onBack, invite = "" }: { onBack: () => void; invite?: string
   };
   if (sent && invite) return (
     <>
-      <h1 className="auth-h" style={{ fontSize: 20 }} tabIndex={-1} ref={doneRef}>Invitation sent</h1>
+      <h1 className="auth-h" style={{ fontSize: "1.25rem" }} tabIndex={-1} ref={doneRef}>Invitation sent</h1>
       <p className="sub" style={{ margin: "0 0 16px" }}>If the invitation is valid for this email address, you can sign in now. You will set up an authenticator app at your first sign-in. If sign-in does not work, ask your company admin for a new invitation link.</p>
       <button type="button" className="btn btn-primary" style={full} onClick={onBack}>Sign in</button>
     </>
   );
   if (sent) return (
     <>
-      <h1 className="auth-h" style={{ fontSize: 20 }} tabIndex={-1} ref={doneRef}>Request sent</h1>
+      <h1 className="auth-h" style={{ fontSize: "1.25rem" }} tabIndex={-1} ref={doneRef}>Request sent</h1>
       <p className="sub" style={{ margin: "0 0 16px" }}>If you can join, a company admin will review your request. You can sign in once it is approved. You join as an Employee; an admin can change your role later.</p>
       <button type="button" className="btn btn-secondary" style={full} onClick={onBack}>Back to sign in</button>
     </>
   );
   return (
     <>
-      <h1 className="auth-h" style={{ fontSize: 20 }}>{invite ? "Accept your invitation" : "Request to join"}</h1>
+      <h1 className="auth-h" style={{ fontSize: "1.25rem" }}>{invite ? "Accept your invitation" : "Request to join"}</h1>
       <p className="sub" style={{ margin: "0 0 16px" }}>{invite ? "Use the email address the invitation was sent to. If you already have a Selvara account, enter its current password." : "A company admin approves every new account. You join as an Employee."}</p>
       <form onSubmit={submit} noValidate>
         <div className="field"><label htmlFor="jn-name">Full name</label><input ref={nameRef} className="input" id="jn-name" autoComplete="name" maxLength={80} value={name} onChange={(e) => { setName(e.target.value); setNameErr(""); }}
@@ -351,7 +351,7 @@ function JoinForm({ onBack, invite = "" }: { onBack: () => void; invite?: string
         <ErrP id="jn-err" msg={err} />
         <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }} disabled={busy}>{invite ? "Join" : "Send request"}</button>
       </form>
-      <p style={{ textAlign: "center", marginTop: 14, fontSize: 13 }}>Already have an account? <button type="button" className="linkbtn inline" onClick={onBack}>Sign in</button></p>
+      <p style={{ textAlign: "center", marginTop: 14, fontSize: ".8125rem" }}>Already have an account? <button type="button" className="linkbtn inline" onClick={onBack}>Sign in</button></p>
     </>
   );
 }

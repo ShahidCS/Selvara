@@ -53,7 +53,7 @@ export function PortalAnswers({ q, can }: { q: WsVendorQ; can: boolean }) {
   const relink = async () => { try { await svc.portalRelink(q.id); L.toast(`A new link was emailed to ${p.email}`); } catch (x) { L.toast(apiMessage(x, "Could not send a new link"), false); } };
   return (
     <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontSize: 12.5, color: "var(--muted)" }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontSize: ".78125rem", color: "var(--muted)" }}>
         <span>Vendor portal, due {p.due}{p.version ? `, version ${p.version}` : ""}.</span>
         {q.status !== "Submitted" ? (p.linkLive ? <Chip cls="info" icon="clock">Link active</Chip> : <Chip cls="bad" icon="alert">Link ended</Chip>) : null}
         {q.status !== "Submitted" && can ? <button className="btn btn-ghost sm" onClick={relink}><Icon name="ext" />Send a new link</button> : null}
@@ -63,8 +63,8 @@ export function PortalAnswers({ q, can }: { q: WsVendorQ; can: boolean }) {
         <div className="tbl-wrap"><table className="tbl"><thead><tr><th scope="col">Question</th><th scope="col">Answer</th><th scope="col">Evidence</th></tr></thead><tbody>
           {QS.map((x) => { const it = p.items[x.id]; return (
             <tr key={x.id}>
-              <td style={{ fontSize: 12.5 }}><span className="strong">{x.id}</span> {x.text}{x.critical ? " (required)" : ""}{p.clarify.includes(x.id) ? <> <Chip cls="warn" icon="clock">Reopened</Chip></> : null}</td>
-              <td style={{ fontSize: 12.5 }}>{it?.answer ? <><StatusChip s={it.answer === "Y" ? "Pass" : it.answer === "N" ? "Fail" : it.answer === "P" ? "Partially met" : "Not applicable"} /> <span className="vh">{LABEL[it.answer]}</span>{it.comment ? <div style={{ marginTop: 4 }}>{it.comment}</div> : null}</> : "—"}</td>
+              <td style={{ fontSize: ".78125rem" }}><span className="strong">{x.id}</span> {x.text}{x.critical ? " (required)" : ""}{p.clarify.includes(x.id) ? <> <Chip cls="warn" icon="clock">Reopened</Chip></> : null}</td>
+              <td style={{ fontSize: ".78125rem" }}>{it?.answer ? <><StatusChip s={it.answer === "Y" ? "Pass" : it.answer === "N" ? "Fail" : it.answer === "P" ? "Partially met" : "Not applicable"} /> <span className="vh">{LABEL[it.answer]}</span>{it.comment ? <div style={{ marginTop: 4 }}>{it.comment}</div> : null}</> : "—"}</td>
               <td>{it?.file ? <button className="btn btn-ghost sm" aria-label={`Open evidence for ${x.id}: ${it.file.name}`} onClick={() => open(x.id)}><Icon name="download" />{it.file.name}</button> : x.critical && it?.answer === "Y" ? <Chip cls="warn" icon="alert">Missing</Chip> : "—"}</td>
             </tr>); })}
         </tbody></table></div>
@@ -84,7 +84,7 @@ function Clarify({ q, close }: { q: WsVendorQ; close: () => void }) {
   return (
     <>
       <fieldset style={{ border: 0, padding: 0, margin: 0 }}><legend className="sectitle" style={{ marginTop: 0 }}>Questions to reopen</legend>
-        {QS.map((x) => <label key={x.id} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 12.5, marginBottom: 4 }}><input type="checkbox" checked={ids.includes(x.id)} onChange={(e) => { setIds(e.target.checked ? [...ids, x.id] : ids.filter((y) => y !== x.id)); setErr(""); }} /><span><b>{x.id}</b> {x.text}</span></label>)}
+        {QS.map((x) => <label key={x.id} style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: ".78125rem", marginBottom: 4 }}><input type="checkbox" checked={ids.includes(x.id)} onChange={(e) => { setIds(e.target.checked ? [...ids, x.id] : ids.filter((y) => y !== x.id)); setErr(""); }} /><span><b>{x.id}</b> {x.text}</span></label>)}
       </fieldset>
       <div className="field"><label htmlFor="cl-note">What needs clarifying (at least 10 characters)</label><textarea className="input" id="cl-note" rows={3} maxLength={500} value={note} onChange={(e) => { setNote(e.target.value); setErr(""); }} /></div>
       <p className="field help">The vendor can change only these answers; each needs a new comment, and a &quot;Yes&quot; new evidence. Their answers become a new version.</p>

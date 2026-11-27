@@ -90,7 +90,7 @@ export function IssueFormPage({ id }: { id?: string }) {
         <aside className="form-summary" aria-label="Summary">
           <div className="panel-soft">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}><span className="strong">{id || "New issue"}</span><span className="chip neutral">{id ? "Editing" : "Draft"}</span></div>
-            <div style={{ fontSize: 17, lineHeight: 1.3, color: title.trim() ? "var(--ink)" : "var(--muted)" }}>{title.trim() || "Untitled issue"}</div>
+            <div style={{ fontSize: "1.0625rem", lineHeight: 1.3, color: title.trim() ? "var(--ink)" : "var(--muted)" }}>{title.trim() || "Untitled issue"}</div>
             <dl className="meta-grid lstart" style={{ margin: 0 }}>
               <dt>Severity</dt><dd><SeverityBars level={sev} /></dd>
               <dt>Owner</dt><dd><Person name={ownerName} /></dd>

@@ -46,20 +46,20 @@ function QuestionnairesList() {
 
   const flightCols: DTColumn<Quest>[] = [
     { key: "name", header: "Questionnaire", value: (q) => q.name, locked: true, render: (q) => <span className="strong">{q.name}</span> },
-    { key: "prog", header: "Progress", value: (q) => svc.qPct(q.prog), render: (q) => <span style={{ whiteSpace: "nowrap" }}><span className="bar-track" style={{ width: 90, display: "inline-block", verticalAlign: "middle" }}>{svc.qPct(q.prog) > 0 ? <span className="bar-fill" style={{ width: `${svc.qPct(q.prog)}%`, background: "var(--accent)" }} /> : null}</span> <span className="num" style={{ fontSize: 12 }}>{q.prog}</span></span> },
+    { key: "prog", header: "Progress", value: (q) => svc.qPct(q.prog), render: (q) => <span style={{ whiteSpace: "nowrap" }}><span className="bar-track" style={{ width: 90, display: "inline-block", verticalAlign: "middle" }}>{svc.qPct(q.prog) > 0 ? <span className="bar-fill" style={{ width: `${svc.qPct(q.prog)}%`, background: "var(--accent)" }} /> : null}</span> <span className="num" style={{ fontSize: ".75rem" }}>{q.prog}</span></span> },
     { key: "due", header: "Due", value: (q) => (q.status === "Complete" ? "" : q.due), render: (q) => <DueCell q={q} /> },
     { key: "status", header: "Status", value: (q) => q.status, render: (q) => <StatusChip s={q.status === "Complete" ? "Completed" : q.status} /> },
   ];
   const libCols: DTColumn<Answer>[] = [
     { key: "q", header: narrow ? "Question and answer" : "Question", value: (a) => a.q, locked: true, render: (a) => narrow
-      ? <span style={{ display: "block", minWidth: 180 }}><span className="strong" style={{ display: "block" }}>{a.q}</span><span style={{ display: "block", marginTop: 4, fontSize: 12.5, color: "var(--muted)" }}>{a.a}</span></span>
+      ? <span style={{ display: "block", minWidth: 180 }}><span className="strong" style={{ display: "block" }}>{a.q}</span><span style={{ display: "block", marginTop: 4, fontSize: ".78125rem", color: "var(--muted)" }}>{a.a}</span></span>
       : <span className="strong" style={{ display: "block", maxWidth: 260 }}>{a.q}</span> },
     ...(narrow ? [] : [{ key: "a", header: "Answer", value: (a: Answer) => a.a, render: (a: Answer) => <span style={{ display: "block", maxWidth: 340, color: "var(--muted)" }}>{a.a}</span> }]),
     { key: "verified", header: "Verified", value: (a) => (a.verified ? "Verified" : "Unverified"), render: (a) => (a.verified ? <Chip cls="ok" icon="check">Verified</Chip> : <Chip cls="warn" icon="clock">Unverified</Chip>) },
     { key: "uses", header: "Uses", value: (a) => a.uses, align: "end", render: (a) => <span className="num">{a.uses}</span> },
     { key: "act", header: "Actions", align: "end", locked: true, render: (a) => {
       const i = ANSWER_LIB.indexOf(a);
-      if (a.verified) return <span style={{ fontSize: 11.5, color: "var(--muted)" }}>{a.verifiedBy ? "by " + a.verifiedBy : ""}</span>;
+      if (a.verified) return <span style={{ fontSize: ".71875rem", color: "var(--muted)" }}>{a.verifiedBy ? "by " + a.verifiedBy : ""}</span>;
       const why = svc.verifyBlockReason(a);
       return (<><button className="btn btn-ghost sm" disabled={!!why} aria-describedby={why ? "vf-" + i : undefined} aria-label={`Verify answer: ${a.q}`} onClick={() => verify(i)}><Icon name="check" />Verify</button><WhyNot id={"vf-" + i} text={why} /></>);
     } },

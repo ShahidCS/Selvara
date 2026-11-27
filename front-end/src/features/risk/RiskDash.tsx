@@ -25,10 +25,10 @@ function DistBlock({ open, which, title, note }: { open: any[]; which: "cur" | "
         {RBANDS.map((b) => (
           <tr key={b.name} className="clickable" {...activate(() => riskGoReg({ rating: b.name, status: "all", cell: null }))}>
             <td><RatingPill b={b} /></td><td className="r strong num">{counts[b.name]}</td><td className="r num">{Math.round(counts[b.name] / total * 100)}%</td>
-            <td><div className="strong" style={{ fontSize: 12 }}>{CRIT[b.name]}</div><div style={{ fontSize: 12, color: "var(--muted)" }}>{ACT[b.name]}</div></td>
+            <td><div className="strong" style={{ fontSize: ".75rem" }}>{CRIT[b.name]}</div><div style={{ fontSize: ".75rem", color: "var(--muted)" }}>{ACT[b.name]}</div></td>
           </tr>
         ))}
-        <tr style={{ borderTop: "2px solid var(--ink)" }}><td className="strong">Total</td><td className="r strong num">{open.length}</td><td className="r num">100%</td><td style={{ fontSize: 12, color: "var(--muted)" }}>Accepted &amp; closed excluded</td></tr>
+        <tr style={{ borderTop: "2px solid var(--ink)" }}><td className="strong">Total</td><td className="r strong num">{open.length}</td><td className="r num">100%</td><td style={{ fontSize: ".75rem", color: "var(--muted)" }}>Accepted &amp; closed excluded</td></tr>
       </Table>
     </div></section>
   );
@@ -37,7 +37,7 @@ function DistBlock({ open, which, title, note }: { open: any[]; which: "cur" | "
 const mixText = (list: any[]) => RBANDS.map((b) => [b.name, list.filter((r) => rband(sCur(r)).name === b.name).length] as const).filter(([, n]) => n).map(([nm, n]) => `${n} ${nm}`).join(", ");
 /** Swatch plus band name for each rating, so the coloured bars and cells are never read by colour alone. */
 function BandLegend({ fill }: { fill?: boolean }) {
-  return <span style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 12, color: "var(--muted)" }}>{RBANDS.map((b) => (
+  return <span style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: ".75rem", color: "var(--muted)" }}>{RBANDS.map((b) => (
     <span key={b.name} style={{ display: "inline-flex", gap: 5, alignItems: "center" }}><span aria-hidden="true" style={{ width: 11, height: 11, borderRadius: 3, background: fill ? heatFill(b) : bandTint(b.col, 60), border: `1px solid ${bandTint(b.col, 42)}`, display: "inline-block" }} />{b.name}</span>
   ))}</span>;
 }
@@ -52,7 +52,7 @@ function Breakdown({ open, k, title }: { open: any[]; k: "cat" | "team" | "jur";
         const list = groups[g];
         return (
           <button key={g} className="rbd" aria-label={`${g}: ${list.length} open, ${mixText(list)}. Show in the register`} title={`${g}: ${mixText(list)}`} onClick={() => riskGoReg({ [k]: g, rating: "all", status: "all", cell: null })}>
-            <span style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 13 }}><span>{g}</span><span className="strong">{list.length}</span></span>
+            <span style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".8125rem" }}><span>{g}</span><span className="strong">{list.length}</span></span>
             <span className="rbdbar" aria-hidden="true">{RBANDS.map((b) => {
               const n = list.filter((r) => rband(sCur(r)).name === b.name).length;
               return n ? <span key={b.name} style={{ height: "100%", width: `${(n / list.length * 100).toFixed(1)}%`, background: bandTint(b.col, 60) }} /> : null;
@@ -60,7 +60,7 @@ function Breakdown({ open, k, title }: { open: any[]; k: "cat" | "team" | "jur";
           </button>
         );
       })}
-      <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4, display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ fontSize: ".75rem", color: "var(--muted)", marginTop: 4, display: "flex", flexDirection: "column", gap: 6 }}>
         <span>Bars show the current-rating mix of open risks.</span>
         <BandLegend />
       </div>
@@ -126,7 +126,7 @@ export default function RiskDash() {
             ))}</div>
           </div>
           <div className="heat" style={{ gridTemplateColumns: "auto repeat(5,1fr)" }}>{cells}</div>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: 12, color: "var(--muted)", marginTop: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", fontSize: ".75rem", color: "var(--muted)", marginTop: 10 }}>
             <span>Impact up, likelihood across. Numbers are open risks; colour is the {word} rating of every cell. Outlined cells are at or above appetite ({RISK_APPETITE}). Click a cell to filter.</span>
             <BandLegend fill />
           </div>
@@ -146,7 +146,7 @@ export default function RiskDash() {
             {plan.map((x) => (
               <tr key={x.r.id} className="clickable" {...activate(() => riskOpenDetail(x.r.id))}>
                 <td><span className="strong num">{x.r.id}</span> {x.r.title}</td><td>{x.r.treat}</td><td>{x.r.owner}</td><td>{riskPriority(x.r)}</td><td><ScoreChip score={sCur(x.r)} /></td>
-                <td style={{ whiteSpace: "nowrap" }}>{x.due ? <>{x.due}{x.fromActions ? <> <span style={{ fontSize: 11, color: "var(--muted)" }}>(from actions)</span></> : null}</> : "—"}</td>
+                <td style={{ whiteSpace: "nowrap" }}>{x.due ? <>{x.due}{x.fromActions ? <> <span style={{ fontSize: ".6875rem", color: "var(--muted)" }}>(from actions)</span></> : null}</> : "—"}</td>
                 <td>{x.overdue ? <Chip cls="bad" icon="alert">Overdue</Chip> : <StatusChip s="In progress" />}</td>
               </tr>
             ))}

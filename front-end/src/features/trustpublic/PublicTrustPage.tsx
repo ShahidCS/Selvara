@@ -41,7 +41,7 @@ export default function PublicTrustPage({ code }: { code: string }) {
   const asked = !!v.visitor?.requests.some((r) => r.resource === NDA_DOCS && r.status === "Pending");
   const sendRequest = async (reason: string) => { try { const r = await post<{ queued: boolean; why?: string }>(`${base}/requests`, { reason }); say(r.queued ? "Request sent. You get an email when it is decided." : r.why ?? "Your request was not queued.", r.queued); await reload(); } catch (e) { say(msg(e), false); } };
   return (
-    <Shell title={`${v.company} Trust Center`} right={v.visitor ? <span style={{ fontSize: 13, color: "var(--muted)" }}>Verified as {v.visitor.email} <button className="btn btn-ghost sm" onClick={() => act(() => post(`${base}/sign-out`, {}), "Signed out.")}>Sign out</button></span> : null}>
+    <Shell title={`${v.company} Trust Center`} right={v.visitor ? <span style={{ fontSize: ".8125rem", color: "var(--muted)" }}>Verified as {v.visitor.email} <button className="btn btn-ghost sm" onClick={() => act(() => post(`${base}/sign-out`, {}), "Signed out.")}>Sign out</button></span> : null}>
       {note ? <div className={`banner ${note.ok ? "info" : "warn"}`} role="status" style={{ display: "flex", gap: 8, alignItems: "center" }}><Icon name={note.ok ? "check" : "alert"} /><span style={{ flex: 1 }}>{note.text}</span><button className="btn btn-ghost sm" aria-label="Dismiss" onClick={() => setNote(null)}><Icon name="x" /></button></div> : null}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))", gap: 16, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -93,7 +93,7 @@ function Shell({ title, right, children }: { title: string; right?: React.ReactN
     <div style={{ minHeight: "100%", background: "var(--bg)", color: "var(--ink)" }}>
       <Head><title>{title}</title></Head>
       <header style={{ background: "var(--surface)", borderBottom: "1px solid var(--line)", padding: "14px 24px", display: "flex", gap: 12, justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}><div aria-hidden="true" style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent)", color: "var(--text-inverse)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="shieldcheck" /></div><h1 style={{ fontSize: 18, margin: 0 }}>{title}</h1></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}><div aria-hidden="true" style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent)", color: "var(--text-inverse)", display: "flex", alignItems: "center", justifyContent: "center" }}><Icon name="shieldcheck" /></div><h1 style={{ fontSize: "1.125rem", margin: 0 }}>{title}</h1></div>
         {right}
       </header>
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px 48px", display: "flex", flexDirection: "column", gap: 16 }}>{children}</main>
@@ -101,7 +101,7 @@ function Shell({ title, right, children }: { title: string; right?: React.ReactN
   );
 }
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="card" style={{ padding: "16px 20px", gap: 8 }} aria-label={title}><h2 style={{ fontSize: 15, margin: 0 }}>{title}</h2>{children}</section>;
+  return <section className="card" style={{ padding: "16px 20px", gap: 8 }} aria-label={title}><h2 style={{ fontSize: ".9375rem", margin: 0 }}>{title}</h2>{children}</section>;
 }
 /** A request for documents under NDA names none (their names are not shown before they are shared); a reason is required. */
 function RequestButton({ onSend }: { onSend: (reason: string) => Promise<void> }) {
