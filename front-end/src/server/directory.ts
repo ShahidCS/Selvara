@@ -2,6 +2,7 @@
    query as `selvara_app` inside a transaction that carries the person and, where one is chosen, the company (db.ts), so row level security
    refuses another company's rows even if a query here forgot its filter. Changes write their audit entry in the same transaction.
    MemoryDirectory is the stand-in for the server tests. */
+import { resolveRetention, retentionDef, type RetentionSettings } from "@/lib/retention";
 import { approvalBlock, INVITE_TTL_H, withdrawBlock } from "@/lib/rules";
 import type { Db, Tx } from "./db";
 import type { AuditRow, Store } from "./types";
@@ -16,7 +17,7 @@ export type ApprovalStatus = "Pending" | "Approved" | "Rejected" | "Withdrawn" |
 export interface ApprovalVote { by: string; byName: string; at: number; reason: string }
 /** A four-eyes request in a company (approvals and approval_votes, migration 0003). `subject` is the member's id (team-role) or email (team-invite). */
 export interface ApprovalRow { id: string; kind: string; title: string; subject: string | null; payload: Record<string, unknown>; needs: number; approverRoles: string[]; forbid: string[]; requestedBy: string; requestedByName: string; status: ApprovalStatus; createdAt: number; expiresAt: number; decidedReason?: string; votes: ApprovalVote[] }
-export interface NewApproval { kind: "team-role" | "team-invite"; title: string; subject: string; payload: Record<string, unknown>; needs: 1 | 2; approverRoles: string[]; forbid: string[]; ttlMs: number }
+export interface NewApproval { kind: "team-role" | "team-invite" | "team-retention" | "team-hold"; title: string; subject: string; payload: Record<string, unknown>; needs: 1 | 2; approverRoles: string[]; forbid: string[]; ttlMs: number }
 export type InvitationStatus = "Pending" | "Accepted" | "Revoked" | "Expired";
 export interface InvitationRow { id: string; email: string; role: string; status: InvitationStatus; invitedBy: string; createdAt: number; expiresAt: number; linkAt?: number; approvalId?: string }
 /** The result of a decision: done, or refused with the HTTP status and the reason (404 for another company's request, never 403). */
@@ -47,6 +48,10 @@ export interface Directory {
    *  signed-in person, for a request to join that named the company's code. */
   joinPolicy(tenantId: string): Promise<{ domains: string[]; company: string }>;
   setJoinDomains(tenantId: string, actorId: string, domains: string[], at: number, entry: AuditRow): Promise<void>;
+  /** EDGE-19: the company's stored retention settings and legal holds (migration 0016; lib/retention.ts resolves them against the defaults). */
+  retentionOf(tenantId: string, actorId: string): Promise<RetentionSettings>;
+  /** Replaces one kind's stored entry (null removes it), with its audit entry, in one transaction. */
+  setRetentionEntry(tenantId: string, actorId: string, kind: string, value: RetentionSettings[string] | null, at: number, entry: AuditRow): Promise<void>;
 
   /* Role changes and invitations (slice 2c, migration 0005). */
   /** Ids of the company's active admins. */
@@ -80,7 +85,7 @@ export interface Directory {
  *  taken before the vote, so the vote and the change are undone together. */
 export class ApplyConflict extends Error {}
 /** The request kinds Team & Rules decides; other modules' requests are never decided through it. */
-export const TEAM_KINDS = ["team-role", "team-invite"];
+export const TEAM_KINDS = ["team-role", "team-invite", "team-retention", "team-hold"];
 const INVITE_MS = INVITE_TTL_H * 3600_000;
 const facts = (a: ApprovalRow) => ({ status: a.status, expiresAt: a.expiresAt, approverRoles: a.approverRoles, requestedBy: a.requestedBy, forbid: a.forbid, votes: a.votes.map((v) => v.by) });
 /** The engine's rules, shared by both directories: who may decide (rules.ts), then expiry and state. */
@@ -162,6 +167,16 @@ export class PgDirectory implements Directory {
     const r = await this.db.tx({ tenantId, userId: null }, (q) => q.query<{ join_domains: string[] | null; name: string }>(
       "select s.join_domains, t.name from tenants t left join tenant_settings s on s.tenant_id = t.id where t.id = $1", [tenantId]));
     return { domains: r[0]?.join_domains ?? [], company: r[0]?.name ?? "" };
+  }
+  async retentionOf(tenantId: string, actorId: string) {
+    const r = await this.db.tx({ tenantId, userId: actorId }, (q) => q.query<{ retention: RetentionSettings }>("select retention from tenant_settings where tenant_id = $1", [tenantId]));
+    return r[0]?.retention ?? {};
+  }
+  async setRetentionEntry(tenantId: string, actorId: string, kind: string, value: RetentionSettings[string] | null, at: number, entry: AuditRow) {
+    await this.db.tx({ tenantId, userId: actorId }, async (q) => {
+      await writeRetention(q, tenantId, actorId, kind, value, at);
+      await q.query(auditSql, auditArgs(entry));
+    });
   }
   async setJoinDomains(tenantId: string, actorId: string, domains: string[], at: number, entry: AuditRow) {
     await this.db.tx({ tenantId, userId: actorId }, async (q) => {
@@ -327,7 +342,32 @@ async function applyPg(q: Tx, tenantId: string, a: ApprovalRow, at: number, log:
     const id = await insertInvitation(q, tenantId, a.requestedBy, { email: String(p.email), role: String(p.role), tokenHash: null, approvalId: a.id }, at);
     if (!id) throw new ApplyConflict("An invitation for this email is already pending. Reject this request.");
     await q.query(auditSql, auditArgs(log("member.invited", `${p.email} (${p.role}); ${id}; requested by ${a.requestedByName}, approved by ${approvers}`)));
+  } else if (a.kind === "team-retention" || a.kind === "team-hold") {
+    const cur = (await q.query<{ retention: RetentionSettings }>("select retention from tenant_settings where tenant_id = $1 for update", [tenantId]))[0]?.retention ?? {};
+    const r = applyRetentionApproval(a, cur, approvers);
+    await writeRetention(q, tenantId, a.requestedBy, String(p.id), r.value, at);
+    await q.query(auditSql, auditArgs(log(r.action, r.target)));
   } else throw new ApplyConflict("Unknown request.");
+}
+/** Writes one kind's entry of a company's retention settings (null removes it). */
+async function writeRetention(q: Tx, tenantId: string, actorId: string, kind: string, value: RetentionSettings[string] | null, at: number) {
+  await q.query(`insert into tenant_settings (tenant_id, retention, updated_by, updated_ms) values ($1, case when $3::jsonb is null then '{}'::jsonb else jsonb_build_object($2::text, $3::jsonb) end, $4, $5)
+    on conflict (tenant_id) do update set retention = case when $3::jsonb is null then tenant_settings.retention - $2::text else jsonb_set(tenant_settings.retention, array[$2::text], $3::jsonb) end,
+      updated_by = excluded.updated_by, updated_ms = excluded.updated_ms, version = tenant_settings.version + 1`, [tenantId, kind, value ? JSON.stringify(value) : null, actorId, at]);
+}
+/** What an approved shorter period or hold release changes, checked again against the current settings (it may have changed since). */
+export function applyRetentionApproval(a: ApprovalRow, cur: RetentionSettings, approvers: string): { value: RetentionSettings[string] | null; action: string; target: string } {
+  const p = a.payload; const id = String(p.id); const d = retentionDef(id); if (!d) throw new ApplyConflict("Unknown record type. Reject this request.");
+  const row = resolveRetention(cur).find((x) => x.id === id)!; const entry = { ...(cur[id] ?? {}) };
+  if (a.kind === "team-retention") {
+    const m = Number(p.months);
+    if (!Number.isInteger(m) || m < d.floor || m >= row.months) throw new ApplyConflict("The period changed since the request. Reject this request and ask again.");
+    entry.months = m;
+    return { value: entry, action: "team.retention.changed", target: `${d.label}: ${row.months} → ${m} months; requested by ${a.requestedByName}, approved by ${approvers}; reason: ${String(p.reason)}` };
+  }
+  if (!row.hold) throw new ApplyConflict("There is no legal hold any more. Reject this request.");
+  delete entry.hold;
+  return { value: Object.keys(entry).length ? entry : null, action: "team.retention.hold_released", target: `${d.label}; requested by ${a.requestedByName}, approved by ${approvers}; reason: ${String(p.reason)}` };
 }
 
 /** In-memory directory for the server tests. Audit entries go to the store's log, as the real one writes them to audit_log. */
@@ -373,6 +413,11 @@ export class MemoryDirectory implements Directory {
   async lockoutsOf(userId: string) { return (await this.companiesOf(userId)).map((c) => this.lockouts.get(c.company.id) ?? { preset: "standard" }); }
   async setLockout(tenantId: string, _actorId: string, lockout: Lockout, _at: number, entry: AuditRow) { this.lockouts.set(tenantId, lockout); await this.store.audit(entry); }
   joinDomains = new Map<string, string[]>();
+  retention = new Map<string, RetentionSettings>();
+  async retentionOf(tenantId: string) { return structuredClone(this.retention.get(tenantId) ?? {}); }
+  async setRetentionEntry(tenantId: string, _actorId: string, kind: string, value: RetentionSettings[string] | null, _at: number, entry: AuditRow) {
+    const cur = this.retention.get(tenantId) ?? {}; if (value) cur[kind] = structuredClone(value); else delete cur[kind]; this.retention.set(tenantId, cur); await this.store.audit(entry);
+  }
   async joinPolicy(tenantId: string) { return { domains: [...(this.joinDomains.get(tenantId) ?? [])], company: this.companies.get(tenantId)?.name ?? "" }; }
   async setJoinDomains(tenantId: string, _actorId: string, domains: string[], _at: number, entry: AuditRow) { this.joinDomains.set(tenantId, [...domains]); await this.store.audit(entry); }
 
@@ -408,9 +453,15 @@ export class MemoryDirectory implements Directory {
     } else if (a.kind === "team-invite") {
       if (this.invites.some((x) => x.tenantId === tenantId && x.email === p.email && x.status === "Pending")) return { ok: false, code: 409, error: "An invitation for this email is already pending. Reject this request." };
     }
+    let retention: ReturnType<typeof applyRetentionApproval> | null = null;
+    if (a.kind === "team-retention" || a.kind === "team-hold") {
+      try { retention = applyRetentionApproval(a, this.retention.get(tenantId) ?? {}, names(a, who)); }
+      catch (e) { if (e instanceof ApplyConflict) return { ok: false, code: 409, error: e.message }; throw e; }
+    }
     a.votes.push({ by: actor.id, byName: who, at, reason }); a.status = "Approved"; a.decidedReason = reason;
     await this.store.audit(log(`approval.${a.kind}.approved`, `${a.title} (${a.id}); reason: ${reason}`));
     if (a.kind === "team-role") await this.store.audit(log("member.role.changed", `${p.name}: ${p.from} → ${p.to}; requested by ${a.requestedByName}, approved by ${approvers}`));
+    else if (retention) { const cur = this.retention.get(tenantId) ?? {}; if (retention.value) cur[String(p.id)] = retention.value; else delete cur[String(p.id)]; this.retention.set(tenantId, cur); await this.store.audit(log(retention.action, retention.target)); }
     else { const iid = await this.addInvite(tenantId, a.requestedBy, { email: String(p.email), role: String(p.role), tokenHash: null, approvalId: a.id }, at); await this.store.audit(log("member.invited", `${p.email} (${p.role}); ${iid}; requested by ${a.requestedByName}, approved by ${approvers}`)); }
     return { ok: true, status: "Approved" };
   }

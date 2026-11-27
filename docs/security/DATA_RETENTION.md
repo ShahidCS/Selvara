@@ -92,7 +92,7 @@ decision, 2026-11-26: this design in place of per-person encryption keys):
 
 | Part | Status |
 |---|---|
-| Schedule, minimums, four-eyes shortening, legal hold (company workspace) | Built as configuration (`features/team/services/governance.ts`, `SOD_MATRIX` §14); production purge job not built (the demonstration previews only) |
+| Schedule, minimums, four-eyes shortening, legal hold (company workspace) | **Built on the server** (EDGE-19, migration 0016, controls GOV-03 and GOV-04): periods and holds per company in `tenant_settings.retention`, rules in `src/lib/retention.ts` (shared with the demonstration's `features/team/services/governance.ts`), routes `team/retention`; shorter periods and hold releases through the company approvals engine (`team-retention`, `team-hold`) |
 | Session, reset and code expiry | Built |
 | Account erasure and anonymisation | **Built** (EDGE-19, migration 0015, control ACC-29): platform super admins only, four-eyes, blocked at once, erased after 14 days. Differences from section 3: requests reach the platform through support (no self-service); the person must first be offboarded by every company; deleted (tombstoned) workspace records keep the name until their purge; the sign-in account is emptied and blocked rather than deleted, because records keep its id |
 | Erasable audit entries (section 5) | **Built** for entries written after migration 0014; older entries kept as section 5 says |

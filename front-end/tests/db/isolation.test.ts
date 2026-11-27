@@ -299,7 +299,7 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
       expect(await dir.acceptInvitation(A, ivy, id, now, log(A, ivy)("member.invitation.accepted", "ivy"))).toBe(false);
       expect((await dir.membership(A, ivy))!).toEqual(expect.objectContaining({ role: "analyst", status: "Active" }));
       expect((await admin.query("select token_hash, status from public.invitations where id = $1", [id])).rows[0]).toEqual({ token_hash: null, status: "Accepted" });
-      expect(await code(app.tx({ tenantId: null, userId: null }, (q) => q.query("select public.add_company_admin('cust-a', 'ivy@a.example.test')")))).toBe("42501");
+      expect(await code(app.tx({ tenantId: null, userId: null }, (q) => q.query("select public.add_company_admin('cust-a', 'ivy.park@a.example.test')")))).toBe("42501");
     });
 
     it("add_company_admin is for the owner only and needs an active member who is not platform staff", async () => {
@@ -818,6 +818,39 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
       expect((await admin.query("select public.audit_verify($1) as bad", [A])).rows[0].bad).toBeNull();
       expect(await code(erase(asDrew))).toBe("55000");   // once
       await admin.query("update public.elevations set ended_ms = expires_ms where ended_ms is null");
+    });
+  });
+
+  describe("retention settings and legal holds (0016)", () => {
+    it("stores per company, applies an approved shorter period and a hold release in the database, and the check refuses bad values", async () => {
+      const dir = new PgDirectory(app); const at = Date.now();
+      const log = (tenantId: string, actorId: string) => (action: string, target: string): AuditRow => ({ at, actor: "Someone", actorId, tenantId, action, target, cat: "Access", space: "ws", ip: "198.51.100.7" });
+      const ivy = "00000000-0000-4000-8000-0000000000f1";
+      await admin.query("insert into auth.users (id, email) values ($1, 'ivy.park@a.example.test')", [ivy]);
+      await admin.query("insert into public.profiles (id, email, person, status, requested_ms) values ($1, 'ivy.park@a.example.test', 'Ivy Park', 'Active', $2)", [ivy, at]);
+      await admin.query("insert into public.memberships (tenant_id, user_id, role, status, created_ms) values ($1, $2, 'admin', 'Active', $3)", [A, ivy, at]);
+      expect(await dir.retentionOf(A, alex)).toEqual({});
+      await dir.setRetentionEntry(A, alex, "issues", { months: 48 }, at, log(A, alex)("team.retention.changed", "Closed issues: 36 → 48 months"));
+      await dir.setRetentionEntry(A, alex, "evidence", { hold: { by: "Alex Kim", byId: alex, at, reason: "Litigation notice" } }, at, log(A, alex)("team.retention.hold_placed", "Control evidence"));
+      expect(await dir.retentionOf(A, alex)).toEqual({ issues: { months: 48 }, evidence: { hold: { by: "Alex Kim", byId: alex, at, reason: "Litigation notice" } } });
+      expect(await dir.retentionOf(B, casey)).toEqual({}); // the other company's are its own
+      expect(await app.tx(ctxA(), (q) => q.query("select retention from tenant_settings where tenant_id = $1", [B]))).toEqual([]);
+      // a shorter period, approved by another admin, applied in the decision's transaction
+      const sid = await dir.requestApproval(A, alex, { kind: "team-retention", title: "Keep closed issues for 24 months instead of 48", subject: "issues", payload: { id: "issues", months: 24, reason: "Agreed with compliance" }, needs: 1, approverRoles: ["admin"], forbid: [], ttlMs: 3600_000 }, at, log(A, alex)("approval.team-retention.requested", "issues"));
+      expect(await dir.decideApproval(A, { id: ivy, role: "admin" }, sid, true, "Checked the regulator list", at, log(A, ivy))).toEqual({ ok: true, status: "Approved" });
+      // releasing the hold (not by the placer), which removes the kind's entry when nothing else is stored
+      const hid = await dir.requestApproval(A, ivy, { kind: "team-hold", title: "Release the legal hold on control evidence", subject: "evidence", payload: { id: "evidence", reason: "Litigation ended" }, needs: 1, approverRoles: ["admin"], forbid: [alex], ttlMs: 3600_000 }, at, log(A, ivy)("approval.team-hold.requested", "evidence"));
+      expect(await dir.decideApproval(A, { id: alex, role: "admin" }, hid, true, "I placed it, but", at, log(A, alex))).toEqual(expect.objectContaining({ ok: false }));
+      expect(await dir.retentionOf(A, alex)).toEqual({ issues: { months: 24 }, evidence: { hold: { by: "Alex Kim", byId: alex, at, reason: "Litigation notice" } } });
+      await admin.query("update public.memberships set role = 'admin' where tenant_id = $1 and user_id = $2", [A, blair]);
+      expect(await dir.decideApproval(A, { id: blair, role: "admin" }, hid, true, "The litigation has ended", at, log(A, blair))).toEqual({ ok: true, status: "Approved" });
+      expect(await dir.retentionOf(A, alex)).toEqual({ issues: { months: 24 } });
+      const acts = (await admin.query("select action from public.audit_log where tenant_id = $1 and action like 'team.retention.%' order by chain_n", [A])).rows.map((r) => r.action);
+      expect(acts).toEqual(["team.retention.changed", "team.retention.hold_placed", "team.retention.changed", "team.retention.hold_released"]);
+      for (const bad of ['{"nonsense": {}}', '{"issues": {"months": 0}}', '{"issues": {"months": "48"}}', '{"issues": 5}', '[]'])
+        expect(await code(admin.query("update public.tenant_settings set retention = $2::jsonb where tenant_id = $1", [A, bad]))).toMatch(/check constraint/);
+      await admin.query("update public.memberships set role = 'owner' where tenant_id = $1 and user_id = $2", [A, blair]);
+      await admin.query("update public.tenant_settings set retention = '{}' where tenant_id = $1", [A]);
     });
   });
 

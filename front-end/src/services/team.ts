@@ -191,6 +191,11 @@ export const getLockout = () => apiFetch<{ lockout: Lockout }>("/team/settings")
 /** EDGE-20: the email domains this company accepts requests to join from (empty: any). Production: GET / POST /team/settings, admins only. */
 export const getJoinDomains = () => apiFetch<{ joinDomains?: string[] }>("/team/settings").then((r) => r.joinDomains ?? []);
 export const setJoinDomains = (domains: string[]) => post<void>("/team/settings", { joinDomains: domains });
+/** EDGE-19: retention periods and legal holds of the session's company (company admins; lib/retention.ts). */
+export interface RetentionView { id: string; label: string; months: number; floor: number; basis: string; hold: { by: string; at: number; reason: string } | null; pendingMonths: number | null; releaseRequested: boolean }
+export const getRetention = () => apiFetch<RetentionView[]>("/team/retention");
+export const setRetentionMonths = (id: string, months: number, reason: string) => post<{ pending: boolean }>(`/team/retention/${encodeURIComponent(id)}`, { months, reason });
+export const retentionHold = (id: string, action: "hold" | "release", reason: string) => post<{ pending: boolean }>(`/team/retention/${encodeURIComponent(id)}/${action}`, { reason });
 /** A trusted office network is never blocked for failed sign-ins (accounts still lock and MFA still applies). Adding one weakens a control, so a
  *  second company admin approves it; removing one is immediate. */
 export function requestTrustedNet(netIn: string, labelIn: string) {

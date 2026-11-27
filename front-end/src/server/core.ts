@@ -16,6 +16,7 @@ import { generateRecoveryCodes } from "@/lib/me";
 import { approvalBlock, normaliseName, INVITE_TTL_H, isAssignableRole, isPrivilegedRole, nameBlock, reasonBlock, ROLE_REQUEST_TTL_H, roleChangeBlock, secondAdminBlock } from "@/lib/rules";
 import { isEmail } from "@/lib/security";
 import { domainAllowed, parseJoinDomains } from "@/lib/emailDomains";
+import { resolveRetention, retentionChange } from "@/lib/retention";
 import { isDisposable } from "./disposable";
 import { findMatch, recordMatch } from "./aliasMatch";
 import { checkRegistration, verifyAssertion } from "@/lib/webauthn";
@@ -623,6 +624,53 @@ const lockoutSet = admin(async (d, r, { p: me, a, company }) => {
   return ok();
 });
 
+/* ---------- data retention and legal holds (EDGE-19, migration 0016; lib/retention.ts; SOD_MATRIX section 14) ---------- */
+const RET_KINDS = ["team-retention", "team-hold"];
+const retentionRows = async (d: Deps, tenantId: string, me: string) => resolveRetention(await d.dir.retentionOf(tenantId, me));
+const secondAdmin = async (d: Deps, tenantId: string, me: string, not: string[] = []) => (await d.dir.admins(tenantId, me)).some((x) => x !== me && !not.includes(x));
+const retentionGet = admin(async (d, _r, { p: me, company }) => {
+  const now = d.now(); const pend = (await d.dir.approvals(company.id, me.id)).filter((x) => RET_KINDS.includes(x.kind) && x.status === "Pending" && x.expiresAt > now);
+  return ok((await retentionRows(d, company.id, me.id)).map((t) => ({ ...t,
+    pendingMonths: Number(pend.find((x) => x.kind === "team-retention" && x.subject === t.id)?.payload.months ?? 0) || null,
+    releaseRequested: pend.some((x) => x.kind === "team-hold" && x.subject === t.id) })));
+});
+/** Longer applies at once; shorter (never below the minimum) waits for a second company admin. */
+const retentionSet = admin(async (d, r, { p: me, a, company }) => {
+  const id = s(r.path[2], 20); const why = s(r.body.reason).trim(); const short = reasonBlock(why); if (short) return err(400, short);
+  const row = (await retentionRows(d, company.id, me.id)).find((x) => x.id === id); if (!row) return err(404, "Unknown record type.");
+  const ch = retentionChange(id, r.body.months, row.months); if ("error" in ch) return err(400, ch.error);
+  if (!ch.shorter) {
+    const stored = (await d.dir.retentionOf(company.id, me.id))[id] ?? {};
+    await d.dir.setRetentionEntry(company.id, me.id, id, { ...stored, months: ch.months }, d.now(), entry(d, r, actorOf(me, a), "team.retention.changed", `${row.label}: ${row.months} → ${ch.months} months; reason: ${why}`));
+    return ok({ pending: false });
+  }
+  if (await d.dir.pendingApproval(company.id, me.id, "team-retention", id, d.now())) return err(409, "A shorter period for these records is already awaiting approval.");
+  if (!(await secondAdmin(d, company.id, me.id))) return err(409, "No other company admin can approve this. Add a second admin first.");
+  const title = `Keep ${row.label.toLowerCase()} for ${ch.months} months instead of ${row.months}`;
+  const ap = await d.dir.requestApproval(company.id, me.id, { kind: "team-retention", title, subject: id, payload: { id, months: ch.months, reason: why }, needs: 1, approverRoles: ["admin"], forbid: [], ttlMs: 72 * HOUR },
+    d.now(), entry(d, r, actorOf(me, a), "approval.team-retention.requested", `${title}; reason: ${why}`));
+  return { status: 202, body: { pending: true, id: ap } };
+});
+/** A legal hold applies at once; releasing it waits for a company admin other than the one who placed it (and other than the requester). */
+const retentionHold = admin(async (d, r, { p: me, a, company }) => {
+  const id = s(r.path[2], 20); const act = r.path[3]; const why = s(r.body.reason).trim(); const short = reasonBlock(why); if (short) return err(400, short);
+  if (act !== "hold" && act !== "release") return err(404, "Not found.");
+  const row = (await retentionRows(d, company.id, me.id)).find((x) => x.id === id); if (!row) return err(404, "Unknown record type.");
+  if (act === "hold") {
+    if (row.hold) return err(409, "A legal hold is already in place.");
+    const stored = (await d.dir.retentionOf(company.id, me.id))[id] ?? {};
+    await d.dir.setRetentionEntry(company.id, me.id, id, { ...stored, hold: { by: me.person, byId: me.id, at: d.now(), reason: why } }, d.now(), entry(d, r, actorOf(me, a), "team.retention.hold_placed", `${row.label}; reason: ${why}`));
+    return ok({ pending: false });
+  }
+  if (!row.hold) return err(409, "There is no legal hold.");
+  if (await d.dir.pendingApproval(company.id, me.id, "team-hold", id, d.now())) return err(409, "Releasing this hold is already awaiting approval.");
+  if (!(await secondAdmin(d, company.id, me.id, [row.hold.byId]))) return err(409, "No company admin other than you and the one who placed the hold can approve this.");
+  const title = `Release the legal hold on ${row.label.toLowerCase()}`;
+  const ap = await d.dir.requestApproval(company.id, me.id, { kind: "team-hold", title, subject: id, payload: { id, reason: why }, needs: 1, approverRoles: ["admin"], forbid: [row.hold.byId], ttlMs: 72 * HOUR },
+    d.now(), entry(d, r, actorOf(me, a), "approval.team-hold.requested", `${title}; reason: ${why}`));
+  return { status: 202, body: { pending: true, id: ap } };
+});
+
 /* ---------- role changes, invitations and the four-eyes requests behind them (slice 2c) ---------- */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const HOUR = 3600_000;
@@ -740,6 +788,7 @@ export const ROUTES: Record<string, H> = {
   "GET me/security": security, "GET me/tours": getTours, "PUT me/tours": putTours, "POST auth/company": switchCompany, "GET team/members": memberList, "POST me/reauth": reauth, "POST me/password": changePassword, "POST me/recovery-codes": newCodes,
   "POST me/sessions/revoke-others": revokeOthers, "POST me/authenticators": appAdd, "POST me/authenticators/verify": appVerify, "POST me/authenticators/:id/remove": appRemove, "POST me/passkeys/options": passkeyOptions, "POST me/passkeys": passkeyAdd, "DELETE me/passkeys/:id": passkeyDelete,
   "GET team/join-requests": joinList, "POST team/join-requests/:id/:decision": joinDecide, "POST team/settings": lockoutSet, "GET team/settings": lockoutGet,
+  "GET team/retention": retentionGet, "POST team/retention/:id": retentionSet, "POST team/retention/:id/:action": retentionHold,
   "POST team/members/:id/role": roleChange, "GET team/approvals": approvalList, "POST team/approvals/:id/:decision": approvalDecide,
   "GET team/invitations": inviteList, "POST team/invitations": inviteCreate, "POST team/invitations/:id/:action": inviteAction,
   "POST csp-report": cspIn, "GET admin/security/csp-reports": cspList,

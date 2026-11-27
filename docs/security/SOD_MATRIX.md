@@ -189,7 +189,7 @@ Enforced in `src/features/team/services/governance.ts`.
 | Purge | The demonstration build only previews what is past its period; nothing is deleted. Production purges run as a server job that skips held records and writes what it removed to the audit log. |
 | Open for review | Every period and minimum, per regulator and per customer contract. |
 
-Enforced in `src/features/team/services/governance.ts`.
+Enforced in `src/features/team/services/governance.ts` (demonstration) and on the server in `src/server/core.ts` (`team/retention` routes) and `src/server/directory.ts` (`applyRetentionApproval`, which checks the state again when the approval is decided), with the rules shared in `src/lib/retention.ts` and the stored value checked by the database (migration 0016). Server audit actions: `team.retention.changed`, `approval.team-retention.requested`, `team.retention.hold_placed`, `approval.team-hold.requested`, `team.retention.hold_released`. Releasing a hold also excludes the admin who asks.
 
 ## 15. Presence (draft)
 Record and form pages show who else has the record open ("Also here"), and warn when two people are editing the same record ("the last save wins"). Names only, never content; nothing is stored. Demonstration build: between tabs of one browser (BroadcastChannel). Production: a Supabase Realtime Presence channel per record, joinable only by people the database allows to read that record. Presence is information, not a lock. Open for review: whether editing should take a lock instead.

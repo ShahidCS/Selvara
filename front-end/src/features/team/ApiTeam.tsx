@@ -8,6 +8,7 @@ import { ASSIGNABLE_ROLES, isAssignableRole, isPrivilegedRole, ROLE_LABEL } from
 import { bumpData, useApp, useData, useModState } from "@/lib/store";
 import * as svc from "@/services/team";
 import { ApiSupportAccess } from "./ApiSupportAccess";
+import { ApiRetention } from "./ApiRetention";
 import { JoinRequests } from "./JoinRequests";
 
 /* Team & Rules in production (NEXT_PUBLIC_API_MODE=http): only what the server holds for the session's company. Members and requests to join
@@ -15,7 +16,7 @@ import { JoinRequests } from "./JoinRequests";
    changes and invitations go through the server's four-eyes engine (slice 2c): admin and owner need a second admin's approval, shown under
    Requests. Support access (slice 3b) is the company's read-only, revocable grant to Selvara support, with every session it allowed. The other settings move here when their server slice ships (docs/architecture/BACKEND_FOUNDATION.md). */
 
-const VIEWS: [string, string][] = [["members", "Members"], ["invitations", "Invitations"], ["requests", "Requests"], ["signin", "Sign-in protection"], ["support", "Support access"]];
+const VIEWS: [string, string][] = [["members", "Members"], ["invitations", "Invitations"], ["requests", "Requests"], ["signin", "Sign-in protection"], ["retention", "Retention"], ["support", "Support access"]];
 const roleName = (id: string) => ROLE_LABEL[id] ?? id;
 /** The server's own words for a refusal (it never sends internal details); anything else gets the fallback. */
 const why = apiMessage;
@@ -32,7 +33,7 @@ export function ApiTeam() {
       <div className="card">
         <div className="c-head" style={{ padding: "0 8px" }}><div className="tabs" role="tablist" aria-label="Team and rules" data-tour="team-views">{VIEWS.map((x) => <button key={x[0]} className="tab" role="tab" data-tour={x[0] === "requests" ? "team-approvals" : undefined} aria-selected={view === x[0]} onClick={() => setV(x[0])}>{x[1]}</button>)}</div></div>
         <div className={`c-body ${view === "members" ? "flush" : ""} scroll`} style={view === "members" ? { padding: 0 } : undefined} data-tour="team-body">
-          {view === "members" ? <Members /> : view === "invitations" ? <Invitations /> : view === "requests" ? <RequestsTable id="team-requests-api" load={svc.listApprovals} decide={svc.decideRequest} note="Granting or inviting an admin or owner needs a second admin. Nobody approves their own request or a request about themselves. A request expires after 72 hours." /> : view === "signin" ? <SignIn /> : <ApiSupportAccess />}
+          {view === "members" ? <Members /> : view === "invitations" ? <Invitations /> : view === "requests" ? <RequestsTable id="team-requests-api" load={svc.listApprovals} decide={svc.decideRequest} note="Granting or inviting an admin or owner needs a second admin. Nobody approves their own request or a request about themselves. A request expires after 72 hours." /> : view === "signin" ? <SignIn /> : view === "retention" ? <ApiRetention /> : <ApiSupportAccess />}
         </div>
       </div>
     </Page>

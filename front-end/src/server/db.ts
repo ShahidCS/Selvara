@@ -6,7 +6,7 @@ import { Pool, type PoolClient, type QueryResultRow } from "pg";
 import { PassThrough, UpstreamError, upstream } from "./errors";
 
 /** The database version this code needs (schema_version). Older databases are refused: the server fails closed instead of half-working. */
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 16;
 
 /** Who is acting. The tenant comes from the session, never from the request. */
 export interface DbCtx { tenantId: string | null; userId: string | null; platform?: boolean; /** A server job with no person (0010): only the verified billing webhook. */ system?: "billing-webhook" }
