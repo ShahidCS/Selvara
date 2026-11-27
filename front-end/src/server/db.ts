@@ -6,10 +6,10 @@ import { Pool, type PoolClient, type QueryResultRow } from "pg";
 import { PassThrough, UpstreamError, upstream } from "./errors";
 
 /** The database version this code needs (schema_version). Older databases are refused: the server fails closed instead of half-working. */
-export const SCHEMA_VERSION = 16;
+export const SCHEMA_VERSION = 17;
 
 /** Who is acting. The tenant comes from the session, never from the request. */
-export interface DbCtx { tenantId: string | null; userId: string | null; platform?: boolean; /** A server job with no person (0010): only the verified billing webhook. */ system?: "billing-webhook" }
+export interface DbCtx { tenantId: string | null; userId: string | null; platform?: boolean; /** A server job with no person: the verified billing webhook (0010) or the retention purge job (0017). */ system?: "billing-webhook" | "retention-purge" }
 /** The query surface handed to a unit of work: parameterised queries only. */
 export interface Tx { query<R extends QueryResultRow = QueryResultRow>(text: string, values?: unknown[]): Promise<R[]> }
 
@@ -32,7 +32,7 @@ export class Db {
     try {
       await c.query("begin");
       await c.query("select set_config('app.tenant_id', $1, true), set_config('app.user_id', $2, true), set_config('app.platform', $3, true), set_config('app.system', $4, true)",
-        [idOrEmpty(ctx.tenantId, "tenant"), idOrEmpty(ctx.userId, "user"), ctx.platform ? "on" : "", ctx.system === "billing-webhook" ? "billing-webhook" : ""]);
+        [idOrEmpty(ctx.tenantId, "tenant"), idOrEmpty(ctx.userId, "user"), ctx.platform ? "on" : "", ctx.system === "billing-webhook" || ctx.system === "retention-purge" ? ctx.system : ""]);
       const q: Tx = { query: async (text, values) => { try { return (await c.query(text, values)).rows; } catch (e) { throw upstream("db.query", e); } } };
       const out = await work(q);
       await c.query("commit");

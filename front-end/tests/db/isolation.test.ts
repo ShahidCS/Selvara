@@ -20,6 +20,7 @@ import { PgWsStore, WsConflict, WsRefused, type Actor } from "@/server/ws/store"
 import { MemoryStore } from "@/server/memory";
 import type { AuditRow } from "@/server/types";
 import { PgPlatStore } from "@/server/platstore";
+import { RETENTION_DEFS } from "@/lib/retention";
 
 const URL_ = process.env.TEST_DATABASE_URL;
 const ROOT = path.resolve(__dirname, "../../..");
@@ -851,6 +852,88 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
         expect(await code(admin.query("update public.tenant_settings set retention = $2::jsonb where tenant_id = $1", [A, bad]))).toMatch(/check constraint/);
       await admin.query("update public.memberships set role = 'owner' where tenant_id = $1 and user_id = $2", [A, blair]);
       await admin.query("update public.tenant_settings set retention = '{}' where tenant_id = $1", [A]);
+    });
+  });
+
+  describe("retention purge job (0017)", () => {
+    it("matches the shared defaults, runs only as the job, reports first, deletes only when switched on with four-eyes after 30 days", async () => {
+      const plat = new PgPlatform(app); const at = Date.now(); const M = 30.5 * 86_400_000;
+      const defs = (await admin.query("select kind, months, floor from public.retention_defaults() order by kind")).rows;
+      expect(defs).toEqual([...RETENTION_DEFS].map((d) => ({ kind: d.id, months: d.months, floor: d.floor })).sort((a, b) => a.kind.localeCompare(b.kind)));
+      // only the job may call it
+      expect(await code(app.tx({ tenantId: null, userId: alex }, (q) => q.query("select public.retention_purge(false)")))).toBe("42501");
+      expect(await code(app.tx({ tenantId: null, userId: null, platform: true }, (q) => q.query("select public.retention_purge(false)")))).toBe("42501");
+      expect(await code(app.tx({ tenantId: null, userId: null, platform: true, system: "billing-webhook" }, (q) => q.query("select public.retention_purge(false)")))).toBe("42501");
+      // synthetic records in company A, and a hold on closed issues in company B
+      const ws = (t: string, kind: string, id: string, data: object, updated: number, deleted: number | null = null) =>
+        admin.query("insert into public.ws_records (tenant_id, kind, id, data, version, created_ms, updated_ms, deleted_ms) values ($1, $2, $3, $4, 1, $5, $5, $6)", [t, kind, id, JSON.stringify(data), updated, deleted]);
+      await ws(A, "issue", "PG-ISS-OLD", { status: "Closed" }, at - 40 * M);
+      await ws(A, "issue", "PG-ISS-NEW", { status: "Closed" }, at - 1 * M);
+      await ws(A, "issue", "PG-ISS-OPEN", { status: "Open" }, at - 40 * M);
+      await ws(A, "risk", "PG-RSK-OLD", { status: "Closed", files: [{ path: `${A}/RISK/old.pdf` }, { path: `${B}/RISK/not-theirs.pdf` }] }, at - 90 * M);
+      await ws(A, "access-review", "PG-AR-OLD", { status: "Complete" }, at - 40 * M);
+      await ws(A, "evidence-tombstone", "PG-EV-OLD", { id: "PG-EV-OLD" }, at - 90 * M);
+      const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+      await ws(A, "policy", "PG-POL", { versions: [{ v: "1.0", status: "Superseded", supersededAt: day(at - 125 * M) }, { v: "2.0", status: "Superseded", supersededAt: day(at - 2 * M) }, { v: "3.0", status: "Published" }] }, at - 2 * M);
+      await ws(B, "issue", "PG-ISS-HELD", { status: "Closed" }, at - 40 * M);
+      await admin.query("insert into public.tenant_settings (tenant_id, retention, updated_ms) values ($1, $2, $3) on conflict (tenant_id) do update set retention = $2", [B, JSON.stringify({ issues: { hold: { by: "Casey", byId: casey, at, reason: "Regulator inquiry" } } }), at]);
+      const ned = "00000000-0000-4000-8000-0000000000f2", ola = "00000000-0000-4000-8000-0000000000f3";
+      for (const [id, email, name] of [[ned, "ned.rowe@a.example.test", "Ned Rowe"], [ola, "ola.berg@a.example.test", "Ola Berg"]]) {
+        await admin.query("insert into auth.users (id, email) values ($1, $2)", [id, email]);
+        await admin.query("insert into public.profiles (id, email, person, status, requested_ms) values ($1, $2, $3, 'Active', $4)", [id, email, name, at]);
+      }
+      await admin.query("insert into public.memberships (tenant_id, user_id, role, status, created_ms, decided_ms, rejected) values ($1, $2, 'employee', 'Removed', $3, $3, true), ($1, $4, 'employee', 'Removed', $3, $3, false)", [A, ned, at - 5 * M, ola]);
+      await admin.query("insert into public.sessions (id_hash, user_id, device, ip, created_ms, last_seen_ms, expires_ms, revoked_ms, tenant_id) values ($1, $2, 'Test', '198.51.100.7', $3, $3, $3, $3, $4), ($5, $2, 'Test', '198.51.100.7', $6, $6, $7, null, $4)",
+        ["a".repeat(64), alex, at - 13 * M, A, "b".repeat(64), at, at + 86_400_000]);
+      await admin.query("insert into public.kv (ns, key, value, expires_ms) values ('purge-test', 'old', '1', $1), ('purge-test', 'live', '1', $2)", [at - 1000, at + 3_600_000]);
+
+      // report only: nothing is deleted, the run is recorded and logged
+      const r1 = await plat.retentionPurge(at);
+      expect(r1.block).toBe("deletion is not switched on"); expect(r1.report.mode).toBe("report"); expect(r1.paths).toEqual([]);
+      const a1 = r1.report.companies.find((c) => c.tenantId === A)!; const b1 = r1.report.companies.find((c) => c.tenantId === B)!;
+      expect([a1.kinds.issues.due, a1.kinds.risks.due, a1.kinds.access.due, a1.kinds.evidence.due, a1.kinds.policies.due, a1.kinds.joins.due, a1.kinds.security.due]).toEqual([1, 1, 1, 1, 1, 1, 1]);
+      expect(a1.kinds.audit).toEqual(expect.objectContaining({ kept: true, deleted: 0 }));
+      expect(b1.kinds.issues).toEqual(expect.objectContaining({ held: true, due: 1, deleted: 0 })); expect(b1.held).toEqual(["issues"]);
+      expect(r1.report.platform.expired).toBeGreaterThanOrEqual(1);
+      expect((await admin.query("select count(*)::int as n from public.ws_records where id like 'PG-%'")).rows[0].n).toBe(8);
+      expect((await admin.query("select data->>'mode' as m from public.platform_records where kind = 'purge-run' and id = $1", [r1.report.id])).rows).toEqual([{ m: "report" }]);
+      expect((await admin.query("select count(*)::int as n from public.audit_log where tenant_id is null and action = 'retention.purge.run'")).rows[0].n).toBe(1);
+
+      // the switch, checked by the database: an approved request, a second super admin's vote, and 30 days of reports first
+      const block = async () => (await app.tx({ tenantId: null, userId: null, platform: true, system: "retention-purge" }, (q) => q.query<{ b: string | null }>("select public.retention_deletion_block(public.app_now_ms()) as b")))[0].b;
+      const appr = randomUUID();
+      await admin.query("insert into public.platform_records (kind, id, data, created_ms, updated_ms) values ('purge-settings', 'settings', $1, $2, $2)", [JSON.stringify({ deletion: "on", approvalId: appr }), at]);
+      expect(await block()).toBe("no approved request to switch deletion on");
+      await admin.query("insert into public.approvals (id, kind, title, needs, approver_roles, requested_by, status, created_ms, expires_ms, domain) values ($1, 'platform-purge-delete', 'Switch on retention deletion', 1, '{super}', $2, 'Pending', $3, $4, 'admin')", [appr, alex, at, at + 3_600_000]);
+      await admin.query("update public.approvals set status = 'Approved' where id = $1", [appr]);
+      expect(await block()).toBe("the request was not approved by a second super admin");
+      expect(await code(admin.query("insert into public.approval_votes (approval_id, by_user, at_ms, reason) values ($1, $2, $3, 'Approving my own request')", [appr, alex, at]))).toMatch(/segregation of duties/);
+      await admin.query("insert into public.approval_votes (approval_id, by_user, at_ms, reason) values ($1, $2, $3, 'Thirty days of reports reviewed')", [appr, blair, at]);
+      expect(await block()).toBe("the first 30 days are report-only");
+      expect(await code(app.tx({ tenantId: null, userId: null, platform: true, system: "retention-purge" }, (q) => q.query("select public.retention_purge(true)")))).toBe("42501");
+      await admin.query("update public.platform_records set created_ms = $1, version = version + 1 where kind = 'purge-run'", [at - 31 * 86_400_000]);
+      expect(await block()).toBeNull();
+
+      // deletion: only what is past its period, not held; files of this company only; each deletion in the company's log
+      const r2 = await plat.retentionPurge(at);
+      expect(r2.block).toBeNull(); expect(r2.report.mode).toBe("delete"); expect(r2.paths).toEqual([`${A}/RISK/old.pdf`]);
+      const left = (await admin.query("select id from public.ws_records where id like 'PG-%' order by id")).rows.map((x) => x.id);
+      expect(left).toEqual(["PG-ISS-HELD", "PG-ISS-NEW", "PG-ISS-OPEN", "PG-POL"]);
+      const pol = (await admin.query("select data, version from public.ws_records where id = 'PG-POL'")).rows[0];
+      expect(pol.data.versions.map((v: { v: string }) => v.v)).toEqual(["2.0", "3.0"]); expect(pol.version).toBe(2);
+      expect((await admin.query("select user_id from public.memberships where tenant_id = $1 and user_id = any($2)", [A, [ned, ola]])).rows.map((x) => x.user_id)).toEqual([ola]);
+      expect((await admin.query("select id_hash from public.sessions where id_hash = any($1) order by id_hash", [["a".repeat(64), "b".repeat(64)]])).rows.map((x) => x.id_hash)).toEqual(["b".repeat(64)]);
+      expect((await admin.query("select key from public.kv where ns = 'purge-test'")).rows).toEqual([{ key: "live" }]);
+      const purged = (await admin.query("select target from public.audit_log where tenant_id = $1 and action = 'retention.purged' order by chain_n", [A])).rows.map((x) => x.target);
+      expect(purged.find((x) => x.startsWith("issues:"))).toBe("issues: 1 deleted, older than 36 months (issue:PG-ISS-OLD)");
+      expect(purged.length).toBe(7);
+      expect((await admin.query("select count(*)::int as n from public.audit_log where tenant_id = $1 and action = 'retention.purged'", [B])).rows[0].n).toBe(0);
+      expect(r2.report.companies.find((c) => c.tenantId === B)!.kinds.issues.deleted).toBe(0);
+      expect((await app.tx(ctxA(), (q) => q.query<{ bad: string | null }>("select public.company_audit_verify() as bad")))[0].bad).toBeNull(); // the chain still verifies
+
+      await admin.query("delete from public.platform_records where kind in ('purge-run', 'purge-settings')");
+      await admin.query("delete from public.ws_records where id like 'PG-%'");
+      await admin.query("update public.tenant_settings set retention = '{}' where tenant_id = $1", [B]);
     });
   });
 

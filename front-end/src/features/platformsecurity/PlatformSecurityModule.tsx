@@ -3,6 +3,7 @@ import { API_ON, modAllowed } from "@/lib/rbac";
 import { ServerElevationBanner, useServerElevation } from "@/components/kit/admin/ServerElevation";
 import { ApiBlocks } from "./ApiBlocks";
 import { ApiErasures } from "./ApiErasures";
+import { ApiPurge } from "./ApiPurge";
 import { CspReports } from "./CspReports";
 import { useApp } from "@/lib/store";
 import { ElevateGateBanner } from "@/components/kit/admin/ElevateGate";
@@ -26,4 +27,4 @@ export default function PlatformSecurityModule() {
 }
 
 /** Production: the server's elevation state and its sign-in blocks. */
-function ApiSection() { const s = useServerElevation(); return <><ServerElevationBanner s={s} /><ApiBlocks s={s} /><ApiErasures s={s} /><CspReports /></>; }
+function ApiSection() { const s = useServerElevation(); return <><ServerElevationBanner s={s} /><ApiBlocks s={s} /><ApiErasures s={s} /><ApiPurge s={s} /><CspReports /></>; }

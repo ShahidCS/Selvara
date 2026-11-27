@@ -126,7 +126,7 @@ export class PgDirectory implements Directory {
   async requestToJoin(tenantId: string, userId: string, at: number, entry: AuditRow) {
     return this.db.tx({ tenantId, userId }, async (q) => {
       const r = await q.query(`insert into memberships (tenant_id, user_id, role, status, created_ms) values ($1, $2, 'employee', 'Pending', $3)
-        on conflict (tenant_id, user_id) do update set status = 'Pending', role = 'employee', created_ms = $3, decided_by = null, decided_ms = null, reason = null
+        on conflict (tenant_id, user_id) do update set status = 'Pending', role = 'employee', created_ms = $3, decided_by = null, decided_ms = null, reason = null, rejected = false
         where memberships.status = 'Removed' returning user_id`, [tenantId, userId, at]);
       if (r.length) await q.query(auditSql, auditArgs(entry));
       return r.length === 1;
@@ -140,7 +140,7 @@ export class PgDirectory implements Directory {
   }
   async decide(tenantId: string, actorId: string, userId: string, to: "Active" | "Removed", reason: string, at: number, entry: AuditRow) {
     return this.db.tx({ tenantId, userId: actorId }, async (q) => {
-      const r = await q.query("update memberships set status = $3, decided_by = $4, reason = $5, decided_ms = $6 where tenant_id = $1 and user_id = $2 and status = 'Pending' returning user_id",
+      const r = await q.query("update memberships set status = $3, decided_by = $4, reason = $5, decided_ms = $6, rejected = ($3 = 'Removed') where tenant_id = $1 and user_id = $2 and status = 'Pending' returning user_id",
         [tenantId, userId, to, actorId, reason, at]);
       if (r.length) await q.query(auditSql, auditArgs(entry));
       return r.length === 1;

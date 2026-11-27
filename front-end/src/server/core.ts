@@ -33,6 +33,7 @@ import { guardBody, ResponseLeak } from "./responseGuard";
 import { CSP_PER_HOUR, rawReports, reduceReport } from "./cspReport";
 import type { Company, Lockout, Log, Outcome } from "./directory";
 import type { Deps, Profile, SessionRow } from "./types";
+import { cronPurge } from "./purge";
 
 export interface Req { method: string; path: string[]; body: Record<string, unknown>; headers: Record<string, string | undefined>; cookies: Record<string, string>; ip: string; /** Raw bytes, only for the upload routes (RAW_ROUTES). */ raw?: Uint8Array }
 /** headers: response headers a handler may add; the API route passes on only those named in RESPONSE_HEADERS. */
@@ -798,7 +799,7 @@ Object.assign(ROUTES, adminRoutes({ signed, entry: helperEntry, randomId, sha256
 Object.assign(ROUTES, helpRoutes({ signed, entry: helperEntry, notify: async (d, u, t) => { await notify(d, u, t); } }));
 Object.assign(ROUTES, workspaceRoutes({ signed }), vendorPortalRoutes(), trustPublicRoutes());
 Object.assign(ROUTES, v1Routes());
-Object.assign(ROUTES, admin8Routes({ signed, entry: helperEntry }), { "POST billing/stripe/webhook": stripeWebhook });
+Object.assign(ROUTES, admin8Routes({ signed, entry: helperEntry }), { "POST billing/stripe/webhook": stripeWebhook, "GET cron/purge": (d: Deps, r: Req) => cronPurge(d, r) });
 /** Payment-provider webhooks: signed by the provider over the raw body (JSON), never by the session cookie. */
 const WEBHOOK_ROUTES = new Set(["POST billing/stripe/webhook"]);
 /** The company API (/api/v1): authenticated by an API key in the Authorization header, never by the session cookie, so the cross-site check does not apply. */

@@ -74,4 +74,5 @@ export interface Deps { auth: AuthProvider; store: Store; dir: import("./directo
   /** Integrations (group 7): the network the connectors use and the platform credentials; both default to the real ones, tests use stand-ins. */ net?: import("./integrations/net").Net; intEnv?: import("./integrations/providers").IntegrationEnv;
   /** Group 8: the platform's own records (billing, rates) and the payment provider (undefined: from the environment; null: none). */ pstore?: import("./platstore").PlatStore; payments?: import("./billing").Payments | null;
   /** Group 8b: email delivery (undefined: from the environment; null: none, the "not configured" state). */ mail?: import("./mail").Mailer | null;
-  /** CSP violation reports (cspReport.ts, migration 0012); absent: reports are accepted and dropped. */ csp?: import("./cspReport").CspReports }
+  /** CSP violation reports (cspReport.ts, migration 0012); absent: reports are accepted and dropped. */ csp?: import("./cspReport").CspReports;
+  /** The retention purge job's secret (purge.ts; undefined: CRON_SECRET from the environment; null: not configured). */ cronSecret?: string | null }

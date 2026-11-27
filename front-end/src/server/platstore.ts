@@ -10,7 +10,7 @@ import { UpstreamError } from "./errors";
 import type { AuditRow, Store } from "./types";
 import { WsConflict } from "./ws/store";
 
-export interface PActor { id: string | null; name: string; ip: string; system?: "billing-webhook" }
+export interface PActor { id: string | null; name: string; ip: string; system?: "billing-webhook" | "retention-purge" }
 export interface PRec<T = Record<string, unknown>> { id: string; tenantId: string | null; data: T; version: number }
 export interface PTx {
   readonly now: number; readonly actor: PActor;

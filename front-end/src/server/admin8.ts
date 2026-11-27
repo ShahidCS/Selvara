@@ -22,6 +22,7 @@ import type { PActor, PTx, PlatStore } from "./platstore";
 import { MemoryPlatStore } from "./platstore";
 import type { AuditRow, Deps } from "./types";
 import { WsConflict, WsRefused } from "./ws/store";
+import { applyPurgeDeletion, cronSecretOf, enableBlock, PURGE_KIND, purgeState, runSummary, switchOff, type PurgeReport } from "./purge";
 import { applyErasure, cancelErasure, completeErasure, ERASE_KIND, listErasures, requestErasure } from "./erasure";
 
 type H = (d: Deps, r: Req) => Promise<Res>;
@@ -46,6 +47,7 @@ const invoiceView = (i: Invoice, now: number) => ({ ...i, status: shown(i, now),
 export async function applyGroup8(d: Deps, q: Tx | null, a: ApprovalRow, approvers: string, decider: PActor) {
   const p = a.payload as Record<string, unknown>; const by = `requested by ${a.requestedByName}; approved by ${approvers}`;
   if (a.kind === ERASE_KIND) { await within(d, q, decider, (t) => applyErasure(d, t, a, approvers)); return; }
+  if (a.kind === PURGE_KIND) { await within(d, q, decider, (t) => applyPurgeDeletion(t, a, approvers)); return; }
   if (a.kind.startsWith("billing.") && a.kind !== "billing.pricing") {
     await within(d, q, decider, async (t) => {
       const rec = await t.get<Invoice>("billing-invoice", String(p.invoiceId)); if (!rec) throw new WsRefused("The invoice no longer exists.", 409);
@@ -371,6 +373,31 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
     const id = s(r.path[2], 40);
     return ok(await pstoreOf(d).tx(actorOf(c, r), d.now(), (t) => completeErasure(d, t, actorOf(c, r), id)));
   });
+  /* ---------- retention purge (EDGE-19 step 2, purge.ts, migration 0017): deletion on is four-eyes; off is immediate ---------- */
+  const purge = staff(async (d, r, c) => {
+    const st = await pstoreOf(d).tx(actorOf(c, r), d.now(), (t) => purgeState(t), { read: true });
+    const pending = await d.plat.pendingApproval(c.p.id, PURGE_KIND, "settings", d.now());
+    return ok({ settings: st.settings, firstRunAt: st.firstRunAt, deletionFrom: st.deletionFrom, open: st.deletionFrom !== null && d.now() >= st.deletionFrom, pending, cronConfigured: cronSecretOf(d).length >= 32, runs: st.runs.slice(0, 60).map(runSummary) });
+  });
+  const purgeRun = staff(async (d, r, c) => {
+    const id = s(r.path[3], 80);
+    const rec = await pstoreOf(d).tx(actorOf(c, r), d.now(), (t) => t.get<PurgeReport>("purge-run", id), { read: true });
+    return rec ? ok(rec.data) : err(404, "No such run.");
+  });
+  const purgeDeletion = elevated(async (d, r, c) => {
+    if (r.body.on === true) {
+      const m = meta(r); if (m.bad) return err(400, m.bad);
+      const st = await pstoreOf(d).tx(actorOf(c, r), d.now(), (t) => purgeState(t), { read: true });
+      const bad = enableBlock(st, d.now()); if (bad) return err(409, bad);
+      return request(d, r, c, PURGE_KIND, "settings", `Switch on retention deletion; ticket ${m.ticket}`, { reason: m.reason, ticket: m.ticket });
+    }
+    if (r.body.on === false) {
+      const why = s(r.body.reason); if (why.length < MIN_REASON) return err(400, `Give a reason of at least ${MIN_REASON} characters.`);
+      await pstoreOf(d).tx(actorOf(c, r), d.now(), (t) => switchOff(t, c.p.person, why));
+      return ok();
+    }
+    return err(400, "Say whether to switch deletion on or off.");
+  });
   void reasonBlock; void ({} as Entry);
 
   return {
@@ -380,6 +407,7 @@ export function admin8Routes(h: Admin8Helpers): Record<string, H> {
     "GET admin/mfa": mfaData, "POST admin/mfa/requests": mfaRequest, "POST admin/mfa/requests/:id/withdraw": mfaWithdraw,
     "GET admin/security/blocks": blocks, "POST admin/security/blocks/:ip/lift": lift,
     "GET admin/erasures": erasures, "POST admin/erasures": erasureRequest, "POST admin/erasures/:id/cancel": erasureCancel, "POST admin/erasures/:id/complete": erasureComplete,
+    "GET admin/purge": purge, "GET admin/purge/runs/:id": purgeRun, "POST admin/purge/deletion": purgeDeletion,
   };
 }
 
