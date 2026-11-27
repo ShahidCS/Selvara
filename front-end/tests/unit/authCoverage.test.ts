@@ -24,6 +24,7 @@ const PUBLIC: Record<string, string> = {
   "POST auth/password/reset": "sets a password with a valid reset token and the second factor",
   "POST csp-report": "browser CSP reports (rate limited, reduced)",
   "POST billing/stripe/webhook": "payment provider webhook (signature over the raw body)",
+  "GET cron/purge": "retention purge job (Vercel Cron; CRON_SECRET bearer token, compared in constant time; 503 when not set)",
   "GET v1/:collection": "company API: API key, not a session",
   "POST v1/events": "company API: API key, not a session",
   "GET trust-public/:ref": "public Trust Center page",

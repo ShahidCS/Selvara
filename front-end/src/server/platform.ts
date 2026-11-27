@@ -8,6 +8,8 @@ import { ApplyConflict, auditArgs, auditSql, loadApprovals, names, refuse, type 
 import { UpstreamError } from "./errors";
 import type { AuditRow, Store } from "./types";
 import { WsConflict, WsRefused } from "./ws/store";
+import type { PlatStore } from "./platstore";
+import { NOT_ON, PURGE_SYSTEM, purgeState, type PurgeReport } from "./purge";
 
 export interface ElevationRow { id: string; reason: string; ticket: string; startedAt: number; expiresAt: number }
 export type CompanyStatus = "Active" | "Suspended" | "Closed";
@@ -43,6 +45,9 @@ export interface Platform {
   verifyAudit(userId: string): Promise<number | null>;
   /** EDGE-19: the database part of an approved erasure (migration 0015 erase_person); an elevated super admin. */
   erasePerson(userId: string, person: string, pseudonym: string): Promise<{ auditEntries: number; records: number; companies: number }>;
+  /** EDGE-19 step 2: one run of the retention purge job (migration 0017 retention_purge, as the job: no person). Deletes only when the
+   *  database allows it (retention_deletion_block is null); otherwise reports. `now` is used by the stand-in only (the database uses its clock). */
+  retentionPurge(now: number): Promise<import("./purge").PurgeOutcome>;
   /** Every company's admins and owners (for admin-level MFA resets, 0010): no other member. */
   companyAdmins(userId: string): Promise<{ tenantId: string; ref: string; company: string; userId: string; person: string; email: string; role: string }[]>;
 }
@@ -155,6 +160,15 @@ export class PgPlatform implements Platform {
   async erasePerson(userId: string, person: string, pseudonym: string) {
     const r = await this.tx(userId, (q) => q.query<{ r: { auditEntries: number; records: number; companies: number } }>("select public.erase_person($1, $2) as r", [person, pseudonym]));
     return r[0].r;
+  }
+  async retentionPurge(now?: number) { void now; // the database uses its own clock
+    return this.db.tx({ tenantId: null, userId: null, platform: true, system: "retention-purge" }, async (q) => {
+      const b = await q.query<{ b: string | null }>("select public.retention_deletion_block(public.app_now_ms()) as b");
+      const block = b[0]?.b ?? null;
+      const r = await q.query<{ r: PurgeReport & { paths: string[] } }>("select public.retention_purge($1) as r", [block === null]);
+      const { paths, ...report } = r[0].r;
+      return { report, block, paths };
+    });
   }
   async companyAdmins(userId: string) {
     const r = await this.tx(userId, (q) => q.query("select * from platform_company_admins()"));
@@ -283,6 +297,22 @@ export class MemoryPlatform implements Platform {
     st.passkeys = st.passkeys.filter((x) => x.userId !== person); st.recovery = st.recovery.filter((x) => x.userId !== person); st.notices = st.notices.filter((x) => x.userId !== person);
     Object.assign(p, { person: pseudonym, email: `erased-${person.replace(/-/g, "")}@erased.invalid`, status: "Erased", decidedBy: undefined, reason: undefined });
     return { auditEntries: n, records: 0, companies: new Set(this.dir.memberships.filter((m) => m.userId === person).map((m) => m.tenantId)).size };
+  }
+  /** The stand-in records a run and applies the same switch (settings and the 30 days); what is past its period is covered by the
+   *  database tests of 0017, so its report is empty. */
+  pstore?: PlatStore; private runs = 0;
+  async retentionPurge(now: number) {
+    const ps = this.pstore; if (!ps) throw new Error("the stand-in needs the platform store");
+    return ps.tx(PURGE_SYSTEM, now, async (t) => {
+      const s = await purgeState(t);
+      const block = s.settings?.deletion !== "on" ? NOT_ON : s.deletionFrom === null || now < s.deletionFrom ? "the first 30 days are report-only" : null;
+      const id = `PR-${now}-${++this.runs}`;
+      const report: PurgeReport = { id, at: now, mode: block ? "report" : "delete", due: 0, deleted: 0, files: 0, companies: [],
+        platform: { months: 12, sessions: 0, notices: 0, cspReports: 0, expired: 0, deleted: !block } };
+      await t.insert("purge-run", id, null, report);
+      await t.audit("retention.purge.run", `${id}: ${block ? "report only" : "delete"}; 0 past their period, 0 deleted, 0 file(s) to remove`, "Data");
+      return { report, block, paths: [] as string[] };
+    });
   }
   async companyAdmins() {
     const out = [];

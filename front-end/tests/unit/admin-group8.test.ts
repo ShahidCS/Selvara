@@ -275,3 +275,56 @@ describe("account erasure", () => {
     expect((await erasures(t.ravi.cookie))[0]).toMatchObject({ status: "Completed", person: p.person });
   });
 });
+
+/* EDGE-19 step 2: the retention purge job. Vercel Cron with CRON_SECRET; report-only for its first 30 days; switching deletion on is
+   four-eyes between elevated super admins, switching it off is immediate. What is past its period is decided by the database (tests/db, 0017). */
+describe("retention purge job", () => {
+  const SECRET = "c".repeat(48);
+  const cron = (auth?: string) => handle(d, { method: "GET", path: ["cron", "purge"], body: {}, ip: "203.0.113.50", cookies: {}, headers: { ...(auth ? { authorization: auth } : {}), "user-agent": "vercel-cron/1.0" } });
+  const state = async (cookie: string) => body<{ settings: { deletion: string } | null; firstRunAt: number | null; deletionFrom: number | null; pending: boolean; cronConfigured: boolean; runs: { id: string; mode: string }[] }>(await call("GET", "admin/purge", {}, { cookie }));
+  const switchOn = (cookie: string) => call("POST", "admin/purge/deletion", { on: true, reason: "Thirty days of reports reviewed with compliance", ticket: "PRIV-30" }, { cookie });
+  it("runs only with the secret, and reports only until deletion is switched on", async () => {
+    d.cronSecret = null; expect((await cron(`Bearer ${SECRET}`)).status).toBe(503); // not configured: nothing runs
+    d.cronSecret = "short"; expect((await cron("Bearer short")).status).toBe(503);     // too short to be a secret
+    d.cronSecret = SECRET;
+    expect((await cron()).status).toBe(403); expect((await cron(`Bearer ${"d".repeat(48)}`)).status).toBe(403); expect((await cron(SECRET)).status).toBe(403);
+    const r = await cron(`Bearer ${SECRET}`); expect(r.status).toBe(200);
+    expect(body<{ mode: string; deleted: number; refused?: string }>(r)).toMatchObject({ mode: "report", deleted: 0 }); expect(body<{ refused?: string }>(r).refused).toBeUndefined();
+    expect(log("retention.purge.run")).toHaveLength(1);
+    const t = await team();
+    expect((await call("GET", "admin/purge", {}, { cookie: t.jordan.cookie })).status).toBe(403); // a company admin
+    const s = await state(t.sam.cookie); // support may look
+    expect(s).toMatchObject({ settings: null, firstRunAt: clock, deletionFrom: clock + 30 * 86_400_000, pending: false, cronConfigured: true });
+    expect(s.runs).toHaveLength(1);
+    expect((await call("GET", `admin/purge/runs/${s.runs[0].id}`, {}, { cookie: t.sam.cookie })).status).toBe(200);
+  });
+  it("switching deletion on: not in the first 30 days, elevated super admins only, approved by a second one; off at once", async () => {
+    d.cronSecret = SECRET; const t = await team();
+    expect(body<{ error: string }>(await switchOn(t.dana.cookie)).error).toMatch(/not run yet/);
+    expect((await cron(`Bearer ${SECRET}`)).status).toBe(200);
+    expect(body<{ error: string }>(await switchOn(t.dana.cookie)).error).toMatch(/first 30 days are report-only/);
+    await (d.pstore as MemoryPlatStore).tx({ id: null, name: "test", ip: "test" }, clock, async (q) => { // the first run was 31 days ago
+      for (const r of await q.list<{ at: number }>("purge-run")) await q.update("purge-run", r.id, { ...r.data, at: r.data.at - 31 * 86_400_000 }, r.version);
+    });
+    await elevate(t.dana.cookie); await elevate(t.ravi.cookie);
+    expect((await switchOn(t.sam.cookie)).status).toBe(403);   // support
+    expect((await call("POST", "admin/purge/deletion", { on: true, reason: "short", ticket: "PRIV-30" }, { cookie: t.dana.cookie })).status).toBe(400);
+    expect((await switchOn(t.dana.cookie)).status).toBe(202);
+    expect((await switchOn(t.dana.cookie)).status).toBe(409);  // one open request
+    expect((await state(t.dana.cookie)).pending).toBe(true);
+    const a = (await approvals(t.dana.cookie)).find((x) => x.kind === "platform-purge-delete")!;
+    expect((await decide(t.dana.cookie, a.id)).status).toBe(403); // never the requester
+    // still report-only until it is approved
+    expect(body<{ mode: string }>(await cron(`Bearer ${SECRET}`)).mode).toBe("report");
+    expect((await decide(t.ravi.cookie, a.id)).status).toBe(200);
+    expect((await state(t.dana.cookie)).settings).toMatchObject({ deletion: "on", approvalId: a.id });
+    expect(log("retention.purge.deletion_on")).toHaveLength(1);
+    expect(body<{ mode: string }>(await cron(`Bearer ${SECRET}`)).mode).toBe("delete");
+    // off: one elevated super admin, at once, with a reason
+    expect((await call("POST", "admin/purge/deletion", { on: false, reason: "short" }, { cookie: t.ravi.cookie })).status).toBe(400);
+    expect((await call("POST", "admin/purge/deletion", { on: false, reason: "Pausing deletion during the audit" }, { cookie: t.ravi.cookie })).status).toBe(204);
+    expect(log("retention.purge.deletion_off")).toHaveLength(1);
+    expect(body<{ mode: string }>(await cron(`Bearer ${SECRET}`)).mode).toBe("report");
+    expect((await call("POST", "admin/purge/deletion", { on: false, reason: "Pausing deletion during the audit" }, { cookie: t.ravi.cookie })).status).toBe(409);
+  });
+});

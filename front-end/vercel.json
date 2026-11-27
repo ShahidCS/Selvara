@@ -3,5 +3,6 @@
   "framework": "nextjs",
   "git": { "deploymentEnabled": false },
   "installCommand": "npm ci --ignore-scripts --no-audit --no-fund",
-  "buildCommand": "npm run build"
+  "buildCommand": "npm run build",
+  "crons": [{ "path": "/api/cron/purge", "schedule": "17 3 * * *" }]
 }
