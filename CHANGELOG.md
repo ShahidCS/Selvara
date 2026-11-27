@@ -4,7 +4,9 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
-## [0.4.0] - 2026-11-27
+## [0.4.1] - 2026-11-27
+
+The first release of these changes. Tag `v0.4.0` was pushed before the version bump was merged; it points at a commit still versioned 0.3.3, so the release workflow refused it and nothing was deployed. Tags are immutable, so the release is 0.4.1.
 
 The security and edge-case audit of 26 November and the work that followed from the owner's decisions: audit fixes and guard tests, active-content checks on uploads, rules for requests to join, audit entries that can be erased, account erasure, retention settings, legal holds and the daily purge job. Also the Compliance Sources Register framework library with the original mapping views, and four UI fixes. A minor version because it adds features and five migrations.
 

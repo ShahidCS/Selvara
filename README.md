@@ -6,10 +6,10 @@
 [![Deploy staging](https://github.com/ShahidCS/Selvara/actions/workflows/deploy-staging.yml/badge.svg?branch=staging)](https://github.com/ShahidCS/Selvara/actions/workflows/deploy-staging.yml)
 ![Licence: proprietary](https://img.shields.io/badge/licence-proprietary%20(all%20rights%20reserved)-lightgrey)
 ![Node 20.9+](https://img.shields.io/badge/node-%E2%89%A520.9-339933)
-![Release: v0.4.0](https://img.shields.io/badge/release-v0.4.0-5b36e0)
+![Release: v0.4.1](https://img.shields.io/badge/release-v0.4.1-5b36e0)
 ![Status: server built, in review](https://img.shields.io/badge/status-server%20built%2C%20in%20review-blue)
 
-> **Status: v0.4.0 released (27 Nov 2026); production setup and review pending.** Every module runs on the server (Next.js API routes on Supabase Postgres with row level security per company, Supabase Auth with MFA). The same app also builds as a demonstration on synthetic in-browser data, deployed as a preview from the `staging` branch. Before relying on it in production: the owner setup in [docs/guides/SUPABASE.md](docs/guides/SUPABASE.md) and the security, compliance and management review. See [Project status](#project-status).
+> **Status: v0.4.1 released (27 Nov 2026); production setup and review pending.** Every module runs on the server (Next.js API routes on Supabase Postgres with row level security per company, Supabase Auth with MFA). The same app also builds as a demonstration on synthetic in-browser data, deployed as a preview from the `staging` branch. Before relying on it in production: the owner setup in [docs/guides/SUPABASE.md](docs/guides/SUPABASE.md) and the security, compliance and management review. See [Project status](#project-status).
 
 ![Selvara overview dashboard](docs/screenshots/01-overview.png)
 
@@ -426,7 +426,7 @@ Selvara/
 | Security hardening (v0.3) | Response guard on every API response, invitation links by email only, authenticator apps with QR set-up |
 | Security and privacy (v0.4) | Fixes from the security and edge-case audit, active-content checks on uploads, company email domains for requests to join, account erasure, retention settings, legal holds and the daily purge job (report-only for its first 30 days) |
 | Automated tests and CI/CD | Unit, database-isolation and end-to-end suites; security gates; staging previews (demo and live); tag-driven release to Vercel |
-| Production | **v0.3.3 deployed** (26 Nov 2026). v0.4.0 deploys when its signed tag is approved, after migrations 0013 to 0017 and `CRON_SECRET` are in place ([CHANGELOG](CHANGELOG.md)); owner setup and review pending |
+| Production | **v0.3.3 deployed** (26 Nov 2026). v0.4.1 deploys when its signed tag is approved, after migrations 0013 to 0017 and `CRON_SECRET` are in place ([CHANGELOG](CHANGELOG.md)); owner setup and review pending |
 | Back-end v2 (redesign) | Design approved through an independent audit; readiness gate **No-Go** until the budget, vendor facts, open decisions and legal assumptions are settled ([backend-v2](docs/architecture/backend-v2/README.md)). No v2 code is written before the gate passes |
 
 What production still needs:
