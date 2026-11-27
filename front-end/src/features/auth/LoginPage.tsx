@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { DemoCodeNotice } from "@/components/kit/DemoCodeNotice";
 import { useRouter } from "next/router";
 import { EmailField, ErrP, PwField, emailValid } from "./AuthFields";
 import { LENGTH_COPY, checkPassword } from "@/lib/credentials";
@@ -152,7 +153,7 @@ function PasskeyStep({ step, onRestart, onNext }: { step: Extract<SignInStep, { 
         <ErrP id="pk-err" msg={err} />
       </> : (
         <form onSubmit={submitCode} noValidate>
-          <div className="banner warn" style={{ margin: "0 0 12px", fontSize: 13 }}><b>Demo only.</b> Platform administrators must use a passkey. For this demonstration the code is shown here: <span className="num" style={{ fontWeight: 600 }}>{step.demoCode}</span>.</div>
+          <DemoCodeNotice heading="Demo only." statement="Platform administrators must use a passkey. For this demonstration the code is shown here:" code={step.demoCode ?? ""} />
           <div className="field"><label htmlFor="pk-code">Authentication code</label><input ref={codeRef} className="input num" id="pk-code" inputMode="numeric" maxLength={6} value={code} onChange={(e) => setCode(codeInput(e.target.value))} aria-invalid={!!err} aria-describedby={err ? "pk-cerr" : undefined} /></div>
           <ErrP id="pk-cerr" msg={err} />
           <button type="submit" className="btn btn-primary" style={{ ...full, marginTop: 10 }}>Verify</button>
@@ -187,7 +188,7 @@ function CodeStep({ step, onHold, onCodes, onRestart }: { step: Exclude<SignInSt
           <div style={{ margin: "0 0 12px" }}><AuthenticatorSetup secret={step.secret} uri={step.uri} /></div>
         </>
       ) : step.method === "demo" ? (
-        <div className="banner warn" style={{ margin: "0 0 12px", fontSize: 13 }}><b>Demo account.</b> Demo accounts have no authenticator, so the code is shown here: <span className="num" style={{ fontWeight: 600 }}>{step.demoCode}</span>. Real accounts use an authenticator app.</div>
+        <DemoCodeNotice heading="Demo account." statement="Demo accounts have no authenticator, so the code is shown here:" code={step.demoCode} closing="Real accounts use an authenticator app." />
       ) : <p className="sub" style={{ margin: "0 0 12px" }}>{recovery ? "Enter one of your recovery codes. Each works once." : "Enter the 6-digit code from your authenticator app."}</p>}
       <form onSubmit={submit} noValidate>
         <div className="field"><label htmlFor="mf-code">{recovery ? "Recovery code" : "Authentication code"}</label>

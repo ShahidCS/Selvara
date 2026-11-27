@@ -53,7 +53,7 @@ export async function switchTo(page: Page, person: string) {
 export async function demoSecondStep(page: Page) {
   const banner = page.locator(".banner.warn", { hasText: "Demo account." });
   await expect(banner).toBeVisible();
-  await page.getByLabel("Authentication code").fill((await banner.locator(".num").innerText()).trim());
+  await page.getByLabel("Authentication code").fill((await banner.locator(".demo-code-value").innerText()).trim());
   await page.getByRole("button", { name: "Verify" }).click();
 }
 /** The 6-digit code an authenticator app shows for a base32 secret now (RFC 6238), computed with Node's crypto as a phone app would. */

@@ -3,6 +3,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { DATA } from "@/lib/data";
 import { esc } from "@/lib/format";
+import { longDate } from "@/lib/greeting";
 import { getMe } from "@/lib/audit";
 import { fwReadiness } from "@/lib/frameworks";
 import { metrics, riskOpen, sCur } from "@/lib/metrics";
@@ -35,8 +36,7 @@ export function boardPackHTML(kind: BoardPackKind = "file"): string {
   const tab = kind === "tab";
   const ME = getMe();
  const M=metrics();const now=new Date();
- const dateStr=now.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
- const period=now.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+ const dateStr=longDate(now);
  const fwRows=[...DATA.frameworks].map(f=>({f,r:fwReadiness(f.id)})).sort((a,b)=>b.r-a.r);
  const fwBars=fwRows.map(({f,r})=>`<div class="bp-bar"><span class="bp-bar-l">${esc(f.name)}</span><span class="bp-track"><span class="bp-fill" ${tab?`data-w="${r}"`:`style="width:${r}%"`}></span></span><span class="bp-bar-v">${r}%</span></div>`).join("");
  const covHead=`<tr><th class="bp-rowh"></th>${COV_CATS.map(c=>`<th class="bp-covh">${esc(c[0])}</th>`).join("")}</tr>`;
@@ -107,7 +107,7 @@ export function boardPackHTML(kind: BoardPackKind = "file"): string {
   <div class="bp-sheet">
    <div class="bp-cover"><div class="bp-brand">${mark}<b>Selvara</b></div>
      <h1>Board &amp; Executive Security Pack</h1>
-     <div class="bp-sub">Security, risk &amp; compliance posture — ${esc(period)}</div>
+     <div class="bp-sub">Overall security, risk &amp; compliance posture</div>
      <div class="bp-chips"><span class="bp-chip">Draft for review</span><span class="bp-chip">Confidential</span><span class="bp-chip">Prepared by ${esc(ME.name)}</span><span class="bp-chip">${esc(dateStr)}</span></div>
    </div>
    <div class="bp-body">

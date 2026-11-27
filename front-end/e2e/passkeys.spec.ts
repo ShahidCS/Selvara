@@ -55,7 +55,7 @@ test("without a passkey device, the demonstration build offers a labelled on-scr
   await p.getByRole("button", { name: "No passkey on this device? Demo code" }).click();
   const banner = p.locator(".banner.warn", { hasText: "Demo only." });
   await expect(banner).toContainText("must use a passkey");
-  await p.getByLabel("Authentication code").fill((await banner.locator(".num").innerText()).trim());
+  await p.getByLabel("Authentication code").fill((await banner.locator(".demo-code-value").innerText()).trim());
   await p.getByRole("button", { name: "Verify" }).click();
   await p.waitForURL(/\/admin\//);
   await ctx.close();

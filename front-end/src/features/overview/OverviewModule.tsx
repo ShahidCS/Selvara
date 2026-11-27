@@ -1,4 +1,4 @@
-import { greetingFor } from "@/lib/greeting";
+import { greetingFor, postureEyebrow } from "@/lib/greeting";
 import { CardGrid, HBarList, Icon, KpiStrip, KpiTile, LineChart, Page, Segmented, StatusChip, activate, type Desirability, Empty } from "@/components/ui";
 import { DEMO_RISE, PERIODS, demoSeries, periodRange, periodTicks, setPeriod, usePeriod } from "@/lib/period";
 import { FocusCard } from "./FocusCard";
@@ -76,7 +76,6 @@ function PostureOverview() {
   const hiddenOverdue = [!can("issues") && overdueIssues.length ? `${overdueIssues.length} overdue issue${overdueIssues.length === 1 ? "" : "s"}. Your role does not open Issues.` : "",
     !can("vendors") && overdueVendors.length ? `${overdueVendors.length} overdue vendor review${overdueVendors.length === 1 ? "" : "s"}. Your role does not open Third parties.` : ""].filter(Boolean);
   const audits = DATA.audits.filter((a) => a.stage !== "Complete");
-  const period = new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 
   const exportBoardPack = async () => {
     wsLog("overview.boardpack.exported", "Board & executive pack", "System");
@@ -99,13 +98,12 @@ function PostureOverview() {
     L.toast("Board pack downloaded — open it, then Print / Save as PDF");
   };
 
-  // R6: a personal greeting, with the date and the posture period above it
+  // R6: a personal greeting, with the date (in the person's time zone) and what the page shows above it
   const now = new Date(); const hr = now.getHours();
   const first = (roleOf(appStore.get().role).person || "").split(/\s+/)[0];
   const greeting = `${greetingFor(hr)}${first ? `, ${first}` : ""}`;
-  const today = now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
   return (
-    <Page eyebrow={`${today} · Security posture · ${period}`} title={greeting} sub={`${M.overdueControls} controls failing and ${M.openIssues} open issues need your attention.`} acts={<>
+    <Page eyebrow={postureEyebrow(now)} title={greeting} sub={`${M.overdueControls} controls failing and ${M.openIssues} open issues need your attention.`} acts={<>
       <button className="btn btn-secondary" data-tour="overview-boardpack" onClick={exportBoardPack}><Icon name="download" />Export board pack</button>
       {can("reports") ? <button className="btn btn-secondary" onClick={() => go("/ws/reports")}><Icon name="reports" />Reports</button> : null}
       {can("work") ? <button className="btn btn-primary" data-tour="overview-work" onClick={() => go("/ws/work")}><Icon name="work" />Open my work</button> : null}

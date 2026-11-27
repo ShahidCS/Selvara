@@ -51,6 +51,9 @@
   /* radius: controls and labels are pills, containers 16 to 24, floating micro-cards 10 */
   --radius-xs:4px; --radius-sm:8px; --radius-md:10px; --radius-card:12px; --radius-rail:14px; --radius-lg:16px; --radius-panel:20px; --radius-xl:24px; --radius-full:9999px;
   --radius-control:var(--radius-full); --radius-chip:var(--radius-full); --radius-field:var(--radius-md); --radius-modal:var(--radius-xl);
+  /* Pill (--radius-control, --radius-chip) is for one-line buttons, chips and badges only. Anything that holds a list or wraps text (menus,
+     listboxes, option rows, notes) uses a fixed radius: a pill there turns the box into an oval and clips its first and last rows. */
+  --radius-menu:var(--radius-md); --radius-option:calc(var(--radius-menu) - var(--space-1)); --radius-box:var(--radius-md);
 
   --sb-w:280px; --sb-rail:72px; --topbar-h:56px;
   --space:8px; --spacing:.25rem;
@@ -597,6 +600,11 @@ button.tag:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
 .banner{border-radius:10px;padding:10px 14px;font-size:var(--fs-help);line-height:1.5}
 .banner.warn{background:var(--warn-bg);color:var(--warn-ink)}
 .banner.info{background:var(--info-bg);color:var(--info-ink)}
+/* The demonstration build's one-time code (components/kit/DemoCodeNotice): heading, then statement, code and closing line one line apart. */
+.banner.demo-code{display:flex;flex-direction:column;margin:0 0 12px;font-size:13px}
+.banner.demo-code .demo-code-body{display:flex;flex-direction:column;gap:1em}
+.banner.demo-code .demo-code-value{align-self:center;font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:1.25em;font-weight:600;letter-spacing:.12em;padding-inline-start:.12em;user-select:text}
+.banner.demo-code .demo-code-tail{text-align:justify}
 /* production: records of a module could not be loaded (shell, above the page) */
 .load-error{flex:0 0 auto;margin:12px 20px 0;display:flex;align-items:center;gap:10px}.load-error svg{width:16px;height:16px;flex:0 0 auto}.load-error .btn{margin-inline-start:auto;flex:0 0 auto}
 .fchip.sm{height:28px;padding:0 10px;font-size:12px}
@@ -866,8 +874,11 @@ aside#sidebar{background:var(--glass-chrome);-webkit-backdrop-filter:var(--glass
 .kpi-badge{flex:0 0 auto;display:inline-flex}
 .kpi-badge .chip{white-space:nowrap;height:22px}
 .kpi-fig{display:flex;align-items:center;min-width:0}
-.kpi-v{font-family:var(--font-display);font-size:36px;line-height:40px;font-weight:300;letter-spacing:-1.4px;color:var(--ink);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;font-variant-numeric:tabular-nums}
+/* The value keeps overflow:hidden for the ellipsis of a long value, so nothing of a glyph may sit outside its box: tracking no tighter than
+   -0.01em (a tighter one pulled the last digit's advance in and its ink past the box) and a small end padding for the display font's
+   overhang (inside the box, so it is not clipped). */
+.kpi-v{font-family:var(--font-display);font-size:36px;line-height:40px;font-weight:300;letter-spacing:-.01em;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;padding-inline-end:.08em;font-variant-numeric:tabular-nums}
 .kpi-strip .kpi-v{font-size:clamp(24px,calc((100cqi - (var(--cols) - 1) * var(--kgap)) / var(--cols) / 6),36px);line-height:1.12}
 .kpi-cap{font-size:12px;color:var(--muted);min-height:1.4em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .kpi-card{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:start;padding:16px;border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--surface);color:var(--ink);font:inherit;cursor:pointer}
@@ -1346,10 +1357,10 @@ form:not(.rec-form):not([style*="gap"])>.field+*,form:not(.rec-form):not([style*
 .lb-v{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lb-chev{width:16px;height:16px;flex:0 0 auto;color:var(--muted)}
 .lb-btn[aria-expanded="true"] .lb-chev{transform:rotate(180deg)}
-.lb-list{list-style:none;margin:0;padding:var(--space-1);border:1px solid var(--line-2);border-radius:var(--radius-control);background:var(--surface);box-shadow:var(--shadow-sm);max-height:260px;overflow:auto}
+.lb-list{list-style:none;margin:0;padding:var(--space-1);border:1px solid var(--line-2);border-radius:var(--radius-menu);background:var(--surface);box-shadow:var(--shadow-sm);max-height:260px;overflow:auto}
 .lb-list:focus{outline:none}
 .lb-list:focus-visible{box-shadow:0 0 0 3px var(--accent-weak)}
-.lb-list [role="option"]{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:var(--radius-chip);cursor:pointer;font-size:14px}
+.lb-list [role="option"]{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:var(--radius-option);cursor:pointer;font-size:14px}
 .lb-list [role="option"][data-active]{background:var(--surface-2)}
 .lb-list [role="option"][aria-selected="true"]{font-weight:600}
 .lb-list [role="option"][aria-disabled="true"]{cursor:not-allowed;color:var(--muted)}
@@ -1389,7 +1400,7 @@ form:not(.rec-form):not([style*="gap"])>.field+*,form:not(.rec-form):not([style*
 .set-ctl{display:flex;flex-direction:column;align-items:flex-end;gap:var(--space-2);min-width:0}
 @container content (max-width:640px){.set-row{grid-template-columns:minmax(0,1fr)}.set-ctl{align-items:flex-start}}
 /* a quiet note box inside a card (never a card inside a card) */
-.note{padding:var(--space-3);border-radius:var(--radius-control);background:var(--surface-2);font-size:12.5px;color:var(--ink-2);line-height:1.5}
+.note{padding:var(--space-3);border-radius:var(--radius-box);background:var(--surface-2);font-size:12.5px;color:var(--ink-2);line-height:1.5}
 
 /* ---------- I2-I5: data tables ----------
    Fixed layout with <col> widths (lib/columnWidths.ts), so paging, sorting and filtering never move a column. Each header has a resize handle
