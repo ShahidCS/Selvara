@@ -213,3 +213,65 @@ describe("Admin Console MFA resets and sign-in blocks", () => {
     expect(body<{ blocks: unknown[] }>(await call("GET", "admin/security/blocks", {}, { cookie: t.sam.cookie })).blocks).toEqual([]);
   });
 });
+
+/* EDGE-19: account erasure. Platform super admins only, each elevated; a second one approves; the account is blocked at once and erased
+   after 14 days unless cancelled. The database part (workspace records, the audit chain) is covered in tests/db (0014, 0015). */
+describe("account erasure", () => {
+  const erasures = async (cookie: string) => body<{ userId: string; status: string; person: string; pseudonym: string; email: string; due: boolean }[]>(await call("GET", "admin/erasures", {}, { cookie }));
+  const ask = (cookie: string, email: string) => call("POST", "admin/erasures", { email, reason: "Erasure request from the person by email", ticket: "PRIV-12" }, { cookie });
+  const makeDue = async (userId: string) => { // the 14 days have passed (sessions and elevations would have expired in a real wait)
+    await (d.pstore as MemoryPlatStore).tx({ id: null, name: "test", ip: "test" }, clock, async (t) => { const r = (await t.get<{ dueAt: number }>("account-erasure", userId))!; await t.update("account-erasure", userId, { ...r.data, dueAt: clock - 1 }, r.version); });
+  };
+  it("only for people no longer in a company; asked and approved by two different elevated super admins; blocked at once", async () => {
+    const t = await team();
+    const priya = await account("priya@acme.example", "employee", "Priya Nair");
+    expect((await ask(t.sam.cookie, "priya@acme.example")).status).toBe(403);   // support
+    expect((await ask(t.jordan.cookie, "priya@acme.example")).status).toBe(403); // a company admin
+    expect((await ask(t.dana.cookie, "dana@platform.example")).status).toBe(409); // platform staff (and herself)
+    expect(body<{ error: string }>(await ask(t.dana.cookie, "priya@acme.example")).error).toMatch(/still an active member of a company/);
+    dir.memberships.find((m) => m.userId === priya.id)!.status = "Removed"; // offboarded by her company
+    expect((await call("POST", "admin/erasures", { email: "priya@acme.example", reason: "short", ticket: "PRIV-12" }, { cookie: t.dana.cookie })).status).toBe(400);
+    const req = await ask(t.dana.cookie, "priya@acme.example"); expect(req.status).toBe(202);
+    expect((await ask(t.dana.cookie, "priya@acme.example")).status).toBe(409); // one open request
+    const a = (await approvals(t.dana.cookie)).find((x) => x.kind === "platform-account-erase")!;
+    expect(a.block).toMatch(/requester|own request|cannot approve/i);
+    expect((await decide(t.dana.cookie, a.id)).status).toBe(403); // never the requester
+    expect((await decide(t.ravi.cookie, a.id)).status).toBe(200);
+    // blocked at once: her session ended, and she cannot sign in
+    expect((await call("GET", "auth/session", {}, { cookie: priya.cookie })).status).toBe(401);
+    expect((await call("POST", "auth/sign-in", { email: "priya@acme.example", password: PW })).status).toBe(401); // the password is no longer accepted
+    const [e] = await erasures(t.ravi.cookie);
+    expect(e).toMatchObject({ userId: priya.id, status: "Scheduled", person: "Priya Nair", email: "p•••@acme.example", due: false });
+    expect(e.pseudonym).toMatch(/^Former member · M-[0-9a-f]{8}$/);
+    expect(log("privacy.erasure.scheduled")).toHaveLength(1);
+    // not before the 14 days; support cannot complete
+    expect(body<{ error: string }>(await call("POST", `admin/erasures/${priya.id}/complete`, {}, { cookie: t.ravi.cookie })).error).toMatch(/14 days end on/);
+    expect((await call("POST", `admin/erasures/${priya.id}/complete`, {}, { cookie: t.sam.cookie })).status).toBe(403);
+  });
+  it("can be cancelled during the 14 days (unblocked); once completed, nothing of the person is left", async () => {
+    const t = await team();
+    const priya = await account("priya@acme.example", "employee", "Priya Nair");
+    dir.memberships.find((m) => m.userId === priya.id)!.status = "Removed";
+    const approveLatest = async () => { const a = (await approvals(t.dana.cookie)).find((x) => x.kind === "platform-account-erase" && x.status === "Pending")!; expect((await decide(t.ravi.cookie, a.id)).status).toBe(200); };
+    expect((await ask(t.dana.cookie, "priya@acme.example")).status).toBe(202); await approveLatest();
+    expect((await call("POST", `admin/erasures/${priya.id}/cancel`, { reason: "short" }, { cookie: t.dana.cookie })).status).toBe(400);
+    expect((await call("POST", `admin/erasures/${priya.id}/cancel`, { reason: "The person withdrew the request by email" }, { cookie: t.dana.cookie })).status).toBe(204);
+    expect((await call("POST", "auth/sign-in", { email: "priya@acme.example", password: PW })).status).toBe(409); // unblocked: the password works again (409: no company now)
+    expect((await erasures(t.dana.cookie))[0].status).toBe("Cancelled");
+    // asked again, approved, and completed after the 14 days
+    expect((await ask(t.dana.cookie, "priya@acme.example")).status).toBe(202); await approveLatest();
+    await makeDue(priya.id);
+    expect(JSON.stringify(store.auditLog)).toMatch(/Priya Nair|priya@acme\.example/); // before: the log names her
+    const done = await call("POST", `admin/erasures/${priya.id}/complete`, {}, { cookie: t.dana.cookie });
+    expect(done.status).toBe(200); expect(body<{ status: string }>(done).status).toBe("Completed");
+    const p = (await store.profileById(priya.id))!;
+    expect(p).toMatchObject({ status: "Erased", email: `erased-${priya.id.replace(/-/g, "")}@erased.invalid` }); expect(p.person).toMatch(/^Former member · M-/);
+    expect(store.passkeys.concat().some((x) => x.userId === priya.id) || store.recovery.some((x) => x.userId === priya.id)).toBe(false);
+    expect([...store.sessions.values()].some((x) => x.userId === priya.id)).toBe(false);
+    expect(JSON.stringify(store.auditLog)).not.toMatch(/Priya Nair|priya@acme\.example/); // the log keeps the pseudonym and the masked address only
+    expect(log("privacy.erasure.completed").at(-1)!.target).toMatch(/^Former member · M-[0-9a-f]{8} \(p•••@acme\.example\): \d+ audit entr/);
+    expect((await call("POST", "auth/sign-in", { email: "priya@acme.example", password: PW })).status).toBe(401);
+    expect((await call("POST", `admin/erasures/${priya.id}/complete`, {}, { cookie: t.dana.cookie })).status).toBe(404); // once
+    expect((await erasures(t.ravi.cookie))[0]).toMatchObject({ status: "Completed", person: p.person });
+  });
+});

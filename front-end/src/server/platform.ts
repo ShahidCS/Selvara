@@ -41,6 +41,8 @@ export interface Platform {
   superAdmins(userId: string): Promise<string[]>;
   /** The first chain position that does not verify, or null when the whole platform chain verifies. */
   verifyAudit(userId: string): Promise<number | null>;
+  /** EDGE-19: the database part of an approved erasure (migration 0015 erase_person); an elevated super admin. */
+  erasePerson(userId: string, person: string, pseudonym: string): Promise<{ auditEntries: number; records: number; companies: number }>;
   /** Every company's admins and owners (for admin-level MFA resets, 0010): no other member. */
   companyAdmins(userId: string): Promise<{ tenantId: string; ref: string; company: string; userId: string; person: string; email: string; role: string }[]>;
 }
@@ -150,6 +152,10 @@ export class PgPlatform implements Platform {
     const r = await this.tx(userId, (q) => q.query<{ bad: string | null }>("select platform_audit_verify() as bad"));
     return r[0]?.bad == null ? null : Number(r[0].bad);
   }
+  async erasePerson(userId: string, person: string, pseudonym: string) {
+    const r = await this.tx(userId, (q) => q.query<{ r: { auditEntries: number; records: number; companies: number } }>("select public.erase_person($1, $2) as r", [person, pseudonym]));
+    return r[0].r;
+  }
   async companyAdmins(userId: string) {
     const r = await this.tx(userId, (q) => q.query("select * from platform_company_admins()"));
     return r.map((x) => ({ tenantId: String(x.tenant_id), ref: String(x.ref), company: String(x.company), userId: String(x.user_id), person: String(x.person), email: String(x.email), role: String(x.role) }));
@@ -257,6 +263,27 @@ export class MemoryPlatform implements Platform {
   }
   async superAdmins() { return [...this.dir.staff.entries()].filter(([, r]) => r === "super").map(([id]) => id); }
   async verifyAudit() { return null; }
+  /** The stand-in does what erase_person does to the data it keeps (profiles, credentials, the audit list); workspace records are covered
+   *  by the database tests. */
+  async erasePerson(userId: string, person: string, pseudonym: string) {
+    if (!this.live(userId, Date.now())) throw new PassThroughErasure("an elevated platform super admin is required", "42501");
+    const st = this.store as unknown as import("./memory").MemoryStore; const p = st.profiles.get(person);
+    if (!p) throw new PassThroughErasure("no such person", "P0002");
+    if (p.status === "Erased") throw new PassThroughErasure("already erased", "55000");
+    if (this.dir.memberships.some((m) => m.userId === person && m.status === "Active")) throw new PassThroughErasure("still an active member", "55000");
+    if (this.dir.staff.has(person)) throw new PassThroughErasure("active platform staff", "55000");
+    let n = 0; const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    for (const e of st.auditLog) {
+      const hit = e.actorId === person || e.target.toLowerCase().includes(p.person.toLowerCase()) || e.target.toLowerCase().includes(p.email.toLowerCase());
+      if (!hit) continue;
+      if (e.actorId === person) { e.actor = pseudonym; e.ip = ""; }
+      e.target = e.target.replace(new RegExp(esc(p.email), "gi"), "[erased address]").replace(new RegExp(esc(p.person), "gi"), pseudonym); n++;
+    }
+    for (const [k, s] of st.sessions) if (s.userId === person) st.sessions.delete(k);
+    st.passkeys = st.passkeys.filter((x) => x.userId !== person); st.recovery = st.recovery.filter((x) => x.userId !== person); st.notices = st.notices.filter((x) => x.userId !== person);
+    Object.assign(p, { person: pseudonym, email: `erased-${person.replace(/-/g, "")}@erased.invalid`, status: "Erased", decidedBy: undefined, reason: undefined });
+    return { auditEntries: n, records: 0, companies: new Set(this.dir.memberships.filter((m) => m.userId === person).map((m) => m.tenantId)).size };
+  }
   async companyAdmins() {
     const out = [];
     for (const m of this.dir.memberships.filter((x) => x.status === "Active" && (x.role === "admin" || x.role === "owner"))) {
@@ -266,3 +293,6 @@ export class MemoryPlatform implements Platform {
     return out;
   }
 }
+
+/** The stand-in's refusals carry the database's error codes, as UpstreamError does for Postgres. */
+export class PassThroughErasure extends Error { constructor(message: string, public code: string) { super(message); } }

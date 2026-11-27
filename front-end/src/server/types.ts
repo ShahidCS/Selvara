@@ -1,6 +1,6 @@
 /* Server-only. Interfaces the auth handlers depend on, so they run against Supabase in production and against an in-memory stand-in in tests. */
 /** A person (profiles). Their access comes from memberships and platform_staff, never from the profile (profiles.role was dropped in 0005). */
-export interface Profile { id: string; email: string; person: string; status: "Pending" | "Active" | "Rejected"; requestedAt: number; decidedBy?: string; reason?: string }
+export interface Profile { id: string; email: string; person: string; status: "Pending" | "Active" | "Rejected" | "Erased"; requestedAt: number; decidedBy?: string; reason?: string }
 export interface SessionRow { idHash: string; userId: string; device: string; ip: string; createdAt: number; lastSeen: number; expiresAt: number; revokedAt?: number; revokedWhy?: string; /** The company this session works in (null for platform staff). */ tenantId?: string | null }
 export interface NoticeRow { id: string; userId: string; at: number; text: string }
 export interface AuditRow { at: number; actor: string; action: string; target: string; cat: string; space: "ws" | "admin"; ip: string; /** Company log (null: platform log). */ tenantId?: string | null; actorId?: string | null }
@@ -26,6 +26,11 @@ export interface AuthProvider {
   mfaEnrolled(userId: string): Promise<boolean>;
   /** Removes every authenticator factor of the person (an approved MFA reset): they enrol again at their next sign-in. */
   resetMfa(userId: string): Promise<void>;
+  /** EDGE-19: blocks (or unblocks) every sign-in of the account (admin API); an account being erased is blocked during its grace period. */
+  setBanned(userId: string, banned: boolean): Promise<void>;
+  /** EDGE-19: empties the sign-in account at erasure: a placeholder address, a random password, no name and no authenticators; it stays
+   *  blocked. It is not deleted, because the profile and the records keep pointing at its id. */
+  scrubUser(userId: string, placeholderEmail: string): Promise<void>;
   /** The person's confirmed authenticator apps (admin API, no session needed). */
   listTotp(userId: string): Promise<{ id: string; label: string; createdAt: number }[]>;
   /** Removes one authenticator app of the person (admin API). */

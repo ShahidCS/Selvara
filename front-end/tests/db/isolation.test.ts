@@ -784,6 +784,43 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
     });
   });
 
+  describe("account erasure (0015)", () => {
+    it("erase_person: elevated super admins only; refuses an active member; erases the person everywhere; the chain still verifies", async () => {
+      const gwen = "00000000-0000-4000-8000-0000000000e1";
+      await admin.query("insert into auth.users (id, email) values ($1, 'gwen.o@a.example.test')", [gwen]);
+      await admin.query("insert into public.profiles (id, email, person, status, requested_ms, decided_by, reason) values ($1, 'gwen.o@a.example.test', 'Gwen O''Hara', 'Active', $2, 'Alex Kim', 'Confirmed with HR')", [gwen, now]);
+      await admin.query("insert into public.memberships (tenant_id, user_id, role, status, created_ms) values ($1, $2, 'employee', 'Active', $3)", [A, gwen, now]);
+      await admin.query("insert into public.sessions (id_hash, user_id, device, ip, created_ms, last_seen_ms, expires_ms) values ('erasure-test-session', $1, 'Chrome', '198.51.100.9', $2, $2, $3)", [gwen, now, now + 3600_000]);
+      await app.tx(ctxA(), async (q) => {
+        await q.query("insert into ws_records (tenant_id, kind, id, data, created_ms, updated_ms) values ($1, 'control', 'C-ERASE', $2, $3, $3)", [A, JSON.stringify({ title: "Badge access review", owner: "Gwen O'Hara", contact: "gwen.o@a.example.test" }), now]);
+        await q.query("insert into ws_records (tenant_id, kind, id, data, created_ms, updated_ms) values ($1, 'control', 'C-OTHER', $2, $3, $3)", [A, JSON.stringify({ title: "Unrelated", owner: "Alex Kim" }), now]);
+        await q.query("insert into audit_log (at_ms, actor, action, target, cat, space, ip, tenant_id, actor_id) values ($1, 'Gwen O''Hara', 'evidence.added', 'Badge export', 'Evidence', 'ws', '198.51.100.9', $2, $3)", [now, A, gwen]);
+      });
+      const erase = (ctx: { tenantId: string | null; userId: string; platform?: boolean }) => app.tx(ctx, (q) => q.query<{ r: { auditEntries: number; records: number; companies: number } }>("select public.erase_person($1, 'Former member · M-0e1e1e1e') as r", [gwen]));
+      const asDrew = { tenantId: null, userId: drew, platform: true };
+      await admin.query("update public.elevations set ended_ms = expires_ms where ended_ms is null");
+      expect(await code(erase(asDrew))).toBe("42501");   // not elevated
+      expect(await code(erase(ctxA()))).toBe("42501");   // a company admin
+      await admin.query("insert into public.elevations (user_id, reason, ticket, started_ms, expires_ms) values ($1, 'Erasure test elevation', 'OPS-15', $2, $3)", [drew, Date.now(), Date.now() + 3600_000]);
+      expect(await code(erase(asDrew))).toBe("55000");   // still an active member
+      expect(await code(app.tx(asDrew, (q) => q.query("select public.erase_person($1, 'Former member · M-0e1e1e1e')", [drew])))).toBe("55000"); // platform staff
+      await admin.query("update public.memberships set status = 'Removed' where user_id = $1", [gwen]); // offboarded by the company
+      const r = (await erase(asDrew))[0].r;
+      expect(r).toEqual({ auditEntries: 1, records: 1, companies: 1 });
+      const prof = (await admin.query("select email, person, status, decided_by, reason from public.profiles where id = $1", [gwen])).rows[0];
+      expect(prof).toEqual({ email: "erased-000000000000400080000000000000e1@erased.invalid", person: "Former member · M-0e1e1e1e", status: "Erased", decided_by: null, reason: null });
+      const rec = (await admin.query("select data, version from public.ws_records where tenant_id = $1 and id = 'C-ERASE'", [A])).rows[0];
+      expect(rec).toEqual({ data: { title: "Badge access review", owner: "Former member · M-0e1e1e1e", contact: "[erased address]" }, version: 2 });
+      expect((await admin.query("select version from public.ws_records where tenant_id = $1 and id = 'C-OTHER'", [A])).rows[0].version).toBe(1); // untouched
+      expect((await admin.query("select count(*)::int as n from public.sessions where user_id = $1", [gwen])).rows[0].n).toBe(0);
+      const log = (await admin.query("select actor, target from public.audit_log where tenant_id = $1 and action in ('evidence.added', 'privacy.erasure.completed') order by chain_n", [A])).rows;
+      expect(log.slice(-2)).toEqual([{ actor: "Former member · M-0e1e1e1e", target: "Badge export" }, { actor: "Platform", target: "Former member · M-0e1e1e1e: 1 workspace record(s) updated" }]);
+      expect((await admin.query("select public.audit_verify($1) as bad", [A])).rows[0].bad).toBeNull();
+      expect(await code(erase(asDrew))).toBe("55000");   // once
+      await admin.query("update public.elevations set ended_ms = expires_ms where ended_ms is null");
+    });
+  });
+
   describe("schema check and request context", () => {
     it("works at the current schema and fails closed when the database is older than the code", async () => {
       expect(await app.schemaVersion()).toBe(SCHEMA_VERSION);

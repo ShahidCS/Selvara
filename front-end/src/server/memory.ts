@@ -6,7 +6,7 @@ import { randomId, sha256Hex } from "./crypto";
 import type { AuthProvider, NoticeRow, PasskeyRow, Profile, RecoveryRow, SessionRow, Store, AuditRow } from "./types";
 
 type MFactor = { id: string; secret: string; verified: boolean; lastStep: number; label: string; createdAt: number };
-interface MUser { id: string; email: string; salt: string; hash: string; confirmed: boolean; factors: MFactor[] }
+interface MUser { id: string; email: string; salt: string; hash: string; confirmed: boolean; factors: MFactor[]; banned?: boolean; name?: string }
 export class MemoryAuth implements AuthProvider {
   constructor(private now: () => number = Date.now) {}
   users = new Map<string, MUser>(); tokens = new Map<string, { userId: string; recovery: boolean; aal2?: boolean }>(); outbox: { email: string; token: string }[] = [];
@@ -14,7 +14,7 @@ export class MemoryAuth implements AuthProvider {
   private tok(userId: string, recovery = false) { const access = randomId(16), refresh = randomId(16); this.tokens.set(access, { userId, recovery }); return { access, refresh }; }
   private user(t: { access: string }) { const x = this.tokens.get(t.access); return x ? this.users.get(x.userId) : undefined; }
   async signInWithPassword(email: string, password: string) {
-    const u = this.byEmail(email); if (!u || !u.confirmed || (await sha256Hex(u.salt + password)) !== u.hash) return null;
+    const u = this.byEmail(email); if (!u || !u.confirmed || u.banned || (await sha256Hex(u.salt + password)) !== u.hash) return null;
     return { userId: u.id, ...this.tok(u.id) };
   }
   async verifiedTotpFactor(t: { access: string }) { return this.user(t)?.factors.find((f) => f.verified)?.id ?? null; }
@@ -50,6 +50,8 @@ export class MemoryAuth implements AuthProvider {
   async userOfRecovery(t: { access: string }) { const x = this.tokens.get(t.access); return x?.recovery ? x.userId : null; }
   async mfaEnrolled(userId: string) { return !!this.users.get(userId)?.factors.some((f) => f.verified); }
   async resetMfa(userId: string) { const u = this.users.get(userId); if (u) u.factors = []; }
+  async setBanned(userId: string, banned: boolean) { const u = this.users.get(userId); if (u) u.banned = banned; }
+  async scrubUser(userId: string, placeholderEmail: string) { const u = this.users.get(userId); if (u) Object.assign(u, { email: placeholderEmail, salt: randomId(8), hash: randomId(16), factors: [], banned: true, name: undefined }); }
   /** Test helper: the secret of the newest authenticator app (the one being set up, or the last one added). */
   secretOf(email: string) { return this.byEmail(email)?.factors.at(-1)?.secret; }
   /** Test helper: every authenticator app's secret, oldest first. */
