@@ -544,7 +544,7 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
     it("the company audit log (migration 0009): a company admin reads and verifies only their own chain; other roles cannot verify", async () => {
       await ws.tx(me(casey, B, "Casey B"), Date.now(), (t) => t.audit("audit.created", "AUD-01 Company B engagement", "Audit"));
       const page = await ws.tx(me(casey, B), Date.now(), (t) => t.auditPage(null, 50));
-      expect(page[0]).toMatchObject({ action: "audit.created", cat: "Audit" }); expect(page[0].hash).toMatch(/^[0-9a-f]{64}$/);
+      expect(page[0]).toMatchObject({ action: "audit.created", cat: "Audit", v: 2, piiHash: expect.stringMatching(/^[0-9a-f]{64}$/) }); expect(page[0].hash).toMatch(/^[0-9a-f]{64}$/);
       expect(page.every((e) => !/Company A/.test(e.target))).toBe(true);
       expect(await ws.tx(me(casey, B), Date.now(), (t) => t.auditVerify())).toBeNull();
       expect(await ws.tx(me(alex, A), Date.now(), (t) => t.auditVerify())).toBe(2); // the tampering test above, A's own chain only
@@ -717,6 +717,70 @@ describe.runIf(!!URL_)("tenant isolation in the database (row level security)", 
       for (const bad of [["Acme.example"], ["acme"], ["*.acme.example"], ["acme.example,evil.example"], Array.from({ length: 21 }, (_, i) => `d${i}.example`)])
         expect(await code(admin.query("update public.tenant_settings set join_domains = $2 where tenant_id = $1", [A, bad]))).toMatch(/check constraint/);
       await admin.query("update public.tenant_settings set join_domains = '{}' where tenant_id = $1", [A]);
+    });
+  });
+
+  describe("audit entries that can be erased without breaking the chain (0014)", () => {
+    const put = (action: string, actor: string, actorId: string, target: string) => app.tx(ctxA(), (q) => q.query(
+      "insert into audit_log (at_ms, actor, action, target, cat, space, ip, tenant_id, actor_id) values ($1, $2, $3, $4, 'Access', 'ws', '198.51.100.9', $5, $6) returning seq",
+      [now, actor, action, target, A, actorId]));
+    const verifyA = async () => (await admin.query("select public.audit_verify($1) as bad", [A])).rows[0].bad;
+    const elevate = async () => {
+      await admin.query("update public.elevations set ended_ms = expires_ms where ended_ms is null");
+      await admin.query("insert into public.elevations (user_id, reason, ticket, started_ms, expires_ms) values ($1, 'Erasure test elevation', 'OPS-14', $2, $3)", [drew, Date.now(), Date.now() + 3600_000]);
+    };
+    it("new entries are version 2 with a per-entry salt, and the chain verifies (older version 1 entries too)", async () => {
+      // repair the chain the tamper test above broke on purpose, so this scope can be verified again
+      await admin.query("alter table public.audit_log disable trigger audit_log_no_change");
+      await admin.query("delete from public.audit_log where tenant_id = $1", [A]); await admin.query("delete from public.audit_chain where scope = $1", [A]);
+      await admin.query("alter table public.audit_log enable trigger audit_log_no_change");
+      // a version 1 entry as 0003 wrote it (the new trigger is set aside for this one row)
+      await admin.query("alter table public.audit_log disable trigger audit_log_chain");
+      const h1 = (await admin.query(`select encode(sha256(convert_to(concat_ws(chr(31), $1::text, '1', repeat('0', 64), $2::text, $3::text, 'Old Actor', 'old.action', 'old target', 'Access', 'ws', '198.51.100.1', '', ''), 'UTF8')), 'hex') as h`, [A, String(now), alex])).rows[0].h;
+      await admin.query("insert into public.audit_log (at_ms, actor, action, target, cat, space, ip, tenant_id, actor_id, chain_n, prev_hash, hash) values ($1, 'Old Actor', 'old.action', 'old target', 'Access', 'ws', '198.51.100.1', $2, $3, 1, repeat('0', 64), $4)", [now, A, alex, h1]);
+      await admin.query("insert into public.audit_chain (scope, n, last_hash) values ($1, 1, $2)", [A, h1]);
+      await admin.query("alter table public.audit_log enable trigger audit_log_chain");
+      await put("member.role.changed", "Alex Kim", alex, "Blair Ng <blair@a.example.test>: viewer → owner");
+      await put("evidence.added", "Blair Ng", blair, "Access review Q3");
+      const rows = (await admin.query("select chain_n, hash_v, pii_salt is not null as salted, pii_hash from public.audit_log where tenant_id = $1 order by chain_n", [A])).rows;
+      expect(rows.map((r) => [Number(r.chain_n), r.hash_v, r.salted])).toEqual([[1, 1, false], [2, 2, true], [3, 2, true]]);
+      expect(await verifyA()).toBeNull();
+    });
+    it("a changed personal field is detected through the salted hash; nothing else may change an entry", async () => {
+      await expect(admin.query("update public.audit_log set actor = 'Someone Else' where tenant_id = $1 and chain_n = 2", [A])).rejects.toThrow(/append-only/);
+      // even inside a redaction context, only the personal fields may change, and only while dropping the salt
+      for (const sql of ["update public.audit_log set action = 'edited', pii_salt = null, redacted_ms = 1 where tenant_id = $1 and chain_n = 2",
+        "update public.audit_log set actor = 'Edited' where tenant_id = $1 and chain_n = 2"]) { // another column; the salt kept
+        await admin.query("begin"); await admin.query("select set_config('app.audit_redact', 'on', true)");
+        await expect(admin.query(sql, [A])).rejects.toThrow(/append-only/);
+        await admin.query("rollback");
+      }
+      // a database administrator who goes around the trigger is caught by the salted hash
+      await admin.query("alter table public.audit_log disable trigger audit_log_no_change");
+      await admin.query("update public.audit_log set target = 'Blair Ng: viewer → admin' where tenant_id = $1 and chain_n = 2", [A]);
+      expect(Number(await verifyA())).toBe(2);
+      await admin.query("update public.audit_log set target = 'Blair Ng <blair@a.example.test>: viewer → owner' where tenant_id = $1 and chain_n = 2", [A]);
+      await admin.query("alter table public.audit_log enable trigger audit_log_no_change");
+      expect(await verifyA()).toBeNull();
+    });
+    it("audit_redact_person: elevated super admins only; replaces the person, drops the salt; the chain still verifies", async () => {
+      const call = (ctx: { tenantId: string | null; userId: string; platform?: boolean }) => app.tx(ctx, (q) => q.query<{ n: number }>(
+        "select public.audit_redact_person($1, $2, $3, $4) as n", [blair, ["Blair Ng"], ["blair@a.example.test"], "Former member · M-1a2b3c"]));
+      expect(await code(call(ctxA()))).toBe("42501");                                        // a company admin
+      expect(await code(call({ tenantId: null, userId: drew, platform: true }))).toBe("42501"); // super admin, not elevated
+      await elevate();
+      expect(await code(app.tx({ tenantId: null, userId: drew, platform: true }, (q) => q.query("select public.audit_redact_person($1, '{}', '{}', 'Blair')", [blair])))).not.toBe("ok"); // pseudonym format
+      const r = await call({ tenantId: null, userId: drew, platform: true });
+      expect(Number(r[0].n)).toBe(2); // the entry Blair made, and the one that names Blair
+      const rows = (await admin.query("select chain_n, actor, target, ip, pii_salt is null as shredded, redacted_ms is not null as redacted from public.audit_log where tenant_id = $1 order by chain_n", [A])).rows;
+      expect(rows[1]).toMatchObject({ actor: "Alex Kim", target: "Former member · M-1a2b3c <[erased address]>: viewer → owner", ip: "198.51.100.9", shredded: true, redacted: true });
+      expect(rows[2]).toMatchObject({ actor: "Former member · M-1a2b3c", target: "Access review Q3", ip: "", shredded: true, redacted: true });
+      expect(rows[0]).toMatchObject({ actor: "Old Actor", shredded: true, redacted: false }); // version 1: never touched
+      expect(JSON.stringify(rows)).not.toMatch(/Blair|blair@/);
+      expect(await verifyA()).toBeNull();
+      // a redacted entry cannot be redacted again or changed further
+      expect(Number((await call({ tenantId: null, userId: drew, platform: true }))[0].n)).toBe(0);
+      await admin.query("update public.elevations set ended_ms = expires_ms where ended_ms is null");
     });
   });
 
