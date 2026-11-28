@@ -1,5 +1,7 @@
 # UI design review (November 2026)
 
+> A second review of v0.4.2 (28 November 2026, 266 findings) is in [UI_REVIEW_2.md](UI_REVIEW_2.md).
+
 Every module and public page of the shipped portal (v0.2.0) was reviewed against the design critique framework (first impression, usability, visual hierarchy, consistency, accessibility) and `DESIGN_SYSTEM.md`.
 
 ## How it was reviewed
