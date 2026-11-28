@@ -13,7 +13,7 @@
 | Node.js used by CI, builds and releases | 22 |
 | CI runner image | `ubuntu-latest` |
 | Package manager | npm (`package-lock.json`; installs use `--ignore-scripts`) |
-| Application name / version | `assurance-grc-front-end` 0.4.1 (private, not published) |
+| Application name / version | `assurance-grc-front-end` 0.4.2 (private, not published) |
 | TypeScript `strict` | **off** (`front-end/tsconfig.json`); `noImplicitAny`: off |
 | TypeScript target / module resolution | `es2020` / `bundler` |
 | Browser support (`browserslist`) | `last 2 Chrome versions`, `last 2 Edge versions`, `last 2 Firefox versions`, `last 2 Safari versions`, `last 2 iOS versions` |
