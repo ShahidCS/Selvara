@@ -4,6 +4,12 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-11-28
+
+Accessibility: text now follows the browser's text-size setting, and large text keeps every word (EDGE-13, closed). At the default text size the app looks exactly as in 0.4.1.
+
+**Deploy notes (production):** no migration (the schema stays at 17) and no new secret or setting. Merge this version bump before pushing the signed tag `v0.4.2`: the release workflow refuses a tag whose commit is not versioned 0.4.2.
+
 ### Fixed (Accessibility)
 - Large text keeps every word (EDGE-13, closed): when the browser's text size is above its default, one-line labels wrap instead of ending in "…" (KPI labels and captions, navigation, coverage rows, breadcrumbs, phone tabs), counts sit beside their icon instead of over it, avatars grow with their initials, the phone KPI strip is one column and the phone tab bar offers two places plus More. The default size and page zoom keep the one-line design: 24,741 elements on 32 screens measured identical to `main`. Files: new `front-end/src/hooks/useLargeText.ts`; `front-end/src/components/shell/AppShell.tsx` (`<html data-text="large">`); `front-end/src/components/shell/TabBar.tsx` (two places with large text); `front-end/src/styles/portal.css` (`.rem-probe` and the "LARGE TEXT" section: `.kpi-head`, `.kpi-head .eyebrow`, `.kpi-cap`, `.kpi-strip`, `.nav-item .lbl`, `.subitem .slbl`, `.covlbl`, `.crumbs`, `.crumbs .cur`, `.crumbs a`, `.top-user`, `.tu-who`, `.tu-chev`, `.top-div`, `.avatar`, `.icon-btn:has(>.nbadge)`, `.nbadge`, `.tabbar-l`, `.tabbar-ic`, `.tabbar-b`). Tests: `tests/unit/largeText.test.ts`, `e2e/edge-layout.spec.ts`.
 - Segmented controls (`.seg`, `portal.css`) never turn into an oval: the radius is half the height of one row, so one row is exactly the pill it was and a control that wraps is a rounded box.
